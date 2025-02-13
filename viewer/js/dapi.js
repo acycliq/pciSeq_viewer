@@ -542,7 +542,10 @@ function dapiChart(config) {
     $('#hideDapiAndPanels').show();
     console.log('check boxes added');
 
+    // Initialize cell classes first
     cellClasses = [...new Set(cellData.map(d => d.topClass))].sort();
+    
+    // Create containers for each cell class
     cellClasses.forEach((d, i) => {
         // make some pixiGraphics (aka containers) objects to hold the cell polygons and name them based on their short names
         // these are just empty right now, they only have a name
@@ -560,18 +563,13 @@ function dapiChart(config) {
     myTreeControl.addTo(map);
     myTreeControl._checkAll();
 
-    // 1. draw the cell polygons
+    // Draw cell polygons
     cellPolyLayer = drawCellPolygons();
     cellPolyLayer.addTo(map);
     console.log('cellPolyLayer added to the map');
 
-
-    // draw the spots
-    // add_spots(all_geneData, map);
-
-    // draw the spots (particle Containers approach)
+    // Draw spots
     add_spots_patched(all_geneData, map);
-
 
     // make placeholder for the coordinates control
     addControlPlaceholders(map);
