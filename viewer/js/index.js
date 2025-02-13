@@ -3,50 +3,42 @@
 // should be removed and replaced by label (or cell_label whatever name you decide to use)
 //
 
-// Map and rendering globals
-let map;
-let masterCellContainer;
-let masterCellRenderer;
-let masterMarkerContainer;
-let masterMarkerRenderer;
+// Core map components
+let map;                        // Main Leaflet map instance
+let dapiConfig;                 // Core configuration and utilities
 
-// Container arrays
-let cellContainer_array = [];
-let geneContainer_array = [];
+// Cell visualization components
+let masterCellContainer;        // Main PIXI container for cell polygons
+let masterCellRenderer;         // PIXI renderer for cells
+let cellContainer_array = [];   // Individual cell type containers
+let cellBoundaries;            // Raw cell boundary data
+let cellData;                  // Cell metadata
+let cellPolygons;              // Processed cell boundary features
 
-// Cell data and layers
-let cellBoundaries;
-let cellData;
-let cellClasses;
-let cellPolyLayer;
-let cellPolygons;
-let cellSpritesLayer;
-
-// Gene data and layers
-let genepanel;
-let all_geneData;
-let spotsIndex;  //spatial index
-let geneLayers;
-let geneOverlays;
+// Gene visualization components
+let masterMarkerContainer;      // Main PIXI container for gene markers
+let masterMarkerRenderer;       // PIXI renderer for markers
+let geneContainer_array = [];   // Individual gene type containers
+let all_geneData;              // Gene expression data
+let spotsIndex;                // Spatial index for gene spots
 
 // UI Controls
-let dapiConfig;
-let myTreeControl;
+let myTreeControl;             // Cell type selection tree
 let legendWindow;
 let legend_added = false;  //used to make sure the listener is attached only once
-let pinnedControls = false;
-let hiddenControls = false;
+let pinnedControls = false;    // Whether info panels are pinned
+let hiddenControls = false;    // Whether info panels are hidden
 
-// Other layers
-let polygonsOverlay;
-let glyphToNeighbourLayer;
-let nearbyCellLayer;
+// Active layers
+let polygonsOverlay;           // Cell polygon layer
+let glyphToNeighbourLayer;     // Lines connecting cells
+let nearbyCellLayer;           // Highlighted nearby cells
 let dotLayer;
 let myDots;
-let cellWatch;  //keeps the id of the cell currently drawn on the map
+let cellWatch;                 // Currently selected cell ID
 
 // Configuration
-const zoomSwitch = 7;  // determines when the glyphs will start showing up
+const zoomSwitch = 7;          // Zoom level where glyphs appear
 
 localStorage.clear();
 console.log('Local storage cleared');
