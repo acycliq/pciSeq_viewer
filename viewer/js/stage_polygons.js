@@ -53,7 +53,7 @@ function drawCellPolygons() {
 function renderPolygons(data) {
     console.log('In renderPolygons')
     var alphaScale = d3.scaleLinear()
-        .domain([0, map.getMinZoom(), map.getMaxZoom()])
+        .domain([0, dapiConfig.map.getMinZoom(), dapiConfig.map.getMaxZoom()])
         .range([1, 1, 0.2]); // <-- huh?? I dont remember why i did this
     alphaScale.clamp(true);
     var firstDraw = true;
