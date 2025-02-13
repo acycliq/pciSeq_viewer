@@ -15,9 +15,9 @@ function dapi(cfg) {
 
     // Create transformation for mapping ROI to display coordinates
     const t = new L.Transformation(
-        transformCoeffs.a, 
-        transformCoeffs.b, 
-        transformCoeffs.c, 
+        transformCoeffs.a,
+        transformCoeffs.b,
+        transformCoeffs.c,
         transformCoeffs.d
     );
 
@@ -45,23 +45,23 @@ function dapi(cfg) {
         minZoom: 0,
         maxZoom,
         bounds: mapBounds,
-    }).setView([map_dims[1]/2, map_dims[0]/2], 2);
+    }).setView([map_dims[1] / 2, map_dims[0] / 2], 2);
 
     var baseLayers = {}
     for (const [key, value] of Object.entries(cfg.layers)) {
-      baseLayers[key] = L.tileLayer(value);
+        baseLayers[key] = L.tileLayer(value);
     }
 
     var nLayers = Object.values(baseLayers).length
     //Add control layers to map
-    if (nLayers > 1){
-        L.control.layers(baseLayers, null, {collapsed: false}).addTo(map);
+    if (nLayers > 1) {
+        L.control.layers(baseLayers, null, { collapsed: false }).addTo(map);
     }
 
     // It seems I can set the active layer, however on the control it looks as
     // if the active one is the last layer. The bullet point always stays at
     // the last layer
-    var selectedLayer = Object.values(baseLayers)[nLayers-1]
+    var selectedLayer = Object.values(baseLayers)[nLayers - 1]
     // var selectedLayer = Object.values(baseLayers)[0] // that sets the top layer active, the bullet is still at the bottom!!!
     selectedLayer.addTo(map)
 
@@ -144,7 +144,7 @@ function dapi(cfg) {
 
     function removeLayer(layer) {
         if (!layer) return;
-        
+
         if (map.hasLayer(layer)) {
             map.removeLayer(layer);
             console.log('Layer removed');
@@ -236,7 +236,7 @@ function dapi(cfg) {
                     })
                 }).entries(temp)
                 .map(function (d) {
-                    return {IdentifiedType: d.key, Prob: d.value};
+                    return { IdentifiedType: d.key, Prob: d.value };
                 });
 
             // sort in decreasing order
@@ -258,12 +258,12 @@ function dapi(cfg) {
     info.update = function (cellFeatures) {
         var msg = infoMsg(cellFeatures);
         this._div.innerHTML = '<div class="infoTitle"><h4>Cell Info</h4><img src="https://cdn2.iconfinder.com/data/icons/snipicons/500/pin-128.png" class="ribbon"></div>' + (cellFeatures ?
-                '<table style="width:110px;">' +
-                '<tbody><tr style="width:110px; border-bottom:1px solid Black; font-weight: bold"><td><div><b>Class </b></div></td><td><div> Prob' +
-                msg +
-                '<tbody><tr style="width:110px; border-top:1px solid black;"><td><div><b>Cell Num: </b></div></td><td><div>' + cellFeatures.cell_id +
-                '</div></td></tr></tbody></table>' :
-                '<b>Hover over  a cell</b>'
+            '<table style="width:110px;">' +
+            '<tbody><tr style="width:110px; border-bottom:1px solid Black; font-weight: bold"><td><div><b>Class </b></div></td><td><div> Prob' +
+            msg +
+            '<tbody><tr style="width:110px; border-top:1px solid black;"><td><div><b>Cell Num: </b></div></td><td><div>' + cellFeatures.cell_id +
+            '</div></td></tr></tbody></table>' :
+            '<b>Hover over  a cell</b>'
 
         );
     };
@@ -317,27 +317,27 @@ function dapi(cfg) {
         // This will hold the two charts on the bottom right corner
         // lots of styling in here. Better keep these in the main html of css file
         var myDiv = "<div class='tab-pane active fade in' id='map-content'>" +
-                        "<div class='container-fluid'>" +
-                            "<div class='col-sm-12'>" +
-                                "<div class='row'>" +
-                                    "<div class='myTitle' id='dtTitle' style='margin-bottom:5px'> <h4>Highlighted Cell</h4>  " +
-                                    " <img src='https://cdn2.iconfinder.com/data/icons/snipicons/500/pin-128.png' class='ribbon'/> " +
-                                "</div>" +
-                                "<div class='row'>" +
-                                    "<div class='col-sm-5'>" +
-                                        "<div class='col-sm-12' style='background-color: darkgrey; padding-left: 0px'>" +
-                                            "<table id='dtTable' class='display compact custom' data-page-length='5' width=100%'></table>" +
-                                        "</div>" +
-                                    "</div>" +
-                                    "<div class='col-sm-7'>" +
-                                        "<div class='chart-stage' style='background-color: rgba(255, 255, 255, 0.0)'> " +
-                                            "<div class='summary' id='pie'> " +
-                                        "<svg width='300' height='180'></svg>" +
-                                    "</div>" +
-                                "</div>" +
-                            "</div>" +
-                        "</div>" +
-                     "</div>" ;
+            "<div class='container-fluid'>" +
+            "<div class='col-sm-12'>" +
+            "<div class='row'>" +
+            "<div class='myTitle' id='dtTitle' style='margin-bottom:5px'> <h4>Highlighted Cell</h4>  " +
+            " <img src='https://cdn2.iconfinder.com/data/icons/snipicons/500/pin-128.png' class='ribbon'/> " +
+            "</div>" +
+            "<div class='row'>" +
+            "<div class='col-sm-5'>" +
+            "<div class='col-sm-12' style='background-color: darkgrey; padding-left: 0px'>" +
+            "<table id='dtTable' class='display compact custom' data-page-length='5' width=100%'></table>" +
+            "</div>" +
+            "</div>" +
+            "<div class='col-sm-7'>" +
+            "<div class='chart-stage' style='background-color: rgba(255, 255, 255, 0.0)'> " +
+            "<div class='summary' id='pie'> " +
+            "<svg width='300' height='180'></svg>" +
+            "</div>" +
+            "</div>" +
+            "</div>" +
+            "</div>" +
+            "</div>";
 
         return myDiv
     }
@@ -352,14 +352,14 @@ function dapi(cfg) {
     toggleMapControl.onAdd = function (map) {
         var div = L.DomUtil.create('div');
         div.innerHTML =
-        '<div class="leaflet-control-layers leaflet-control-layers-expanded"> ' +
-        '  <form> ' +
-        '    <input class="leaflet-control-layers-overlays" id="command"  ' +
-        '      onclick = dapiConfig.toggleMapControl.update(this.checked) type="checkbox"> ' +
-        '      Hide Dapi ' +
-        '    </input> ' +
-        '  </form> ' +
-        ' </div>';
+            '<div class="leaflet-control-layers leaflet-control-layers-expanded"> ' +
+            '  <form> ' +
+            '    <input class="leaflet-control-layers-overlays" id="command"  ' +
+            '      onclick = dapiConfig.toggleMapControl.update(this.checked) type="checkbox"> ' +
+            '      Hide Dapi ' +
+            '    </input> ' +
+            '  </form> ' +
+            ' </div>';
         return div;
     };
 
@@ -409,10 +409,10 @@ function dapi(cfg) {
                     label = place;
 
                 if (!mapper[label]) {
-                    var o = {label: label};
+                    var o = { label: label };
                     o.collapsed = true;
                     if (i === arr.length - 1) {
-                        o.layer = cellContainer_array.filter(d=> d.name === label)[0]
+                        o.layer = cellContainer_array.filter(d => d.name === label)[0]
                         // o.layer = masterCellContainer.getChildByName(label);
                     }
                     mapper[label] = o;
@@ -428,9 +428,9 @@ function dapi(cfg) {
     }
 
 
-     function treeControl(data) {
-        return L.control.layers.tree({}, tree(data), {position:'topright'});
-     }
+    function treeControl(data) {
+        return L.control.layers.tree({}, tree(data), { position: 'topright' });
+    }
 
 
 
@@ -477,7 +477,7 @@ function dapiChart(config) {
      * @returns {Function} Event handler function
      */
     function moveend(config) {
-        return function(evt) {
+        return function (evt) {
             // Update cell container visibility
             if (masterCellContainer) {
                 masterCellContainer.children.forEach(child => child.visible = true);
@@ -576,65 +576,84 @@ function dapiChart(config) {
     // make placeholder for the coordinates control
     addControlPlaceholders(map);
 
+    /**
+     * Creates placeholder elements for map controls
+     * @param {L.Map} map - The Leaflet map instance
+     */
     function addControlPlaceholders(map) {
-        var corners = map._controlCorners,
-            l = 'leaflet-',
-            container = map._controlContainer;
+        const corners = map._controlCorners;
+        const container = map._controlContainer;
+        const LEAFLET_PREFIX = 'leaflet-';
 
+        /**
+         * Creates a corner div for controls
+         * @param {string} vSide - Vertical position (top, bottom, verticalcenter)
+         * @param {string} hSide - Horizontal position (left, right, horizontalcenter)
+         */
         function createCorner(vSide, hSide) {
-            var className = l + vSide + ' ' + l + hSide;
+            const className = `${LEAFLET_PREFIX}${vSide} ${LEAFLET_PREFIX}${hSide}`;
             corners[vSide + hSide] = L.DomUtil.create('div', className, container);
         }
 
-        createCorner('verticalcenter', 'left');
-        createCorner('verticalcenter', 'right');
-        createCorner('verticalcenter', 'horizontalcenter');
-        createCorner('bottom', 'horizontalcenter');
-        createCorner('top', 'horizontalcenter');
+        // Create all required corner positions
+        const positions = [
+            ['verticalcenter', 'left'],
+            ['verticalcenter', 'right'],
+            ['verticalcenter', 'horizontalcenter'],
+            ['bottom', 'horizontalcenter'],
+            ['top', 'horizontalcenter']
+        ];
 
+        positions.forEach(([vSide, hSide]) => createCorner(vSide, hSide));
     }
 
-    // Patch first to avoid longitude wrapping.
+    // Patch Leaflet Coordinates to fix longitude wrapping
     L.Control.Coordinates.include({
-        _update: function (evt) {
-            var pos = evt.latlng,
-                opts = this.options;
-            if (pos) {
-                //pos = pos.wrap(); // Remove that instruction.
-                // Get the mouse location in actual coordinates and then express it as a latLng object
-                var coords = dapiConfig.t.untransform(L.point([pos.lng, pos.lat])),
-                    pos = L.latLng(coords.y, coords.x)
-                this._currentPos = pos;
-                this._inputY.value = L.NumberFormatter.round(pos.lng, opts.decimals, opts.decimalSeperator);
-                this._inputX.value = L.NumberFormatter.round(pos.lat, opts.decimals, opts.decimalSeperator);
-                this._label.innerHTML = this._createCoordinateLabel(pos);
+        _update: function(evt) {
+            if (!evt?.latlng) return;
+
+            try {
+                const pos = evt.latlng;
+                
+                // Get the mouse location in actual coordinates
+                const coords = dapiConfig.t.untransform(L.point([pos.lng, pos.lat]));
+                const transformedPos = L.latLng(coords.y, coords.x);
+                
+                this._currentPos = transformedPos;
+                this._inputY.value = L.NumberFormatter.round(pos.lng, this.options.decimals, this.options.decimalSeperator);
+                this._inputX.value = L.NumberFormatter.round(pos.lat, this.options.decimals, this.options.decimalSeperator);
+                this._label.innerHTML = this._createCoordinateLabel(transformedPos);
+            } catch (error) {
+                console.error('Error updating coordinates:', error);
             }
         }
     });
 
+    // Add coordinates control with configuration
     L.control.coordinates({
-        position: "tophorizontalcenter", //optional default "bootomright"
-        // position: "topright", //optional default "bootomright"
-        decimals: 0, //optional default 4
-        decimalSeperator: ".", //optional default "."
-        labelTemplateLat: "y: {y}", //optional default "Lat: {y}"
-        labelTemplateLng: "x: {x}", //optional default "Lng: {x}"
-        enableUserInput: true, //optional default true
-        useDMS: false, //optional default false
-        useLatLngOrder: false, //ordering of labels, default false-> lng-lat
-        markerType: L.marker, //optional default L.marker
-        markerProps: {}, //optional default {},
-        // labelFormatterLng : function(lng){return lng+" lng"}, //optional default none,
-        // labelFormatterLat : function(lat){return lat+" lat"}, //optional default none
-        // customLabelFcn: function(latLonObj, opts) { "Geohash: " + encodeGeoHash(latLonObj.lat, latLonObj.lng)} //optional default none
+        position: "tophorizontalcenter",
+        decimals: 0,
+        decimalSeperator: ".",
+        labelTemplateLat: "y: {y}",
+        labelTemplateLng: "x: {x}",
+        enableUserInput: true,
+        useDMS: false,
+        useLatLngOrder: false,
+        markerType: L.marker,
+        markerProps: {}
     }).addTo(map);
 
-    // Hide the controls the first time the page loads up
-    $('.uiElement.label').hide();
-    // $('#legend').hide();
-    $('.leaflet-bottom.leaflet-left').hide();
-    $('.leaflet-bottom.leaflet-right').hide();
-    $('.panelsToggle').hide()
+    // Initialize UI elements visibility
+    const uiElements = [
+        '.uiElement.label',
+        '.leaflet-bottom.leaflet-left',
+        '.leaflet-bottom.leaflet-right',
+        '.panelsToggle'
+    ];
 
+    // Hide initial UI elements
+    uiElements.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => el.style.display = 'none');
+    });
 
 }
