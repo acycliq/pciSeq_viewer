@@ -1,0 +1,106 @@
+2025-02-13 15:00:43,705 - pciSeq.src.core.utils - INFO - Writing to /tmp/pciSeq/pciSeq.log
+2025-02-13 15:00:43,705 - pciSeq.src.core.utils - INFO - Checking Redis server connection...
+2025-02-13 15:00:43,717 - pciSeq.src.diagnostics.utils - INFO - Enabling keyspace events... OK
+2025-02-13 15:00:43,717 - pciSeq.src.core.utils - INFO - Redis server connection successful
+2025-02-13 15:00:43,734 - pciSeq.app - INFO - Preprocessing data
+2025-02-13 15:00:43,734 - pciSeq.src.preprocess.spot_labels - INFO - Number of spots passed-in: 72336
+2025-02-13 15:00:43,944 - pciSeq.src.preprocess.spot_labels - INFO - Number of segmented cells: 3481
+2025-02-13 15:00:43,944 - pciSeq.src.preprocess.spot_labels - INFO - Segmentation array implies that image has width: 7602px and height: 5471px
+2025-02-13 15:00:45,191 - pciSeq.app - INFO - Initializing VarBayes model
+2025-02-13 15:00:45,193 - pciSeq.src.diagnostics.controller.diagnostic_controller - INFO - Diagnostics system initialized successfully
+2025-02-13 15:00:45,193 - pciSeq.src.diagnostics.controller.diagnostic_controller - INFO - Started dashboard with PID: 1088837
+2025-02-13 15:00:45,357 - pciSeq.src.core.datatypes - INFO - Single cell data passed-in have 27998 genes and 5712 cells
+2025-02-13 15:00:45,358 - pciSeq.src.core.datatypes - INFO - Single cell data: Keeping counts for the gene panel of 92 only
+2025-02-13 15:00:45,383 - pciSeq.src.core.datatypes - INFO - Single cell data: Grouping gene counts by cell type. Aggregating function is the mean.
+2025-02-13 15:00:45,388 - pciSeq.src.core.datatypes - INFO - Grouped single cell data have 92 genes and 71 cell types
+2025-02-13 15:00:45,392 - pciSeq.app - INFO - Starting cell typing algorithm
+2025-02-13 15:00:47,626 - pciSeq.src.core.main - INFO - Iteration 0, mean prob change 1.000000
+2025-02-13 15:00:48,887 - pciSeq.src.core.main - INFO - Iteration 1, mean prob change 0.899874
+2025-02-13 15:00:49,814 - pciSeq.src.core.main - INFO - Iteration 2, mean prob change 0.670793
+2025-02-13 15:00:50,725 - pciSeq.src.core.main - INFO - Iteration 3, mean prob change 0.470374
+2025-02-13 15:00:51,676 - pciSeq.src.core.main - INFO - Iteration 4, mean prob change 0.627468
+2025-02-13 15:00:52,601 - pciSeq.src.core.main - INFO - Iteration 5, mean prob change 0.580928
+2025-02-13 15:00:53,614 - pciSeq.src.core.main - INFO - Iteration 6, mean prob change 0.604991
+2025-02-13 15:00:54,600 - pciSeq.src.core.main - INFO - Iteration 7, mean prob change 0.281888
+2025-02-13 15:00:55,512 - pciSeq.src.core.main - INFO - Iteration 8, mean prob change 0.262332
+2025-02-13 15:00:56,427 - pciSeq.src.core.main - INFO - Iteration 9, mean prob change 0.191960
+2025-02-13 15:00:57,370 - pciSeq.src.core.main - INFO - Iteration 10, mean prob change 0.557639
+2025-02-13 15:00:58,348 - pciSeq.src.core.main - INFO - Iteration 11, mean prob change 0.190387
+2025-02-13 15:00:59,300 - pciSeq.src.core.main - INFO - Iteration 12, mean prob change 0.248352
+2025-02-13 15:01:00,253 - pciSeq.src.core.main - INFO - Iteration 13, mean prob change 0.282416
+2025-02-13 15:01:01,238 - pciSeq.src.core.main - INFO - Iteration 14, mean prob change 0.068735
+2025-02-13 15:01:02,263 - pciSeq.src.core.main - INFO - Iteration 15, mean prob change 0.160727
+2025-02-13 15:01:03,225 - pciSeq.src.core.main - INFO - Iteration 16, mean prob change 0.582993
+2025-02-13 15:01:04,196 - pciSeq.src.core.main - INFO - Iteration 17, mean prob change 0.166330
+2025-02-13 15:01:05,181 - pciSeq.src.core.main - INFO - Iteration 18, mean prob change 0.148632
+2025-02-13 15:01:06,187 - pciSeq.src.core.main - INFO - Iteration 19, mean prob change 0.123439
+2025-02-13 15:01:07,153 - pciSeq.src.core.main - INFO - Iteration 20, mean prob change 0.099603
+2025-02-13 15:01:08,115 - pciSeq.src.core.main - INFO - Iteration 21, mean prob change 0.052008
+2025-02-13 15:01:09,057 - pciSeq.src.core.main - INFO - Iteration 22, mean prob change 0.067415
+2025-02-13 15:01:09,995 - pciSeq.src.core.main - INFO - Iteration 23, mean prob change 0.103466
+2025-02-13 15:01:10,938 - pciSeq.src.core.main - INFO - Iteration 24, mean prob change 0.187659
+2025-02-13 15:01:11,880 - pciSeq.src.core.main - INFO - Iteration 25, mean prob change 0.169175
+2025-02-13 15:01:12,841 - pciSeq.src.core.main - INFO - Iteration 26, mean prob change 0.066329
+2025-02-13 15:01:13,796 - pciSeq.src.core.main - INFO - Iteration 27, mean prob change 0.046283
+2025-02-13 15:01:14,767 - pciSeq.src.core.main - INFO - Iteration 28, mean prob change 0.033079
+2025-02-13 15:01:15,707 - pciSeq.src.core.main - INFO - Iteration 29, mean prob change 0.020875
+2025-02-13 15:01:16,702 - pciSeq.src.core.main - INFO - Iteration 30, mean prob change 0.012405
+2025-02-13 15:01:16,719 - pciSeq.src.core.summary - INFO - Start collecting data ...
+2025-02-13 15:01:17,495 - pciSeq.src.core.summary - INFO - Data collected!
+2025-02-13 15:01:18,181 - pciSeq.src.diagnostics.controller.diagnostic_controller - INFO - Terminated dashboard with PID: 1088837
+2025-02-13 15:01:18,443 - pciSeq.src.core.utils - INFO - Saved cell data to /tmp/pciSeq/data/cellData.tsv
+2025-02-13 15:01:18,737 - pciSeq.src.core.utils - INFO - Saved gene data to /tmp/pciSeq/data/geneData.tsv
+2025-02-13 15:01:18,815 - pciSeq.src.core.utils - INFO - Saved cell boundaries to /tmp/pciSeq/data/cellBoundaries.tsv
+2025-02-13 15:01:18,949 - pciSeq.src.core.utils - INFO - Serialized object saved to /tmp/pciSeq/data/debug/pciSeq.pickle
+2025-02-13 15:01:20,946 - pciSeq.src.viewer.utils - INFO - viewer code (2D) copied from /home/dimitris/dev/python/pciSeq/pciSeq/static/2D to /tmp/pciSeq
+2025-02-13 15:01:20,946 - pciSeq.src.viewer.utils - INFO - viewer config saved at /tmp/pciSeq/viewer/js/config.js
+2025-02-13 15:01:20,946 - pciSeq.src.viewer.run_flask - INFO - Launching viewer. Serving directory /tmp/pciSeq 
+2025-02-13 15:01:20,948 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5930
+2025-02-13 15:01:20,948 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-02-13 15:01:21,948 - pciSeq.src.viewer.run_flask - INFO - Platform is Linux
+2025-02-13 15:01:21,948 - pciSeq.src.viewer.run_flask - INFO - Chrome path: /usr/bin/google-chrome
+2025-02-13 15:01:22,023 - pciSeq.src.viewer.run_flask - INFO - Locating template 'index.html':
+    1: trying loader of application 'pciSeq.src.viewer.run_flask'
+       class: jinja2.loaders.FileSystemLoader
+       encoding: 'utf-8'
+       followlinks: False
+       searchpath:
+         - /tmp/pciSeq
+       -> found ('/tmp/pciSeq/index.html')
+2025-02-13 15:01:22,028 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET / HTTP/1.1" 200 -
+2025-02-13 15:01:22,053 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/lib/css/bootstrap.min.css HTTP/1.1" 200 -
+2025-02-13 15:01:22,054 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/lib/css/Leaflet.Coordinates-0.1.3.css HTTP/1.1" 200 -
+2025-02-13 15:01:22,055 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/lib/js/pixiOverlay/tools.min.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,056 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/lib/js/bootstrap.min.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,056 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/lib/js/leaflet-pip.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,057 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/lib/js/pixiOverlay/example.min.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,067 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/css/progress.css HTTP/1.1" 200 -
+2025-02-13 15:01:22,067 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/lib/css/L.Control.Layers.Tree.css HTTP/1.1" 200 -
+2025-02-13 15:01:22,068 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/lib/js/pixiOverlay/MarkerContainer.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,069 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/css/index.css HTTP/1.1" 200 -
+2025-02-13 15:01:22,072 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/lib/js/pixiOverlay/bezier-easing.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,075 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/config.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,076 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/lib/js/leaflet.textpath.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,077 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/lib/js/Leaflet.Coordinates-0.1.3.src.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,077 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/viewerUtils.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,079 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/dataLoader.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,079 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/customControl.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,083 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/donut.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,084 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/stage_polygons.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,085 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/stage_markers_patched.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,086 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/dt.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,086 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/stage_glyphs.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,087 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/classConfig.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,092 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/glyphs.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,094 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/glyphConfig.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,096 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/glyphPaths.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,099 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/dapi.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,102 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/progress.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,102 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/lib/js/L.Control.Layers.Tree.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,103 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/index.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,195 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /viewer/js/streaming-tsv-parser.js HTTP/1.1" 200 -
+2025-02-13 15:01:22,204 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-02-13 15:01:22,231 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /data/geneData.tsv HTTP/1.1" 200 -
+2025-02-13 15:01:22,231 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /data/cellBoundaries.tsv HTTP/1.1" 200 -
+2025-02-13 15:01:22,232 - werkzeug - INFO - 127.0.0.1 - - [13/Feb/2025 15:01:22] "GET /data/cellData.tsv HTTP/1.1" 200 -
