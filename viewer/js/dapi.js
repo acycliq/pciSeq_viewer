@@ -126,44 +126,39 @@ function dapi(cfg) {
     }
 
     function getNeighbours(neighbour_array, neighbour_prob) {
-        var data = [];
-        if (neighbour_array) {
-            for (var i = 0; i < neighbour_array.length; i++) {
-                data.push({
-                    Cell_Num: +neighbour_array[i],
-                    Prob: +neighbour_prob[i],
-                })
-            }
-
-            // Sort now in decreasing order.
-            data.sort(function (x, y) {
-                return d3.ascending(y.Prob, x.Prob)
-            })
-        } else {
-            data.push({
-                    Cell_Num: null, // null or NaN ?
-                    Prob: null,
-                }
-            )
+        if (!neighbour_array || !neighbour_prob) {
+            return [{
+                Cell_Num: null,
+                Prob: null,
+            }];
         }
 
-        return data
+        const data = neighbour_array.map((cell, index) => ({
+            Cell_Num: +cell,
+            Prob: +neighbour_prob[index],
+        }));
+
+        // Sort in decreasing order of probability
+        return data.sort((x, y) => d3.ascending(y.Prob, x.Prob));
     }
 
     function removeLayer(layer) {
+        if (!layer) return;
+        
         if (map.hasLayer(layer)) {
             map.removeLayer(layer);
-            // layer = undefined;
-            console.log('Layer removed')
+            console.log('Layer removed');
         }
     }
 
     function addLayer(layer) {
-        if (map.hasLayer(layer)) {
-            console.log('Already added')
-        } else {
+        if (!layer) return;
+
+        if (!map.hasLayer(layer)) {
             layer.addTo(map);
-            console.log('Layer added')
+            console.log('Layer added');
+        } else {
+            console.log('Layer already present');
         }
     }
 
