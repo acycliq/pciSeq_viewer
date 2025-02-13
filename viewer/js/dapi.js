@@ -66,42 +66,28 @@ function dapi(cfg) {
     selectedLayer.addTo(map)
 
     function getTaxonomy(gene) {
-        if (glyphMap.get(gene)) {
-            out = glyphMap.get(gene).taxonomy
-        } else {
-            out = glyphMap.get('Generic').taxonomy
-        }
-        return out
+        const glyphData = glyphMap.get(gene) || glyphMap.get('Generic');
+        return glyphData.taxonomy;
     }
 
-    function inGlyphConfig(gene){
-        return glyphMap.get(gene)? 1 : 0
+    function inGlyphConfig(gene) {
+        return Boolean(glyphMap.get(gene));
     }
 
     function getGlyphName(gene) {
-        if (glyphMap.get(gene)) {
-            out = glyphMap.get(gene).glyphName
-        } else {
-            out = glyphMap.get('Generic').glyphName
-        }
-        console.log(out)
-        return out
+        const glyphData = glyphMap.get(gene) || glyphMap.get('Generic');
+        return glyphData.glyphName;
     }
 
     function getColor(gene) {
-        if (glyphMap.get(gene)) {
-            out = glyphMap.get(gene).color
-        } else {
-            out = glyphMap.get('Generic').color
-        }
-        console.log(out)
-        return out
+        const glyphData = glyphMap.get(gene) || glyphMap.get('Generic');
+        return glyphData.color;
     }
 
-    function getIdentifiedType(class_name){
-        return classColorsMap.get(class_name)? classColorsMap.get(class_name).IdentifiedType: classColorsMap.get('Generic').IdentifiedType
+    function getIdentifiedType(class_name) {
+        const colorData = classColorsMap.get(class_name) || classColorsMap.get('Generic');
+        return colorData.IdentifiedType;
     }
-
 
     // get the svg markers (glyphs)
     var glyphs = glyphSettings();
