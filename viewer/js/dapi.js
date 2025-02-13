@@ -1,43 +1,51 @@
 function dapi(cfg) {
     console.log('Doing Dapi plot');
 
-    var map_dims = mapSize(cfg.maxZoom),
-        tiles = cfg.tiles,
-        roi = cfg.roi;
+    // Group configuration constants
+    const { maxZoom, tiles, roi } = cfg;
+    const map_dims = mapSize(maxZoom);
 
-    var a = map_dims[0] / (roi.x1 - roi.x0),
-        b = -map_dims[0] / (roi.x1 - roi.x0) * roi.x0,
-        c = map_dims[1] / (roi.y1 - roi.y0),
-        d = -map_dims[1] / (roi.y1 - roi.y0) * roi.y0;
+    // Calculate transformation coefficients
+    const transformCoeffs = {
+        a: map_dims[0] / (roi.x1 - roi.x0),
+        b: -map_dims[0] / (roi.x1 - roi.x0) * roi.x0,
+        c: map_dims[1] / (roi.y1 - roi.y0),
+        d: -map_dims[1] / (roi.y1 - roi.y0) * roi.y0
+    };
 
-    // This transformation maps a point from the roi domain to the domain defined by [0,0] and [someScalarX*256*2^maxZoom, someScalarY*256*2^maxZoom].
-    // The scalar is there to make the bounding have the same shape as the roi.
-    var t = new L.Transformation(a, b, c, d);
+    // Create transformation for mapping ROI to display coordinates
+    const t = new L.Transformation(
+        transformCoeffs.a, 
+        transformCoeffs.b, 
+        transformCoeffs.c, 
+        transformCoeffs.d
+    );
 
-    // The transformation in this CRS maps the the top left corner to (0,0) and the bottom right to (256, 256)
-    // Leaflet thinks that the map is 256px-by-256px wide. These are the dimension of the tile at zoom = 0.
-    // Each side of the map however is 256 * 2 ** maxZoomLevel pixels wide.
-    // For maxZoomLevel = 10 for example the map is 262144px-262144px
-    // Hence we have to specify a factor of 256/262144 = 1/1024.
-    // in general the factor is 256 / (256 * 2 ** maxZoomLevel)
-    var a_x = 256 / (256 * 2 ** cfg.maxZoom),
-        c_y = 256 / (256 * 2 ** cfg.maxZoom)
+    // Calculate CRS transformation coefficients
+    const crsCoeffs = {
+        a_x: 256 / (256 * 2 ** maxZoom),
+        c_y: 256 / (256 * 2 ** maxZoom)
+    };
+
+    // Define custom CRS
     L.CRS.MySimple = L.extend({}, L.CRS.Simple, {
-        transformation: new L.Transformation(a_x, 0, c_y, 0),
+        transformation: new L.Transformation(crsCoeffs.a_x, 0, crsCoeffs.c_y, 0),
     });
 
-    var southWest = L.latLng(map_dims[1], map_dims[0]),
-        northEast = L.latLng(0, 0),
-        mapBounds = L.latLngBounds(southWest, northEast);
+    // Define map bounds
+    const mapBounds = L.latLngBounds(
+        L.latLng(map_dims[1], map_dims[0]), // southWest
+        L.latLng(0, 0)                      // northEast
+    );
 
-       map = L.map('mymap', {
+    // Initialize map (keeping it in global scope)
+    map = L.map('mymap', {
         crs: L.CRS.MySimple,
         attributionControl: false,
         minZoom: 0,
-        maxZoom: cfg.maxZoom,
+        maxZoom,
         bounds: mapBounds,
     }).setView([map_dims[1]/2, map_dims[0]/2], 2);
-
 
     var baseLayers = {}
     for (const [key, value] of Object.entries(cfg.layers)) {
