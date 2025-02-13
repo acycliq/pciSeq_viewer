@@ -3,41 +3,50 @@
 // should be removed and replaced by label (or cell_label whatever name you decide to use)
 //
 
-// Variables in the global scope
-var cellBoundaries,
-    cellData,
-    genepanel,
-    all_geneData,
-    spotsIndex, //spatial index
-    dapiConfig,
-    polygonsOverlay,
-    cellPolygons,
-    cellSpritesLayer,
-    configSettings,
-    cellSpitesLayer,
-    cellPolyLayer,
-    glyphToNeighbourLayer,
-    nearbyCellLayer,
-    dotLayer,
-    myDots,
-    cellWatch, //keeps the id of the cell currently drawn on the map
-    map,
-    cellContainer_array = [],
-    masterCellContainer,
-    masterCellRenderer,
-    masterMarkerContainer,
-    masterMarkerRenderer,
-    geneContainer_array = [],
-    geneLayers,
-    geneOverlays,
-    legendWindow,
-    legend_added = false, //used to make sure the listener is attached only once
-    pinnedControls = false,
-    hiddenControls = false,
-    myTreeControl,
-    cellClasses,
-    zoomSwitch = 7; // determines when the glyphs will start showing up
+// Map and rendering globals
+let map;
+let masterCellContainer;
+let masterCellRenderer;
+let masterMarkerContainer;
+let masterMarkerRenderer;
 
+// Container arrays
+let cellContainer_array = [];
+let geneContainer_array = [];
+
+// Cell data and layers
+let cellBoundaries;
+let cellData;
+let cellClasses;
+let cellPolyLayer;
+let cellPolygons;
+let cellSpritesLayer;
+
+// Gene data and layers
+let genepanel;
+let all_geneData;
+let spotsIndex;  //spatial index
+let geneLayers;
+let geneOverlays;
+
+// UI Controls
+let dapiConfig;
+let myTreeControl;
+let legendWindow;
+let legend_added = false;  //used to make sure the listener is attached only once
+let pinnedControls = false;
+let hiddenControls = false;
+
+// Other layers
+let polygonsOverlay;
+let glyphToNeighbourLayer;
+let nearbyCellLayer;
+let dotLayer;
+let myDots;
+let cellWatch;  //keeps the id of the cell currently drawn on the map
+
+// Configuration
+const zoomSwitch = 7;  // determines when the glyphs will start showing up
 
 localStorage.clear();
 console.log('Local storage cleared');
