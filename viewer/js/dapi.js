@@ -47,23 +47,19 @@ function dapi(cfg) {
         bounds: mapBounds,
     }).setView([map_dims[1] / 2, map_dims[0] / 2], 2);
 
-    var baseLayers = {}
+    const baseLayers = {};
     for (const [key, value] of Object.entries(cfg.layers)) {
         baseLayers[key] = L.tileLayer(value);
     }
 
-    var nLayers = Object.values(baseLayers).length
+    const nLayers = Object.values(baseLayers).length;
     //Add control layers to map
     if (nLayers > 1) {
         L.control.layers(baseLayers, null, { collapsed: false }).addTo(map);
     }
 
-    // It seems I can set the active layer, however on the control it looks as
-    // if the active one is the last layer. The bullet point always stays at
-    // the last layer
-    var selectedLayer = Object.values(baseLayers)[nLayers - 1]
-    // var selectedLayer = Object.values(baseLayers)[0] // that sets the top layer active, the bullet is still at the bottom!!!
-    selectedLayer.addTo(map)
+    const selectedLayer = Object.values(baseLayers)[nLayers - 1];
+    selectedLayer.addTo(map);
 
     function getTaxonomy(gene) {
         const glyphData = glyphMap.get(gene) || glyphMap.get('Generic');
@@ -90,24 +86,24 @@ function dapi(cfg) {
     }
 
     // get the svg markers (glyphs)
-    var glyphs = glyphSettings();
-    var glyphMap = d3.map(glyphs, function (d) {
+    const glyphs = glyphSettings();
+    const glyphMap = d3.map(glyphs, function (d) {
         return d.gene;
     });
 
     //get the class colors
-    var classColors = classColorsCodes();
-    var classColorsMap = d3.map(classColors, function (d) {
+    const classColors = classColorsCodes();
+    const classColorsMap = d3.map(classColors, function (d) {
         return d.className;
     });
 
     //calculate radius so that resulting circles will be proportional by area
     function getRadius(y) {
-        r = Math.sqrt(y / Math.PI)
+        const r = Math.sqrt(y / Math.PI);
         return r;
     }
 
-    var myRenderer = L.canvas({
+    const myRenderer = L.canvas({
         padding: 0.5,
     });
 
