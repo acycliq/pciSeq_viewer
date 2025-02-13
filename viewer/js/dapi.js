@@ -467,19 +467,73 @@ function dapiChart(config) {
     map.whenReady(d => {
         console.log('Map is ready')
     });
-    map.on('moveend', moveend(config)); // Show the polygons when move has ended
-    map.on('movestart', movestart); // Hide the polygons when you are about to move the chart. Thats a trick to make the chart look lighter when the number pf polygons is toooo large
+
+    // Constants for zoom behavior
+    const ZOOM_THRESHOLD = 7;
+
+    /**
+     * Handles map movement end events
+     * @param {Object} config - Map configuration object
+     * @returns {Function} Event handler function
+     */
+    function moveend(config) {
+        return function(evt) {
+            // Update cell container visibility
+            if (masterCellContainer) {
+                masterCellContainer.children.forEach(child => child.visible = true);
+            }
+
+            const currentZoom = map.getZoom();
+            const isHighZoom = currentZoom >= ZOOM_THRESHOLD;
+
+            // Toggle visibility based on zoom level
+            geneContainer_array.forEach(container => {
+                container.visible = !isHighZoom;
+            });
+
+            if (isHighZoom) {
+                renderGlyphs(evt, config);
+                refresh();
+            } else {
+                dapiConfig.removeLayer(geneLayers);
+                geneContainer_array.forEach(container => {
+                    container.visible = true;
+                });
+                refresh();
+            }
+        };
+    }
+
+    /**
+     * Handles map movement start events
+     */
+    function movestart() {
+        if (masterCellContainer) {
+            masterCellContainer.children.forEach(child => child.visible = false);
+        }
+    }
+
+    /**
+     * Handles zoom animation end events
+     */
+    function zoomanim_end() {
+        const dapiToggle = document.getElementById('dapiToggle');
+        if (dapiToggle) {
+            dapiConfig.toggleMapControl.update(dapiToggle.checked);
+        }
+    }
+
+    // Attach event listeners
+    map.on('moveend', moveend(config));
+    map.on('movestart', movestart);
     map.on('zoomanim', zoomanim_end);
-    map.on('zoomend', zoomanim_end); // attach zooanim_end to both zoomanim and zoomend
+    map.on('zoomend', zoomanim_end);
 
     // Now add the info control  to map...
     dapiConfig.info.addTo(map);
 
     //...and the summary control too
     dapiConfig.summary.addTo(map);
-
-    // and the toggle to hide/show the background image
-    // dapiConfig.toggleMapControl.addTo(map); // changed my mind. I dont like the way it is placed, I did another button for this, simple one, not L.control
 
     //... and show the legend button
     legendControl();
@@ -517,54 +571,6 @@ function dapiChart(config) {
 
     // draw the spots (particle Containers approach)
     add_spots_patched(all_geneData, map);
-
-
-    function moveend(config) {
-        console.log('Triggering moveend callback');
-
-        if (masterCellContainer){
-            console.log('setting cell container to true')
-            masterCellContainer.children.map(d => d.visible = true)
-        }
-
-        // if zoom >= 7 then render the glyphs too
-        return function (evt) {
-            if (map.getZoom() >= zoomSwitch) {
-                // hide the markers drawn by pixi
-                geneContainer_array.map(d => d.visible = false);
-
-                //and then render the glyphs (leaflet + canvas)
-                renderGlyphs(evt, config);
-                refresh();
-
-            } else {
-                dapiConfig.removeLayer(geneLayers);
-                // closeLegend()
-                // localStorage.clear();
-
-                // show the markers drawn by pixi
-                geneContainer_array.map(d => d.visible = true);
-
-                // call refresh(). If you have unchecked a gene from the gene panel
-                // then the spots from that gene should not show up
-                refresh()
-            }
-            console.log("Current Zoom Level =" + map.getZoom());
-            console.log('exiting moveend callback');
-            console.log('')
-        };
-    }
-
-    function movestart(evt){
-        console.log('map was moved.')
-        console.log('setting cell container to false');
-        masterCellContainer.children.map(d => d.visible = false)
-    }
-
-    function zoomanim_end(){
-        // make sure dapi remains hidden when you change zoom levels and the 'Hide Dapi' checkbox is checked
-        dapiConfig.toggleMapControl.update( document.getElementById('dapiToggle').checked );
-    }
 
 
     // make placeholder for the coordinates control
