@@ -66,6 +66,7 @@
     <script src="viewer/js/classConfig.js"></script>
     <script src="viewer/js/glyphPaths.js"></script>
     <script src="viewer/js/glyphs.js"></script>
+    <script src="viewer/js/glyphConfig.js"></script>
     <script src='viewer/js/dapi.js'></script>
     <link rel="stylesheet" href="viewer/js/lib/css/L.Control.Layers.Tree.css">
     <script src="viewer/js/lib/js/L.Control.Layers.Tree.js"></script>
@@ -220,12 +221,6 @@
     document.addEventListener("DOMContentLoaded", run(), false);
 </script>
 
-<!-- Add new module import -->
-<script type="module">
-    // Import and make available globally for other scripts
-    import { glyphSettings } from './viewer/js/glyphConfig.js';
-    window.glyphSettings = glyphSettings;
-</script>
 
 </body>
 </html>
