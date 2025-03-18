@@ -19,4 +19,13 @@
 //    the pyramid of tiles. No harm is it less. If it is greater, then for these extra zoom levels there will 
 //    be no background image. 
 // 6. spotSize: Scalar. Use this to adjust the screen-size of your spots before they morph into glyphs. 
- function config() { return {"cellData": {"mediaLink": "../../data/cellData.tsv", "size": "4061932"}, "geneData": {"mediaLink": "../../data/geneData.tsv", "size": "5280183"}, "cellBoundaries": {"mediaLink": "../../data/cellBoundaries.tsv", "size": "1302727"}, "roi": {"x0": 0, "x1": 7602, "y0": 0, "y1": 5471}, "maxZoom": 8, "layers": {"empty": "", "dapi": "https://storage.googleapis.com/ca1-data/img/262144px/{z}/{y}/{x}.jpg"}, "spotSize": 0.0625} }
+ function config() { return{
+  "cellData": {"mediaLink": "../../data/cellData_filtered.tsv", "size": "16166143"},
+  "geneData": {"mediaLink": "../../data/geneData_filtered.tsv", "size": "272965691 "},
+  "cellBoundaries": {"mediaLink": "../../data/cellBoundaries_filtered.tsv", "size": "4025461"},
+  "roi": {"x0": 0, "x1": 6431, "y0": 0, "y1": 8543}, "maxZoom": 8,
+  "layers": {
+   "empty": "",
+   "dapi": "../../data/tiles/{z}/{y}/{x}.jpg"
+  },
+  "spotSize": 0.0625} }

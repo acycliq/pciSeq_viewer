@@ -244,6 +244,9 @@ function encode(url) {
 function postLoad(arr) {
     //Do some basic post-processing/cleaning
 
+    // rename gene_name to Gene!!
+    arr[2].forEach(obj => {obj.Gene = obj.gene_name; delete obj.gene_name});
+
     var _cellBoundaries = arr[0];
     //for some reason which I havent investigated, some cells do not have boundaries. Remove those cells
     var null_coords = _cellBoundaries.filter(d => {

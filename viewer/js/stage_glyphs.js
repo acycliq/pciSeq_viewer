@@ -72,7 +72,14 @@ function renderGlyphs(evt, config) {
             var geneName = genes[i];
             var geneLayer = L.geoJson(myDots, {
                 pointToLayer: function (feature, latlng) {
-                    return new svgGlyph(latlng, dapiConfig.style(feature, 'gene')).bindTooltip(feature.properties.Gene, {className: 'myCSSClass'});
+                    // Create custom tooltip content
+                    const tooltipContent = `
+                        <strong>Gene:</strong> ${feature.properties.Gene}<br>
+                        <strong>Coords:</strong> (${feature.properties.x.toFixed(0)},
+                                                  ${feature.properties.y.toFixed(0)})<br>
+                        <strong>Plane ID:</strong> ${feature.properties.plane_id}<br>
+                        <strong>Spot ID:</strong> ${feature.properties.spot_id}`;
+                    return new svgGlyph(latlng, dapiConfig.style(feature, 'gene')).bindTooltip(tooltipContent, {className: 'myCSSClass'});
                 },
                 filter: geneFilter(geneName),
                 class: function (feature, latlng) {
@@ -309,9 +316,15 @@ function renderGlyphs(evt, config) {
             type: "FeatureCollection",
             features: []
         };
+        var planeIds = data.map(obj => obj.plane_id),
+            avgPlaneId = planeIds.reduce((sum, planeId) => sum + planeId, 0) / planeIds.length
+
         for (var i = 0; i < data.length; ++i) {
             var x = data[i].x,
                 y = data[i].y,
+                z = data[i].z,
+                plane_id = data[i].plane_id,
+                spot_id = data[i].spot_id,
                 gene = data[i].Gene;
             //console.log(gene)
             var lp = dapiConfig.t.transform(L.point([x, y]));
@@ -325,13 +338,16 @@ function renderGlyphs(evt, config) {
                 "id": i,
                 "x": x,
                 "y": y,
+                "z": z,
+                "plane_id": plane_id,
+                "spot_id": spot_id,
                 "Gene": gene,
                 // "taxonomy": dapiConfig.getTaxonomy(gene),
                 "glyphName": dapiConfig.getGlyphName(gene),
                 "glyphColor": dapiConfig.getColor(gene),
                 "inGlyphConfig": dapiConfig.inGlyphConfig(gene),
                 "block_id": data[i].block_id,
-                "size": 30,
+                "size": plane_id,
                 "type": 'gene',
                 "neighbour": parseFloat(data[i].neighbour), // why you are using parseFloat?? Cant remember why I did this!
                 "neighbours": dapiConfig.getNeighbours(data[i].neighbour_array, data[i].neighbour_prob),
