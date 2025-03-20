@@ -19,13 +19,25 @@
 //    the pyramid of tiles. No harm is it less. If it is greater, then for these extra zoom levels there will 
 //    be no background image. 
 // 6. spotSize: Scalar. Use this to adjust the screen-size of your spots before they morph into glyphs. 
+//  function config() { return{
+//   "cellData": {"mediaLink": "../../data/cellData_filtered.tsv", "size": "16166143"},
+//   "geneData": {"mediaLink": "../../data/geneData_filtered.tsv", "size": "272965691 "},
+//   "cellBoundaries": {"mediaLink": "../../data/cellBoundaries_filtered.tsv", "size": "4025461"},
+//   "roi": {"x0": 0, "x1": 6431, "y0": 0, "y1": 8543}, "maxZoom": 8,
+//   "layers": {
+//    "empty": "",
+//    "dapi from z=34": "../../data/tiles/{z}/{y}/{x}.jpg"
+//   },
+//   "spotSize": 0.0625} }
+//
+
  function config() { return{
   "cellData": {"mediaLink": "../../data/cellData_filtered.tsv", "size": "16166143"},
-  "geneData": {"mediaLink": "../../data/geneData_filtered.tsv", "size": "272965691 "},
-  "cellBoundaries": {"mediaLink": "../../data/cellBoundaries_filtered.tsv", "size": "4025461"},
+  "geneData": {"mediaLink": "https://storage.googleapis.com/aang_data/geneData_filtered.tsv", "size": "272965691 "},
+  "cellBoundaries": {"mediaLink": "https://storage.googleapis.com/aang_data/cellBoundaries_filtered.tsv", "size": "4025461"},
   "roi": {"x0": 0, "x1": 6431, "y0": 0, "y1": 8543}, "maxZoom": 8,
   "layers": {
    "empty": "",
-   "dapi from z=34": "../../data/tiles/{z}/{y}/{x}.jpg"
+   "dapi (Plane ID:34)": "https://storage.googleapis.com/aang_data/tiles/{z}/{y}/{x}.jpg"
   },
   "spotSize": 0.0625} }
