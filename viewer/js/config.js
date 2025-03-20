@@ -26,6 +26,6 @@
   "roi": {"x0": 0, "x1": 6431, "y0": 0, "y1": 8543}, "maxZoom": 8,
   "layers": {
    "empty": "",
-   "dapi": "../../data/tiles/{z}/{y}/{x}.jpg"
+   "dapi from z=34": "../../data/tiles/{z}/{y}/{x}.jpg"
   },
   "spotSize": 0.0625} }

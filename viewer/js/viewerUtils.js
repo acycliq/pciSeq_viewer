@@ -38,6 +38,7 @@ function myUtils() {
                 "centroid": get_centroid(target_cell),
                 "X": +target_cell.X,
                 "Y": +target_cell.Y,
+                "Z": +target_cell.Z,
                 "Genenames": target_cell.Genenames,
                 "CellGeneCount": target_cell.CellGeneCount,
                 "ClassName": target_cell.ClassName,
@@ -73,7 +74,7 @@ function myUtils() {
 
     function get_centroid(target_cell) {
         // var target_cell = cellData.filter(d => d.Cell_Num === cell_num)[0];
-        return [target_cell.X, target_cell.Y]
+        return [target_cell.X, target_cell.Y,  target_cell.Z]
     }
 
     function getFov(x, y) {

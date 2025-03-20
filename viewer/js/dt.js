@@ -108,7 +108,10 @@ function renderDataTable(d) {
 
     var str = "<b> <strong>Cell Num: </strong>" + d.cell_id
         + ", <strong>Gene Counts: </strong>" + total.toFixed(0)
-        + ",  (<strong>x, y</strong>): (" + d.centroid[0].toFixed(0) + ", " + d.centroid[1].toFixed(0) + ") </b>";
+        + ",  (<strong>x, y, z</strong>): (" + d.centroid[0].toFixed(0)
+                                      + ", " + d.centroid[1].toFixed(0)
+                                      + ", " + d.centroid[2].toFixed(0)
+        + ") </b>";
 
     if (pinnedControls){
         str = str + "<img src='https://cdn2.iconfinder.com/data/icons/oxygen/48x48/actions/note2.png' class='ribbon'/>";

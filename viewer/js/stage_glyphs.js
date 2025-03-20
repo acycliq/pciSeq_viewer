@@ -76,7 +76,8 @@ function renderGlyphs(evt, config) {
                     const tooltipContent = `
                         <strong>Gene:</strong> ${feature.properties.Gene}<br>
                         <strong>Coords:</strong> (${feature.properties.x.toFixed(0)},
-                                                  ${feature.properties.y.toFixed(0)})<br>
+                                                  ${feature.properties.y.toFixed(0)},
+                                                  ${feature.properties.z.toFixed(0)})<br>
                         <strong>Plane ID:</strong> ${feature.properties.plane_id}<br>
                         <strong>Spot ID:</strong> ${feature.properties.spot_id}`;
                     return new svgGlyph(latlng, dapiConfig.style(feature, 'gene')).bindTooltip(tooltipContent, {className: 'myCSSClass'});
@@ -312,54 +313,55 @@ function renderGlyphs(evt, config) {
 
 
     function make_dots(data) {
-        var dots = {
+        const dots = {
             type: "FeatureCollection",
             features: []
         };
-        var planeIds = data.map(obj => obj.plane_id),
-            avgPlaneId = planeIds.reduce((sum, planeId) => sum + planeId, 0) / planeIds.length
 
-        for (var i = 0; i < data.length; ++i) {
-            var x = data[i].x,
-                y = data[i].y,
-                z = data[i].z,
-                plane_id = data[i].plane_id,
-                spot_id = data[i].spot_id,
-                gene = data[i].Gene;
-            //console.log(gene)
-            var lp = dapiConfig.t.transform(L.point([x, y]));
-            var g = {
-                "type": "Point",
-                "coordinates": [lp.x, lp.y]
+        // Calculate the average plane_id
+        const planeIds = data.map(obj => obj.plane_id);
+        const avgPlaneId = planeIds.reduce((sum, planeId) => sum + planeId, 0) / planeIds.length;
+
+        // Process each data point
+        data.forEach((item, i) => {
+            const { x, y, z, plane_id, spot_id, Gene: gene, block_id, neighbour, neighbour_array, neighbour_prob } = item;
+
+            // Transform coordinates
+            const lp = dapiConfig.t.transform(L.point([x, y]));
+
+            // Create geometry
+            const geometry = {
+                type: "Point",
+                coordinates: [lp.x, lp.y]
             };
 
-            //create feature properties
-            var p = {
-                "id": i,
-                "x": x,
-                "y": y,
-                "z": z,
-                "plane_id": plane_id,
-                "spot_id": spot_id,
-                "Gene": gene,
-                // "taxonomy": dapiConfig.getTaxonomy(gene),
-                "glyphName": dapiConfig.getGlyphName(gene),
-                "glyphColor": dapiConfig.getColor(gene),
-                "inGlyphConfig": dapiConfig.inGlyphConfig(gene),
-                "block_id": data[i].block_id,
-                "size": plane_id,
-                "type": 'gene',
-                "neighbour": parseFloat(data[i].neighbour), // why you are using parseFloat?? Cant remember why I did this!
-                "neighbours": dapiConfig.getNeighbours(data[i].neighbour_array, data[i].neighbour_prob),
+            // Create feature properties
+            const properties = {
+                id: i,
+                x,
+                y,
+                z,
+                plane_id,
+                spot_id,
+                Gene: gene,
+                glyphName: dapiConfig.getGlyphName(gene),
+                glyphColor: dapiConfig.getColor(gene),
+                inGlyphConfig: dapiConfig.inGlyphConfig(gene),
+                block_id,
+                size: plane_id,
+                type: 'gene',
+                neighbour: parseFloat(neighbour), // Retained parseFloat for consistency
+                neighbours: dapiConfig.getNeighbours(neighbour_array, neighbour_prob)
             };
 
-            //create features with proper geojson structure
+            // Add feature to the collection
             dots.features.push({
-                "geometry": g,
-                "type": "Feature",
-                "properties": p
+                geometry,
+                type: "Feature",
+                properties
             });
-        }
+        });
+
         return dots;
     }
 
