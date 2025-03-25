@@ -37,7 +37,9 @@
   "cellBoundaries": {"mediaLink": "https://storage.googleapis.com/aang_data/cellBoundaries_filtered.tsv", "size": "4025461"},
   "roi": {"x0": 0, "x1": 6431, "y0": 0, "y1": 8543}, "maxZoom": 8,
   "layers": {
-   "empty": "",
-   "dapi (Plane ID:34)": "https://storage.googleapis.com/aang_data/tiles/{z}/{y}/{x}.jpg"
+   // "empty": "",
+   "dapi (Plane ID:14)": "https://storage.googleapis.com/aang_data/tiles/dapi_14/{z}/{y}/{x}.jpg",
+   "dapi (Plane ID:54)": "https://storage.googleapis.com/aang_data/tiles/dapi_54/{z}/{y}/{x}.jpg",
+   "dapi (Plane ID:34)": "https://storage.googleapis.com/aang_data/tiles/dapi_34/{z}/{y}/{x}.jpg",
   },
   "spotSize": 0.0625} }
