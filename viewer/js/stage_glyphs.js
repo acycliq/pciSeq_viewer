@@ -73,13 +73,19 @@ function renderGlyphs(evt, config) {
             var geneLayer = L.geoJson(myDots, {
                 pointToLayer: function (feature, latlng) {
                     // Create custom tooltip content
+                    var neighbourLabel = feature.properties.neighbour === 0 ? 'Background' : feature.properties.neighbour;
+                    var neighbourInfo = feature.properties.neighbours.find(item => item.Cell_Num === feature.properties.neighbour)
+                    var displayProb = neighbourInfo
+                      ? `${(neighbourInfo.Prob * 100).toFixed(0)}%`  // No decimal places
+                      : 'N/A';
                     const tooltipContent = `
                         <strong>Gene:</strong> ${feature.properties.Gene}<br>
                         <strong>Coords:</strong> (${feature.properties.x.toFixed(0)},
                                                   ${feature.properties.y.toFixed(0)},
                                                   ${feature.properties.z.toFixed(0)})<br>
                         <strong>Plane ID:</strong> ${feature.properties.plane_id}<br>
-                        <strong>Spot ID:</strong> ${feature.properties.spot_id}`;
+                        <strong>Spot ID:</strong> ${feature.properties.spot_id}<br>
+                        <strong>Likely cell: ${neighbourLabel} (Prob: ${displayProb})</strong>`;
                     return new svgGlyph(latlng, dapiConfig.style(feature, 'gene')).bindTooltip(tooltipContent, {className: 'myCSSClass'});
                 },
                 filter: geneFilter(geneName),
