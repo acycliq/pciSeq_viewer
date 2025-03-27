@@ -85,6 +85,7 @@ function renderGlyphs(evt, config) {
                                                   ${feature.properties.z.toFixed(0)})<br>
                         <strong>Plane ID:</strong> ${feature.properties.plane_id}<br>
                         <strong>Spot ID:</strong> ${feature.properties.spot_id}<br>
+                        <strong>OMP_score:</strong> ${feature.properties.omp_score}<br>
                         <strong>Likely cell: ${neighbourLabel} (Prob: ${displayProb})</strong>`;
                     return new svgGlyph(latlng, dapiConfig.style(feature, 'gene')).bindTooltip(tooltipContent, {className: 'myCSSClass'});
                 },
@@ -330,7 +331,7 @@ function renderGlyphs(evt, config) {
 
         // Process each data point
         data.forEach((item, i) => {
-            const { x, y, z, plane_id, spot_id, Gene: gene, block_id, neighbour, neighbour_array, neighbour_prob } = item;
+            const { x, y, z, plane_id, spot_id, Gene: gene, block_id, neighbour, neighbour_array, neighbour_prob, omp_score } = item;
 
             // Transform coordinates
             const lp = dapiConfig.t.transform(L.point([x, y]));
@@ -349,6 +350,7 @@ function renderGlyphs(evt, config) {
                 z,
                 plane_id,
                 spot_id,
+                omp_score,
                 Gene: gene,
                 glyphName: dapiConfig.getGlyphName(gene),
                 glyphColor: dapiConfig.getColor(gene),
