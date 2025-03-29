@@ -80,7 +80,7 @@ function renderGlyphs(evt, config) {
                       : 'N/A';
                     const tooltipContent = `
                         <strong>Gene:</strong> ${feature.properties.Gene}<br>
-                        <strong>Coords:</strong> (${feature.properties.x.toFixed(0)},
+                        <strong>Coords_px:</strong> (${feature.properties.x.toFixed(0)},
                                                   ${feature.properties.y.toFixed(0)},
                                                   ${feature.properties.z.toFixed(0)})<br>
                         <strong>Plane ID:</strong> ${feature.properties.plane_id}<br>
