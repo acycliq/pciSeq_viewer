@@ -85,7 +85,7 @@ function renderGlyphs(evt, config) {
                                                   ${feature.properties.z.toFixed(0)})<br>
                         <strong>Plane ID:</strong> ${feature.properties.plane_id}<br>
                         <strong>Spot ID:</strong> ${feature.properties.spot_id}<br>
-                        <strong>OMP_score:</strong> ${feature.properties.omp_score}<br>
+                        <strong>OMP_score:</strong> ${feature.properties.omp_score.toFixed(3)}<br>
                         <strong>Likely cell: ${neighbourLabel} (Prob: ${displayProb})</strong>`;
                     return new svgGlyph(latlng, dapiConfig.style(feature, 'gene')).bindTooltip(tooltipContent, {className: 'myCSSClass'});
                 },
