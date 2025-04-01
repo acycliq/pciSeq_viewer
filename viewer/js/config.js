@@ -32,20 +32,20 @@
 //
 
  function config() { return{
-  "cellData": {"mediaLink": "https://storage.googleapis.com/aang_data/cellData_filtered.tsv", "size": "16166143"},
-  "geneData": {"mediaLink": "https://storage.googleapis.com/aang_data/geneData_filtered.tsv", "size": "272965691 "},
-  "cellBoundaries": {"mediaLink": "https://storage.googleapis.com/aang_data/cellBoundaries_filtered.tsv", "size": "4025461"},
+  "cellData": {"mediaLink": "../../data/cellData_filtered.tsv", "size": "16166143"},
+  "geneData": {"mediaLink": "../../data/geneData_filtered.tsv", "size": "272965691 "},
+  "cellBoundaries": {"mediaLink": "../../data/cellBoundaries_filtered.tsv", "size": "4025461"},
   "roi": {"x0": 0, "x1": 6431, "y0": 0, "y1": 8543}, "maxZoom": 8,
   "layers": {
    // "empty": "",
-   "dapi (Plane ID:0)": "https://storage.googleapis.com/aang_data/tiles/dapi_0/{z}/{y}/{x}.jpg",
-   "dapi (Plane ID:2)": "https://storage.googleapis.com/aang_data/tiles/dapi_2/{z}/{y}/{x}.jpg",
-   "dapi (Plane ID:4)": "https://storage.googleapis.com/aang_data/tiles/dapi_4/{z}/{y}/{x}.jpg",
-   "dapi (Plane ID:6)": "https://storage.googleapis.com/aang_data/tiles/dapi_6/{z}/{y}/{x}.jpg",
-   "dapi (Plane ID:8)": "https://storage.googleapis.com/aang_data/tiles/dapi_8/{z}/{y}/{x}.jpg",
-   "dapi (Plane ID:10)": "https://storage.googleapis.com/aang_data/tiles/dapi_10/{z}/{y}/{x}.jpg",
-   "dapi (Plane ID:12)": "https://storage.googleapis.com/aang_data/tiles/dapi_12/{z}/{y}/{x}.jpg",
-   "dapi (Plane ID:14)": "https://storage.googleapis.com/aang_data/tiles/dapi_14/{z}/{y}/{x}.jpg",
+   "dapi (Plane ID:0)": "https://storage.googleapis.com/aang_data/tiles_2/dapi_0/{z}/{y}/{x}.jpg",
+   "dapi (Plane ID:2)": "https://storage.googleapis.com/aang_data/tiles_2/dapi_2/{z}/{y}/{x}.jpg",
+   "dapi (Plane ID:4)": "https://storage.googleapis.com/aang_data/tiles_2/dapi_4/{z}/{y}/{x}.jpg",
+   "dapi (Plane ID:6)": "https://storage.googleapis.com/aang_data/tiles_2/dapi_6/{z}/{y}/{x}.jpg",
+   "dapi (Plane ID:8)": "https://storage.googleapis.com/aang_data/tiles_2/dapi_8/{z}/{y}/{x}.jpg",
+   "dapi (Plane ID:10)": "https://storage.googleapis.com/aang_data/tiles_2/dapi_10/{z}/{y}/{x}.jpg",
+   "dapi (Plane ID:12)": "https://storage.googleapis.com/aang_data/tiles_2/dapi_12/{z}/{y}/{x}.jpg",
+   "dapi (Plane ID:14)": "https://storage.googleapis.com/aang_data/tiles_2/dapi_14/{z}/{y}/{x}.jpg",
    "dapi (Plane ID:16)": "https://storage.googleapis.com/aang_data/tiles/dapi_16/{z}/{y}/{x}.jpg",
    "dapi (Plane ID:18)": "https://storage.googleapis.com/aang_data/tiles/dapi_18/{z}/{y}/{x}.jpg",
    "dapi (Plane ID:20)": "https://storage.googleapis.com/aang_data/tiles/dapi_20/{z}/{y}/{x}.jpg",
@@ -74,7 +74,7 @@
 
    // "dapi (Plane ID:14)": "https://storage.googleapis.com/aang_data/tiles/dapi_14/{z}/{y}/{x}.jpg",
    // "dapi (Plane ID:54)": "https://storage.googleapis.com/aang_data/tiles/dapi_54/{z}/{y}/{x}.jpg",
-   "dapi (Plane ID:34)": "https://storage.googleapis.com/aang_data/tiles/dapi_34/{z}/{y}/{x}.jpg",
+   "dapi (master:34)": "https://storage.googleapis.com/aang_data/tiles/dapi_34/{z}/{y}/{x}.jpg",
   },
   "spotSize": 0.0625} }
 
@@ -82,4 +82,9 @@
   // "cellData": {"mediaLink": "../../data/cellData_filtered.tsv", "size": "16166143"},
   // "geneData": {"mediaLink": "../../data/geneData_filtered.tsv", "size": "272965691 "},
   // "cellBoundaries": {"mediaLink": "../../data/cellBoundaries_filtered.tsv", "size": "4025461"},
+
+  // "cellData": {"mediaLink": "https://storage.googleapis.com/aang_data/cellData_filtered.tsv", "size": "16166143"},
+  // "geneData": {"mediaLink": "https://storage.googleapis.com/aang_data/geneData_filtered.tsv", "size": "272965691 "},
+  // "cellBoundaries": {"mediaLink": "https://storage.googleapis.com/aang_data/cellBoundaries_filtered.tsv", "size": "4025461"},
+
 
