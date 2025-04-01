@@ -55,7 +55,7 @@
    "dapi (Plane ID:28)": "https://storage.googleapis.com/aang_data/tiles/dapi_28/{z}/{y}/{x}.jpg",
    "dapi (Plane ID:30)": "https://storage.googleapis.com/aang_data/tiles/dapi_30/{z}/{y}/{x}.jpg",
    "dapi (Plane ID:32)": "https://storage.googleapis.com/aang_data/tiles/dapi_22/{z}/{y}/{x}.jpg",
-   // "dapi (Plane ID:34)": "https://storage.googleapis.com/aang_data/tiles/dapi_34/{z}/{y}/{x}.jpg",
+   "dapi (Plane ID:34)": "https://storage.googleapis.com/aang_data/tiles_3/dapi_34/{z}/{y}/{x}.jpg",
    "dapi (Plane ID:36)": "https://storage.googleapis.com/aang_data/tiles/dapi_36/{z}/{y}/{x}.jpg",
    "dapi (Plane ID:38)": "https://storage.googleapis.com/aang_data/tiles/dapi_38/{z}/{y}/{x}.jpg",
    "dapi (Plane ID:40)": "https://storage.googleapis.com/aang_data/tiles/dapi_40/{z}/{y}/{x}.jpg",
