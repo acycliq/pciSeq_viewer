@@ -32,9 +32,9 @@
 //
 
  function config() { return{
-  "cellData": {"mediaLink": "../../data/cellData_filtered.tsv", "size": "16166143"},
-  "geneData": {"mediaLink": "../../data/geneData_filtered.tsv", "size": "272965691 "},
-  "cellBoundaries": {"mediaLink": "../../data/cellBoundaries_filtered.tsv", "size": "4025461"},
+  "cellData": {"mediaLink": "https://storage.googleapis.com/aang_data/cellData_filtered.tsv", "size": "16166143"},
+  "geneData": {"mediaLink": "https://storage.googleapis.com/aang_data/geneData_filtered.tsv", "size": "272965691 "},
+  "cellBoundaries": {"mediaLink": "https://storage.googleapis.com/aang_data/cellBoundaries_filtered.tsv", "size": "4025461"},
   "roi": {"x0": 0, "x1": 252, "y0": 0, "y1": 216}, "maxZoom": 8,
   "layers": {
    // "empty": "",
