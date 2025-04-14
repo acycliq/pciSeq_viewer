@@ -31,7 +31,7 @@
 // unless you want to do an extra shape).
 
 
-function glyphSettings()
+function glyphSettings_orig()
 {
     var out = [
 
@@ -156,7 +156,7 @@ function glyphSettings()
     return out
 }
 
-function glyphSettings_allen()
+function glyphSettings()
 {
     var out = [
 

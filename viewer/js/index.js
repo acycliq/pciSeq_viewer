@@ -46,7 +46,7 @@ let myDots;
 let cellWatch;  //keeps the id of the cell currently drawn on the map
 
 // Configuration
-const zoomSwitch = 7;  // determines when the glyphs will start showing up
+const zoomSwitch = 1;  // determines when the glyphs will start showing up
 
 localStorage.clear();
 console.log('Local storage cleared');

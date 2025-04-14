@@ -465,7 +465,7 @@ function dapiChart(config) {
     });
 
     // Constants for zoom behavior
-    const ZOOM_THRESHOLD = 7;
+    const ZOOM_THRESHOLD = 1;
 
     /**
      * Handles map movement end events
