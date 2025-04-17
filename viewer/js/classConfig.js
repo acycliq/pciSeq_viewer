@@ -5,7 +5,7 @@
 // cell class. The control has the classes in a nested class/subClass manner. For the nesting operation to
 // work, the separator in the className string should be a dot.
 
-function classColorsCodes_orig()
+function classColorsCodes()
 {
     var out = [
 
@@ -103,7 +103,7 @@ function classColorsCodes_orig()
     return out
 }
 
-function classColorsCodes()
+function classColorsCodes_allen()
 {
     var out = [
 
