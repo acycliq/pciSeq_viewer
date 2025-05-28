@@ -5,7 +5,7 @@
 // cell class. The control has the classes in a nested class/subClass manner. For the nesting operation to
 // work, the separator in the className string should be a dot.
 
-function classColorsCodes()
+function classColorsCodes_ORIG()
 {
     var out = [
 
@@ -97,6 +97,120 @@ function classColorsCodes()
         {className: 'Other', IdentifiedType: 'Other', color: '#C0C0C0'},
 
 
+
+    ];
+
+    return out
+}
+
+
+function classColorsCodes()
+{
+    var out = [
+        {"className": "Astro.Aqp4", "IdentifiedType": "Astro Aqp4", "color": "#C0C0C0"},
+        {"className": "Endo.Ctla2a", "IdentifiedType": "Endo Ctla2a", "color": "#C0C0C0"},
+        {"className": "L2/3.IT.VISp.Adamts2", "IdentifiedType": "L2/3.IT.VISp.Adamts2", "color": "#991f1f"},
+        {"className": "L2/3.IT.VISp.Agmat", "IdentifiedType": "L2/3.IT.VISp.Agmat", "color": "#cc2929"},
+        {"className": "L2/3.IT.VISp.Rrad", "IdentifiedType": "L2/3.IT.VISp.Rrad", "color": "#ff3333"},
+        {"className": "L4.IT.VISp.Rspo1", "IdentifiedType": "L4.IT.VISp.Rspo1", "color": "#29cc29"},
+        {"className": "L5.IT.VISp.Batf3", "IdentifiedType": "L5.IT.VISp.Batf3", "color": "#1f1f99"},
+        {"className": "L5.IT.VISp.Col27a1", "IdentifiedType": "L5.IT.VISp.Col27a1", "color": "#2121a3"},
+        {"className": "L5.IT.VISp.Col6a1.Fezf2", "IdentifiedType": "L5.IT.VISp.Col6a1.Fezf2", "color": "#2323ad"},
+        {"className": "L5.IT.VISp.Hsd11b1.Endou", "IdentifiedType": "L5.IT.VISp.Hsd11b1.Endou", "color": "#2525b8"},
+        {"className": "L5.IT.VISp.Whrn.Tox2", "IdentifiedType": "L5.IT.VISp.Whrn.Tox2", "color": "#2727c2"},
+        {"className": "L5.NP.VISp.Trhr.Cpne7", "IdentifiedType": "L5.NP.VISp.Trhr.Cpne7", "color": "#2929cc"},
+        {"className": "L5.NP.VISp.Trhr.Met", "IdentifiedType": "L5.NP.VISp.Trhr.Met", "color": "#2b2bd6"},
+        {"className": "L5.PT.VISp.C1ql2.Cdh13", "IdentifiedType": "L5.PT.VISp.C1ql2 Cdh13", "color": "#2d2de0"},
+        {"className": "L5.PT.VISp.C1ql2.Ptgfr", "IdentifiedType": "L5.PT.VISp.C1ql2 Ptgfr", "color": "#2f2feb"},
+        {"className": "L5.PT.VISp.Chrna6", "IdentifiedType": "L5.PT.VISp.Chrna6", "color": "#3131f5"},
+        {"className": "L5.PT.VISp.Krt80", "IdentifiedType": "L5.PT.VISp.Krt80", "color": "#3333ff"},
+        {"className": "L6.CT.VISp.Ctxn3.Brinp3", "IdentifiedType": "L6.CT.VISp.Ctxn3.Brinp3", "color": "#99991f"},
+        {"className": "L6.CT.VISp.Ctxn3.Sla", "IdentifiedType": "L6.CT.VISp.Ctxn3.Sla", "color": "#a0a020"},
+        {"className": "L6.CT.VISp.Gpr139", "IdentifiedType": "L6.CT.VISp.Gpr139", "color": "#a8a822"},
+        {"className": "L6.CT.VISp.Krt80.Sla", "IdentifiedType": "L6.CT.VISp.Krt80.Sla", "color": "#afaf23"},
+        {"className": "L6.CT.VISp.Nxph2.Wls", "IdentifiedType": "L6.CT.VISp.Nxph2.Wls", "color": "#b6b624"},
+        {"className": "L6.IT.VISp.Car3", "IdentifiedType": "L6.IT.VISp.Car3", "color": "#bdbd26"},
+        {"className": "L6.IT.VISp.Col18a1", "IdentifiedType": "L6.IT.VISp.Col18a1", "color": "#c5c527"},
+        {"className": "L6.IT.VISp.Col23a1.Adamts2", "IdentifiedType": "L6.IT.VISp.Col23a1.Adamts2", "color": "#cccc29"},
+        {"className": "L6.IT.VISp.Penk.Col27a1", "IdentifiedType": "L6.IT.VISp.Penk.Col27a1", "color": "#d3d32a"},
+        {"className": "L6.IT.VISp.Penk.Fst", "IdentifiedType": "L6.IT.VISp.Penk.Fst", "color": "#dbdb2c"},
+        {"className": "L6b.P2ry12", "IdentifiedType": "L6b.P2ry12", "color": "#e2e22d"},
+        {"className": "L6b.VISp.Col8a1.Rprm", "IdentifiedType": "L6b.VISp.Col8a1.Rprm", "color": "#e9e92f"},
+        {"className": "L6b.VISp.Col8a1.Rxfp1", "IdentifiedType": "L6b.VISp.Col8a1.Rxfp1", "color": "#f0f030"},
+        {"className": "L6b.VISp.Crh", "IdentifiedType": "L6b.VISp.Crh", "color": "#f8f832"},
+        {"className": "L6b.VISp.Mup5", "IdentifiedType": "L6b.VISp.Mup5", "color": "#ffff33"},
+        {"className": "Lamp5.Fam19a1.Pax6", "IdentifiedType": "Lamp5.Fam19a1.Pax6", "color": "#C0C0C0"},
+        {"className": "Lamp5.Fam19a1.Tmem182", "IdentifiedType": "Lamp5.Fam19a1.Tmem182", "color": "#C0C0C0"},
+        {"className": "Lamp5.Krt73", "IdentifiedType": "Lamp5.Krt73", "color": "#C0C0C0"},
+        {"className": "Lamp5.Lhx6", "IdentifiedType": "Lamp5.Lhx6", "color": "#C0C0C0"},
+        {"className": "Lamp5.Lsp1", "IdentifiedType": "Lamp5.Lsp1", "color": "#C0C0C0"},
+        {"className": "Lamp5.Ntn1.Npy2r", "IdentifiedType": "Lamp5.Ntn1.Npy2r", "color": "#C0C0C0"},
+        {"className": "Lamp5.Plch2.Dock5", "IdentifiedType": "Lamp5.Plch2.Dock5", "color": "#C0C0C0"},
+        {"className": "Meis2.Adamts19", "IdentifiedType": "Meis2.Adamts19", "color": "#C0C0C0"},
+        {"className": "Microglia.Siglech", "IdentifiedType": "Microglia.Siglech", "color": "#C0C0C0"},
+        {"className": "Oligo.Serpinb1a", "IdentifiedType": "Oligo.Serpinb1a", "color": "#C0C0C0"},
+        {"className": "Peri.Kcnj8", "IdentifiedType": "Peri.Kcnj8", "color": "#C0C0C0"},
+        {"className": "Pvalb.Akr1c18.Ntf3", "IdentifiedType": "Pvalb.Akr1c18.Ntf3", "color": "#C0C0C0"},
+        {"className": "Pvalb.Calb1.Sst", "IdentifiedType": "Pvalb.Calb1.Sst", "color": "#C0C0C0"},
+        {"className": "Pvalb.Gabrg1", "IdentifiedType": "Pvalb.Gabrg1", "color": "#C0C0C0"},
+        {"className": "Pvalb.Gpr149.Islr", "IdentifiedType": "Pvalb.Gpr149.Islr", "color": "#C0C0C0"},
+        {"className": "Pvalb.Reln.Itm2a", "IdentifiedType": "Pvalb.Reln.Itm2a", "color": "#C0C0C0"},
+        {"className": "Pvalb.Reln.Tac1", "IdentifiedType": "Pvalb.Reln.Tac1", "color": "#C0C0C0"},
+        {"className": "Pvalb.Sema3e.Kank4", "IdentifiedType": "Pvalb.Sema3e.Kank4", "color": "#C0C0C0"},
+        {"className": "Pvalb.Th Sst", "IdentifiedType": "Pvalb.Th Sst", "color": "#C0C0C0"},
+        {"className": "Pvalb.Tpbg", "IdentifiedType": "Pvalb.Tpbg", "color": "#C0C0C0"},
+        {"className": "Pvalb.Vipr2", "IdentifiedType": "Pvalb.Vipr2", "color": "#C0C0C0"},
+        {"className": "SMC.Acta2", "IdentifiedType": "SMC.Acta2", "color": "#C0C0C0"},
+        {"className": "Sncg.Vip.Itih5", "IdentifiedType": "Sncg.Vip.Itih5", "color": "#C0C0C0"},
+        {"className": "Sncg.Vip.Nptx2", "IdentifiedType": "Sncg.Vip.Nptx2", "color": "#C0C0C0"},
+        {"className": "Sst.Calb2.Pdlim5", "IdentifiedType": "Sst.Calb2.Pdlim5", "color": "#C0C0C0"},
+        {"className": "Sst.Chodl", "IdentifiedType": "Sst.Chodl", "color": "#C0C0C0"},
+        {"className": "Sst.Chrna2.Glra3", "IdentifiedType": "Sst.Chrna2.Glra3", "color": "#C0C0C0"},
+        {"className": "Sst.Chrna2.Ptgdr", "IdentifiedType": "Sst.Chrna2.Ptgdr", "color": "#C0C0C0"},
+        {"className": "Sst.Crh.4930553C11Rik ", "IdentifiedType": "Sst.Crh.4930553C11Rik ", "color": "#C0C0C0"},
+        {"className": "Sst.Crhr2.Efemp1", "IdentifiedType": "Sst.Crhr2.Efemp1", "color": "#C0C0C0"},
+        {"className": "Sst.Esm1", "IdentifiedType": "Sst.Esm1", "color": "#C0C0C0"},
+        {"className": "Sst.Hpse.Cbln4", "IdentifiedType": "Sst.Hpse.Cbln4", "color": "#C0C0C0"},
+        {"className": "Sst.Hpse.Sema3c", "IdentifiedType": "Sst.Hpse.Sema3c", "color": "#C0C0C0"},
+        {"className": "Sst.Mme.Fam114a1", "IdentifiedType": "Sst.Mme.Fam114a1", "color": "#C0C0C0"},
+        {"className": "Sst.Myh8.Etv1", "IdentifiedType": "Sst.Myh8.Etv1", "color": "#C0C0C0"},
+        {"className": "Sst.Myh8.Fibin", "IdentifiedType": "Sst.Myh8.Fibin", "color": "#C0C0C0"},
+        {"className": "Sst.Nr2f2.Necab1", "IdentifiedType": "Sst.Nr2f2.Necab1", "color": "#C0C0C0"},
+        {"className": "Sst.Rxfp1.Eya1", "IdentifiedType": "Sst.Rxfp1.Eya1", "color": "#C0C0C0"},
+        {"className": "Sst.Rxfp1.Prdm8", "IdentifiedType": "Sst.Rxfp1.Prdm8", "color": "#C0C0C0"},
+        {"className": "Sst.Tac1.Htr1d", "IdentifiedType": "Sst.Tac1.Htr1d", "color": "#C0C0C0"},
+        {"className": "Sst.Tac1.Tacr3", "IdentifiedType": "Sst.Tac1.Tacr3", "color": "#C0C0C0"},
+        {"className": "Sst.Tac2.Tacstd2", "IdentifiedType": "Sst.Tac2.Tacstd2", "color": "#C0C0C0"},
+        {"className": "Vip.Arhgap36.Hmcn1", "IdentifiedType": "Vip.Arhgap36.Hmcn1", "color": "#C0C0C0"},
+        {"className": "Vip.Chat.Htr1f", "IdentifiedType": "Vip.Chat.Htr1f", "color": "#C0C0C0"},
+        {"className": "Vip.Crispld2.Htr2c", "IdentifiedType": "Vip.Crispld2.Htr2c", "color": "#C0C0C0"},
+        {"className": "Vip.Crispld2.Kcne4", "IdentifiedType": "Vip.Crispld2.Kcne4", "color": "#C0C0C0"},
+        {"className": "Vip.Gpc3.Slc18a3", "IdentifiedType": "Vip.Gpc3.Slc18a3", "color": "#C0C0C0"},
+        {"className": "Vip.Igfbp4.Mab21l1", "IdentifiedType": "Vip.Igfbp4.Mab21l1", "color": "#C0C0C0"},
+        {"className": "Vip.Igfbp6.Pltp", "IdentifiedType": "Vip.Igfbp6.Pltp", "color": "#C0C0C0"},
+        {"className": "Vip.Lect1.Oxtr", "IdentifiedType": "Vip.Lect1.Oxtr", "color": "#C0C0C0"},
+        {"className": "Vip.Lmo1.Fam159b", "IdentifiedType": "Vip.Lmo1.Fam159b", "color": "#C0C0C0"},
+        {"className": "Vip.Lmo1.Myl1", "IdentifiedType": "Vip.Lmo1.Myl1", "color": "#C0C0C0"},
+        {"className": "Vip.Ptprt.Pkp2", "IdentifiedType": "Vip.Ptprt.Pkp2", "color": "#C0C0C0"},
+        {"className": "Vip.Pygm.C1ql1", "IdentifiedType": "Vip.Pygm.C1ql1", "color": "#C0C0C0"},
+        {"className": "Vip.Rspo1.Itga4", "IdentifiedType": "Vip.Rspo1.Itga4", "color": "#C0C0C0"},
+        {"className": "Vip.Rspo4.Rxfp1.Chat", "IdentifiedType": "Vip.Rspo4.Rxfp1.Chat", "color": "#C0C0C0"},
+        {"className": "VLMC.Osr1.Mc5r", "IdentifiedType": "VLMC.Osr1.Mc5r", "color": "#C0C0C0"},
+        {"className": "Zero", "IdentifiedType": "Zero", "color": "#C0C0C0"},
+        // ****************************************************************************************
+        // ********************** Do not remove the lines below. **********************************
+        // ****************************************************************************************
+
+        // Zero class is the "none from the above" class. If the algorithm cannot find a good
+        // transcriptomic class from the single cell data then the cell will be labelled as Zero class
+        {className: 'Zero', IdentifiedType: 'Zero', color: '#000000'},
+
+        // If a class is missing from the settings above, use these default settings
+        {className: 'Generic', IdentifiedType: 'Generic', color: '#C0C0C0'},
+
+        // The donut chart at the bottom right will aggregate all classes with prob < 2% under the Other
+        // label (see line 284, donut.js)
+        {className: 'Other', IdentifiedType: 'Other', color: '#C0C0C0'},
 
     ];
 
@@ -7117,3 +7231,5 @@ function classColorsCodes_allen()
 
     return out
 }
+
+

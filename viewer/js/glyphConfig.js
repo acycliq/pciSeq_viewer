@@ -163,6 +163,7 @@ function glyphSettings()
         {gene: 'Col25a1', color:'#006300', glyphName: 'asterisk'},
         {gene: 'Cplx2', color:'#006300', glyphName: 'asterisk'},
         {gene: 'Gad1', color:'#006300', glyphName: 'asterisk'},
+        {gene: 'Pdlim3', color:'#006300', glyphName: 'asterisk'},
         {gene: 'Lhx6', color:'#006300', glyphName: 'asterisk'},
         {gene: 'Pnoc', color:'#006300', glyphName: 'asterisk'},
         {gene: 'Rab3c', color:'#006300', glyphName: 'asterisk'},
