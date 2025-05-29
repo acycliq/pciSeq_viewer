@@ -75,7 +75,7 @@
    // "dapi (Plane ID:14)": "https://storage.googleapis.com/aang_data/tiles/dapi_14/{z}/{y}/{x}.jpg",
    // "dapi (Plane ID:54)": "https://storage.googleapis.com/aang_data/tiles/dapi_54/{z}/{y}/{x}.jpg",
    // "dapi (master:34)": "https://storage.googleapis.com/aang_data/tiles/dapi_34/{z}/{y}/{x}.jpg",
-   "dapi (master:34)": "../../data/tiles/{z}/{y}/{x}.jpg",
+   "dapi (master:34)": "../../data/maxs_tiles/{z}/{y}/{x}.jpg",
   },
   "spotSize": 0.0145} }
 
