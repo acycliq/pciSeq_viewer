@@ -32,9 +32,9 @@
 //
 
  function config() { return{
-  "cellData": {"mediaLink": "https://storage.googleapis.com/maxs_data/ex_Pde1a_midplane44/cellData_filtered.tsv", "size": "6066619 "},
-  "geneData": {"mediaLink": "https://storage.googleapis.com/maxs_data/ex_Pde1a_midplane44/geneData_filtered.tsv", "size": "122008774"},
-  "cellBoundaries": {"mediaLink": "https://storage.googleapis.com/maxs_data/ex_Pde1a_midplane44/cellBoundaries_filtered.tsv", "size": "1189385"},
+  "cellData": {"mediaLink": "https://storage.googleapis.com/maxs_data/ex_Pde1a_midplane44/cellData_filtered.tsv", "size": "5401880"},
+  "geneData": {"mediaLink": "https://storage.googleapis.com/maxs_data/ex_Pde1a_midplane44/geneData_filtered.tsv", "size": "67909294"},
+  "cellBoundaries": {"mediaLink": "https://storage.googleapis.com/maxs_data/ex_Pde1a_midplane44/cellBoundaries_filtered.tsv", "size": "523837"},
   "roi": {"x0": 0, "x1": 2304, "y0": 0, "y1": 2304}, "maxZoom": 8,
   "layers": {
    // "empty": "",
