@@ -78,15 +78,23 @@ function renderGlyphs(evt, config) {
                     var displayProb = neighbourInfo
                       ? `${(neighbourInfo.Prob * 100).toFixed(0)}%`  // No decimal places
                       : 'N/A';
-                    const tooltipContent = `
+                    let tooltipContent = `
                         <strong>Gene:</strong> ${feature.properties.Gene}<br>
                         <strong>Coords_px:</strong> (${feature.properties.x.toFixed(0)},
                                                   ${feature.properties.y.toFixed(0)},
                                                   ${feature.properties.z.toFixed(0)})<br>
                         <strong>Plane ID:</strong> ${feature.properties.plane_id}<br>
-                        <strong>Spot ID:</strong> ${feature.properties.spot_id}<br>
-                        <strong>OMP_score:</strong> ${feature.properties.omp_score.toFixed(3)}<br>
-                        <strong>Likely cell: ${neighbourLabel} (Prob: ${displayProb})</strong>`;
+                          <strong>Spot ID:</strong> ${feature.properties.spot_id}<br>`;
+
+                        if (feature.properties.omp_score !== undefined) {
+                          tooltipContent += `<strong>omp_score:</strong> ${feature.properties.omp_score.toFixed(3)}<br>`;
+                        }
+
+                        if (feature.properties.omp_intensity !== undefined) {
+                          tooltipContent += `<strong>omp_intensity:</strong> ${feature.properties.omp_intensity.toFixed(3)}<br>`;
+                        }
+
+                        tooltipContent += `<strong>Likely cell: ${neighbourLabel} (Prob: ${displayProb})</strong>`;
                     return new svgGlyph(latlng, dapiConfig.style(feature, 'gene')).bindTooltip(tooltipContent, {className: 'myCSSClass'});
                 },
                 filter: geneFilter(geneName),
@@ -331,7 +339,8 @@ function renderGlyphs(evt, config) {
 
         // Process each data point
         data.forEach((item, i) => {
-            const { x, y, z, plane_id, spot_id, Gene: gene, block_id, neighbour, neighbour_array, neighbour_prob, omp_score } = item;
+            const { x, y, z, plane_id, spot_id, Gene: gene, block_id, neighbour, neighbour_array, neighbour_prob,
+                omp_score, omp_intensity } = item;
 
             // Transform coordinates
             const lp = dapiConfig.t.transform(L.point([x, y]));
@@ -351,6 +360,7 @@ function renderGlyphs(evt, config) {
                 plane_id,
                 spot_id,
                 omp_score,
+                omp_intensity,
                 Gene: gene,
                 glyphName: dapiConfig.getGlyphName(gene),
                 glyphColor: dapiConfig.getColor(gene),
