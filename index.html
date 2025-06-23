@@ -16,17 +16,18 @@
       background-color: #000;
       color: #fff;
     }
+    /* NEW: Adjust deck-canvas to make room for the filter panel */
     #deck-canvas {
       position:absolute;
       top:0;
-      left:0;
+      left:220px; /* Make space for filter panel */
       right:0;
       bottom:48px;
       background-color: #000;
     }
     #controls {
       position:absolute;
-      left:0;
+      left:220px; /* Align with canvas */
       right:0;
       bottom:0;
       height:48px;
@@ -56,10 +57,59 @@
       white-space:nowrap;
       z-index:1000;
     }
+    /* NEW: Styling for the gene filter panel */
+    #filter-panel {
+      position:absolute;
+      top:0;
+      left:0;
+      bottom:0;
+      width:220px;
+      background: #181818;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #444;
+    }
+    #filter-panel h3 {
+      margin: 0;
+      padding: 12px;
+      font-size: 16px;
+      border-bottom: 1px solid #444;
+    }
+    #filter-list {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .filter-item {
+      display: flex;
+      align-items: center;
+      padding: 4px 12px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .filter-item:hover {
+      background: #333;
+    }
+    .filter-item input {
+      margin-right: 8px;
+    }
+    .color-swatch {
+      width: 12px;
+      height: 12px;
+      margin-right: 8px;
+      border: 1px solid #666;
+    }
   </style>
 </head>
 <body>
   <div id="root">
+    <!-- NEW: Filter panel container -->
+    <div id="filter-panel">
+      <h3>Genes</h3>
+      <div id="filter-list"></div>
+    </div>
+
     <div id="deck-canvas"></div>
     <div id="controls">
       <label>Plane:</label>
@@ -76,26 +126,22 @@
   <script src="https://unpkg.com/deck.gl@^8.9.0/dist.min.js"></script>
   <script src="https://unpkg.com/d3-dsv@3"></script>
   <script src="https://unpkg.com/d3-array@3"></script>
-  <!-- Note: Full d3.js or d3-color is not needed for this optimized version -->
 
   <script>
-    // --- App Configuration ---
     const DATA_URL = 'data/geneData.tsv';
 
-    // --- Load config and create mappings ---
     const settings = glyphSettings();
     const configMap = new Map(settings.map(s => [s.gene, {glyphName:s.glyphName, color:s.color}]));
     const defaultConfig = configMap.get('Generic') || {glyphName:'circle', color:'#ffffff'};
 
-    // --- Global State ---
     let data = [];
     let genes = [];
     let plane = 0;
     let iconAtlas = null;
     let iconMapping = null;
+    // NEW: A Set to store the names of genes that should be visible.
+    let visibleGenes = new Set();
 
-    // --- Atlas Generation (High-Performance Version) ---
-    // This function bakes the final colors directly into the atlas texture.
     function buildAtlas(list) {
       const size=64;
       const canvas=document.createElement('canvas');
@@ -108,19 +154,16 @@
         const p = {x: i * size + size / 2, y: size / 2};
         const r = size * 0.4;
         ctx.save();
-        // Set the final color here. The canvas context accepts hex strings.
         ctx.strokeStyle = cfg.color;
         ctx.lineWidth = 2;
         ctxPath(cfg.glyphName, ctx, p, r);
         ctx.stroke();
         ctx.restore();
-        // The mapping is simpler now, no 'mask' needed.
         mapping[gene] = {x: i * size, y: 0, width: size, height: size};
       });
       return {atlas: canvas, mapping};
     }
 
-    // --- Deck.gl Initialization ---
     const {IconLayer, OrthographicView, COORDINATE_SYSTEM} = deck;
     const deckgl = new deck.Deck({
       parameters: {clearColor: [0, 0, 0, 1]},
@@ -130,12 +173,11 @@
       layers: []
     });
 
-    // --- Interactivity Callbacks ---
     const tooltip = document.getElementById('tooltip');
     function onHover({x, y, object}){
       if (object) {
         tooltip.style.display = 'block';
-        tooltip.style.left = x + 5 + 'px';
+        tooltip.style.left = x + 220 + 5 + 'px'; // NEW: Offset by panel width
         tooltip.style.top = y + 5 + 'px';
         tooltip.innerHTML =
           `<strong>Gene:</strong> ${object.gene}<br>`+
@@ -146,7 +188,6 @@
       }
     }
 
-    // --- Core Render Function ---
     function updateLayer() {
       deckgl.setProps({layers: [
         new IconLayer({
@@ -158,28 +199,71 @@
           iconAtlas,
           iconMapping,
           getPosition: d => [d.x, -d.y],
-          getSize: d => 20 / Math.sqrt(1 + Math.abs(d.z - plane)),
+          // NEW: The size accessor now checks if the gene is in the visible set.
+          // If not, it returns 0, effectively hiding the icon.
+          getSize: d => visibleGenes.has(d.gene) ? (20 / Math.sqrt(1 + Math.abs(d.z - plane))) : 0,
           getIcon: d => d.gene,
-          // Use a constant color. The real color is in the atlas texture.
-          // This is the key to high performance.
           getColor: [255, 255, 255],
           sizeUnits: 'pixels',
           sizeScale: 1,
           updateTriggers: {
-            getSize: [plane]
+            // NEW: We must tell deck.gl to re-evaluate getSize when either `plane` or `visibleGenes` changes.
+            getSize: [plane, visibleGenes]
           }
         })
       ]});
     }
 
-    // --- UI Event Listeners ---
+    // NEW: Function to dynamically create the filter checkboxes
+    function createGeneFilters(geneList) {
+      const container = document.getElementById('filter-list');
+      container.innerHTML = ''; // Clear previous filters
+
+      // Sort genes alphabetically for a clean list
+      geneList.sort();
+
+      for (const gene of geneList) {
+        const item = document.createElement('label');
+        item.className = 'filter-item';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = true; // Start with all genes visible
+
+        const swatch = document.createElement('div');
+        swatch.className = 'color-swatch';
+        const cfg = configMap.get(gene) || defaultConfig;
+        swatch.style.backgroundColor = cfg.color;
+
+        const name = document.createElement('span');
+        name.textContent = gene;
+
+        item.appendChild(checkbox);
+        item.appendChild(swatch);
+        item.appendChild(name);
+        container.appendChild(item);
+
+        // Add an event listener to update the visible set and re-render
+        checkbox.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            visibleGenes.add(gene);
+          } else {
+            visibleGenes.delete(gene);
+          }
+          // The visibleGenes set has been modified. We create a new Set from it
+          // to ensure deck.gl's shallow comparison detects a change in updateTriggers.
+          visibleGenes = new Set(visibleGenes);
+          updateLayer();
+        });
+      }
+    }
+
     document.getElementById('planeSlider').addEventListener('input', e => {
       plane = Number(e.target.value);
       document.getElementById('planeValue').textContent = plane;
       updateLayer();
     });
 
-    // --- Data Loading and App Start ---
     async function run() {
       try {
         const response = await fetch(DATA_URL);
@@ -190,6 +274,8 @@
         }));
 
         genes = Array.from(new Set(data.map(d => d.gene)));
+        // NEW: Initially, all genes are visible.
+        visibleGenes = new Set(genes);
 
         const zExt = d3.extent(data, d => d.z);
         const slider = document.getElementById('planeSlider');
@@ -200,6 +286,9 @@
         const atlasInfo = buildAtlas(genes);
         iconAtlas = atlasInfo.atlas;
         iconMapping = atlasInfo.mapping;
+
+        // NEW: Create the filter UI
+        createGeneFilters(genes);
 
         const xExt = d3.extent(data, d => d.x);
         const yExt = d3.extent(data, d => d.y);
