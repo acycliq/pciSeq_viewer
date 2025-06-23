@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <title>deck.gl Gene TSV viewer</title>
   <style>
-    /* CSS block copied verbatim from your original file. Nothing here changed. */
     html, body {
       margin:0;
       height:100%;
@@ -24,7 +23,6 @@
       right:0;
       bottom:48px;
       background-color: #000;
-      /* This CSS rule is no longer strictly necessary as JS will control the cursor, but it's fine as a fallback. */
       cursor: default;
     }
     #controls {
@@ -59,7 +57,6 @@
       white-space:nowrap;
       z-index:1000;
     }
-    /* Styling for the gene filter panel */
     #filter-panel {
       position:absolute;
       top:0;
@@ -102,12 +99,25 @@
       margin-right: 8px;
       border: 1px solid #666;
     }
+    .filter-toggle-all {
+      display: flex;
+      align-items: center;
+      padding: 6px 12px;
+      border-bottom: 1px solid #444;
+    }
+    .filter-toggle-all input {
+      margin-right: 8px;
+    }
   </style>
 </head>
 <body>
   <div id="root">
     <div id="filter-panel">
       <h3>Genes</h3>
+      <div class="filter-toggle-all">
+        <input id="toggleAll" type="checkbox" checked />
+        <label for="toggleAll">Show all</label>
+      </div>
       <div id="filter-list"></div>
     </div>
 
@@ -120,24 +130,13 @@
     <div id="tooltip"></div>
   </div>
 
-  <!-- external glyph scripts (unchanged) -->
   <script src="glyphPaths.js"></script>
   <script src="glyphConfig.js"></script>
-  <!-- libraries (unchanged) -->
   <script src="https://unpkg.com/deck.gl@^8.9.0/dist.min.js"></script>
   <script src="https://unpkg.com/d3-dsv@3"></script>
   <script src="https://unpkg.com/d3-array@3"></script>
 
   <script>
-    /************************************************************
-     * Only three logical changes have been made below          *
-     * 1.  Group spots by gene in geneDataMap.                  *
-     * 2.  One IconLayer per gene (makeLayer / updateLayers).   *
-     * 3.  Checkbox toggles just flip layer visibility.         *
-     * Everything else (style, size formula, tooltip, slider)   *
-     * remains EXACTLY as in your original code.                *
-     ************************************************************/
-
     const DATA_URL = 'data/geneData.tsv';
 
     const settings = glyphSettings();
@@ -145,18 +144,16 @@
     const defaultConfig = configMap.get('Generic') || {glyphName:'circle', color:'#ffffff'};
 
     let data = [];
-    /* store spots per gene */
-    const geneDataMap = new Map(); // gene => array<spot>
+    const geneDataMap = new Map();
+    const visibilityMap = new Map();
+    const geneCheckboxElems = [];
 
     let iconAtlas = null;
     let iconMapping = null;
-    let deckgl; // defined later
+    let deckgl;
     let plane = 0;
-    /* CHANGE 2: track per-gene visibility */
-    const visibilityMap = new Map();
 
     const {IconLayer, OrthographicView, COORDINATE_SYSTEM} = deck;
-
     const tooltip = document.getElementById('tooltip');
 
     function onHover({x, y, object}){
@@ -195,7 +192,6 @@
       return {atlas: canvas, mapping};
     }
 
-    /* helper to build one IconLayer per gene */
     function makeLayer(gene){
       return new IconLayer({
         id: gene,
@@ -207,7 +203,7 @@
         iconAtlas,
         iconMapping,
         getPosition: d => [d.x, -d.y],
-        getSize: d => 20 / Math.sqrt(1 + Math.abs(d.z - plane)), // original formula
+        getSize: d => 20 / Math.sqrt(1 + Math.abs(d.z - plane)),
         getIcon: d => d.gene,
         getColor: [255,255,255],
         sizeUnits: 'pixels',
@@ -216,29 +212,38 @@
       });
     }
 
-    /* assemble layer array */
     function updateLayers(){
       const layers = [];
-      for(const gene of geneDataMap.keys()) layers.push(makeLayer(gene));
+      for(const gene of geneDataMap.keys()){
+        layers.push(makeLayer(gene));
+      }
       deckgl.setProps({layers});
     }
 
-    // --- UI helpers (unchanged except checkbox handler) ---
+    function syncMasterToggle() {
+      const checkedStates = geneCheckboxElems.map(cb => cb.checked);
+      const allChecked = checkedStates.every(Boolean);
+      const noneChecked = checkedStates.every(checked => !checked);
+      const toggleAll = document.getElementById('toggleAll');
+      toggleAll.checked = allChecked;
+      toggleAll.indeterminate = !allChecked && !noneChecked;
+    }
 
     function createGeneFilters(geneList) {
       const container = document.getElementById('filter-list');
       container.innerHTML = '';
       geneList.sort();
+      geneCheckboxElems.length = 0;
 
       for (const gene of geneList) {
-        visibilityMap.set(gene, true); // default visible
-
+        visibilityMap.set(gene, true);
         const item = document.createElement('label');
         item.className = 'filter-item';
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = true;
+        geneCheckboxElems.push(checkbox);
 
         const swatch = document.createElement('div');
         swatch.className = 'color-swatch';
@@ -253,9 +258,9 @@
         item.appendChild(name);
         container.appendChild(item);
 
-        /* simply flip visibility flag */
-        checkbox.addEventListener('change', e => {
+        checkbox.addEventListener('change', (e) => {
           visibilityMap.set(gene, e.target.checked);
+          syncMasterToggle();
           updateLayers();
         });
       }
@@ -276,7 +281,6 @@
           x: +d.x, y: +d.y, z: +d.plane_id, gene: d.gene_name
         }));
 
-        //  bucket spots by gene
         for(const d of data){
           if(!geneDataMap.has(d.gene)) geneDataMap.set(d.gene, []);
           geneDataMap.get(d.gene).push(d);
@@ -297,6 +301,16 @@
 
         createGeneFilters(genes);
 
+        document.getElementById('toggleAll').addEventListener('change', e => {
+          const newState = e.target.checked;
+          genes.forEach((gene, i) => {
+            visibilityMap.set(gene, newState);
+            geneCheckboxElems[i].checked = newState;
+          });
+          e.target.indeterminate = false;
+          updateLayers();
+        });
+
         const xExt = d3.extent(data, d => d.x);
         const yExt = d3.extent(data, d => d.y);
         const centerX = (xExt[0] + xExt[1]) / 2;
@@ -312,6 +326,7 @@
         });
 
         updateLayers();
+        syncMasterToggle();
       } catch (error) {
         console.error('Failed to load or process data:', error);
       }
@@ -325,7 +340,6 @@
       getCursor: ({isHovering}) => (isHovering ? 'pointer' : 'default'),
       onLoad: run
     });
-
   </script>
 </body>
 </html>
