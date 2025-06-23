@@ -62,6 +62,7 @@
   <script src="https://unpkg.com/deck.gl@^8.9.0/dist.min.js"></script>
   <script src="https://unpkg.com/d3-dsv@3"></script>
   <script src="https://unpkg.com/d3-array@3"></script>
+  <script src='https://d3js.org/d3.v4.min.js'></script>
 
   <script>
     // Load config: gene -> glyphName & color hex
@@ -70,8 +71,8 @@
     const defaultConfig = configMap.get('Generic') || {glyphName:'circle', color:'#000000'};
 
     function hexToRgba(hex) {
-      const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
-      return m ? [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)] : [0,0,0];
+      const {r, g, b, opacity} = d3.rgb(hex)
+      return [r, g, b]
     }
 
     // Build atlas for each gene_name, drawing colored glyph
@@ -110,7 +111,7 @@
     let data = [], plane = 0, iconAtlas = null, iconMapping = null;
 
     const deckgl = new deck.Deck({
-      parameters: { clearColor: [0, 0, 0, 1] }, // set the background color to black (but we do that in css too!)
+      // parameters: { clearColor: [0, 0, 0, 1] }, // set the background color to black (but we do that in css too!)
       parent: document.getElementById('deck-canvas'),
       views: new OrthographicView({controller:true}),
       initialViewState:{target:[0,0,0], zoom:0, minZoom:-5, maxZoom:10},
