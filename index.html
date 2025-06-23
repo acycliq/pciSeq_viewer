@@ -135,6 +135,8 @@
     const defaultConfig = configMap.get('Generic') || {glyphName:'circle', color:'#ffffff'};
 
     let data = [];
+    // CHANGE #1: Add a new variable to hold the data that is currently visible.
+    let filteredData = [];
     let genes = [];
     let plane = 0;
     let iconAtlas = null;
@@ -192,26 +194,32 @@
       deckgl.setProps({layers: [
         new IconLayer({
           id: 'spots',
-          data,
+          // CHANGE #2: The layer now gets its data from our new `filteredData` array.
+          data: filteredData,
           pickable: true,
           onHover,
           coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
           iconAtlas,
           iconMapping,
           getPosition: d => [d.x, -d.y],
-          // NEW: The size accessor now checks if the gene is in the visible set.
-          // If not, it returns 0, effectively hiding the icon.
-          getSize: d => visibleGenes.has(d.gene) ? (20 / Math.sqrt(1 + Math.abs(d.z - plane))) : 0,
+          // CHANGE #3: The size accessor is now simple and fast again. No more `.has()` check.
+          getSize: d => 20 / Math.sqrt(1 + Math.abs(d.z - plane)),
           getIcon: d => d.gene,
           getColor: [255, 255, 255],
           sizeUnits: 'pixels',
           sizeScale: 1,
           updateTriggers: {
-            // NEW: We must tell deck.gl to re-evaluate getSize when either `plane` or `visibleGenes` changes.
-            getSize: [plane, visibleGenes]
+            // CHANGE #4: The trigger for `getSize` no longer needs `visibleGenes`.
+            getSize: [plane]
           }
         })
       ]});
+    }
+
+    // CHANGE #5: A new helper function to do the slow filtering and then re-render.
+    function applyGeneFilterAndRender() {
+      filteredData = data.filter(d => visibleGenes.has(d.gene));
+      updateLayer();
     }
 
     // NEW: Function to dynamically create the filter checkboxes
@@ -250,10 +258,8 @@
           } else {
             visibleGenes.delete(gene);
           }
-          // The visibleGenes set has been modified. We create a new Set from it
-          // to ensure deck.gl's shallow comparison detects a change in updateTriggers.
-          visibleGenes = new Set(visibleGenes);
-          updateLayer();
+          // CHANGE #6: Instead of just updating the layer, we now call our new filter function.
+          applyGeneFilterAndRender();
         });
       }
     }
@@ -272,6 +278,8 @@
         data = d3.tsvParse(txt, d => ({
           x: +d.x, y: +d.y, z: +d.plane_id, gene: d.gene_name
         }));
+        // CHANGE #7: When data loads, initialize filteredData to be the same as the full data set.
+        filteredData = data;
 
         genes = Array.from(new Set(data.map(d => d.gene)));
         // NEW: Initially, all genes are visible.
