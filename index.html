@@ -44,7 +44,6 @@
       flex:1;
       background:transparent;
     }
-    /* tooltip styling */
     #tooltip {
       position:absolute;
       pointer-events:none;
@@ -77,27 +76,26 @@
   <script src="https://unpkg.com/deck.gl@^8.9.0/dist.min.js"></script>
   <script src="https://unpkg.com/d3-dsv@3"></script>
   <script src="https://unpkg.com/d3-array@3"></script>
-  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <!-- Note: Full d3.js or d3-color is not needed for this optimized version -->
 
   <script>
-    // Load config
+    // --- App Configuration ---
+    const DATA_URL = 'data/geneData.tsv';
+
+    // --- Load config and create mappings ---
     const settings = glyphSettings();
     const configMap = new Map(settings.map(s => [s.gene, {glyphName:s.glyphName, color:s.color}]));
-    const defaultConfig = configMap.get('Generic') || {glyphName:'circle', color:'#fff'};
+    const defaultConfig = configMap.get('Generic') || {glyphName:'circle', color:'#ffffff'};
 
-    // Convert hex to RGB
-    function hexToRgba(hex) {
-      const c = d3.rgb(hex);
-      return [c.r, c.g, c.b];
-    }
+    // --- Global State ---
+    let data = [];
+    let genes = [];
+    let plane = 0;
+    let iconAtlas = null;
+    let iconMapping = null;
 
-    let data=[];
-    let genes=[];
-    let plane=0;
-    let iconAtlas=null;
-    let iconMapping=null;
-
-    // Build atlas based on gene names
+    // --- Atlas Generation (High-Performance Version) ---
+    // This function bakes the final colors directly into the atlas texture.
     function buildAtlas(list) {
       const size=64;
       const canvas=document.createElement('canvas');
@@ -105,89 +103,125 @@
       canvas.height=size;
       const ctx=canvas.getContext('2d');
       const mapping={};
-      list.forEach((gene,i)=>{
-        const cfg=configMap.get(gene)||defaultConfig;
-        const p={x:i*size+size/2,y:size/2};
-        const r=size*0.4;
+      list.forEach((gene, i) => {
+        const cfg = configMap.get(gene) || defaultConfig;
+        const p = {x: i * size + size / 2, y: size / 2};
+        const r = size * 0.4;
         ctx.save();
-        ctx.strokeStyle=cfg.color;
-        ctx.lineWidth=2;
-        ctxPath(cfg.glyphName,ctx,p,r);
+        // Set the final color here. The canvas context accepts hex strings.
+        ctx.strokeStyle = cfg.color;
+        ctx.lineWidth = 2;
+        ctxPath(cfg.glyphName, ctx, p, r);
         ctx.stroke();
         ctx.restore();
-        mapping[gene]={x:i*size,y:0,width:size,height:size,anchorX:size/2,anchorY:size/2,mask:false};
+        // The mapping is simpler now, no 'mask' needed.
+        mapping[gene] = {x: i * size, y: 0, width: size, height: size};
       });
-      return {atlas:canvas,mapping};
+      return {atlas: canvas, mapping};
     }
 
+    // --- Deck.gl Initialization ---
     const {IconLayer, OrthographicView, COORDINATE_SYSTEM} = deck;
-    const deckgl=new deck.Deck({
-      parameters:{clearColor:[0,0,0,1]},
-      parent:document.getElementById('deck-canvas'),
-      views:new OrthographicView({controller:true}),
-      initialViewState:{target:[0,0,0],zoom:0,minZoom:-5,maxZoom:10},
-      controller:true,
-      layers:[]
+    const deckgl = new deck.Deck({
+      parameters: {clearColor: [0, 0, 0, 1]},
+      parent: document.getElementById('deck-canvas'),
+      views: new OrthographicView({controller:true}),
+      initialViewState: {target: [0,0,0], zoom: 0, minZoom: -5, maxZoom: 10},
+      layers: []
     });
 
-    const tooltip=document.getElementById('tooltip');
-    function onHover({x,y,object}){
-      if(object){
-        tooltip.style.display='block';
-        tooltip.style.left=x+5+'px';
-        tooltip.style.top=y+5+'px';
-        tooltip.innerHTML=
-          `Gene: ${object.gene}<br>`+
-          `x: ${object.x.toFixed(2)}, y: ${object.y.toFixed(2)}<br>`+
-          `z: ${object.z}<br>`+
-          `plane_id: ${object.z}`;
+    // --- Interactivity Callbacks ---
+    const tooltip = document.getElementById('tooltip');
+    function onHover({x, y, object}){
+      if (object) {
+        tooltip.style.display = 'block';
+        tooltip.style.left = x + 5 + 'px';
+        tooltip.style.top = y + 5 + 'px';
+        tooltip.innerHTML =
+          `<strong>Gene:</strong> ${object.gene}<br>`+
+          `<strong>Coords:</strong> ${object.x.toFixed(2)}, ${object.y.toFixed(2)}<br>`+
+          `<strong>Plane:</strong> ${object.z}`;
       } else {
-        tooltip.style.display='none';
+        tooltip.style.display = 'none';
       }
     }
 
-    function updateLayer(){
-      deckgl.setProps({layers:[
+    // --- Core Render Function ---
+    function updateLayer() {
+      deckgl.setProps({layers: [
         new IconLayer({
-          id:'spots',data,pickable:true,onHover,
-          coordinateSystem:COORDINATE_SYSTEM.CARTESIAN,
-          iconAtlas,iconMapping,
-          getPosition:d=>[d.x,-d.y],
-          getSize:d=>20/Math.sqrt(1+Math.abs(d.z-plane)),
-          sizeUnits:'pixels',sizeScale:1,
-          getIcon:d=>d.gene,
-          getColor:[255,255,255],
-          updateTriggers:{getSize:[plane]}
+          id: 'spots',
+          data,
+          pickable: true,
+          onHover,
+          coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+          iconAtlas,
+          iconMapping,
+          getPosition: d => [d.x, -d.y],
+          getSize: d => 20 / Math.sqrt(1 + Math.abs(d.z - plane)),
+          getIcon: d => d.gene,
+          // Use a constant color. The real color is in the atlas texture.
+          // This is the key to high performance.
+          getColor: [255, 255, 255],
+          sizeUnits: 'pixels',
+          sizeScale: 1,
+          updateTriggers: {
+            getSize: [plane]
+          }
         })
       ]});
     }
 
-    document.getElementById('planeSlider').addEventListener('input',e=>{
-      plane=+e.target.value;
-      document.getElementById('planeValue').textContent=plane;
+    // --- UI Event Listeners ---
+    document.getElementById('planeSlider').addEventListener('input', e => {
+      plane = Number(e.target.value);
+      document.getElementById('planeValue').textContent = plane;
       updateLayer();
     });
 
-    // Load TSV
-    fetch('data/geneData.tsv')
-      .then(r=>r.text()).then(txt=>{
-        data=d3.tsvParse(txt,d=>({x:+d.x,y:+d.y,z:+d.plane_id,gene:d.gene_name}));
-        genes=Array.from(new Set(data.map(d=>d.gene)));
-        // slider
-        const zExt=d3.extent(data,d=>d.z);
-        const s=document.getElementById('planeSlider');
-        s.min=zExt[0];s.max=zExt[1];s.step=1;plane=s.value=zExt[0];document.getElementById('planeValue').textContent=plane;
-        // atlas
-        const a=buildAtlas(genes);
-        iconAtlas=a.atlas;iconMapping=a.mapping;
-        // fit view
-        const xExt=d3.extent(data,d=>d.x),yExt=d3.extent(data,d=>d.y);
-        const cx=(xExt[0]+xExt[1])/2,cy=-(yExt[0]+yExt[1])/2;
-        const w=deckgl.canvas.clientWidth,h=deckgl.canvas.clientHeight;
-        const zoom=Math.min(Math.log2(w/(xExt[1]-xExt[0])),Math.log2(h/(yExt[1]-yExt[0])));
-        deckgl.setProps({initialViewState:{target:[cx,cy,0],zoom,minZoom:-5,maxZoom:10}});
+    // --- Data Loading and App Start ---
+    async function run() {
+      try {
+        const response = await fetch(DATA_URL);
+        const txt = await response.text();
+
+        data = d3.tsvParse(txt, d => ({
+          x: +d.x, y: +d.y, z: +d.plane_id, gene: d.gene_name
+        }));
+
+        genes = Array.from(new Set(data.map(d => d.gene)));
+
+        const zExt = d3.extent(data, d => d.z);
+        const slider = document.getElementById('planeSlider');
+        slider.min = zExt[0]; slider.max = zExt[1];
+        plane = slider.value = zExt[0];
+        document.getElementById('planeValue').textContent = plane;
+
+        const atlasInfo = buildAtlas(genes);
+        iconAtlas = atlasInfo.atlas;
+        iconMapping = atlasInfo.mapping;
+
+        const xExt = d3.extent(data, d => d.x);
+        const yExt = d3.extent(data, d => d.y);
+        const centerX = (xExt[0] + xExt[1]) / 2;
+        const centerY = -(yExt[0] + yExt[1]) / 2;
+        const canvas = deckgl.canvas;
+        const zoom = Math.log2(Math.min(
+            canvas.clientWidth / (xExt[1] - xExt[0]),
+            canvas.clientHeight / (yExt[1] - yExt[0])
+        ));
+
+        deckgl.setProps({
+            initialViewState: {target: [centerX, centerY, 0], zoom, minZoom: -5, maxZoom: 10}
+        });
+
         updateLayer();
-      }).catch(e=>console.error(e));
+      } catch (error) {
+        console.error('Failed to load or process data:', error);
+      }
+    }
+
+    run();
   </script>
 </body>
 </html>
