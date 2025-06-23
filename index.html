@@ -110,6 +110,7 @@
     let data = [], plane = 0, iconAtlas = null, iconMapping = null;
 
     const deckgl = new deck.Deck({
+      parameters: { clearColor: [0, 0, 0, 1] }, // set the background color to black (but we do that in css too!)
       parent: document.getElementById('deck-canvas'),
       views: new OrthographicView({controller:true}),
       initialViewState:{target:[0,0,0], zoom:0, minZoom:-5, maxZoom:10},
