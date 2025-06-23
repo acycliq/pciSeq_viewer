@@ -62,9 +62,11 @@
         ctx.save();
         ctx.fillStyle = color;
         ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
         // draw shape
         ctxPath(glyphName, ctx, p, r);
-        ctx.fill();
+        ctx.stroke();
+        // ctx.fill();
         ctx.restore();
 
         mapping[gene] = {x: i*size, y: 0, width: size, height: size, anchorX: size/2, anchorY: size/2, mask: false};
