@@ -120,7 +120,7 @@
     const planeLabel = document.getElementById('planeValue');
     slider.addEventListener('input', e=>{ plane = +e.target.value; planeLabel.textContent = plane; updateLayers(); });
 
-    fetch('data/geneData.tsv')
+    fetch('https://storage.googleapis.com/christina_silver_hc/zeisel/inefficiency%3D0.2/geneData_filtered.tsv')
       .then(resp=>resp.text())
       .then(text=>{
         data = d3.tsvParse(text, d=>({
