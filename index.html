@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>deck.gl TSV point viewer</title>
+  <style>
+    html,body{margin:0;height:100%;font-family:Arial,Helvetica,sans-serif}
+    #root{position:relative;height:100%;width:100%}
+    #deck-canvas{position:absolute;top:0;left:0;right:0;bottom:48px}
+    #controls{position:absolute;left:0;right:0;bottom:0;height:48px;display:flex;align-items:center;padding:4px 8px;background:#fafafa;border-top:1px solid #ccc;box-shadow:0 -2px 4px rgba(0,0,0,.1);gap:8px}
+    #planeValue{width:48px;text-align:right}
+    input[type=range]{flex:1}
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div id="deck-canvas"></div>
+    <div id="controls">
+      <label>Plane:</label>
+      <span id="planeValue">0</span>
+      <input id="planeSlider" type="range" min="0" max="10" step="1" value="0" />
+    </div>
+  </div>
+
+  <!-- libraries -->
+  <script src="https://unpkg.com/deck.gl@^8.9.0/dist.min.js"></script>
+  <script src="https://unpkg.com/d3-dsv@3"></script>
+  <script src="https://unpkg.com/d3-array@3"></script>
+
+  <script>
+    const d3Array = window.d3;
+
+    function buildAtlas(markerNames){
+      const size = 64;
+      const canvas = document.createElement('canvas');
+      canvas.width = size * markerNames.length;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.lineWidth = 2;
+      const mapping = {};
+
+      markerNames.forEach((name,i)=>{
+        ctx.save();
+        ctx.translate(i*size + size/2, size/2);
+        const r = size*0.3;
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#000000';
+
+        switch(name){
+          case 'triangle':
+            ctx.beginPath(); ctx.moveTo(-r,r); ctx.lineTo(0,-r); ctx.lineTo(r,r); ctx.closePath(); break;
+          case 'square':
+            ctx.beginPath(); ctx.rect(-r,-r,2*r,2*r); break;
+          case 'circle':
+            ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); break;
+          default:
+            ctx.beginPath(); ctx.moveTo(-r,r); ctx.lineTo(0,-r); ctx.lineTo(r,r); ctx.closePath();
+        }
+        // ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        mapping[name] = {x:i*size, y:0, width:size, height:size, anchorX:size/2, anchorY:size/2, mask:true};
+      });
+      return {atlas: canvas, mapping};
+    }
+
+    const {IconLayer, OrthographicView, COORDINATE_SYSTEM} = deck;
+
+    let data = [];
+    let plane = 0;
+    let iconAtlas = null;
+    let iconMapping = null;
+
+    const colourLUT = {
+      triangle: [255,0,0],
+      square:   [0,153,0],
+      circle:   [0,102,204],
+      default:  [120,120,120]
+    };
+
+    const deckgl = new deck.Deck({
+      parent: document.getElementById('deck-canvas'),
+      views: new OrthographicView({id: 'ortho-view', controller: true}),
+      initialViewState: {
+        target: [0, 0, 0],
+        zoom: 0,
+        minZoom: -5,
+        maxZoom: 10
+      },
+      controller: true,
+      layers: []
+    });
+
+    function makeLayer(){
+      return new IconLayer({
+        id:'spots',
+        data,
+        coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+        iconAtlas,
+        iconMapping,
+        getPosition: d => [d.x, -d.y],
+        getSize: d => {
+          const dz = Math.abs(d.z - plane);
+          return 20 / Math.pow(1 + dz, 0.5);
+        },
+        sizeUnits:'pixels',
+        getIcon: d => d.marker,
+        getColor: d => colourLUT[d.marker] || colourLUT.default,
+        updateTriggers:{getSize:[plane]}
+      });
+    }
+
+    function updateLayers(){
+      if(!iconAtlas) return;
+      deckgl.setProps({layers:[makeLayer()]});
+    }
+
+    const slider = document.getElementById('planeSlider');
+    const planeLabel = document.getElementById('planeValue');
+    slider.addEventListener('input', e=>{ plane = +e.target.value; planeLabel.textContent = plane; updateLayers(); });
+
+    fetch('data/geneData.tsv')
+      .then(resp=>resp.text())
+      .then(text=>{
+        data = d3.tsvParse(text, d=>({
+          x:+d.x,
+          y:+d.y,
+          z:+d.plane_id,
+          marker:d.gene_name || 'triangle'
+        }));
+
+        const zExtent = d3Array.extent(data, d=>d.z);
+        slider.min = zExtent[0];
+        slider.max = zExtent[1];
+        slider.step = 1;
+        plane = slider.value = zExtent[0];
+        planeLabel.textContent = plane;
+
+        const markers = Array.from(new Set(data.map(d=>d.marker)));
+        ({atlas:iconAtlas, mapping:iconMapping} = buildAtlas(markers));
+
+        const xExt = d3Array.extent(data, d=>d.x);
+        const yExt = d3Array.extent(data, d=>d.y);
+        const cx = (xExt[0]+xExt[1])/2;
+        const cy = - (yExt[0]+yExt[1])/2;
+
+        const container = document.getElementById('deck-canvas');
+        const w = container.clientWidth || window.innerWidth;
+        const h = container.clientHeight || window.innerHeight;
+        const zoomX = Math.log2(w / (xExt[1]-xExt[0]));
+        const zoomY = Math.log2(h / (yExt[1]-yExt[0]));
+        const zoom = Math.min(zoomX, zoomY);
+
+        deckgl.setProps({
+          initialViewState: {
+            target: [cx, cy, 0],
+            zoom,
+            minZoom: -5,
+            maxZoom: 10
+          }
+        });
+
+        updateLayers();
+      })
+      .catch(err=>console.error('Failed to load TSV:', err));
+  </script>
+</body>
+</html>
