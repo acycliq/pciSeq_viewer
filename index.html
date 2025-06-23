@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <title>deck.gl Gene TSV viewer</title>
   <style>
+    /* CSS block copied verbatim from your original file. Nothing here changed. */
     html, body {
       margin:0;
       height:100%;
@@ -119,15 +120,24 @@
     <div id="tooltip"></div>
   </div>
 
-  <!-- external glyph scripts -->
+  <!-- external glyph scripts (unchanged) -->
   <script src="glyphPaths.js"></script>
   <script src="glyphConfig.js"></script>
-  <!-- libraries -->
+  <!-- libraries (unchanged) -->
   <script src="https://unpkg.com/deck.gl@^8.9.0/dist.min.js"></script>
   <script src="https://unpkg.com/d3-dsv@3"></script>
   <script src="https://unpkg.com/d3-array@3"></script>
 
   <script>
+    /************************************************************
+     * Only three logical changes have been made below          *
+     * 1.  Group spots by gene in geneDataMap.                  *
+     * 2.  One IconLayer per gene (makeLayer / updateLayers).   *
+     * 3.  Checkbox toggles just flip layer visibility.         *
+     * Everything else (style, size formula, tooltip, slider)   *
+     * remains EXACTLY as in your original code.                *
+     ************************************************************/
+
     const DATA_URL = 'data/geneData.tsv';
 
     const settings = glyphSettings();
@@ -135,12 +145,33 @@
     const defaultConfig = configMap.get('Generic') || {glyphName:'circle', color:'#ffffff'};
 
     let data = [];
-    let filteredData = [];
-    let genes = [];
-    let plane = 0;
+    /* store spots per gene */
+    const geneDataMap = new Map(); // gene => array<spot>
+
     let iconAtlas = null;
     let iconMapping = null;
-    let visibleGenes = new Set();
+    let deckgl; // defined later
+    let plane = 0;
+    /* CHANGE 2: track per-gene visibility */
+    const visibilityMap = new Map();
+
+    const {IconLayer, OrthographicView, COORDINATE_SYSTEM} = deck;
+
+    const tooltip = document.getElementById('tooltip');
+
+    function onHover({x, y, object}){
+      if (object) {
+        tooltip.style.display = 'block';
+        tooltip.style.left = x + 220 + 5 + 'px';
+        tooltip.style.top = y + 5 + 'px';
+        tooltip.innerHTML =
+          `<strong>Gene:</strong> ${object.gene}<br>`+
+          `<strong>Coords:</strong> ${object.x.toFixed(2)}, ${object.y.toFixed(2)}<br>`+
+          `<strong>Plane:</strong> ${object.z}`;
+      } else {
+        tooltip.style.display = 'none';
+      }
+    }
 
     function buildAtlas(list) {
       const size=64;
@@ -164,72 +195,50 @@
       return {atlas: canvas, mapping};
     }
 
-    const {IconLayer, OrthographicView, COORDINATE_SYSTEM} = deck;
-    let deckgl; // Defined here to be in scope
-
-    const tooltip = document.getElementById('tooltip');
-    // Remove all cursor logic from onHover. Its only job is the tooltip.
-    function onHover({x, y, object}){
-      if (object) {
-        tooltip.style.display = 'block';
-        tooltip.style.left = x + 220 + 5 + 'px';
-        tooltip.style.top = y + 5 + 'px';
-        tooltip.innerHTML =
-          `<strong>Gene:</strong> ${object.gene}<br>`+
-          `<strong>Coords:</strong> ${object.x.toFixed(2)}, ${object.y.toFixed(2)}<br>`+
-          `<strong>Plane:</strong> ${object.z}`;
-      } else {
-        tooltip.style.display = 'none';
-      }
+    /* helper to build one IconLayer per gene */
+    function makeLayer(gene){
+      return new IconLayer({
+        id: gene,
+        data: geneDataMap.get(gene),
+        visible: visibilityMap.get(gene),
+        pickable: true,
+        onHover,
+        coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+        iconAtlas,
+        iconMapping,
+        getPosition: d => [d.x, -d.y],
+        getSize: d => 20 / Math.sqrt(1 + Math.abs(d.z - plane)), // original formula
+        getIcon: d => d.gene,
+        getColor: [255,255,255],
+        sizeUnits: 'pixels',
+        sizeScale: 1,
+        updateTriggers: {getSize:[plane]}
+      });
     }
 
-    function updateLayer() {
-      deckgl.setProps({layers: [
-        new IconLayer({
-          id: 'spots',
-          // The layer now gets its data from our new `filteredData` array.
-          data: filteredData,
-          pickable: true,
-          onHover,
-          coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-          iconAtlas,
-          iconMapping,
-          getPosition: d => [d.x, -d.y],
-          // The size accessor is now simple and fast again. No more `.has()` check.
-          getSize: d => 20 / Math.sqrt(1 + Math.abs(d.z - plane)),
-          getIcon: d => d.gene,
-          getColor: [255, 255, 255],
-          sizeUnits: 'pixels',
-          sizeScale: 1,
-          updateTriggers: {
-            // The trigger for `getSize` no longer needs `visibleGenes`.
-            getSize: [plane]
-          }
-        })
-      ]});
+    /* assemble layer array */
+    function updateLayers(){
+      const layers = [];
+      for(const gene of geneDataMap.keys()) layers.push(makeLayer(gene));
+      deckgl.setProps({layers});
     }
 
-    // A new helper function to do the slow filtering and then re-render.
-    function applyGeneFilterAndRender() {
-      filteredData = data.filter(d => visibleGenes.has(d.gene));
-      updateLayer();
-    }
+    // --- UI helpers (unchanged except checkbox handler) ---
 
-    // Function to dynamically create the filter checkboxes
     function createGeneFilters(geneList) {
       const container = document.getElementById('filter-list');
-      container.innerHTML = ''; // Clear previous filters
-
-      // Sort genes alphabetically for a clean list
+      container.innerHTML = '';
       geneList.sort();
 
       for (const gene of geneList) {
+        visibilityMap.set(gene, true); // default visible
+
         const item = document.createElement('label');
         item.className = 'filter-item';
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.checked = true; // Start with all genes visible
+        checkbox.checked = true;
 
         const swatch = document.createElement('div');
         swatch.className = 'color-swatch';
@@ -244,15 +253,10 @@
         item.appendChild(name);
         container.appendChild(item);
 
-        // Add an event listener to update the visible set and re-render
-        checkbox.addEventListener('change', (e) => {
-          if (e.target.checked) {
-            visibleGenes.add(gene);
-          } else {
-            visibleGenes.delete(gene);
-          }
-          // Instead of just updating the layer, we now call our new filter function.
-          applyGeneFilterAndRender();
+        /* simply flip visibility flag */
+        checkbox.addEventListener('change', e => {
+          visibilityMap.set(gene, e.target.checked);
+          updateLayers();
         });
       }
     }
@@ -260,10 +264,10 @@
     document.getElementById('planeSlider').addEventListener('input', e => {
       plane = Number(e.target.value);
       document.getElementById('planeValue').textContent = plane;
-      updateLayer();
+      updateLayers();
     });
 
-    async function run() {
+    async function run(){
       try {
         const response = await fetch(DATA_URL);
         const txt = await response.text();
@@ -271,16 +275,19 @@
         data = d3.tsvParse(txt, d => ({
           x: +d.x, y: +d.y, z: +d.plane_id, gene: d.gene_name
         }));
-        // When data loads, initialize filteredData to be the same as the full data set.
-        filteredData = data;
 
-        genes = Array.from(new Set(data.map(d => d.gene)));
-        // Initially, all genes are visible.
-        visibleGenes = new Set(genes);
+        //  bucket spots by gene
+        for(const d of data){
+          if(!geneDataMap.has(d.gene)) geneDataMap.set(d.gene, []);
+          geneDataMap.get(d.gene).push(d);
+        }
+
+        const genes = [...geneDataMap.keys()];
 
         const zExt = d3.extent(data, d => d.z);
         const slider = document.getElementById('planeSlider');
-        slider.min = zExt[0]; slider.max = zExt[1];
+        slider.min = zExt[0];
+        slider.max = zExt[1];
         plane = slider.value = zExt[0];
         document.getElementById('planeValue').textContent = plane;
 
@@ -288,7 +295,6 @@
         iconAtlas = atlasInfo.atlas;
         iconMapping = atlasInfo.mapping;
 
-        // Create the filter UI
         createGeneFilters(genes);
 
         const xExt = d3.extent(data, d => d.x);
@@ -305,7 +311,7 @@
             initialViewState: {target: [centerX, centerY, 0], zoom, minZoom: -5, maxZoom: 10}
         });
 
-        updateLayer();
+        updateLayers();
       } catch (error) {
         console.error('Failed to load or process data:', error);
       }
@@ -316,7 +322,6 @@
       views: new OrthographicView({controller:true}),
       initialViewState: {target: [0,0,0], zoom: 0, minZoom: -5, maxZoom: 10},
       layers: [],
-      // getCursor callback to take full control of the cursor.
       getCursor: ({isHovering}) => (isHovering ? 'pointer' : 'default'),
       onLoad: run
     });
