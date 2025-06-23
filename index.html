@@ -9,9 +9,9 @@
     #deck-canvas { position:absolute; top:0; left:0; right:0; bottom:48px; }
     #controls { position:absolute; left:0; right:0; bottom:0; height:48px;
       display:flex; align-items:center; padding:4px 8px; background:#fafafa;
-      border-top:1px solid #ccc; box-shadow:0 -2px 4px rgba(0,0,0,0.1); gap:8px; }
-    #planeValue { width:48px; text-align:right; }
-    input[type=range] { flex:1; }
+      border-top:1px solid #ccc; box-shadow:0 -2px 4px rgba(0,0,0,0.1); gap:12px; }
+    #planeValue, #thicknessValue { width:32px; text-align:right; }
+    input[type=range] { width:120px; }
   </style>
 </head>
 <body>
@@ -21,19 +21,19 @@
       <label>Plane:</label>
       <span id="planeValue">0</span>
       <input id="planeSlider" type="range" min="0" max="0" step="1" value="0" />
+      <label>Thickness:</label>
+      <span id="thicknessValue">2</span>
+      <input id="thicknessSlider" type="range" min="1" max="10" step="1" value="2" />
     </div>
   </div>
 
-  <!-- external glyph scripts -->
   <script src="glyphPaths.js"></script>
   <script src="glyphConfig.js"></script>
-  <!-- libraries -->
   <script src="https://unpkg.com/deck.gl@^8.9.0/dist.min.js"></script>
   <script src="https://unpkg.com/d3-dsv@3"></script>
   <script src="https://unpkg.com/d3-array@3"></script>
 
   <script>
-    // Load config: gene -> glyphName & color hex
     const settings = glyphSettings();
     const configMap = new Map(settings.map(s => [s.gene, {glyphName: s.glyphName, color: s.color}]));
     const defaultConfig = configMap.get('Generic') || {glyphName:'circle', color:'#000000'};
@@ -43,41 +43,46 @@
       return m ? [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)] : [0,0,0];
     }
 
-    // Build atlas for each gene_name, drawing colored glyph
-    function buildAtlas(genes){
+    let data = [];
+    let genes = [];
+    let plane = 0;
+    let thickness = 2;
+    let iconAtlas = null;
+    let iconMapping = null;
+
+    function buildAtlas(genesList, strokeWidth) {
       const size = 64;
       const canvas = document.createElement('canvas');
-      canvas.width = size * genes.length;
+      canvas.width = size * genesList.length;
       canvas.height = size;
       const ctx = canvas.getContext('2d');
       const mapping = {};
 
-      genes.forEach((gene, i) => {
+      genesList.forEach((gene, i) => {
         const cfg = configMap.get(gene) || defaultConfig;
         const glyphName = cfg.glyphName;
         const color = cfg.color;
-        const rgb = hexToRgba(color);
         const p = {x: i*size + size/2, y: size/2};
         const r = size * 0.4;
         ctx.save();
-        ctx.fillStyle = color;
         ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        // draw shape
+        ctx.lineWidth = strokeWidth;
         ctxPath(glyphName, ctx, p, r);
         ctx.stroke();
-        // ctx.fill();
         ctx.restore();
 
-        mapping[gene] = {x: i*size, y: 0, width: size, height: size, anchorX: size/2, anchorY: size/2, mask: false};
+        mapping[gene] = {
+          x: i*size, y: 0,
+          width: size, height: size,
+          anchorX: size/2, anchorY: size/2,
+          mask: false
+        };
       });
 
       return {atlas: canvas, mapping};
     }
 
     const {IconLayer, OrthographicView, COORDINATE_SYSTEM} = deck;
-    let data = [], plane = 0, iconAtlas = null, iconMapping = null;
-
     const deckgl = new deck.Deck({
       parent: document.getElementById('deck-canvas'),
       views: new OrthographicView({controller:true}),
@@ -86,65 +91,55 @@
       layers: []
     });
 
-    function makeLayer(){
-      return new IconLayer({
-        id: 'spots',
-        data,
+    function updateAtlasAndLayers() {
+      const atlasObj = buildAtlas(genes, thickness);
+      iconAtlas = atlasObj.atlas;
+      iconMapping = atlasObj.mapping;
+      deckgl.setProps({layers:[new IconLayer({
+        id:'spots', data,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-        iconAtlas,
-        iconMapping,
-        getPosition: d => [d.x, -d.y],
-        getSize: d => 20 / Math.sqrt(1 + Math.abs(d.z - plane)),
-        sizeUnits: 'pixels',
-        sizeScale: 1,
-        getIcon: d => d.gene,
-        // icons already colored in atlas, so tint white
-        getColor: [255,255,255],
-        updateTriggers: {getSize: [plane]}
-      });
+        iconAtlas, iconMapping,
+        getPosition: d=>[d.x,-d.y],
+        getSize: d=>20/Math.sqrt(1+Math.abs(d.z-plane)),
+        sizeUnits:'pixels', sizeScale:1,
+        getIcon: d=>d.gene,
+        getColor:[255,255,255],
+        updateTriggers:{getSize:[plane]}
+      })]});
     }
 
-    function updateLayers(){ if(iconAtlas) deckgl.setProps({layers:[makeLayer()]}); }
+    document.getElementById('planeSlider').addEventListener('input', e=>{
+      plane = +e.target.value;
+      document.getElementById('planeValue').textContent = plane;
+      updateAtlasAndLayers();
+    });
 
-    const slider = document.getElementById('planeSlider');
-    const planeLabel = document.getElementById('planeValue');
-    slider.addEventListener('input', e => { plane = +e.target.value; planeLabel.textContent = plane; updateLayers(); });
+    document.getElementById('thicknessSlider').addEventListener('input', e=>{
+      thickness = +e.target.value;
+      document.getElementById('thicknessValue').textContent = thickness;
+      updateAtlasAndLayers();
+    });
 
-    // Load TSV
     fetch('data/geneData.tsv')
-      .then(r => r.text())
-      .then(txt => {
-        data = d3.tsvParse(txt, d => ({
-          x: +d.x,
-          y: +d.y,
-          z: +d.plane_id,
-          gene: d.gene_name
-        }));
+      .then(r=>r.text())
+      .then(txt=>{
+        data = d3.tsvParse(txt, d=>({x:+d.x, y:+d.y, z:+d.plane_id, gene:d.gene_name}));
+        genes = Array.from(new Set(data.map(d=>d.gene)));
 
-        // setup slider
-        const zExt = d3.extent(data, d => d.z);
-        slider.min = zExt[0]; slider.max = zExt[1]; slider.step = 1;
-        plane = slider.value = zExt[0]; planeLabel.textContent = plane;
+        const zExt = d3.extent(data, d=>d.z);
+        const planeSlider = document.getElementById('planeSlider');
+        planeSlider.min=zExt[0]; planeSlider.max=zExt[1]; planeSlider.step=1;
+        plane = planeSlider.value=zExt[0]; document.getElementById('planeValue').textContent=plane;
 
-        // build atlas per gene
-        const genes = Array.from(new Set(data.map(d => d.gene)));
-        const atlasObj = buildAtlas(genes);
-        iconAtlas = atlasObj.atlas;
-        iconMapping = atlasObj.mapping;
+        const xExt = d3.extent(data,d=>d.x), yExt = d3.extent(data,d=>d.y);
+        const cx=(xExt[0]+xExt[1])/2, cy=-(yExt[0]+yExt[1])/2;
+        const w=deckgl.canvas.clientWidth, h=deckgl.canvas.clientHeight;
+        const zoom=Math.min(Math.log2(w/(xExt[1]-xExt[0])), Math.log2(h/(yExt[1]-yExt[0])));
+        deckgl.setProps({initialViewState:{target:[cx,cy,0], zoom, minZoom:-5, maxZoom:10}});
 
-        // fit view
-        const xExt = d3.extent(data, d => d.x);
-        const yExt = d3.extent(data, d => d.y);
-        const cx = (xExt[0] + xExt[1]) / 2;
-        const cy = -(yExt[0] + yExt[1]) / 2;
-        const w = deckgl.canvas.clientWidth;
-        const h = deckgl.canvas.clientHeight;
-        const zoom = Math.min(Math.log2(w / (xExt[1] - xExt[0])), Math.log2(h / (yExt[1] - yExt[0])));
-        deckgl.setProps({initialViewState: {target:[cx, cy, 0], zoom, minZoom:-5, maxZoom:10}});
-
-        updateLayers();
+        updateAtlasAndLayers();
       })
-      .catch(e => console.error('Load error', e));
+      .catch(e=>console.error('Load error',e));
   </script>
 </body>
 </html>
