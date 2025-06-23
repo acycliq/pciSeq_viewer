@@ -16,18 +16,19 @@
       background-color: #000;
       color: #fff;
     }
-    /* NEW: Adjust deck-canvas to make room for the filter panel */
     #deck-canvas {
       position:absolute;
       top:0;
-      left:220px; /* Make space for filter panel */
+      left:220px;
       right:0;
       bottom:48px;
       background-color: #000;
+      /* This CSS rule is no longer strictly necessary as JS will control the cursor, but it's fine as a fallback. */
+      cursor: default;
     }
     #controls {
       position:absolute;
-      left:220px; /* Align with canvas */
+      left:220px;
       right:0;
       bottom:0;
       height:48px;
@@ -57,7 +58,7 @@
       white-space:nowrap;
       z-index:1000;
     }
-    /* NEW: Styling for the gene filter panel */
+    /* Styling for the gene filter panel */
     #filter-panel {
       position:absolute;
       top:0;
@@ -104,7 +105,6 @@
 </head>
 <body>
   <div id="root">
-    <!-- NEW: Filter panel container -->
     <div id="filter-panel">
       <h3>Genes</h3>
       <div id="filter-list"></div>
@@ -135,13 +135,11 @@
     const defaultConfig = configMap.get('Generic') || {glyphName:'circle', color:'#ffffff'};
 
     let data = [];
-    // CHANGE #1: Add a new variable to hold the data that is currently visible.
     let filteredData = [];
     let genes = [];
     let plane = 0;
     let iconAtlas = null;
     let iconMapping = null;
-    // NEW: A Set to store the names of genes that should be visible.
     let visibleGenes = new Set();
 
     function buildAtlas(list) {
@@ -167,19 +165,14 @@
     }
 
     const {IconLayer, OrthographicView, COORDINATE_SYSTEM} = deck;
-    const deckgl = new deck.Deck({
-      parameters: {clearColor: [0, 0, 0, 1]},
-      parent: document.getElementById('deck-canvas'),
-      views: new OrthographicView({controller:true}),
-      initialViewState: {target: [0,0,0], zoom: 0, minZoom: -5, maxZoom: 10},
-      layers: []
-    });
+    let deckgl; // Defined here to be in scope
 
     const tooltip = document.getElementById('tooltip');
+    // Remove all cursor logic from onHover. Its only job is the tooltip.
     function onHover({x, y, object}){
       if (object) {
         tooltip.style.display = 'block';
-        tooltip.style.left = x + 220 + 5 + 'px'; // NEW: Offset by panel width
+        tooltip.style.left = x + 220 + 5 + 'px';
         tooltip.style.top = y + 5 + 'px';
         tooltip.innerHTML =
           `<strong>Gene:</strong> ${object.gene}<br>`+
@@ -194,7 +187,7 @@
       deckgl.setProps({layers: [
         new IconLayer({
           id: 'spots',
-          // CHANGE #2: The layer now gets its data from our new `filteredData` array.
+          // The layer now gets its data from our new `filteredData` array.
           data: filteredData,
           pickable: true,
           onHover,
@@ -202,27 +195,27 @@
           iconAtlas,
           iconMapping,
           getPosition: d => [d.x, -d.y],
-          // CHANGE #3: The size accessor is now simple and fast again. No more `.has()` check.
+          // The size accessor is now simple and fast again. No more `.has()` check.
           getSize: d => 20 / Math.sqrt(1 + Math.abs(d.z - plane)),
           getIcon: d => d.gene,
           getColor: [255, 255, 255],
           sizeUnits: 'pixels',
           sizeScale: 1,
           updateTriggers: {
-            // CHANGE #4: The trigger for `getSize` no longer needs `visibleGenes`.
+            // The trigger for `getSize` no longer needs `visibleGenes`.
             getSize: [plane]
           }
         })
       ]});
     }
 
-    // CHANGE #5: A new helper function to do the slow filtering and then re-render.
+    // A new helper function to do the slow filtering and then re-render.
     function applyGeneFilterAndRender() {
       filteredData = data.filter(d => visibleGenes.has(d.gene));
       updateLayer();
     }
 
-    // NEW: Function to dynamically create the filter checkboxes
+    // Function to dynamically create the filter checkboxes
     function createGeneFilters(geneList) {
       const container = document.getElementById('filter-list');
       container.innerHTML = ''; // Clear previous filters
@@ -258,7 +251,7 @@
           } else {
             visibleGenes.delete(gene);
           }
-          // CHANGE #6: Instead of just updating the layer, we now call our new filter function.
+          // Instead of just updating the layer, we now call our new filter function.
           applyGeneFilterAndRender();
         });
       }
@@ -278,11 +271,11 @@
         data = d3.tsvParse(txt, d => ({
           x: +d.x, y: +d.y, z: +d.plane_id, gene: d.gene_name
         }));
-        // CHANGE #7: When data loads, initialize filteredData to be the same as the full data set.
+        // When data loads, initialize filteredData to be the same as the full data set.
         filteredData = data;
 
         genes = Array.from(new Set(data.map(d => d.gene)));
-        // NEW: Initially, all genes are visible.
+        // Initially, all genes are visible.
         visibleGenes = new Set(genes);
 
         const zExt = d3.extent(data, d => d.z);
@@ -295,7 +288,7 @@
         iconAtlas = atlasInfo.atlas;
         iconMapping = atlasInfo.mapping;
 
-        // NEW: Create the filter UI
+        // Create the filter UI
         createGeneFilters(genes);
 
         const xExt = d3.extent(data, d => d.x);
@@ -318,7 +311,16 @@
       }
     }
 
-    run();
+    deckgl = new deck.Deck({
+      parent: document.getElementById('deck-canvas'),
+      views: new OrthographicView({controller:true}),
+      initialViewState: {target: [0,0,0], zoom: 0, minZoom: -5, maxZoom: 10},
+      layers: [],
+      // getCursor callback to take full control of the cursor.
+      getCursor: ({isHovering}) => (isHovering ? 'pointer' : 'default'),
+      onLoad: run
+    });
+
   </script>
 </body>
 </html>
