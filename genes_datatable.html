@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <title>Gene Panel</title>
 
-  <!-- jQuery (same version you used) -->
+  <!-- jQuery -->
   <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
 
-  <!-- DataTables core (same CDN/version as your original) -->
+  <!-- DataTables core -->
   <link  rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
   <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
 
@@ -56,7 +56,7 @@ window.addEventListener('load', () => {
     window.opener.postMessage({ type: 'genePanelReady' }, '*');
 });
 
-/* 2 ── receive gene list from opener and build table */
+/* receive gene list from opener and build table */
 window.addEventListener('message', (ev) => {
   const msg = ev.data;
   if (!msg || msg.type !== 'geneList') return;
@@ -67,7 +67,7 @@ window.addEventListener('message', (ev) => {
   buildTable(genes);
 });
 
-/* 3 ── build and populate DataTable */
+/* build and populate DataTable */
 function buildTable(genes) {
 
   const rows = genes.map((g, idx) => {
@@ -108,17 +108,13 @@ function buildTable(genes) {
       }
     ],
     initComplete: function () {
-      // pre-tick rows whose genes are in preSelected
-      this.api().rows().every(function () {
-        const gene = this.data()[1];
-        if (preSelected.includes(gene)) {
-          this.cell(0).checkboxes.select();
-        }
-      });
+      // tick every row
+      this.api().column(0).checkboxes.select();
+
     }
   });
 
-  /* 4 ── whenever user (de)selects rows, notify opener */
+  /* whenever user selects/unselects rows, notify opener */
   $('#example').on('select.dt deselect.dt', () => {
     const chosen = table.rows({ selected: true })
                         .data().pluck(1).toArray();   // column 1 = gene name
