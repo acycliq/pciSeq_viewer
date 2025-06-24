@@ -114,9 +114,10 @@
   <div id="root">
     <div id="filter-panel">
       <h3>Genes</h3>
+      <!-- master checkbox -->
       <div class="filter-toggle-all">
-        <input id="toggleAll" type="checkbox" checked />
-        <label for="toggleAll">Show all</label>
+        <input id="toggleAll" type="checkbox" />
+        <label id="toggleAllLabel" for="toggleAll">Hide all</label>
       </div>
       <div id="filter-list"></div>
     </div>
@@ -130,23 +131,25 @@
     <div id="tooltip"></div>
   </div>
 
+  <!-- helper scripts -->
   <script src="glyphPaths.js"></script>
   <script src="glyphConfig.js"></script>
+  <!-- libs -->
   <script src="https://unpkg.com/deck.gl@^8.9.0/dist.min.js"></script>
   <script src="https://unpkg.com/d3-dsv@3"></script>
   <script src="https://unpkg.com/d3-array@3"></script>
 
   <script>
+    /* === DATA / SETTINGS === */
     const DATA_URL = 'data/geneData.tsv';
-
     const settings = glyphSettings();
     const configMap = new Map(settings.map(s => [s.gene, {glyphName:s.glyphName, color:s.color}]));
     const defaultConfig = configMap.get('Generic') || {glyphName:'circle', color:'#ffffff'};
 
-    let data = [];
-    const geneDataMap = new Map();
-    const visibilityMap = new Map();
-    const geneCheckboxElems = [];
+    /* === STATE === */
+    const geneDataMap = new Map();      // gene -> spots[]
+    const geneCheckboxMap = new Map();  // gene -> <input>
+    const geneCheckboxElems = [];       // array for master sync
 
     let iconAtlas = null;
     let iconMapping = null;
@@ -156,189 +159,167 @@
     const {IconLayer, OrthographicView, COORDINATE_SYSTEM} = deck;
     const tooltip = document.getElementById('tooltip');
 
+    /* === UI HELPERS === */
     function onHover({x, y, object}){
       if (object) {
         tooltip.style.display = 'block';
-        tooltip.style.left = x + 220 + 5 + 'px';
-        tooltip.style.top = y + 5 + 'px';
-        tooltip.innerHTML =
-          `<strong>Gene:</strong> ${object.gene}<br>`+
-          `<strong>Coords:</strong> ${object.x.toFixed(2)}, ${object.y.toFixed(2)}<br>`+
-          `<strong>Plane:</strong> ${object.z}`;
+        tooltip.style.left = x + 225 + 'px';
+        tooltip.style.top  = y + 5 + 'px';
+        tooltip.innerHTML  = `<strong>Gene:</strong> ${object.gene}<br>`+
+                             `<strong>Coords:</strong> ${object.x.toFixed(2)}, ${object.y.toFixed(2)}<br>`+
+                             `<strong>Plane:</strong> ${object.z}`;
       } else {
         tooltip.style.display = 'none';
       }
     }
 
-    function buildAtlas(list) {
+    function buildAtlas(genes){
       const size=64;
       const canvas=document.createElement('canvas');
-      canvas.width=size*list.length;
+      canvas.width=size*genes.length;
       canvas.height=size;
       const ctx=canvas.getContext('2d');
       const mapping={};
-      list.forEach((gene, i) => {
-        const cfg = configMap.get(gene) || defaultConfig;
-        const p = {x: i * size + size / 2, y: size / 2};
-        const r = size * 0.4;
+      genes.forEach((gene,i)=>{
+        const cfg=configMap.get(gene)||defaultConfig;
+        const p={x:i*size+size/2,y:size/2};
+        const r=size*0.4;
         ctx.save();
-        ctx.strokeStyle = cfg.color;
-        ctx.lineWidth = 2;
-        ctxPath(cfg.glyphName, ctx, p, r);
+        ctx.strokeStyle=cfg.color;
+        ctx.lineWidth=2;
+        ctxPath(cfg.glyphName,ctx,p,r);
         ctx.stroke();
         ctx.restore();
-        mapping[gene] = {x: i * size, y: 0, width: size, height: size};
+        mapping[gene]={x:i*size,y:0,width:size,height:size};
       });
-      return {atlas: canvas, mapping};
+      return {atlas:canvas,mapping};
     }
 
+    /* === LAYER CREATION === */
     function makeLayer(gene){
       return new IconLayer({
-        id: gene,
-        data: geneDataMap.get(gene),
-        visible: visibilityMap.get(gene),
-        pickable: true,
+        id:gene,
+        data:geneDataMap.get(gene),
+        visible: geneCheckboxMap.get(gene)?.checked ?? true,
+        pickable:true,
         onHover,
-        coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+        coordinateSystem:COORDINATE_SYSTEM.CARTESIAN,
         iconAtlas,
         iconMapping,
-        getPosition: d => [d.x, -d.y],
-        getSize: d => 20 / Math.sqrt(1 + Math.abs(d.z - plane)),
-        getIcon: d => d.gene,
-        getColor: [255,255,255],
-        sizeUnits: 'pixels',
-        sizeScale: 1,
-        updateTriggers: {getSize:[plane]}
+        getPosition:d=>[d.x,-d.y],
+        getSize:d=>20/Math.sqrt(1+Math.abs(d.z-plane)),
+        getIcon:d=>d.gene,
+        getColor:[255,255,255],
+        sizeUnits:'pixels',
+        sizeScale:1,
+        updateTriggers:{getSize:[plane]}
       });
     }
 
     function updateLayers(){
-      const layers = [];
-      for(const gene of geneDataMap.keys()){
-        layers.push(makeLayer(gene));
-      }
+      const layers=[];
+      for(const gene of geneDataMap.keys()) layers.push(makeLayer(gene));
       deckgl.setProps({layers});
     }
 
-    function syncMasterToggle() {
-      const checkedStates = geneCheckboxElems.map(cb => cb.checked);
-      const allChecked = checkedStates.every(Boolean);
-      const noneChecked = checkedStates.every(checked => !checked);
-      const toggleAll = document.getElementById('toggleAll');
-      toggleAll.checked = allChecked;
-      toggleAll.indeterminate = !allChecked && !noneChecked;
-    }
+    /* === FILTER PANEL === */
+    function syncMasterToggle(){
+      const states = geneCheckboxElems.map(cb => cb.checked);
+      const all  = states.every(Boolean);
+      const none = states.every(v=>!v);
+      const master=document.getElementById('toggleAll');
+      const label = document.getElementById('toggleAllLabel');
 
-    function createGeneFilters(geneList) {
-      const container = document.getElementById('filter-list');
-      container.innerHTML = '';
-      geneList.sort();
-      geneCheckboxElems.length = 0;
-
-      for (const gene of geneList) {
-        visibilityMap.set(gene, true);
-        const item = document.createElement('label');
-        item.className = 'filter-item';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = true;
-        geneCheckboxElems.push(checkbox);
-
-        const swatch = document.createElement('div');
-        swatch.className = 'color-swatch';
-        const cfg = configMap.get(gene) || defaultConfig;
-        swatch.style.backgroundColor = cfg.color;
-
-        const name = document.createElement('span');
-        name.textContent = gene;
-
-        item.appendChild(checkbox);
-        item.appendChild(swatch);
-        item.appendChild(name);
-        container.appendChild(item);
-
-        checkbox.addEventListener('change', (e) => {
-          visibilityMap.set(gene, e.target.checked);
-          syncMasterToggle();
-          updateLayers();
-        });
+      if(all){
+        master.checked=false;            // ready to hide all
+        master.indeterminate=false;
+        label.textContent='Hide all';
+      }else if(none){
+        master.checked=true;             // ready to show all
+        master.indeterminate=false;
+        label.textContent='Show all';
+      }else{
+        master.indeterminate=true;       // mixed
+        label.textContent='Show all';
       }
     }
 
-    document.getElementById('planeSlider').addEventListener('input', e => {
-      plane = Number(e.target.value);
-      document.getElementById('planeValue').textContent = plane;
+    function createGeneFilters(genes){
+      const container=document.getElementById('filter-list');
+      container.innerHTML='';
+      genes.sort();
+      geneCheckboxElems.length=0;
+      genes.forEach(gene=>{
+        const item=document.createElement('label');
+        item.className='filter-item';
+        const cb=document.createElement('input');
+        cb.type='checkbox';
+        cb.checked=true;
+        geneCheckboxMap.set(gene,cb);
+        geneCheckboxElems.push(cb);
+        const swatch=document.createElement('div');
+        swatch.className='color-swatch';
+        const cfg=configMap.get(gene)||defaultConfig;
+        swatch.style.backgroundColor=cfg.color;
+        const name=document.createElement('span');
+        name.textContent=gene;
+        item.append(cb,swatch,name);
+        container.appendChild(item);
+        cb.addEventListener('change',()=>{syncMasterToggle();updateLayers();});
+      });
+    }
+
+    /* === MAIN === */
+    document.getElementById('planeSlider').addEventListener('input',e=>{
+      plane=+e.target.value;
+      document.getElementById('planeValue').textContent=plane;
+      updateLayers();
+    });
+
+    document.getElementById('toggleAll').addEventListener('change',e=>{
+      const hide=e.target.checked; // true -> hide all
+      geneCheckboxElems.forEach(cb=>cb.checked=!hide);
+      e.target.indeterminate=false;
+      document.getElementById('toggleAllLabel').textContent=hide?'Show all':'Hide all';
       updateLayers();
     });
 
     async function run(){
-      try {
-        const response = await fetch(DATA_URL);
-        const txt = await response.text();
+      try{
+        const txt=await (await fetch(DATA_URL)).text();
+        const data=d3.tsvParse(txt,d=>({x:+d.x,y:+d.y,z:+d.plane_id,gene:d.gene_name}));
+        data.forEach(d=>{if(!geneDataMap.has(d.gene))geneDataMap.set(d.gene,[]);geneDataMap.get(d.gene).push(d);});
 
-        data = d3.tsvParse(txt, d => ({
-          x: +d.x, y: +d.y, z: +d.plane_id, gene: d.gene_name
-        }));
-
-        for(const d of data){
-          if(!geneDataMap.has(d.gene)) geneDataMap.set(d.gene, []);
-          geneDataMap.get(d.gene).push(d);
-        }
-
-        const genes = [...geneDataMap.keys()];
-
-        const zExt = d3.extent(data, d => d.z);
-        const slider = document.getElementById('planeSlider');
-        slider.min = zExt[0];
-        slider.max = zExt[1];
-        plane = slider.value = zExt[0];
-        document.getElementById('planeValue').textContent = plane;
-
-        const atlasInfo = buildAtlas(genes);
-        iconAtlas = atlasInfo.atlas;
-        iconMapping = atlasInfo.mapping;
-
+        const genes=[...geneDataMap.keys()];
+        const {atlas,mapping}=buildAtlas(genes);
+        iconAtlas=atlas;iconMapping=mapping;
         createGeneFilters(genes);
 
-        document.getElementById('toggleAll').addEventListener('change', e => {
-          const newState = e.target.checked;
-          genes.forEach((gene, i) => {
-            visibilityMap.set(gene, newState);
-            geneCheckboxElems[i].checked = newState;
-          });
-          e.target.indeterminate = false;
-          updateLayers();
-        });
+        const zExt=d3.extent(data,d=>d.z);
+        const slider=document.getElementById('planeSlider');
+        slider.min=zExt[0];slider.max=zExt[1];plane=slider.value=zExt[0];
+        document.getElementById('planeValue').textContent=plane;
 
-        const xExt = d3.extent(data, d => d.x);
-        const yExt = d3.extent(data, d => d.y);
-        const centerX = (xExt[0] + xExt[1]) / 2;
-        const centerY = -(yExt[0] + yExt[1]) / 2;
-        const canvas = deckgl.canvas;
-        const zoom = Math.log2(Math.min(
-            canvas.clientWidth / (xExt[1] - xExt[0]),
-            canvas.clientHeight / (yExt[1] - yExt[0])
-        ));
-
-        deckgl.setProps({
-            initialViewState: {target: [centerX, centerY, 0], zoom, minZoom: -5, maxZoom: 10}
-        });
+        const xExt=d3.extent(data,d=>d.x);
+        const yExt=d3.extent(data,d=>d.y);
+        const centerX=(xExt[0]+xExt[1])/2;
+        const centerY=-(yExt[0]+yExt[1])/2;
+        const canvas=deckgl.canvas;
+        const zoom=Math.log2(Math.min(canvas.clientWidth/(xExt[1]-xExt[0]),canvas.clientHeight/(yExt[1]-yExt[0])));
+        deckgl.setProps({initialViewState:{target:[centerX,centerY,0],zoom,minZoom:-5,maxZoom:10}});
 
         updateLayers();
         syncMasterToggle();
-      } catch (error) {
-        console.error('Failed to load or process data:', error);
-      }
+      }catch(err){console.error('Failed to load or process data:',err);}
     }
 
-    deckgl = new deck.Deck({
-      parent: document.getElementById('deck-canvas'),
-      views: new OrthographicView({controller:true}),
-      initialViewState: {target: [0,0,0], zoom: 0, minZoom: -5, maxZoom: 10},
-      layers: [],
-      getCursor: ({isHovering}) => (isHovering ? 'pointer' : 'default'),
-      onLoad: run
+    deckgl=new deck.Deck({
+      parent:document.getElementById('deck-canvas'),
+      views:new OrthographicView({controller:true}),
+      initialViewState:{target:[0,0,0],zoom:0,minZoom:-5,maxZoom:10},
+      layers:[],
+      getCursor:({isHovering})=>(isHovering?'pointer':'default'),
+      onLoad:run
     });
   </script>
 </body>
