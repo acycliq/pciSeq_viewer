@@ -118,6 +118,11 @@
       <div class="filter-toggle-all">
         <input id="toggleAll" type="checkbox" />
         <label id="toggleAllLabel" for="toggleAll">Hide all</label>
+
+        <label>Size:</label>
+        <span id="sizeValue">1</span>
+        <input id="sizeSlider" type="range" min="0.5" max="3" step="0.1" value="1" />
+
       </div>
       <div id="filter-list"></div>
     </div>
@@ -155,6 +160,8 @@
     let iconMapping = null;
     let deckgl;
     let plane = 0;
+
+    let sizeScale = 1;
 
     const {IconLayer, OrthographicView, COORDINATE_SYSTEM} = deck;
     const tooltip = document.getElementById('tooltip');
@@ -220,7 +227,7 @@
         getIcon:d=>d.gene,
         getColor:[255,255,255],
         sizeUnits:'pixels',
-        sizeScale:1,
+        sizeScale: sizeScale,
         updateTriggers:{getSize:[plane]}
       });
     }
@@ -284,6 +291,13 @@
       document.getElementById('planeValue').textContent=plane;
       updateLayers();
     });
+
+    document.getElementById('sizeSlider')
+            .addEventListener('input', e => {
+            sizeScale = +e.target.value;
+            document.getElementById('sizeValue').textContent = sizeScale;
+            updateLayers();
+            });
 
     document.getElementById('toggleAll').addEventListener('change',e=>{
       const hide=e.target.checked; // true -> hide all
