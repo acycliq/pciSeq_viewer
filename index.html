@@ -185,10 +185,19 @@
         const p={x:i*size+size/2,y:size/2};
         const r=size*0.4;
         ctx.save();
+
+        // // Outline: white, thicker
+        // ctx.strokeStyle = '#ffffff';
+        // ctx.lineWidth = 6;
+        // ctxPath(cfg.glyphName, ctx, p, r);
+        // ctx.stroke();
+
+        // Actual colour stroke
         ctx.strokeStyle=cfg.color;
-        ctx.lineWidth=2;
+        ctx.lineWidth=4;
         ctxPath(cfg.glyphName,ctx,p,r);
         ctx.stroke();
+
         ctx.restore();
         mapping[gene]={x:i*size,y:0,width:size,height:size};
       });
