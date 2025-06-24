@@ -223,12 +223,12 @@
         iconAtlas,
         iconMapping,
         getPosition:d=>[d.x,-d.y],
-        getSize:d=>20/Math.sqrt(1+Math.abs(d.z-plane)),
+        getSize:d=>(20 * sizeScale)/Math.sqrt(1+Math.abs(d.z-plane)),
         getIcon:d=>d.gene,
         getColor:[255,255,255],
         sizeUnits:'pixels',
-        sizeScale: sizeScale,
-        updateTriggers:{getSize:[plane]}
+        sizeScale: 1,
+        updateTriggers:{getSize:[plane, sizeScale]}
       });
     }
 
