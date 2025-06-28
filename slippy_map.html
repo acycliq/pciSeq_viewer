@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Slippy Map – Plane 0</title>
+    <script src="https://unpkg.com/deck.gl@8.9.26/dist.min.js"></script>
+    <style>
+      body, html {
+        margin: 0;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+      }
+      #map {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      const { Deck, TileLayer, BitmapLayer } = deck;
+
+      const tileLayer = new TileLayer({
+        id: 'plane-0',
+        data: './tiles/tiles_08/{z}/{y}/{x}.jpg',
+        minZoom: 0,
+        maxZoom: 5,
+        tileSize: 256,
+        renderSubLayers: props => {
+          const { tile, data } = props;
+
+          if (!data) return null;
+
+          const { west, south, east, north } = tile.bbox;
+
+          return new BitmapLayer({
+            id: `tile-${tile.x}-${tile.y}-${tile.z}`,
+            image: data,
+            data: null, // explicitly set to null to avoid internal count() error
+            bounds: [west, south, east, north]
+          });
+        }
+
+      });
+
+      new Deck({
+        parent: document.getElementById('map'),
+        initialViewState: {
+          longitude: 0,
+          latitude: 0,
+          zoom: 0,
+          bearing: 0,
+          pitch: 0
+        },
+        controller: true,
+        layers: [tileLayer]
+      });
+    </script>
+  </body>
+</html>
