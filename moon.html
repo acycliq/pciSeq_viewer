@@ -38,7 +38,7 @@
             zoom: -7
         };
 
-        const ROOT_URL = 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/image-tiles/moon.image';
+        const ROOT_URL = 'https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_36';
 
         // State variables
         let dimensions = null;
@@ -70,23 +70,10 @@
 
         async function getMetaData() {
             try {
-                const dziSource = `${ROOT_URL}/moon.image.dzi`;
-                const response = await fetch(dziSource);
-                const xmlText = await response.text();
-                const parser = new DOMParser();
-                const dziXML = parser.parseFromString(xmlText, 'text/xml');
-
-                const imageElement = dziXML.getElementsByTagName('Image')[0];
-                const sizeElement = dziXML.getElementsByTagName('Size')[0];
-
-                if (Number(imageElement.attributes.Overlap.value) !== 0) {
-                    console.warn('Overlap parameter is nonzero and should be 0');
-                }
-
                 dimensions = {
-                    height: Number(sizeElement.attributes.Height.value),
-                    width: Number(sizeElement.attributes.Width.value),
-                    tileSize: Number(imageElement.attributes.TileSize.value)
+                    height: 45101,
+                    width: 65536,
+                    tileSize: 256
                 };
 
                 // Initialize deck.gl after getting dimensions
@@ -105,13 +92,13 @@
                 tileSize: dimensions.tileSize,
                 autoHighlight,
                 highlightColor: [60, 60, 60, 100],
-                minZoom: -7,
-                maxZoom: 0,
+                minZoom: 0,
+                maxZoom: 4,
                 coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
                 extent: [0, 0, dimensions.width, dimensions.height],
                 getTileData: async ({index}) => {
                     const {x, y, z} = index;
-                    const imageUrl = `${ROOT_URL}/moon.image_files/${15 + z}/${x}_${y}.jpeg`;
+                    const imageUrl = `${ROOT_URL}/${z}/${y}/${x}.jpg`;
                     try {
                         return await loadImage(imageUrl);
                     } catch (error) {
