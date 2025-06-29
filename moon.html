@@ -19,23 +19,24 @@
 <body>
     <div id="map"></div>
 
-    <!-- Deck.gl and dependencies -->
-    <script src="https://unpkg.com/@deck.gl/core@8.9.0/dist.min.js"></script>
-    <script src="https://unpkg.com/@deck.gl/layers@8.9.0/dist.min.js"></script>
-    <script src="https://unpkg.com/@deck.gl/geo-layers@8.9.0/dist.min.js"></script>
-    <script src="https://unpkg.com/deck.gl@8.9.0/dist.min.js"></script>
+    <!-- Deck.gl bundle -->
+    <script src="https://unpkg.com/deck.gl@8.8.27/dist.min.js"></script>
 
     <script>
-        // Wait for deck.gl to load
-        if (typeof deck === 'undefined') {
+        // Check if deck.gl loaded and extract components
+        let DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer;
+
+        if (typeof deck !== 'undefined') {
+            ({DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer} = deck);
+        } else {
             console.error('deck.gl failed to load');
         }
 
-        const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer} = deck;
-
         const INITIAL_VIEW_STATE = {
-            target: [13000, 13000, 0],
-            zoom: -7
+            target: [256*0.5, 256*0.5*45101/65536, 0],
+            zoom: 2,
+            minZoom: 0,
+            maxZoom: 4
         };
 
         const ROOT_URL = 'https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_36';
@@ -141,7 +142,14 @@
                 container,
                 views: [new OrthographicView({id: 'ortho'})],
                 initialViewState: INITIAL_VIEW_STATE,
-                controller: true,
+                controller: {
+                    minZoom: 0,
+                    maxZoom: 4,
+                    scrollZoom: true,
+                    doubleClickZoom: true,
+                    touchZoom: true,
+                    keyboard: true
+                },
                 getTooltip: getTooltip,
                 layers: [createTileLayer()].filter(Boolean)
             });
