@@ -33,8 +33,8 @@
         }
 
         const INITIAL_VIEW_STATE = {
-            target: [256*0.5, 256*0.5*45101/65536, 0],
-            zoom: 2,
+            target: [256*0.5, 256*0.5*4412/6411, 0],
+            zoom: 4,
             minZoom: 0,
             maxZoom: 4
         };
@@ -72,8 +72,8 @@
         async function getMetaData() {
             try {
                 dimensions = {
-                    height: 45101,
-                    width: 65536,
+                    height: 4412,
+                    width: 6411,
                     tileSize: 256
                 };
 
