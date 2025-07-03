@@ -3,60 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moon Tile Viewer</title>
+    <title>Moon Dataset Viewer</title>
     <style>
         body {
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
+            overflow: hidden;
         }
         #map {
             width: 100vw;
             height: 100vh;
         }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        #datasetSlider {
+            width: 300px;
+        }
+        #datasetLabel {
+            min-width: 100px;
+            text-align: center;
+        }
+        .loading-indicator {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
+    <div class="controls">
+        <button id="prevBtn">◄</button>
+        <input type="range" id="datasetSlider" min="0" max="99" value="50">
+        <button id="nextBtn">►</button>
+        <span id="datasetLabel">Dataset: 50</span>
+    </div>
+    <div class="loading-indicator" id="loadingIndicator">Loading...</div>
 
-    <!-- Deck.gl bundle -->
     <script src="https://unpkg.com/deck.gl@8.8.27/dist.min.js"></script>
-
     <script>
-        // Check if deck.gl loaded and extract components
-        let DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer;
+        // Extract deck.gl components
+        const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer} = deck;
 
-        if (typeof deck !== 'undefined') {
-            ({DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer} = deck);
-        } else {
-            console.error('deck.gl failed to load');
-        }
-
+        // Configuration
         const INITIAL_VIEW_STATE = {
             target: [256*0.5, 256*0.5*4412/6411, 0],
             zoom: 4,
             minZoom: 0,
-            maxZoom: 4
+            maxZoom: 8
         };
 
-        const ROOT_URL = 'https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_36';
+        const BASE_URL = 'https://storage.googleapis.com/christina_silver_hc/tiles_hc';
+        const MOON_DIMENSIONS = { width: 6411, height: 4412, tileSize: 256 };
+        const MAX_PRELOAD = 3; // Number of datasets to preload on each side
+        const MAX_TILE_CACHE = 1000; // Maximum number of tiles to cache
 
-        // State variables
-        let dimensions = null;
-        let deckglInstance = null;
-        let autoHighlight = true;
+        // Application state
+        const state = {
+            currentDataset: 50,
+            loadedDatasets: new Set(),
+            tileCache: new Map(),
+            deckglInstance: null,
+            isLoading: false,
+            lastDirection: 0
+        };
 
+        // DOM elements
+        const elements = {
+            slider: document.getElementById('datasetSlider'),
+            label: document.getElementById('datasetLabel'),
+            prevBtn: document.getElementById('prevBtn'),
+            nextBtn: document.getElementById('nextBtn'),
+            loadingIndicator: document.getElementById('loadingIndicator')
+        };
+
+        // Utility functions
         function clamp(value, min, max) {
             return Math.min(Math.max(value, min), max);
         }
 
-        function getTooltip({tile, bitmap}) {
-            if (tile && bitmap) {
-                const {x, y, z} = tile.index;
-                return `tile: x: ${x}, y: ${y}, z: ${z}
-(${bitmap.pixel[0]},${bitmap.pixel[1]}) in ${bitmap.size.width}x${bitmap.size.height}`;
-            }
-            return null;
+        function showLoading() {
+            state.isLoading = true;
+            elements.loadingIndicator.style.display = 'block';
+        }
+
+        function hideLoading() {
+            state.isLoading = false;
+            elements.loadingIndicator.style.display = 'none';
         }
 
         async function loadImage(url) {
@@ -64,60 +117,59 @@
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
                 img.onload = () => resolve(img);
-                img.onerror = reject;
+                img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
                 img.src = url;
             });
         }
 
-        async function getMetaData() {
-            try {
-                dimensions = {
-                    height: 4412,
-                    width: 6411,
-                    tileSize: 256
-                };
-
-                // Initialize deck.gl after getting dimensions
-                initializeDeckGL();
-            } catch (error) {
-                console.error('Error loading metadata:', error);
-            }
+        function getTileUrl(datasetNum, z, y, x) {
+            return `${BASE_URL}/tiles_${datasetNum}/${z}/${y}/${x}.jpg`;
         }
 
-        function createTileLayer() {
-            if (!dimensions) return null;
-
+        // Create a new tile layer with specified opacity
+        function createTileLayer(datasetNum, opacity = 1) {
             return new TileLayer({
-                id: 'tile-layer',
-                pickable: autoHighlight,
-                tileSize: dimensions.tileSize,
-                autoHighlight,
-                highlightColor: [60, 60, 60, 100],
+                id: `dataset-${datasetNum}`,
+                pickable: true,
+                tileSize: MOON_DIMENSIONS.tileSize,
                 minZoom: 0,
-                maxZoom: 4,
+                maxZoom: 8,
+                opacity: opacity,
+                visible: true,
                 coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-                extent: [0, 0, dimensions.width, dimensions.height],
+                extent: [0, 0, MOON_DIMENSIONS.width, MOON_DIMENSIONS.height],
                 getTileData: async ({index}) => {
                     const {x, y, z} = index;
-                    const imageUrl = `${ROOT_URL}/${z}/${y}/${x}.jpg`;
-                    try {
-                        return await loadImage(imageUrl);
-                    } catch (error) {
-                        console.error('Error loading tile:', imageUrl, error);
-                        return null;
+                    const cacheKey = `${datasetNum}-${z}-${y}-${x}`;
+
+                    if (state.tileCache.has(cacheKey)) {
+                        return state.tileCache.get(cacheKey);
                     }
-                },
-                onViewportLoad: (tiles) => {
-                    // Callback for when tiles are loaded
-                    console.log('Tiles loaded:', tiles.length);
+
+                    const imageUrl = getTileUrl(datasetNum, z, y, x);
+                    const promise = loadImage(imageUrl)
+                        .catch(error => {
+                            console.error('Error loading tile:', error);
+                            return null;
+                        });
+
+                    state.tileCache.set(cacheKey, promise);
+
+                    // Enforce cache size limit
+                    if (state.tileCache.size > MAX_TILE_CACHE) {
+                        const keys = Array.from(state.tileCache.keys());
+                        for (let i = 0; i < Math.floor(MAX_TILE_CACHE / 4); i++) {
+                            state.tileCache.delete(keys[i]);
+                        }
+                    }
+
+                    return promise;
                 },
                 renderSubLayers: (props) => {
                     if (!props.data) return null;
 
-                    const {
-                        bbox: {left, bottom, right, top}
-                    } = props.tile;
-                    const {width, height} = dimensions;
+                    const {left, bottom, right, top} = props.tile.bbox;
+                    const {width, height} = MOON_DIMENSIONS;
 
                     return new BitmapLayer({
                         ...props,
@@ -135,48 +187,138 @@
             });
         }
 
-        function initializeDeckGL() {
-            const container = document.getElementById('map');
+        async function updateDatasetWindow(newDataset) {
+            if (state.isLoading) return;
 
-            deckglInstance = new DeckGL({
-                container,
+            showLoading();
+
+            // Determine direction of movement
+            const direction = newDataset > state.currentDataset ? 1 : -1;
+            state.lastDirection = direction;
+
+            // Update current dataset
+            const oldDataset = state.currentDataset;
+            state.currentDataset = clamp(newDataset, 0, 99);
+            elements.slider.value = state.currentDataset;
+            elements.label.textContent = `Dataset: ${state.currentDataset}`;
+
+            // Calculate window range with predictive loading
+            const preloadAhead = direction === 1 ? MAX_PRELOAD + 1 : MAX_PRELOAD;
+            const preloadBehind = direction === -1 ? MAX_PRELOAD + 1 : MAX_PRELOAD;
+
+            const start = Math.max(0, state.currentDataset - preloadBehind);
+            const end = Math.min(99, state.currentDataset + preloadAhead);
+
+            // Unload datasets outside our window
+            state.loadedDatasets.forEach(ds => {
+                if (ds < start || ds > end) {
+                    unloadDataset(ds);
+                }
+            });
+
+            // Load new datasets in our window
+            const loadPromises = [];
+            for (let ds = start; ds <= end; ds++) {
+                if (!state.loadedDatasets.has(ds)) {
+                    state.loadedDatasets.add(ds);
+                    // No need to await here, we'll let them load in parallel
+                }
+            }
+
+            // Create layers - current dataset is opaque, others are transparent
+            const layers = [];
+            for (let ds = start; ds <= end; ds++) {
+                const opacity = ds === state.currentDataset ? 1 : 0;
+                layers.push(createTileLayer(ds, opacity));
+            }
+
+            // Update deck.gl with new layers
+            if (state.deckglInstance) {
+                state.deckglInstance.setProps({
+                    layers: layers
+                });
+            }
+
+            hideLoading();
+        }
+
+        function unloadDataset(datasetNum) {
+            if (!state.loadedDatasets.has(datasetNum)) return;
+
+            // Clean up tile cache
+            for (const [key] of state.tileCache) {
+                if (key.startsWith(`${datasetNum}-`)) {
+                    state.tileCache.delete(key);
+                }
+            }
+
+            state.loadedDatasets.delete(datasetNum);
+        }
+
+        // Initialize deck.gl
+        function initializeDeckGL() {
+            state.deckglInstance = new DeckGL({
+                container: 'map',
                 views: [new OrthographicView({id: 'ortho'})],
                 initialViewState: INITIAL_VIEW_STATE,
                 controller: {
                     minZoom: 0,
-                    maxZoom: 4,
+                    maxZoom: 8,
                     scrollZoom: true,
                     doubleClickZoom: true,
                     touchZoom: true,
                     keyboard: true
                 },
-                getTooltip: getTooltip,
-                layers: [createTileLayer()].filter(Boolean)
+                getTooltip: ({tile, bitmap}) => {
+                    if (tile && bitmap) {
+                        const {x, y, z} = tile.index;
+                        return `Dataset: ${state.currentDataset}\nTile: ${x},${y} @ z${z}`;
+                    }
+                    return null;
+                },
+                layers: []
             });
         }
 
-        function updateLayers() {
-            if (deckglInstance && dimensions) {
-                deckglInstance.setProps({
-                    layers: [createTileLayer()]
-                });
-            }
+        // UI Event Handlers
+        function setupUI() {
+            // Slider input with throttling
+            let sliderTimeout;
+            elements.slider.addEventListener('input', (e) => {
+                clearTimeout(sliderTimeout);
+                sliderTimeout = setTimeout(() => {
+                    updateDatasetWindow(parseInt(e.target.value));
+                }, 100);
+            });
+
+            // Previous/Next buttons
+            elements.prevBtn.addEventListener('click', () => {
+                updateDatasetWindow(state.currentDataset - 1);
+            });
+
+            elements.nextBtn.addEventListener('click', () => {
+                updateDatasetWindow(state.currentDataset + 1);
+            });
+
+            // Keyboard navigation
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft') {
+                    updateDatasetWindow(state.currentDataset - 1);
+                } else if (e.key === 'ArrowRight') {
+                    updateDatasetWindow(state.currentDataset + 1);
+                }
+            });
         }
 
         // Initialize the application
         async function init() {
-            await getMetaData();
+            initializeDeckGL();
+            setupUI();
+            await updateDatasetWindow(state.currentDataset);
         }
 
-        // Start the application when the page loads
-        window.addEventListener('load', () => {
-            // Check if deck.gl loaded properly
-            if (typeof deck !== 'undefined') {
-                init();
-            } else {
-                console.error('deck.gl library not available');
-            }
-        });
+        // Start the application
+        window.addEventListener('load', init);
     </script>
 </body>
 </html>
