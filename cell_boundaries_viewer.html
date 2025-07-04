@@ -22,20 +22,17 @@
 
   <script>
     const deckgl = new deck.DeckGL({
-      container: 'deck-canvas-container', // Target the container div
-      initialViewState: {
-        longitude: 0, // Using longitude/latitude for OrbitView is more standard
-        latitude: 0,
-        zoom: 0,
-        target: [256, 256, 32], // Center view on the data
-        minZoom: 0,
-        maxZoom: 10,
-        pitch: 45
-      },
+      container: 'deck-canvas-container',
+      // 1. Explicitly tell Deck.gl to use an OrbitView for 3D object inspection
+      views: new deck.OrthographicView({id: 'boundaries-view'}),
+
+      // 2. Configure the initial view state for orbiting a target
+      initialViewState:{target:[0,0,0],zoom:0,minZoom:-5,maxZoom:8},
+
+      // 3. The OrbitView will automatically use the correct controller
       controller: true,
-      // Add a default tooltip style
-      getTooltip: ({object}) => object ? `Cell ID: ${object.properties.cell_id}\nPlane: ${object.properties.plane_id}` : null,
-      layers: []
+      layers: [],
+      getTooltip: ({object}) => object ? `Cell ID: ${object.properties.cell_id}` : null,
     });
 
     const slider = document.getElementById('z-slider');
