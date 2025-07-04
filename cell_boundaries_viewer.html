@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>3D Label Image Viewer with Deck.gl</title>
+  <script src="https://unpkg.com/deck.gl@8.9.24/dist.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { margin: 0; font-family: sans-serif; width: 100vw; height: 100vh; }
+    #controls { position: absolute; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.8); padding: 10px; z-index: 10; border-radius: 5px; }
+    #deck-canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    /* Deck.gl injects its own canvas, so we style the container */
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <label>Z Slice: <input id="z-slider" type="range" min="0" max="64" value="0"></label>
+    <span id="z-label">0</span>
+  </div>
+  <!-- The container for Deck.gl -->
+  <div id="deck-canvas-container"></div>
+
+  <script>
+    const deckgl = new deck.DeckGL({
+      container: 'deck-canvas-container', // Target the container div
+      initialViewState: {
+        longitude: 0, // Using longitude/latitude for OrbitView is more standard
+        latitude: 0,
+        zoom: 0,
+        target: [256, 256, 32], // Center view on the data
+        minZoom: 0,
+        maxZoom: 10,
+        pitch: 45
+      },
+      controller: true,
+      // Add a default tooltip style
+      getTooltip: ({object}) => object ? `Cell ID: ${object.properties.cell_id}\nPlane: ${object.properties.plane_id}` : null,
+      layers: []
+    });
+
+    const slider = document.getElementById('z-slider');
+    const zLabel = document.getElementById('z-label');
+    const planeCache = new Map();
+
+    // FIXED: Robust GeoJSON conversion
+    function tsvToGeoJSON(tsvData, z) {
+      const features = tsvData.flatMap(row => {
+        if (!row || !row.coords) {
+            return []; // Skip empty rows
+        }
+        try {
+          const parsedCoords = JSON.parse(row.coords);
+          if (!Array.isArray(parsedCoords) || parsedCoords.length < 3) {
+            console.warn(`Skipping feature: Invalid coordinate data for cell ${row.cell_id}`, parsedCoords);
+            return [];
+          }
+          return [{
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: [parsedCoords]
+            },
+            properties: {
+              plane_id: z,
+              cell_id: row.cell_id
+            }
+          }];
+        } catch (e) {
+          console.error(`Skipping feature due to JSON parsing error in plane ${z} for cell ${row.cell_id}`, e);
+          return [];
+        }
+      });
+      return {
+        type: 'FeatureCollection',
+        features: features
+      };
+    }
+
+    async function loadPlane(z) {
+      if (planeCache.has(z)) {
+        return;
+      }
+      try {
+        const data = await d3.tsv(`planes/plane_${z}.tsv`);
+        const geojson = tsvToGeoJSON(data, z);
+        planeCache.set(z, geojson);
+        console.log(`Loaded and cached plane ${z}`);
+      } catch (err) {
+        // Log the error but don't crash. The later check will handle this.
+        console.error(`Failed to load plane ${z}:`, err);
+      }
+    }
+
+    function trimCache(centerZ, keepBefore = 2, keepAfter = 2) {
+      for (const z of planeCache.keys()) {
+        if (z < centerZ - keepBefore || z > centerZ + keepAfter) {
+          planeCache.delete(z);
+          console.log(`Trimmed plane ${z} from cache`);
+        }
+      }
+    }
+
+    // FIXED: Handles undefined data
+    function updateLayers(z) {
+      const currentData = planeCache.get(z);
+
+      if (!currentData) {
+        deckgl.setProps({ layers: [] }); // Clear layers if data is missing
+        return;
+      }
+
+      const layer = new deck.GeoJsonLayer({
+        id: `slice-${z}`,
+        data: currentData,
+        pickable: true,
+        stroked: true,
+        filled: true,
+        getLineColor: [0, 0, 255, 255],
+        getFillColor: [0, 255, 0, 50], // Give it some fill so we can see it
+        getLineWidth: 2,
+        lineWidthUnits: 'pixels',
+        coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN
+      });
+      deckgl.setProps({ layers: [layer] });
+    }
+
+    async function moveToPlane(z) {
+      // Pre-load adjacent slices for smoother transitions
+      await Promise.all([
+          loadPlane(z - 1).catch(e => {}),
+          loadPlane(z).catch(e => {}),
+          loadPlane(z + 1).catch(e => {})
+      ]);
+      trimCache(z);
+      updateLayers(z);
+    }
+
+    slider.addEventListener('input', () => {
+      const z = parseInt(slider.value);
+      zLabel.textContent = z;
+      moveToPlane(z);
+    });
+
+    // Load initial slice
+    moveToPlane(parseInt(slider.value));
+  </script>
+</body>
+</html>
