@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combined Moon Dataset and Polygon Viewer</title>
+    <script src="https://unpkg.com/deck.gl@8.8.27/dist.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        #map {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Main Dataset Controls */
+        .main-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        #datasetSlider {
+            width: 350px;
+        }
+        #datasetLabel {
+            min-width: 120px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Polygon Controls */
+        .polygon-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 16px;
+            z-index: 10;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-width: 280px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .polygon-controls h3 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        .control-section {
+            margin-bottom: 16px;
+        }
+        .control-section h4 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #555;
+        }
+        .alias-control {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+            padding: 4px 0;
+        }
+        .alias-control input[type="checkbox"] {
+            margin-right: 8px;
+            transform: scale(1.1);
+        }
+        .alias-control label {
+            flex-grow: 1;
+            font-size: 12px;
+            cursor: pointer;
+            color: #666;
+        }
+        .color-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            margin-left: 8px;
+            border: 1px solid #ccc;
+        }
+        .toggle-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+        .toggle-btn:hover {
+            background: #0056b3;
+        }
+        .toggle-btn.secondary {
+            background: #6c757d;
+        }
+        .toggle-btn.secondary:hover {
+            background: #545b62;
+        }
+
+        /* Loading indicator */
+        .loading-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 6px;
+            z-index: 10;
+            display: none;
+        }
+
+        /* Minimize button */
+        .minimize-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .polygon-controls.minimized {
+            height: 40px;
+            overflow: hidden;
+        }
+        .polygon-controls.minimized .control-section {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- Main Dataset Navigation -->
+    <div class="main-controls">
+        <button class="nav-btn" id="prevBtn">◄</button>
+        <input type="range" id="datasetSlider" min="0" max="99" value="50">
+        <button class="nav-btn" id="nextBtn">►</button>
+        <span id="datasetLabel">Dataset: 50</span>
+    </div>
+
+    <!-- Polygon Controls -->
+    <div class="polygon-controls" id="polygonControls">
+        <button class="minimize-btn" id="minimizeBtn">−</button>
+        <h3>Polygon Overlays</h3>
+
+        <div class="control-section">
+            <button class="toggle-btn" id="togglePolygons">Hide All Polygons</button>
+            <button class="toggle-btn secondary" id="toggleAllAliases">Toggle All Groups</button>
+        </div>
+
+        <div class="control-section">
+            <h4>Polygon Groups</h4>
+            <div id="aliasControls">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-indicator" id="loadingIndicator">Loading...</div>
+
+    <script>
+        // Extract deck.gl components
+        const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer} = deck;
+
+        // Configuration
+        const INITIAL_VIEW_STATE = {
+            target: [256*0.5, 256*0.5*4412/6411, 0],
+            zoom: 4,
+            minZoom: 0,
+            maxZoom: 8
+        };
+
+        const TILE_BASE_URL = 'https://storage.googleapis.com/christina_silver_hc/tiles_hc';
+        const MOON_DIMENSIONS = { width: 6411, height: 4412, tileSize: 256 };
+        const MAX_PRELOAD = 3;
+        const MAX_TILE_CACHE = 1000;
+
+        // Color palette for different aliases
+        const COLOR_PALETTE = [
+            [255, 99, 132],   // Red
+            [54, 162, 235],   // Blue
+            [255, 205, 86],   // Yellow
+            [75, 192, 192],   // Teal
+            [153, 102, 255],  // Purple
+            [255, 159, 64],   // Orange
+            [201, 203, 207],  // Grey
+            [255, 99, 255],   // Pink
+            [99, 255, 132],   // Green
+            [132, 99, 255],   // Indigo
+        ];
+
+        // Application state
+        const state = {
+            currentDataset: 50,
+            loadedDatasets: new Set(),
+            tileCache: new Map(),
+            polygonCache: new Map(),
+            deckglInstance: null,
+            isLoading: false,
+            polygonsVisible: true,
+            aliasVisibility: new Map(),
+            aliasColors: new Map(),
+            allAliases: new Set()
+        };
+
+        // DOM elements
+        const elements = {
+            slider: document.getElementById('datasetSlider'),
+            label: document.getElementById('datasetLabel'),
+            prevBtn: document.getElementById('prevBtn'),
+            nextBtn: document.getElementById('nextBtn'),
+            loadingIndicator: document.getElementById('loadingIndicator'),
+            togglePolygons: document.getElementById('togglePolygons'),
+            toggleAllAliases: document.getElementById('toggleAllAliases'),
+            aliasControls: document.getElementById('aliasControls'),
+            polygonControls: document.getElementById('polygonControls'),
+            minimizeBtn: document.getElementById('minimizeBtn')
+        };
+
+        // Utility functions
+        function clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        function showLoading() {
+            state.isLoading = true;
+            elements.loadingIndicator.style.display = 'block';
+        }
+
+        function hideLoading() {
+            state.isLoading = false;
+            elements.loadingIndicator.style.display = 'none';
+        }
+
+        async function loadImage(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
+                img.src = url;
+            });
+        }
+
+        function getTileUrl(datasetNum, z, y, x) {
+            return `${TILE_BASE_URL}/tiles_${datasetNum}/${z}/${y}/${x}.jpg`;
+        }
+
+        // Generate demo aliases based on label patterns
+        function generateAlias(label) {
+            if (!label) return 'unknown';
+            const labelStr = label.toString().toLowerCase();
+            const numericPart = parseInt(labelStr.match(/\d+/)?.[0] || '0');
+
+            if (numericPart < 2000) {
+                return 'group_A';
+            } else if (numericPart < 4000) {
+                return 'group_B';
+            } else if (numericPart < 6000) {
+                return 'group_C';
+            } else {
+                return 'group_D';
+            }
+        }
+
+        // Convert TSV data to GeoJSON
+        function tsvToGeoJSON(tsvData, z) {
+            const features = tsvData.flatMap(row => {
+                if (!row || !row.coords) return [];
+
+                try {
+                    const parsedCoords = JSON.parse(row.coords);
+                    if (!Array.isArray(parsedCoords) || parsedCoords.length < 3) return [];
+
+                    // Scale coordinates to match tile resolution at current zoom
+                    const scaledCoords = parsedCoords.map(([x, y]) => [
+                        x * (MOON_DIMENSIONS.tileSize / MOON_DIMENSIONS.width),
+                        y * (MOON_DIMENSIONS.tileSize / MOON_DIMENSIONS.height * 4412/6411)
+                    ]);
+
+                    const alias = generateAlias(row.label);
+                    state.allAliases.add(alias);
+
+                    return [{
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Polygon',
+                            coordinates: [scaledCoords]
+                        },
+                        properties: {
+                            plane_id: z,
+                            label: row.label,
+                            alias: alias
+                        }
+                    }];
+                } catch (e) {
+                    console.error(`Skipping feature due to JSON parsing error`, e);
+                    return [];
+                }
+            });
+
+            return { type: 'FeatureCollection', features: features };
+        }
+
+        // Assign colors and visibility to aliases
+        function assignColorsToAliases() {
+            const aliases = Array.from(state.allAliases);
+            aliases.forEach((alias, index) => {
+                if (!state.aliasColors.has(alias)) {
+                    state.aliasColors.set(alias, COLOR_PALETTE[index % COLOR_PALETTE.length]);
+                }
+                if (!state.aliasVisibility.has(alias)) {
+                    state.aliasVisibility.set(alias, true);
+                }
+            });
+        }
+
+        // Update alias controls UI
+        function updateAliasControls() {
+            elements.aliasControls.innerHTML = '';
+
+            Array.from(state.allAliases).sort().forEach(alias => {
+                const controlDiv = document.createElement('div');
+                controlDiv.className = 'alias-control';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `alias-${alias}`;
+                checkbox.checked = state.aliasVisibility.get(alias);
+                checkbox.addEventListener('change', () => {
+                    state.aliasVisibility.set(alias, checkbox.checked);
+                    updateAllLayers();
+                });
+
+                const label = document.createElement('label');
+                label.htmlFor = `alias-${alias}`;
+                label.textContent = alias;
+
+                const colorIndicator = document.createElement('div');
+                colorIndicator.className = 'color-indicator';
+                const color = state.aliasColors.get(alias);
+                colorIndicator.style.backgroundColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+
+                controlDiv.appendChild(checkbox);
+                controlDiv.appendChild(label);
+                controlDiv.appendChild(colorIndicator);
+                elements.aliasControls.appendChild(controlDiv);
+            });
+        }
+
+        // Load polygon data for a dataset
+        async function loadPolygonData(datasetNum) {
+            if (state.polygonCache.has(datasetNum)) {
+                return state.polygonCache.get(datasetNum);
+            }
+
+            try {
+                const data = await d3.tsv(`planes/plane_${datasetNum}.tsv`);
+                const geojson = tsvToGeoJSON(data, datasetNum);
+                state.polygonCache.set(datasetNum, geojson);
+
+                assignColorsToAliases();
+                updateAliasControls();
+
+                return geojson;
+            } catch (err) {
+                console.error(`Failed to load polygon data for dataset ${datasetNum}:`, err);
+                return null;
+            }
+        }
+
+        // Group polygon features by alias
+        function groupFeaturesByAlias(geojson) {
+            const groups = new Map();
+            if (!geojson || !geojson.features) return groups;
+
+            geojson.features.forEach(feature => {
+                const alias = feature.properties.alias;
+                if (!groups.has(alias)) {
+                    groups.set(alias, []);
+                }
+                groups.get(alias).push(feature);
+            });
+
+            return groups;
+        }
+
+        // Create tile layer
+        function createTileLayer(datasetNum, opacity = 1) {
+            return new TileLayer({
+                id: `dataset-${datasetNum}`,
+                pickable: true,
+                tileSize: MOON_DIMENSIONS.tileSize,
+                minZoom: 0,
+                maxZoom: 8,
+                opacity: opacity,
+                visible: true,
+                coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+                extent: [0, 0, MOON_DIMENSIONS.width, MOON_DIMENSIONS.height],
+                getTileData: async ({index}) => {
+                    const {x, y, z} = index;
+                    const cacheKey = `${datasetNum}-${z}-${y}-${x}`;
+
+                    if (state.tileCache.has(cacheKey)) {
+                        return state.tileCache.get(cacheKey);
+                    }
+
+                    const imageUrl = getTileUrl(datasetNum, z, y, x);
+                    const promise = loadImage(imageUrl)
+                        .catch(error => {
+                            console.error('Error loading tile:', error);
+                            return null;
+                        });
+
+                    state.tileCache.set(cacheKey, promise);
+
+                    if (state.tileCache.size > MAX_TILE_CACHE) {
+                        const keys = Array.from(state.tileCache.keys());
+                        for (let i = 0; i < Math.floor(MAX_TILE_CACHE / 4); i++) {
+                            state.tileCache.delete(keys[i]);
+                        }
+                    }
+
+                    return promise;
+                },
+                renderSubLayers: (props) => {
+                    if (!props.data) return null;
+
+                    const {left, bottom, right, top} = props.tile.bbox;
+                    const {width, height} = MOON_DIMENSIONS;
+
+                    return new BitmapLayer({
+                        ...props,
+                        id: `${props.id}-bitmap`,
+                        data: null,
+                        image: props.data,
+                        bounds: [
+                            clamp(left, 0, width),
+                            clamp(bottom, 0, height),
+                            clamp(right, 0, width),
+                            clamp(top, 0, height)
+                        ]
+                    });
+                }
+            });
+        }
+
+        // Create polygon layers
+        function createPolygonLayers(datasetNum) {
+            const layers = [];
+            if (!state.polygonsVisible) return layers;
+
+            const geojson = state.polygonCache.get(datasetNum);
+            if (!geojson) return layers;
+
+            const groupedFeatures = groupFeaturesByAlias(geojson);
+
+            groupedFeatures.forEach((features, alias) => {
+                if (state.aliasVisibility.get(alias)) {
+                    const color = state.aliasColors.get(alias);
+                    const aliasGeojson = {
+                        type: 'FeatureCollection',
+                        features: features
+                    };
+
+                    const layer = new GeoJsonLayer({
+                        id: `polygons-${datasetNum}-${alias}`,
+                        data: aliasGeojson,
+                        pickable: true,
+                        stroked: true,
+                        filled: true,
+                        getLineColor: [...color, 255],
+                        getFillColor: [...color, 80],
+                        getLineWidth: 2,
+                        lineWidthUnits: 'pixels',
+                        coordinateSystem: COORDINATE_SYSTEM.CARTESIAN
+                    });
+
+                    layers.push(layer);
+                }
+            });
+
+            return layers;
+        }
+
+        // Update all layers (tiles + polygons)
+        function updateAllLayers() {
+            if (!state.deckglInstance) return;
+
+            const layers = [];
+
+            // Add tile layers
+            const direction = elements.slider.value > state.currentDataset ? 1 : -1;
+            const preloadAhead = direction === 1 ? MAX_PRELOAD + 1 : MAX_PRELOAD;
+            const preloadBehind = direction === -1 ? MAX_PRELOAD + 1 : MAX_PRELOAD;
+
+            const start = Math.max(0, state.currentDataset - preloadBehind);
+            const end = Math.min(99, state.currentDataset + preloadAhead);
+
+            for (let ds = start; ds <= end; ds++) {
+                const opacity = ds === state.currentDataset ? 1 : 0;
+                layers.push(createTileLayer(ds, opacity));
+            }
+
+            // Add polygon layers for current dataset
+            layers.push(...createPolygonLayers(state.currentDataset));
+
+            state.deckglInstance.setProps({ layers: layers });
+        }
+
+        // Main dataset update function
+        async function updateDataset(newDataset) {
+            if (state.isLoading) return;
+
+            showLoading();
+
+            const oldDataset = state.currentDataset;
+            state.currentDataset = clamp(newDataset, 0, 99);
+            elements.slider.value = state.currentDataset;
+            elements.label.textContent = `Dataset: ${state.currentDataset}`;
+
+            // Load polygon data for current dataset
+            await loadPolygonData(state.currentDataset);
+
+            // Preload adjacent polygon data
+            if (state.currentDataset > 0) {
+                loadPolygonData(state.currentDataset - 1).catch(() => {});
+            }
+            if (state.currentDataset < 99) {
+                loadPolygonData(state.currentDataset + 1).catch(() => {});
+            }
+
+            updateAllLayers();
+            hideLoading();
+        }
+
+        // Initialize deck.gl
+        function initializeDeckGL() {
+            state.deckglInstance = new DeckGL({
+                container: 'map',
+                views: [new OrthographicView({id: 'ortho'})],
+                initialViewState: INITIAL_VIEW_STATE,
+                controller: {
+                    minZoom: 0,
+                    maxZoom: 8,
+                    scrollZoom: true,
+                    doubleClickZoom: true,
+                    touchZoom: true,
+                    keyboard: true
+                },
+                getTooltip: ({object, tile}) => {
+                    if (object && object.properties) {
+                        return {
+                            html: `<div style="background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px;">
+                                     <strong>Cell Label:</strong> ${object.properties.label}<br/>
+                                     <strong>Alias:</strong> ${object.properties.alias || 'N/A'}<br/>
+                                     <strong>Dataset:</strong> ${object.properties.plane_id}
+                                   </div>`,
+                            style: {
+                                backgroundColor: 'transparent',
+                                fontSize: '12px'
+                            }
+                        };
+                    }
+                    if (tile) {
+                        const {x, y, z} = tile.index;
+                        return {
+                            html: `<div style="background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px;">
+                                     <strong>Dataset:</strong> ${state.currentDataset}<br/>
+                                     <strong>Tile:</strong> ${x},${y} @ z${z}
+                                   </div>`,
+                            style: {
+                                backgroundColor: 'transparent',
+                                fontSize: '12px'
+                            }
+                        };
+                    }
+                    return null;
+                },
+                layers: []
+            });
+        }
+
+        // Setup UI event handlers
+        function setupUI() {
+            // Main slider
+            let sliderTimeout;
+            elements.slider.addEventListener('input', (e) => {
+                clearTimeout(sliderTimeout);
+                sliderTimeout = setTimeout(() => {
+                    updateDataset(parseInt(e.target.value));
+                }, 100);
+            });
+
+            // Navigation buttons
+            elements.prevBtn.addEventListener('click', () => {
+                updateDataset(state.currentDataset - 1);
+            });
+
+            elements.nextBtn.addEventListener('click', () => {
+                updateDataset(state.currentDataset + 1);
+            });
+
+            // Keyboard navigation
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft') {
+                    updateDataset(state.currentDataset - 1);
+                } else if (e.key === 'ArrowRight') {
+                    updateDataset(state.currentDataset + 1);
+                }
+            });
+
+            // Polygon controls
+            elements.togglePolygons.addEventListener('click', () => {
+                state.polygonsVisible = !state.polygonsVisible;
+                elements.togglePolygons.textContent = state.polygonsVisible ? 'Hide All Polygons' : 'Show All Polygons';
+                updateAllLayers();
+            });
+
+            elements.toggleAllAliases.addEventListener('click', () => {
+                const allVisible = Array.from(state.aliasVisibility.values()).every(visible => visible);
+                const newState = !allVisible;
+
+                state.aliasVisibility.forEach((_, alias) => {
+                    state.aliasVisibility.set(alias, newState);
+                });
+
+                document.querySelectorAll('#aliasControls input[type="checkbox"]').forEach(cb => {
+                    cb.checked = newState;
+                });
+
+                updateAllLayers();
+            });
+
+            // Minimize button
+            elements.minimizeBtn.addEventListener('click', () => {
+                elements.polygonControls.classList.toggle('minimized');
+                elements.minimizeBtn.textContent = elements.polygonControls.classList.contains('minimized') ? '+' : '−';
+            });
+        }
+
+        // Initialize application
+        async function init() {
+            initializeDeckGL();
+            setupUI();
+            await updateDataset(state.currentDataset);
+        }
+
+        // Start the application
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
