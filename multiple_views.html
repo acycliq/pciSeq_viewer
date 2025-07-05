@@ -1,0 +1,223 @@
+<!--Simple example demonstrating how to use multiple views with Deck.gl.-->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Deck.gl Multiple Views</title>
+  <script src="https://unpkg.com/deck.gl@8.9.24/dist.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; width: 100vw; height: 100vh; background-color: #222; }
+    #deck-canvas-container { width: 100%; height: 100%; }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 10;
+      font-family: sans-serif;
+      max-width: 300px;
+    }
+    button { margin: 5px; padding: 8px; cursor: pointer; }
+    button:hover { background-color: #ddd; }
+    .view-info { margin: 5px 0; padding: 5px; background: rgba(0,0,0,0.1); border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <h2>Multiple Views - WORKING!</h2>
+    <p>Main view: Drag to pan, Scroll to zoom</p>
+    <p>Minimap (top-right): Independent zoom/pan</p>
+    <button id="reset-button">Reset Views</button>
+
+    <div class="view-info">
+      <strong>Main View:</strong><br/>
+      Zoom: <span id="main-zoom-level">0.5</span>
+    </div>
+
+    <div class="view-info">
+      <strong>Minimap:</strong><br/>
+      Zoom: <span id="mini-zoom-level">-2</span>
+    </div>
+  </div>
+  <div id="deck-canvas-container"></div>
+
+  <script>
+    // --- Configuration ---
+    const IMAGE_WIDTH = 1000;
+    const IMAGE_HEIGHT = 1000;
+    const IMAGE_CENTER_X = IMAGE_WIDTH / 2;
+    const IMAGE_CENTER_Y = IMAGE_HEIGHT / 2;
+
+    const dataBounds = {
+      minX: IMAGE_CENTER_X - 200,
+      minY: IMAGE_CENTER_Y - 200,
+      maxX: IMAGE_CENTER_X + 200,
+      maxY: IMAGE_CENTER_Y + 200,
+    };
+
+    // --- Create Data ---
+    const polygonData = {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [dataBounds.minX, dataBounds.minY],
+            [dataBounds.maxX, dataBounds.minY],
+            [dataBounds.maxX, dataBounds.maxY],
+            [dataBounds.minX, dataBounds.maxY],
+            [dataBounds.minX, dataBounds.minY]
+          ]]
+        },
+        properties: {
+          id: 'example-polygon',
+          description: 'This polygon defines the bounds of our data.'
+        }
+      }]
+    };
+
+    const overlayData = [
+      { position: [IMAGE_CENTER_X, IMAGE_CENTER_Y], color: [255, 0, 0], size: 10 },
+      { position: [IMAGE_CENTER_X - 100, IMAGE_CENTER_Y - 100], color: [0, 255, 0], size: 15 },
+      { position: [IMAGE_CENTER_X + 100, IMAGE_CENTER_Y + 100], color: [0, 0, 255], size: 12 }
+    ];
+
+    // --- Track view states for display ---
+    let currentViewStates = {
+      'main': { zoom: 0.5, target: [IMAGE_CENTER_X, IMAGE_CENTER_Y, 0] },
+      'mini': { zoom: -2, target: [IMAGE_CENTER_X, IMAGE_CENTER_Y, 0] }
+    };
+
+    // --- UI Elements ---
+    const resetButton = document.getElementById('reset-button');
+    const mainZoomSpan = document.getElementById('main-zoom-level');
+    const miniZoomSpan = document.getElementById('mini-zoom-level');
+
+    function updateDisplay() {
+      mainZoomSpan.textContent = currentViewStates.main.zoom.toFixed(2);
+      miniZoomSpan.textContent = currentViewStates.mini.zoom.toFixed(2);
+    }
+
+    // --- Deck.gl Instance ---
+    const deckgl = new deck.DeckGL({
+      container: 'deck-canvas-container',
+
+      views: [
+        // Main view
+        new deck.OrthographicView({
+          id: 'main',
+          x: 0,
+          y: 0,
+          width: '100%',
+          height: '100%'
+        }),
+
+        // Minimap view
+        new deck.OrthographicView({
+          id: 'mini',
+          x: '70%',
+          y: '5%',
+          width: '25%',
+          height: '25%',
+          clear: true
+        })
+      ],
+
+      // Use initialViewState - this is the key!
+      initialViewState: {
+        'main': {
+          target: [IMAGE_CENTER_X, IMAGE_CENTER_Y, 0],
+          zoom: 0.5,
+          minZoom: -10,
+          maxZoom: 8
+        },
+        'mini': {
+          target: [IMAGE_CENTER_X, IMAGE_CENTER_Y, 0],
+          zoom: -2,
+          minZoom: -10,
+          maxZoom: 8
+        }
+      },
+
+      // Enable controllers for both views
+      controller: {
+        'main': true,
+        'mini': true
+      },
+
+      // Simple callback to track changes
+      onViewStateChange: ({ viewState, viewId }) => {
+        console.log(`${viewId} view changed, zoom: ${viewState.zoom}`);
+        currentViewStates[viewId] = viewState;
+        updateDisplay();
+      },
+
+      layers: [
+        new deck.GeoJsonLayer({
+          id: 'polygon-layer',
+          data: polygonData,
+          pickable: true,
+          stroked: true,
+          filled: true,
+          getLineColor: [255, 255, 255, 180],
+          getFillColor: [0, 160, 200, 70],
+          getLineWidth: 4,
+          lineWidthUnits: 'pixels',
+          coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN
+        }),
+
+        new deck.ScatterplotLayer({
+          id: 'overlay-points',
+          data: overlayData,
+          pickable: true,
+          getPosition: d => d.position,
+          getColor: d => d.color,
+          getRadius: d => d.size,
+          radiusUnits: 'pixels',
+          coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN
+        })
+      ],
+
+      getTooltip: ({ object, layer }) => {
+        if (!object) return null;
+
+        if (layer.id === 'polygon-layer') {
+          return `ID: ${object.properties.id}`;
+        } else if (layer.id === 'overlay-points') {
+          return `Point: [${object.position[0]}, ${object.position[1]}]`;
+        }
+
+        return null;
+      }
+    });
+
+    // --- Reset button ---
+    resetButton.addEventListener('click', () => {
+      deckgl.setProps({
+        initialViewState: {
+          'main': {
+            target: [IMAGE_CENTER_X, IMAGE_CENTER_Y, 0],
+            zoom: 0.5,
+            minZoom: -10,
+            maxZoom: 8
+          },
+          'mini': {
+            target: [IMAGE_CENTER_X, IMAGE_CENTER_Y, 0],
+            zoom: -2,
+            minZoom: -10,
+            maxZoom: 8
+          }
+        }
+      });
+    });
+
+    // --- Initial display ---
+    updateDisplay();
+
+  </script>
+</body>
+</html>
