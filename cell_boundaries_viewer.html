@@ -40,7 +40,29 @@
       // This tells deck.gl to automatically enable controllers that match the view types
       controller: true,
       layers: [],
-      getTooltip: ({object}) => object ? `Cell ID: ${object.properties.cell_id}` : null,
+
+      // FIXED: Add onHover callback to enable tooltip functionality
+      onHover: (info) => {
+        // This callback is required for getTooltip to work
+        return true;
+      },
+
+      // FIXED: Improved tooltip function
+      getTooltip: ({object, x, y}) => {
+        if (object && object.properties) {
+          return {
+            html: `<div style="background: rgba(0,0,0,0.8); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                     Cell Label: ${object.properties.label}<br/>
+                     Plane: ${object.properties.plane_id}
+                   </div>`,
+            style: {
+              backgroundColor: 'transparent',
+              fontSize: '12px'
+            }
+          };
+        }
+        return null;
+      }
     });
 
     const slider = document.getElementById('z-slider');
@@ -56,7 +78,7 @@
         try {
           const parsedCoords = JSON.parse(row.coords);
           if (!Array.isArray(parsedCoords) || parsedCoords.length < 3) {
-            console.warn(`Skipping feature: Invalid coordinate data for cell ${row.cell_id}`, parsedCoords);
+            console.warn(`Skipping feature: Invalid coordinate data for cell ${row.label}`, parsedCoords);
             return [];
           }
           return [{
@@ -67,11 +89,11 @@
             },
             properties: {
               plane_id: z,
-              cell_id: row.cell_id
+              label: row.label
             }
           }];
         } catch (e) {
-          console.error(`Skipping feature due to JSON parsing error in plane ${z} for cell ${row.cell_id}`, e);
+          console.error(`Skipping feature due to JSON parsing error in plane ${z} for cell ${row.label}`, e);
           return [];
         }
       });
@@ -117,7 +139,7 @@
       const layer = new deck.GeoJsonLayer({
         id: `slice-${z}`,
         data: currentData,
-        pickable: true,
+        pickable: true, // This is important for tooltips
         stroked: true,
         filled: true,
         getLineColor: [0, 0, 255, 255],
