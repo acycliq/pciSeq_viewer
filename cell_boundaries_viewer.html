@@ -2,57 +2,104 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>3D Label Image Viewer with Deck.gl</title>
+  <title>3D Label Image Viewer with Deck.gl - Grouped Polygons</title>
   <script src="https://unpkg.com/deck.gl@8.9.24/dist.min.js"></script>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
     body { margin: 0; font-family: sans-serif; width: 100vw; height: 100vh; }
-    #controls { position: absolute; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.8); padding: 10px; z-index: 10; border-radius: 5px; }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 15px;
+      z-index: 10;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      max-width: 250px;
+    }
     #deck-canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-    /* Deck.gl injects its own canvas, so we style the container */
+    .control-section { margin-bottom: 15px; }
+    .control-section h4 { margin: 0 0 8px 0; font-size: 14px; color: #333; }
+    .alias-control {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+      padding: 3px 0;
+    }
+    .alias-control input[type="checkbox"] { margin-right: 8px; }
+    .alias-control label {
+      flex-grow: 1;
+      font-size: 12px;
+      cursor: pointer;
+      color: #555;
+    }
+    .color-indicator {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      margin-left: 8px;
+      border: 1px solid #ccc;
+    }
+    #z-slider { width: 100%; }
   </style>
 </head>
 <body>
   <div id="controls">
-    <label>Z Slice: <input id="z-slider" type="range" min="0" max="64" value="0"></label>
-    <span id="z-label">0</span>
+    <div class="control-section">
+      <h4>Z Slice Control</h4>
+      <label>Z Slice: <input id="z-slider" type="range" min="0" max="64" value="0"></label>
+      <span id="z-label">0</span>
+    </div>
+
+    <div class="control-section">
+      <h4>Polygon Groups</h4>
+      <div id="alias-controls">
+        <!-- Dynamically populated -->
+      </div>
+      <button id="toggle-all" style="margin-top: 8px; padding: 4px 8px; font-size: 11px;">Toggle All</button>
+    </div>
   </div>
-  <!-- The container for Deck.gl -->
+
   <div id="deck-canvas-container"></div>
 
   <script>
     const IMG_DIMENSIONS = { width: 6411, height: 4412 };
 
+    // Color palette for different aliases
+    const COLOR_PALETTE = [
+      [255, 99, 132],   // Red
+      [54, 162, 235],   // Blue
+      [255, 205, 86],   // Yellow
+      [75, 192, 192],   // Teal
+      [153, 102, 255],  // Purple
+      [255, 159, 64],   // Orange
+      [201, 203, 207],  // Grey
+      [255, 99, 255],   // Pink
+      [99, 255, 132],   // Green
+      [132, 99, 255],   // Indigo
+    ];
+
     const deckgl = new deck.DeckGL({
       container: 'deck-canvas-container',
-      // Keep only ONE view definition
       views: new deck.OrthographicView({id: 'boundaries-view'}),
-
-      // Use initialViewState ONLY to set the initial camera parameters
-      // And use controller: true to enable default interactions
       initialViewState:{
         target: [IMG_DIMENSIONS.width / 2, IMG_DIMENSIONS.height / 2, 0],
-        zoom: -2, // Start with a reasonable zoom
-        minZoom: -10, // Allow zooming out
-        maxZoom: 8   // Allow zooming in
+        zoom: -2,
+        minZoom: -10,
+        maxZoom: 8
       },
-
-      // This tells deck.gl to automatically enable controllers that match the view types
       controller: true,
       layers: [],
-
-      // FIXED: Add onHover callback to enable tooltip functionality
       onHover: (info) => {
-        // This callback is required for getTooltip to work
         return true;
       },
-
-      // FIXED: Improved tooltip function
       getTooltip: ({object, x, y}) => {
         if (object && object.properties) {
           return {
             html: `<div style="background: rgba(0,0,0,0.8); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
                      Cell Label: ${object.properties.label}<br/>
+                     Alias: ${object.properties.alias || 'N/A'}<br/>
                      Plane: ${object.properties.plane_id}
                    </div>`,
             style: {
@@ -67,13 +114,37 @@
 
     const slider = document.getElementById('z-slider');
     const zLabel = document.getElementById('z-label');
-    const planeCache = new Map();
+    const aliasControlsContainer = document.getElementById('alias-controls');
+    const toggleAllBtn = document.getElementById('toggle-all');
 
-    // FIXED: Robust GeoJSON conversion
+    const planeCache = new Map();
+    const aliasVisibility = new Map(); // Track which aliases are visible
+    const aliasColors = new Map(); // Track colors for each alias
+    let allAliases = new Set(); // Track all known aliases
+
+    function generateAlias(label) {
+      // Generate demo aliases based on label patterns
+      if (!label) return 'unknown';
+
+      const labelStr = label.toString().toLowerCase();
+
+      // Pattern-based alias assignment for demo
+      const numericPart = parseInt(labelStr.match(/\d+/)?.[0] || '0');
+      if (numericPart < 2000) {
+          return 'group_A';
+        } else if (numericPart < 4000) {
+          return 'group_B';
+        } else if (numericPart < 6000) {
+          return 'group_C';
+        } else {
+          return 'group_D';
+        }
+    }
+
     function tsvToGeoJSON(tsvData, z) {
       const features = tsvData.flatMap(row => {
         if (!row || !row.coords) {
-            return []; // Skip empty rows
+            return [];
         }
         try {
           const parsedCoords = JSON.parse(row.coords);
@@ -81,6 +152,11 @@
             console.warn(`Skipping feature: Invalid coordinate data for cell ${row.label}`, parsedCoords);
             return [];
           }
+
+          // Generate demo alias based on label
+          const alias = generateAlias(row.label);
+          allAliases.add(alias);
+
           return [{
             type: 'Feature',
             geometry: {
@@ -89,7 +165,8 @@
             },
             properties: {
               plane_id: z,
-              label: row.label
+              label: row.label,
+              alias: alias
             }
           }];
         } catch (e) {
@@ -103,6 +180,64 @@
       };
     }
 
+    function assignColorsToAliases() {
+      const aliases = Array.from(allAliases);
+      aliases.forEach((alias, index) => {
+        if (!aliasColors.has(alias)) {
+          aliasColors.set(alias, COLOR_PALETTE[index % COLOR_PALETTE.length]);
+        }
+        if (!aliasVisibility.has(alias)) {
+          aliasVisibility.set(alias, true); // Default to visible
+        }
+      });
+    }
+
+    function updateAliasControls() {
+      aliasControlsContainer.innerHTML = '';
+
+      Array.from(allAliases).sort().forEach(alias => {
+        const controlDiv = document.createElement('div');
+        controlDiv.className = 'alias-control';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `alias-${alias}`;
+        checkbox.checked = aliasVisibility.get(alias);
+        checkbox.addEventListener('change', () => {
+          aliasVisibility.set(alias, checkbox.checked);
+          updateLayers(parseInt(slider.value));
+        });
+
+        const label = document.createElement('label');
+        label.htmlFor = `alias-${alias}`;
+        label.textContent = alias;
+
+        const colorIndicator = document.createElement('div');
+        colorIndicator.className = 'color-indicator';
+        const color = aliasColors.get(alias);
+        colorIndicator.style.backgroundColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+
+        controlDiv.appendChild(checkbox);
+        controlDiv.appendChild(label);
+        controlDiv.appendChild(colorIndicator);
+        aliasControlsContainer.appendChild(controlDiv);
+      });
+    }
+
+    function groupFeaturesByAlias(geojson) {
+      const groups = new Map();
+
+      geojson.features.forEach(feature => {
+        const alias = feature.properties.alias;
+        if (!groups.has(alias)) {
+          groups.set(alias, []);
+        }
+        groups.get(alias).push(feature);
+      });
+
+      return groups;
+    }
+
     async function loadPlane(z) {
       if (planeCache.has(z)) {
         return;
@@ -112,8 +247,11 @@
         const geojson = tsvToGeoJSON(data, z);
         planeCache.set(z, geojson);
         console.log(`Loaded and cached plane ${z}`);
+
+        // Update alias controls if new aliases were found
+        assignColorsToAliases();
+        updateAliasControls();
       } catch (err) {
-        // Log the error but don't crash. The later check will handle this.
         console.error(`Failed to load plane ${z}:`, err);
       }
     }
@@ -127,28 +265,47 @@
       }
     }
 
-    // FIXED: Handles undefined data
     function updateLayers(z) {
       const currentData = planeCache.get(z);
 
       if (!currentData) {
-        deckgl.setProps({ layers: [] }); // Clear layers if data is missing
+        deckgl.setProps({ layers: [] });
         return;
       }
 
-      const layer = new deck.GeoJsonLayer({
-        id: `slice-${z}`,
-        data: currentData,
-        pickable: true, // This is important for tooltips
-        stroked: true,
-        filled: true,
-        getLineColor: [0, 0, 255, 255],
-        getFillColor: [0, 255, 0, 50], // Give it some fill so we can see it
-        getLineWidth: 2,
-        lineWidthUnits: 'pixels',
-        coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN
+      // Group features by alias
+      const groupedFeatures = groupFeaturesByAlias(currentData);
+
+      // Create one layer per alias
+      const layers = [];
+
+      groupedFeatures.forEach((features, alias) => {
+        // Only create layer if alias is visible
+        if (aliasVisibility.get(alias)) {
+          const color = aliasColors.get(alias);
+          const aliasGeojson = {
+            type: 'FeatureCollection',
+            features: features
+          };
+
+          const layer = new deck.GeoJsonLayer({
+            id: `slice-${z}-alias-${alias}`,
+            data: aliasGeojson,
+            pickable: true,
+            stroked: true,
+            filled: true,
+            getLineColor: [...color, 255], // Full opacity for stroke
+            getFillColor: [...color, 80],  // Semi-transparent fill
+            getLineWidth: 2,
+            lineWidthUnits: 'pixels',
+            coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN
+          });
+
+          layers.push(layer);
+        }
       });
-      deckgl.setProps({ layers: [layer] });
+
+      deckgl.setProps({ layers: layers });
     }
 
     async function moveToPlane(z) {
@@ -162,10 +319,27 @@
       updateLayers(z);
     }
 
+    // Event listeners
     slider.addEventListener('input', () => {
       const z = parseInt(slider.value);
       zLabel.textContent = z;
       moveToPlane(z);
+    });
+
+    toggleAllBtn.addEventListener('click', () => {
+      const allVisible = Array.from(aliasVisibility.values()).every(visible => visible);
+      const newState = !allVisible;
+
+      aliasVisibility.forEach((_, alias) => {
+        aliasVisibility.set(alias, newState);
+      });
+
+      // Update checkboxes
+      document.querySelectorAll('#alias-controls input[type="checkbox"]').forEach(cb => {
+        cb.checked = newState;
+      });
+
+      updateLayers(parseInt(slider.value));
     });
 
     // Load initial slice
