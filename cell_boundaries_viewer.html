@@ -21,15 +21,23 @@
   <div id="deck-canvas-container"></div>
 
   <script>
+    const IMG_DIMENSIONS = { width: 6411, height: 4412 };
+
     const deckgl = new deck.DeckGL({
       container: 'deck-canvas-container',
-      // 1. Explicitly tell Deck.gl to use an OrbitView for 3D object inspection
+      // Keep only ONE view definition
       views: new deck.OrthographicView({id: 'boundaries-view'}),
 
-      // 2. Configure the initial view state for orbiting a target
-      initialViewState:{target:[0,0,0],zoom:0,minZoom:-5,maxZoom:8},
+      // Use initialViewState ONLY to set the initial camera parameters
+      // And use controller: true to enable default interactions
+      initialViewState:{
+        target: [IMG_DIMENSIONS.width / 2, IMG_DIMENSIONS.height / 2, 0],
+        zoom: -2, // Start with a reasonable zoom
+        minZoom: -10, // Allow zooming out
+        maxZoom: 8   // Allow zooming in
+      },
 
-      // 3. The OrbitView will automatically use the correct controller
+      // This tells deck.gl to automatically enable controllers that match the view types
       controller: true,
       layers: [],
       getTooltip: ({object}) => object ? `Cell ID: ${object.properties.cell_id}` : null,
