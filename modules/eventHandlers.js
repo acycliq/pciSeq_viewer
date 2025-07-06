@@ -1,0 +1,206 @@
+/**
+ * Event Handlers Module
+ * 
+ * This module contains all UI event handling logic for the application,
+ * including slider controls, navigation buttons, layer toggles, and keyboard shortcuts
+ */
+
+import { TIMING } from '../config/constants.js';
+import { 
+    toggleAllPolygonAliases, 
+    toggleAllGenes, 
+    updateGeneSize, 
+    handleGenePanelMessage, 
+    openGenePanel, 
+    toggleLayerControls 
+} from './uiHelpers.js';
+
+/**
+ * Setup all event handlers for the application
+ * Configures UI interactions, keyboard shortcuts, and cross-window communication
+ * @param {Object} elements - DOM elements object
+ * @param {Object} state - Application state object
+ * @param {Function} updatePlaneCallback - Function to update current plane
+ * @param {Function} updateLayersCallback - Function to update all layers
+ */
+export function setupEventHandlers(elements, state, updatePlaneCallback, updateLayersCallback) {
+    
+    // === PLANE NAVIGATION CONTROLS ===
+    
+    // Main slider with debouncing to prevent excessive updates
+    let sliderTimeout;
+    elements.slider.addEventListener('input', (e) => {
+        clearTimeout(sliderTimeout);
+        sliderTimeout = setTimeout(() => {
+            updatePlaneCallback(parseInt(e.target.value));
+        }, TIMING.SLIDER_DEBOUNCE);
+    });
+
+    // Previous/Next navigation buttons
+    elements.prevBtn.addEventListener('click', () => {
+        updatePlaneCallback(state.currentPlane - 1);
+    });
+
+    elements.nextBtn.addEventListener('click', () => {
+        updatePlaneCallback(state.currentPlane + 1);
+    });
+
+    // Keyboard navigation (arrow keys)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault(); // Prevent page scrolling
+            updatePlaneCallback(state.currentPlane - 1);
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            updatePlaneCallback(state.currentPlane + 1);
+        }
+    });
+
+    // === LAYER VISIBILITY TOGGLES ===
+    
+    // Background tiles toggle
+    elements.showTiles.addEventListener('change', (e) => {
+        state.showTiles = e.target.checked;
+        updateLayersCallback();
+    });
+
+    // Cell boundary polygons toggle
+    elements.showPolygons.addEventListener('change', (e) => {
+        state.showPolygons = e.target.checked;
+        updateLayersCallback();
+    });
+
+    // Gene expression markers toggle
+    elements.showGenes.addEventListener('change', (e) => {
+        state.showGenes = e.target.checked;
+        updateLayersCallback();
+    });
+
+    // === POLYGON GROUP CONTROLS ===
+    
+    // Toggle all polygon groups visibility
+    elements.toggleAllPolygons.addEventListener('click', () => {
+        toggleAllPolygonAliases(
+            state.polygonAliasVisibility,
+            elements.polygonAliasControls,
+            updateLayersCallback
+        );
+    });
+
+    // === GENE EXPRESSION CONTROLS ===
+    
+    // Gene size slider
+    elements.geneSizeSlider.addEventListener('input', (e) => {
+        updateGeneSize(
+            parseFloat(e.target.value),
+            state,
+            elements.geneSizeValue,
+            updateLayersCallback
+        );
+    });
+
+    // Toggle all genes visibility
+    elements.toggleAllGenes.addEventListener('click', () => {
+        toggleAllGenes(
+            state.selectedGenes,
+            state.geneDataMap,
+            updateLayersCallback
+        );
+    });
+
+    // === GENE PANEL MANAGEMENT ===
+    
+    // Open gene panel window
+    elements.genePanelBtn.addEventListener('click', () => {
+        openGenePanel(state);
+    });
+
+    // Cross-window communication with gene panel
+    window.addEventListener('message', (event) => {
+        handleGenePanelMessage(event, state, updateLayersCallback);
+    });
+
+    // === UI CONTROLS ===
+    
+    // Layer controls panel minimize/expand
+    elements.minimizeBtn.addEventListener('click', () => {
+        toggleLayerControls(elements.layerControls, elements.minimizeBtn);
+    });
+}
+
+/**
+ * Create debounced version of a function
+ * Useful for preventing excessive calls during rapid user input
+ * @param {Function} func - Function to debounce
+ * @param {number} delay - Delay in milliseconds
+ * @returns {Function} Debounced function
+ */
+export function debounce(func, delay) {
+    let timeoutId;
+    return function (...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
+/**
+ * Setup keyboard shortcuts for advanced users
+ * Additional keyboard controls beyond basic arrow navigation
+ * @param {Object} state - Application state object
+ * @param {Function} updatePlaneCallback - Function to update current plane
+ * @param {Function} updateLayersCallback - Function to update layers
+ */
+export function setupAdvancedKeyboardShortcuts(state, updatePlaneCallback, updateLayersCallback) {
+    document.addEventListener('keydown', (e) => {
+        // Prevent shortcuts when typing in inputs
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+
+        switch (e.key) {
+            case 'Home':
+                e.preventDefault();
+                updatePlaneCallback(0); // Go to first plane
+                break;
+                
+            case 'End':
+                e.preventDefault();
+                updatePlaneCallback(99); // Go to last plane
+                break;
+                
+            case 'PageUp':
+                e.preventDefault();
+                updatePlaneCallback(state.currentPlane - 10); // Jump backward 10 planes
+                break;
+                
+            case 'PageDown':
+                e.preventDefault();
+                updatePlaneCallback(state.currentPlane + 10); // Jump forward 10 planes
+                break;
+                
+            case 't':
+            case 'T':
+                // Toggle tiles
+                state.showTiles = !state.showTiles;
+                document.getElementById('showTiles').checked = state.showTiles;
+                updateLayersCallback();
+                break;
+                
+            case 'p':
+            case 'P':
+                // Toggle polygons
+                state.showPolygons = !state.showPolygons;
+                document.getElementById('showPolygons').checked = state.showPolygons;
+                updateLayersCallback();
+                break;
+                
+            case 'g':
+            case 'G':
+                // Toggle genes
+                state.showGenes = !state.showGenes;
+                document.getElementById('showGenes').checked = state.showGenes;
+                updateLayersCallback();
+                break;
+        }
+    });
+}
