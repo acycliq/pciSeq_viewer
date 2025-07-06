@@ -9,7 +9,8 @@ import {
     GENE_DATA_URL, 
     IMG_DIMENSIONS, 
     POLYGON_ALIAS_THRESHOLDS,
-    POLYGON_COLOR_PALETTE 
+    POLYGON_COLOR_PALETTE,
+    getPolygonFileUrl 
 } from '../config/constants.js';
 import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
 
@@ -195,8 +196,10 @@ export async function loadPolygonData(planeNum, polygonCache, allPolygonAliases)
     try {
         console.log(`Loading polygon data for plane ${planeNum}`);
         
-        // Load TSV data for the specific plane
-        const data = await d3.tsv(`planes/plane_${planeNum}.tsv`);
+        // Load TSV data for the specific plane using configured path
+        const polygonUrl = getPolygonFileUrl(planeNum);
+        console.log(`Loading from: ${polygonUrl}`);
+        const data = await d3.tsv(polygonUrl);
         console.log(`Loaded ${data.length} polygon rows for plane ${planeNum}`);
         
         // Convert to GeoJSON with coordinate transformation

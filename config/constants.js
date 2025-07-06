@@ -1,38 +1,45 @@
 /**
- * Configuration constants for the Combined Gene Expression and Cell Boundary Viewer
+ * Application Constants (Generated from User Configuration)
+ * 
+ * This file transforms the user-friendly config.js into the structured constants
+ * that the application modules expect. Users should modify config.js, not this file.
  */
 
-// Application URLs and Data Sources
-export const TILE_BASE_URL = 'https://storage.googleapis.com/christina_silver_hc/tiles_hc';
-export const GENE_DATA_URL = 'data/geneData.tsv';
+// Get the user configuration
+const userConfig = window.config ? window.config() : null;
 
-// Image and Tile Configuration
+if (!userConfig) {
+    throw new Error('Configuration not found. Make sure config.js is loaded before this file.');
+}
+
+// Transform user config into application constants
+export const TILE_BASE_URL = userConfig.backgroundTiles.replace('/{z}/{y}/{x}.jpg', '').replace('/{z}/{y}/{x}.png', '');
+
+export const GENE_DATA_URL = userConfig.geneDataFile;
+
 export const IMG_DIMENSIONS = {
-    width: 6411,
-    height: 4412,
-    depth: 99,
+    width: userConfig.imageWidth,
+    height: userConfig.imageHeight,
+    depth: userConfig.totalPlanes,
     tileSize: 256
 };
 
-// View Configuration
 export const INITIAL_VIEW_STATE = {
-    target: [256 * 0.5, 256 * 0.5 * 4412 / 6411, 0],
+    target: [256 * 0.5, 256 * 0.5 * userConfig.imageHeight / userConfig.imageWidth, 0],
     zoom: 4,
     minZoom: 0,
     maxZoom: 8
 };
 
-// Performance Configuration
 export const MAX_PRELOAD = 3;
 export const MAX_TILE_CACHE = 1000;
 
-// Default Application State
 export const DEFAULT_STATE = {
-    currentPlane: 50,
-    showTiles: true,
-    showPolygons: true,
-    showGenes: true,
-    geneSizeScale: 1.0
+    currentPlane: userConfig.startingPlane,
+    showTiles: userConfig.showBackgroundImages,
+    showPolygons: userConfig.showCellBoundaries,
+    showGenes: userConfig.showGeneMarkers,
+    geneSizeScale: userConfig.geneMarkerSize
 };
 
 // Color palette for different polygon aliases
@@ -84,7 +91,7 @@ export const GENE_SIZE_CONFIG = {
     MIN_SCALE: 0.5,
     MAX_SCALE: 3.0,
     SCALE_STEP: 0.1,
-    DEFAULT_SCALE: 1.0
+    DEFAULT_SCALE: userConfig.geneMarkerSize
 };
 
 // Timing Configuration
@@ -92,3 +99,21 @@ export const TIMING = {
     SLIDER_DEBOUNCE: 100, // ms
     LOADING_TIMEOUT: 2000 // ms
 };
+
+// Helper function to get polygon file URL for a specific plane
+export function getPolygonFileUrl(planeNumber) {
+    return userConfig.cellBoundaryFiles.replace('{plane}', planeNumber);
+}
+
+// Helper function to get tile URL pattern
+export function getTileUrlPattern() {
+    return userConfig.backgroundTiles;
+}
+
+// Validation
+console.log('Configuration loaded:', {
+    totalPlanes: userConfig.totalPlanes,
+    startingPlane: userConfig.startingPlane,
+    dimensions: `${userConfig.imageWidth}x${userConfig.imageHeight}`,
+    geneDataFile: userConfig.geneDataFile
+});

@@ -78,19 +78,8 @@ export function transformFromTileCoordinates(x, y, imageDimensions) {
     ];
 }
 
-/**
- * Calculate the tile URL for a given plane and tile coordinates
- * 
- * @param {string} baseUrl - Base URL for tile server
- * @param {number} planeNum - Plane/dataset number
- * @param {number} z - Zoom level
- * @param {number} y - Tile Y coordinate
- * @param {number} x - Tile X coordinate
- * @returns {string} Complete tile URL
- */
-export function getTileUrl(baseUrl, planeNum, z, y, x) {
-    return `${baseUrl}/tiles_${planeNum}/${z}/${y}/${x}.jpg`;
-}
+// Note: getTileUrl function moved to config-driven approach
+// Tile URLs are now generated using the pattern from config.js
 
 /**
  * Calculate zoom level to fit entire image in viewport
