@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combined Gene Expression and Cell Boundary Viewer</title>
+    <script src="https://unpkg.com/deck.gl@8.8.27/dist.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/d3-dsv@3"></script>
+    <script src="https://unpkg.com/d3-array@3"></script>
+    <!-- Import the polygon boundary highlighter -->
+    <script src="polygon-boundary-highlighter.js"></script>
+    <!-- Import glyph helpers -->
+    <script src="glyphPaths.js"></script>
+    <script src="glyphConfig.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            background-color: #000;
+            color: #fff;
+        }
+        #map {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Gene Panel Button */
+        #genePanelBtn {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #genePanelBtn:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+
+        /* Main Controls */
+        .main-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        #planeSlider {
+            width: 350px;
+        }
+        #planeLabel {
+            min-width: 120px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Layer Controls */
+        .layer-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 16px;
+            z-index: 10;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-width: 280px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .layer-controls h3 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        .control-section {
+            margin-bottom: 16px;
+        }
+        .control-section h4 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #555;
+        }
+        .layer-toggle {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 4px 0;
+        }
+        .layer-toggle input[type="checkbox"] {
+            margin-right: 8px;
+            transform: scale(1.1);
+        }
+        .layer-toggle label {
+            flex-grow: 1;
+            font-size: 14px;
+            cursor: pointer;
+            color: #333;
+        }
+        .alias-control {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+            padding: 4px 0;
+        }
+        .alias-control input[type="checkbox"] {
+            margin-right: 8px;
+            transform: scale(1.1);
+        }
+        .alias-control label {
+            flex-grow: 1;
+            font-size: 12px;
+            cursor: pointer;
+            color: #666;
+        }
+        .color-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            margin-left: 8px;
+            border: 1px solid #ccc;
+        }
+        .toggle-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+        .toggle-btn:hover {
+            background: #0056b3;
+        }
+        .toggle-btn.secondary {
+            background: #6c757d;
+        }
+        .toggle-btn.secondary:hover {
+            background: #545b62;
+        }
+
+        /* Gene Controls */
+        .gene-controls {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #eee;
+        }
+        .gene-size-control {
+            margin-bottom: 12px;
+        }
+        .gene-size-control label {
+            display: block;
+            font-size: 12px;
+            color: #555;
+            margin-bottom: 4px;
+        }
+        .gene-size-control input[type="range"] {
+            width: 100%;
+        }
+
+        /* Loading indicator */
+        .loading-indicator {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 6px;
+            z-index: 10;
+            display: none;
+        }
+
+        /* Minimize button */
+        .minimize-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .layer-controls.minimized {
+            height: 40px;
+            overflow: hidden;
+        }
+        .layer-controls.minimized .control-section {
+            display: none;
+        }
+
+        /* Tooltip */
+        #tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: none;
+            white-space: nowrap;
+            z-index: 1000;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="tooltip"></div>
+
+    <!-- Gene Panel Button -->
+    <button id="genePanelBtn">Gene Panel</button>
+
+    <!-- Main Controls -->
+    <div class="main-controls">
+        <button class="nav-btn" id="prevBtn">◄</button>
+        <input type="range" id="planeSlider" min="0" max="99" value="50">
+        <button class="nav-btn" id="nextBtn">►</button>
+        <span id="planeLabel">Plane: 50</span>
+    </div>
+
+    <!-- Layer Controls -->
+    <div class="layer-controls" id="layerControls">
+        <button class="minimize-btn" id="minimizeBtn">−</button>
+        <h3>Display Layers</h3>
+
+        <div class="control-section">
+            <h4>Main Layers</h4>
+            <div class="layer-toggle">
+                <input type="checkbox" id="showTiles" checked>
+                <label for="showTiles">Background Images</label>
+            </div>
+            <div class="layer-toggle">
+                <input type="checkbox" id="showPolygons" checked>
+                <label for="showPolygons">Cell Boundaries</label>
+            </div>
+            <div class="layer-toggle">
+                <input type="checkbox" id="showGenes" checked>
+                <label for="showGenes">Gene Expression</label>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h4>Polygon Groups</h4>
+            <button class="toggle-btn secondary" id="toggleAllPolygons">Toggle All Groups</button>
+            <div id="polygonAliasControls">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <div class="control-section gene-controls">
+            <h4>Gene Display</h4>
+            <div class="gene-size-control">
+                <label for="geneSizeSlider">Gene Size: <span id="geneSizeValue">1.0</span></label>
+                <input type="range" id="geneSizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
+            </div>
+            <button class="toggle-btn secondary" id="toggleAllGenes">Toggle All Genes</button>
+        </div>
+    </div>
+
+    <div class="loading-indicator" id="loadingIndicator">Loading...</div>
+
+    <script>
+        // Extract deck.gl components
+        const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer, IconLayer} = deck;
+
+        // Configuration
+        const INITIAL_VIEW_STATE = {
+            target: [256*0.5, 256*0.5*4412/6411, 0],
+            zoom: 4,
+            minZoom: 0,
+            maxZoom: 8
+        };
+
+        const TILE_BASE_URL = 'https://storage.googleapis.com/christina_silver_hc/tiles_hc';
+        const IMG_DIMENSIONS = { width: 6411, height: 4412, depth: 99, tileSize: 256 };
+        const GENE_DATA_URL = 'data/geneData.tsv';
+        const MAX_PRELOAD = 3;
+        const MAX_TILE_CACHE = 1000;
+
+        // Color palette for different polygon aliases
+        const POLYGON_COLOR_PALETTE = [
+            [255, 99, 132],   // Red
+            [54, 162, 235],   // Blue
+            [255, 205, 86],   // Yellow
+            [75, 192, 192],   // Teal
+            [153, 102, 255],  // Purple
+            [255, 159, 64],   // Orange
+            [201, 203, 207],  // Grey
+            [255, 99, 255],   // Pink
+            [99, 255, 132],   // Green
+            [132, 99, 255],   // Indigo
+        ];
+
+        // Application state
+        const state = {
+            currentPlane: 50,
+            deckglInstance: null,
+            isLoading: false,
+            
+            // Layer visibility
+            showTiles: true,
+            showPolygons: true,
+            showGenes: true,
+            
+            // Data caches
+            tileCache: new Map(),
+            polygonCache: new Map(),
+            geneDataMap: new Map(),
+            
+            // Polygon data
+            polygonAliasVisibility: new Map(),
+            polygonAliasColors: new Map(),
+            allPolygonAliases: new Set(),
+            
+            // Gene data
+            selectedGenes: new Set(),
+            geneIconAtlas: null,
+            geneIconMapping: null,
+            geneSizeScale: 1.0,
+            
+            // Interactions
+            polygonHighlighter: null,
+            genePanelWin: null
+        };
+
+        // DOM elements
+        const elements = {
+            slider: document.getElementById('planeSlider'),
+            label: document.getElementById('planeLabel'),
+            prevBtn: document.getElementById('prevBtn'),
+            nextBtn: document.getElementById('nextBtn'),
+            loadingIndicator: document.getElementById('loadingIndicator'),
+            
+            // Layer controls
+            showTiles: document.getElementById('showTiles'),
+            showPolygons: document.getElementById('showPolygons'),
+            showGenes: document.getElementById('showGenes'),
+            
+            // Polygon controls
+            toggleAllPolygons: document.getElementById('toggleAllPolygons'),
+            polygonAliasControls: document.getElementById('polygonAliasControls'),
+            
+            // Gene controls
+            geneSizeSlider: document.getElementById('geneSizeSlider'),
+            geneSizeValue: document.getElementById('geneSizeValue'),
+            toggleAllGenes: document.getElementById('toggleAllGenes'),
+            genePanelBtn: document.getElementById('genePanelBtn'),
+            
+            // UI
+            layerControls: document.getElementById('layerControls'),
+            minimizeBtn: document.getElementById('minimizeBtn'),
+            tooltip: document.getElementById('tooltip')
+        };
+
+        // === UTILITY FUNCTIONS ===
+        function clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        /**
+         * Transform coordinates from original image space to tile coordinate space (256x256)
+         * Handles any aspect ratio with proper adjustment factors
+         */
+        function transformToTileCoordinates(x, y) {
+            const {width, height, tileSize} = IMG_DIMENSIONS;
+            const maxDimension = Math.max(width, height);
+            
+            // Adjustment factors to handle aspect ratio
+            const xAdjustment = width / maxDimension;
+            const yAdjustment = height / maxDimension;
+            
+            return [
+                x * (tileSize / width) * xAdjustment,
+                y * (tileSize / height) * yAdjustment
+            ];
+        }
+
+        function showLoading() {
+            state.isLoading = true;
+            elements.loadingIndicator.style.display = 'block';
+        }
+
+        function hideLoading() {
+            state.isLoading = false;
+            elements.loadingIndicator.style.display = 'none';
+        }
+
+        async function loadImage(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
+                img.src = url;
+            });
+        }
+
+        function getTileUrl(planeNum, z, y, x) {
+            return `${TILE_BASE_URL}/tiles_${planeNum}/${z}/${y}/${x}.jpg`;
+        }
+
+        // === GENE DATA FUNCTIONS ===
+        async function loadGeneData() {
+            if (state.geneDataMap.size > 0) return;
+
+            try {
+                const txt = await (await fetch(GENE_DATA_URL)).text();
+                const data = d3.tsvParse(txt, d => ({
+                    x: +d.x,
+                    y: +d.y,
+                    z: +d.plane_id,
+                    gene: d.gene_name
+                }));
+
+                // Group by gene
+                data.forEach(d => {
+                    if (!state.geneDataMap.has(d.gene)) {
+                        state.geneDataMap.set(d.gene, []);
+                    }
+                    state.geneDataMap.get(d.gene).push(d);
+                });
+
+                // Initially all genes are visible
+                state.geneDataMap.forEach((spots, gene) => {
+                    state.selectedGenes.add(gene);
+                });
+
+                // Build icon atlas
+                const genes = Array.from(state.geneDataMap.keys());
+                const {atlas, mapping} = buildGeneIconAtlas(genes);
+                state.geneIconAtlas = atlas;
+                state.geneIconMapping = mapping;
+
+            } catch (err) {
+                console.error('Failed to load gene data:', err);
+            }
+        }
+
+        function buildGeneIconAtlas(genes) {
+            const settings = glyphSettings();
+            const configMap = new Map(settings.map(s => [s.gene, {glyphName: s.glyphName, color: s.color}]));
+            const defaultConfig = configMap.get('Generic') || {glyphName: 'circle', color: '#ffffff'};
+
+            const size = 64;
+            const canvas = document.createElement('canvas');
+            canvas.width = size * genes.length;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const mapping = {};
+
+            genes.forEach((gene, i) => {
+                const cfg = configMap.get(gene) || defaultConfig;
+                const p = {x: i * size + size/2, y: size/2};
+                const r = size * 0.4;
+                
+                ctx.save();
+                ctx.strokeStyle = cfg.color;
+                ctx.lineWidth = 4;
+                ctxPath(cfg.glyphName, ctx, p, r);
+                ctx.stroke();
+                ctx.restore();
+                
+                mapping[gene] = {x: i * size, y: 0, width: size, height: size};
+            });
+
+            return {atlas: canvas, mapping};
+        }
+
+        // === POLYGON DATA FUNCTIONS ===
+        function generatePolygonAlias(label) {
+            if (!label) return 'unknown';
+            const labelStr = label.toString().toLowerCase();
+            const numericPart = parseInt(labelStr.match(/\d+/)?.[0] || '0');
+
+            if (numericPart < 2000) {
+                return 'group_A';
+            } else if (numericPart < 4000) {
+                return 'group_B';
+            } else if (numericPart < 6000) {
+                return 'group_C';
+            } else {
+                return 'group_D';
+            }
+        }
+
+        function tsvToGeoJSON(tsvData, planeId) {
+            const features = tsvData.flatMap(row => {
+                if (!row || !row.coords) return [];
+
+                try {
+                    const parsedCoords = JSON.parse(row.coords);
+                    if (!Array.isArray(parsedCoords) || parsedCoords.length < 3) return [];
+
+                    // Scale coordinates to match tile resolution
+                    const scaledCoords = parsedCoords.map(([x, y]) => transformToTileCoordinates(x, y));
+
+                    const alias = generatePolygonAlias(row.label);
+                    state.allPolygonAliases.add(alias);
+
+                    return [{
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Polygon',
+                            coordinates: [scaledCoords]
+                        },
+                        properties: {
+                            plane_id: planeId,
+                            label: row.label,
+                            alias: alias
+                        }
+                    }];
+                } catch (e) {
+                    console.error(`Skipping feature due to JSON parsing error`, e);
+                    return [];
+                }
+            });
+
+            return { type: 'FeatureCollection', features: features };
+        }
+
+        async function loadPolygonData(planeNum) {
+            if (state.polygonCache.has(planeNum)) {
+                return state.polygonCache.get(planeNum);
+            }
+
+            try {
+                const data = await d3.tsv(`planes/plane_${planeNum}.tsv`);
+                const geojson = tsvToGeoJSON(data, planeNum);
+                state.polygonCache.set(planeNum, geojson);
+
+                // Assign colors to new aliases
+                assignColorsToPolygonAliases();
+                updatePolygonAliasControls();
+
+                return geojson;
+            } catch (err) {
+                console.error(`Failed to load polygon data for plane ${planeNum}:`, err);
+                return null;
+            }
+        }
+
+        function assignColorsToPolygonAliases() {
+            const aliases = Array.from(state.allPolygonAliases);
+            aliases.forEach((alias, index) => {
+                if (!state.polygonAliasColors.has(alias)) {
+                    state.polygonAliasColors.set(alias, POLYGON_COLOR_PALETTE[index % POLYGON_COLOR_PALETTE.length]);
+                }
+                if (!state.polygonAliasVisibility.has(alias)) {
+                    state.polygonAliasVisibility.set(alias, true);
+                }
+            });
+        }
+
+        function updatePolygonAliasControls() {
+            elements.polygonAliasControls.innerHTML = '';
+
+            Array.from(state.allPolygonAliases).sort().forEach(alias => {
+                const controlDiv = document.createElement('div');
+                controlDiv.className = 'alias-control';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `alias-${alias}`;
+                checkbox.checked = state.polygonAliasVisibility.get(alias);
+                checkbox.addEventListener('change', () => {
+                    state.polygonAliasVisibility.set(alias, checkbox.checked);
+                    updateAllLayers();
+                });
+
+                const label = document.createElement('label');
+                label.htmlFor = `alias-${alias}`;
+                label.textContent = alias;
+
+                const colorIndicator = document.createElement('div');
+                colorIndicator.className = 'color-indicator';
+                const color = state.polygonAliasColors.get(alias);
+                colorIndicator.style.backgroundColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+
+                controlDiv.appendChild(checkbox);
+                controlDiv.appendChild(label);
+                controlDiv.appendChild(colorIndicator);
+                elements.polygonAliasControls.appendChild(controlDiv);
+            });
+        }
+
+        // === LAYER CREATION FUNCTIONS ===
+        function createTileLayer(planeNum, opacity = 1) {
+            return new TileLayer({
+                id: `tiles-${planeNum}`,
+                pickable: true,
+                tileSize: IMG_DIMENSIONS.tileSize,
+                minZoom: 0,
+                maxZoom: 8,
+                opacity: opacity,
+                visible: state.showTiles,
+                coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+                extent: [0, 0, IMG_DIMENSIONS.width, IMG_DIMENSIONS.height],
+                getTileData: async ({index}) => {
+                    const {x, y, z} = index;
+                    const cacheKey = `${planeNum}-${z}-${y}-${x}`;
+
+                    if (state.tileCache.has(cacheKey)) {
+                        return state.tileCache.get(cacheKey);
+                    }
+
+                    const imageUrl = getTileUrl(planeNum, z, y, x);
+                    const promise = loadImage(imageUrl)
+                        .catch(error => {
+                            console.error('Error loading tile:', error);
+                            return null;
+                        });
+
+                    state.tileCache.set(cacheKey, promise);
+
+                    if (state.tileCache.size > MAX_TILE_CACHE) {
+                        const keys = Array.from(state.tileCache.keys());
+                        for (let i = 0; i < Math.floor(MAX_TILE_CACHE / 4); i++) {
+                            state.tileCache.delete(keys[i]);
+                        }
+                    }
+
+                    return promise;
+                },
+                renderSubLayers: (props) => {
+                    if (!props.data) return null;
+
+                    const {left, bottom, right, top} = props.tile.bbox;
+                    const {width, height} = IMG_DIMENSIONS;
+
+                    return new BitmapLayer({
+                        ...props,
+                        id: `${props.id}-bitmap`,
+                        data: null,
+                        image: props.data,
+                        bounds: [
+                            clamp(left, 0, width),
+                            clamp(bottom, 0, height),
+                            clamp(right, 0, width),
+                            clamp(top, 0, height)
+                        ]
+                    });
+                }
+            });
+        }
+
+        function createPolygonLayers(planeNum) {
+            const layers = [];
+            if (!state.showPolygons) return layers;
+
+            const geojson = state.polygonCache.get(planeNum);
+            if (!geojson) return layers;
+
+            // Group features by alias
+            const groupedFeatures = new Map();
+            geojson.features.forEach(feature => {
+                const alias = feature.properties.alias;
+                if (!groupedFeatures.has(alias)) {
+                    groupedFeatures.set(alias, []);
+                }
+                groupedFeatures.get(alias).push(feature);
+            });
+
+            groupedFeatures.forEach((features, alias) => {
+                if (state.polygonAliasVisibility.get(alias)) {
+                    const color = state.polygonAliasColors.get(alias);
+                    const aliasGeojson = {
+                        type: 'FeatureCollection',
+                        features: features
+                    };
+
+                    const layer = new GeoJsonLayer({
+                        id: `polygons-${planeNum}-${alias}`,
+                        data: aliasGeojson,
+                        pickable: true,
+                        stroked: true,
+                        filled: true,
+                        getLineColor: [...color, 255],
+                        getFillColor: [...color, 80],
+                        getLineWidth: 2,
+                        lineWidthUnits: 'pixels',
+                        coordinateSystem: COORDINATE_SYSTEM.CARTESIAN
+                    });
+
+                    layers.push(layer);
+                }
+            });
+
+            return layers;
+        }
+
+        function createGeneLayers() {
+            const layers = [];
+            if (!state.showGenes || !state.geneIconAtlas) return layers;
+
+            for (const gene of state.geneDataMap.keys()) {
+                const layer = new IconLayer({
+                    id: `genes-${gene}`,
+                    data: state.geneDataMap.get(gene),
+                    visible: state.selectedGenes.has(gene),
+                    pickable: true,
+                    coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+                    iconAtlas: state.geneIconAtlas,
+                    iconMapping: state.geneIconMapping,
+                    getPosition: d => transformToTileCoordinates(d.x, d.y),
+                    getSize: d => 20 / Math.sqrt(1 + Math.abs(d.z - state.currentPlane)),
+                    getIcon: d => d.gene,
+                    getColor: [255, 255, 255],
+                    sizeUnits: 'pixels',
+                    sizeScale: state.geneSizeScale,
+                    updateTriggers: {
+                        getSize: [state.currentPlane]
+                    }
+                });
+
+                layers.push(layer);
+            }
+
+            return layers;
+        }
+
+        // === MAIN UPDATE FUNCTION ===
+        function updateAllLayers() {
+            if (!state.deckglInstance) return;
+
+            const layers = [];
+
+            // Add tile layers
+            const direction = elements.slider.value > state.currentPlane ? 1 : -1;
+            const preloadAhead = direction === 1 ? MAX_PRELOAD + 1 : MAX_PRELOAD;
+            const preloadBehind = direction === -1 ? MAX_PRELOAD + 1 : MAX_PRELOAD;
+
+            const start = Math.max(0, state.currentPlane - preloadBehind);
+            const end = Math.min(99, state.currentPlane + preloadAhead);
+
+            for (let plane = start; plane <= end; plane++) {
+                const opacity = plane === state.currentPlane ? 1 : 0;
+                layers.push(createTileLayer(plane, opacity));
+            }
+
+            // Add polygon layers for current plane
+            layers.push(...createPolygonLayers(state.currentPlane));
+
+            // Add gene layers
+            layers.push(...createGeneLayers());
+
+            state.deckglInstance.setProps({ layers: layers });
+        }
+
+        // === MAIN PLANE UPDATE FUNCTION ===
+        async function updatePlane(newPlane) {
+            if (state.isLoading) return;
+
+            showLoading();
+
+            state.currentPlane = clamp(newPlane, 0, 99);
+            elements.slider.value = state.currentPlane;
+            elements.label.textContent = `Plane: ${state.currentPlane}`;
+
+            // Load polygon data for current plane
+            await loadPolygonData(state.currentPlane);
+
+            // Preload adjacent polygon data
+            if (state.currentPlane > 0) {
+                loadPolygonData(state.currentPlane - 1).catch(() => {});
+            }
+            if (state.currentPlane < 99) {
+                loadPolygonData(state.currentPlane + 1).catch(() => {});
+            }
+
+            updateAllLayers();
+            hideLoading();
+        }
+
+        // === TOOLTIP FUNCTIONS ===
+        function showTooltip(info) {
+            const tooltip = elements.tooltip;
+            
+            if (info.object) {
+                let content = '';
+                
+                if (info.object.properties) {
+                    // Polygon tooltip
+                    content = `<strong>Cell Label:</strong> ${info.object.properties.label}<br>
+                              <strong>Alias:</strong> ${info.object.properties.alias}<br>
+                              <strong>Plane:</strong> ${info.object.properties.plane_id}`;
+                } else if (info.object.gene) {
+                    // Gene tooltip
+                    content = `<strong>Gene:</strong> ${info.object.gene}<br>
+                              <strong>Coords:</strong> ${info.object.x.toFixed(2)}, ${info.object.y.toFixed(2)}<br>
+                              <strong>Plane:</strong> ${info.object.z}`;
+                }
+                
+                tooltip.innerHTML = content;
+                tooltip.style.display = 'block';
+                tooltip.style.left = info.x + 20 + 'px';
+                tooltip.style.top = info.y - 60 + 'px';
+            } else {
+                tooltip.style.display = 'none';
+            }
+        }
+
+        // === DECK.GL INITIALIZATION ===
+        function initializeDeckGL() {
+            state.deckglInstance = new DeckGL({
+                container: 'map',
+                views: [new OrthographicView({id: 'ortho'})],
+                initialViewState: INITIAL_VIEW_STATE,
+                controller: {
+                    minZoom: 0,
+                    maxZoom: 8,
+                    scrollZoom: true,
+                    doubleClickZoom: true,
+                    touchZoom: true,
+                    keyboard: true
+                },
+                onHover: showTooltip,
+                layers: []
+            });
+
+            // Initialize polygon highlighter
+            state.polygonHighlighter = new PolygonBoundaryHighlighter(
+                state.deckglInstance,
+                COORDINATE_SYSTEM.CARTESIAN
+            );
+            state.polygonHighlighter.initialize();
+        }
+
+        // === EVENT HANDLERS ===
+        function setupEventHandlers() {
+            // Main slider
+            let sliderTimeout;
+            elements.slider.addEventListener('input', (e) => {
+                clearTimeout(sliderTimeout);
+                sliderTimeout = setTimeout(() => {
+                    updatePlane(parseInt(e.target.value));
+                }, 100);
+            });
+
+            // Navigation buttons
+            elements.prevBtn.addEventListener('click', () => {
+                updatePlane(state.currentPlane - 1);
+            });
+
+            elements.nextBtn.addEventListener('click', () => {
+                updatePlane(state.currentPlane + 1);
+            });
+
+            // Keyboard navigation
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft') {
+                    updatePlane(state.currentPlane - 1);
+                } else if (e.key === 'ArrowRight') {
+                    updatePlane(state.currentPlane + 1);
+                }
+            });
+
+            // Layer toggles
+            elements.showTiles.addEventListener('change', (e) => {
+                state.showTiles = e.target.checked;
+                updateAllLayers();
+            });
+
+            elements.showPolygons.addEventListener('change', (e) => {
+                state.showPolygons = e.target.checked;
+                updateAllLayers();
+            });
+
+            elements.showGenes.addEventListener('change', (e) => {
+                state.showGenes = e.target.checked;
+                updateAllLayers();
+            });
+
+            // Polygon controls
+            elements.toggleAllPolygons.addEventListener('click', () => {
+                const allVisible = Array.from(state.polygonAliasVisibility.values()).every(visible => visible);
+                const newState = !allVisible;
+
+                state.polygonAliasVisibility.forEach((_, alias) => {
+                    state.polygonAliasVisibility.set(alias, newState);
+                });
+
+                document.querySelectorAll('#polygonAliasControls input[type="checkbox"]').forEach(cb => {
+                    cb.checked = newState;
+                });
+
+                updateAllLayers();
+            });
+
+            // Gene controls
+            elements.geneSizeSlider.addEventListener('input', (e) => {
+                state.geneSizeScale = parseFloat(e.target.value);
+                elements.geneSizeValue.textContent = state.geneSizeScale.toFixed(1);
+                updateAllLayers();
+            });
+
+            elements.toggleAllGenes.addEventListener('click', () => {
+                const allVisible = state.selectedGenes.size === state.geneDataMap.size;
+                
+                if (allVisible) {
+                    state.selectedGenes.clear();
+                } else {
+                    state.geneDataMap.forEach((_, gene) => {
+                        state.selectedGenes.add(gene);
+                    });
+                }
+                
+                updateAllLayers();
+            });
+
+            // Gene panel
+            elements.genePanelBtn.addEventListener('click', () => {
+                if (!state.genePanelWin || state.genePanelWin.closed) {
+                    state.genePanelWin = window.open('genes_datatable.html', 'GenePanel');
+                } else {
+                    state.genePanelWin.focus();
+                }
+            });
+
+            // Minimize button
+            elements.minimizeBtn.addEventListener('click', () => {
+                elements.layerControls.classList.toggle('minimized');
+                elements.minimizeBtn.textContent = elements.layerControls.classList.contains('minimized') ? '+' : '−';
+            });
+
+            // Gene panel communication
+            window.addEventListener('message', ev => {
+                const msg = ev.data;
+                if (!msg || !msg.type) return;
+
+                switch (msg.type) {
+                    case 'genePanelReady':
+                        if (state.genePanelWin) {
+                            state.genePanelWin.postMessage({
+                                type: 'geneList',
+                                genes: Array.from(state.geneDataMap.keys()),
+                                chosen: Array.from(state.selectedGenes)
+                            }, '*');
+                        }
+                        break;
+
+                    case 'geneVisibilityUpdate':
+                        state.selectedGenes.clear();
+                        msg.chosen.forEach(g => state.selectedGenes.add(g));
+                        updateAllLayers();
+                        break;
+                }
+            });
+        }
+
+        // === MAIN INITIALIZATION ===
+        async function init() {
+            showLoading();
+            
+            // Initialize deck.gl
+            initializeDeckGL();
+            
+            // Setup event handlers
+            setupEventHandlers();
+            
+            // Load gene data
+            await loadGeneData();
+            
+            // Load initial plane data
+            await updatePlane(state.currentPlane);
+            
+            hideLoading();
+        }
+
+        // Start the application
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
