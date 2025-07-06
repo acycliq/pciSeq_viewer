@@ -58,10 +58,17 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
                 .replace('{z}', z)
                 .replace('{y}', y)
                 .replace('{x}', x);
-            console.log(`Loading tile: ${imageUrl}`);
-            const promise = loadImage(imageUrl)
+            
+            // Check if we should show tile errors
+            const userConfig = window.config ? window.config() : { showTileErrors: false };
+            const suppressErrors = !userConfig.showTileErrors;
+            
+            const promise = loadImage(imageUrl, suppressErrors)
                 .catch(error => {
-                    console.error('Error loading tile:', error);
+                    // Only log error if not suppressed
+                    if (!error.suppressLogging) {
+                        console.error('Error loading tile:', error);
+                    }
                     return null;
                 });
 

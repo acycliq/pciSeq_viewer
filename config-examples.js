@@ -42,7 +42,12 @@ function config() {
         showBackgroundImages: true,
         showCellBoundaries: false, // start with polygons hidden for performance
         showGeneMarkers: true,
-        geneMarkerSize: 0.8
+        geneMarkerSize: 0.8,
+        
+        // Performance settings for large datasets
+        enablePerformanceMode: true,
+        showPerformanceStats: false, // less console noise
+        showTileErrors: false        // suppress missing tile warnings
     };
 }
 */

@@ -50,7 +50,10 @@ function config() {
         enablePerformanceMode: true,
         
         // Show performance timing in console?
-        showPerformanceStats: true
+        showPerformanceStats: true,
+        
+        // Show tile loading errors in console? (can be noisy when zooming)
+        showTileErrors: false
     };
 }
 

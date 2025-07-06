@@ -17,14 +17,19 @@ import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
 /**
  * Load image with promise wrapper for error handling
  * @param {string} url - Image URL to load
+ * @param {boolean} suppressErrors - Whether to suppress error logging
  * @returns {Promise<HTMLImageElement>} Loaded image element
  */
-export async function loadImage(url) {
+export async function loadImage(url, suppressErrors = false) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
+        img.onerror = () => {
+            const error = new Error(`Failed to load image: ${url}`);
+            error.suppressLogging = suppressErrors;
+            reject(error);
+        };
         img.src = url;
     });
 }
