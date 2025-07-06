@@ -303,12 +303,19 @@
 
         async function loadPolygonData(planeNum) {
             if (state.polygonCache.has(planeNum)) {
-                return state.polygonCache.get(planeNum);
+                const cachedData = state.polygonCache.get(planeNum);
+                console.log(`Using cached polygon data for plane ${planeNum}, features: ${cachedData?.features?.length || 0}`);
+                return cachedData;
             }
 
             try {
+                console.log(`Loading polygon data for plane ${planeNum}`);
                 const data = await d3.tsv(`planes/plane_${planeNum}.tsv`);
+                console.log(`Loaded ${data.length} polygon rows for plane ${planeNum}`);
+                
                 const geojson = tsvToGeoJSON(data, planeNum);
+                console.log(`Converted to ${geojson.features.length} GeoJSON features`);
+                
                 state.polygonCache.set(planeNum, geojson);
 
                 // Assign colors to new aliases
@@ -318,7 +325,9 @@
                 return geojson;
             } catch (err) {
                 console.error(`Failed to load polygon data for plane ${planeNum}:`, err);
-                return null;
+                console.error('Error details:', err.message, err.stack);
+                // Don't cache failed results
+                return { type: 'FeatureCollection', features: [] };
             }
         }
 
@@ -428,10 +437,19 @@
 
         function createPolygonLayers(planeNum) {
             const layers = [];
-            if (!state.showPolygons) return layers;
+            console.log(`createPolygonLayers called for plane ${planeNum}, showPolygons: ${state.showPolygons}`);
+            if (!state.showPolygons) {
+                console.log('Polygons disabled in state');
+                return layers;
+            }
 
             const geojson = state.polygonCache.get(planeNum);
-            if (!geojson) return layers;
+            if (!geojson) {
+                console.log(`No polygon data for plane ${planeNum}`);
+                return layers;
+            }
+            
+            console.log(`Creating polygon layers for plane ${planeNum}, features: ${geojson.features.length}`);
 
             // Group features by alias
             const groupedFeatures = new Map();
@@ -455,12 +473,9 @@
                         id: `polygons-${planeNum}-${alias}`,
                         data: aliasGeojson,
                         pickable: true,
-                        stroked: true,
-                        filled: true,
-                        getLineColor: [...color, 255],
-                        getFillColor: [...color, 80],
-                        getLineWidth: 2,
-                        lineWidthUnits: 'pixels',
+                        stroked: false,        // No boundaries by default
+                        filled: true,          // Show filled polygons
+                        getFillColor: [...color, 120], // Slightly more opaque fill
                         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN
                     });
 
@@ -541,7 +556,9 @@
             elements.label.textContent = `Plane: ${state.currentPlane}`;
 
             // Load polygon data for current plane
-            await loadPolygonData(state.currentPlane);
+            console.log(`updatePlane: About to load polygon data for plane ${state.currentPlane}`);
+            const polygonResult = await loadPolygonData(state.currentPlane);
+            console.log(`updatePlane: loadPolygonData returned:`, polygonResult);
 
             // Preload adjacent polygon data
             if (state.currentPlane > 0) {
@@ -738,20 +755,35 @@
         async function init() {
             showLoading();
             
-            // Initialize deck.gl
+            // Clear polygon cache to ensure fresh load on app restart
+            state.polygonCache.clear();
+            
+            // Initialize deck.gl instance and create the map container
             initializeDeckGL();
             
-            // Setup event handlers
+            // Setup all UI event listeners (slider, buttons, toggles, etc.)
             setupEventHandlers();
             
-            // Load gene data
+            // Load gene data first - this builds the gene icon atlas and populates geneDataMap
+            // Gene data is shared across all planes, so we only need to load it once
             await loadGeneData();
             
-            // Show gene data immediately (fixes black screen)
-            updateAllLayers();
+            // CRITICAL FIX: Explicitly load polygon data for current plane before updating layers
+            // Previous bug: updateAllLayers() was called before polygon data was loaded,
+            // causing polygons to be missing on initial page load (race condition)
+            // This ensures polygon data is cached before any rendering happens
+            console.log(`Init: Loading polygon data for plane ${state.currentPlane}`);
+            const polygonResult = await loadPolygonData(state.currentPlane);
+            console.log(`Init: Polygon data loaded:`, polygonResult);
             
-            // Load initial plane data
-            await updatePlane(state.currentPlane);
+            // Update UI to reflect the current plane state after data loading
+            state.currentPlane = DEFAULT_STATE.currentPlane;
+            elements.slider.value = state.currentPlane;
+            elements.label.textContent = `Plane: ${state.currentPlane}`;
+            
+            // Now safely update all layers - all required data (genes, polygons) is loaded
+            // This will render: background tiles + gene markers + cell boundary polygons
+            updateAllLayers();
             
             hideLoading();
         }
