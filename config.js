@@ -28,7 +28,7 @@ function config() {
         
         // Where are your cell boundary files? 
         // Use {plane} as placeholder - it will be replaced with the actual plane number
-        cellBoundaryFiles: "./planes/plane_{plane}.tsv",
+        cellBoundaryFiles: "./data/cellBoundaries/plane_{plane}.tsv",
         
         // Where are your background image tiles?
         // Use {plane}, {z}, {y}, {x} as placeholders
