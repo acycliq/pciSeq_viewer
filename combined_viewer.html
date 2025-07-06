@@ -88,6 +88,13 @@
             TIMING
         } from './config/constants.js';
 
+        // Import coordinate transformation utilities
+        import {
+            clamp,
+            transformToTileCoordinates,
+            getTileUrl
+        } from './utils/coordinateTransform.js';
+
         // Extract deck.gl components
         const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer, IconLayer} = deck;
 
@@ -153,27 +160,6 @@
         };
 
         // === UTILITY FUNCTIONS ===
-        function clamp(value, min, max) {
-            return Math.min(Math.max(value, min), max);
-        }
-
-        /**
-         * Transform coordinates from original image space to tile coordinate space (256x256)
-         * Handles any aspect ratio with proper adjustment factors
-         */
-        function transformToTileCoordinates(x, y) {
-            const {width, height, tileSize} = IMG_DIMENSIONS;
-            const maxDimension = Math.max(width, height);
-            
-            // Adjustment factors to handle aspect ratio
-            const xAdjustment = width / maxDimension;
-            const yAdjustment = height / maxDimension;
-            
-            return [
-                x * (tileSize / width) * xAdjustment,
-                y * (tileSize / height) * yAdjustment
-            ];
-        }
 
         function showLoading() {
             state.isLoading = true;
@@ -195,9 +181,6 @@
             });
         }
 
-        function getTileUrl(planeNum, z, y, x) {
-            return `${TILE_BASE_URL}/tiles_${planeNum}/${z}/${y}/${x}.jpg`;
-        }
 
         // === GENE DATA FUNCTIONS ===
         async function loadGeneData() {
@@ -292,7 +275,7 @@
                     if (!Array.isArray(parsedCoords) || parsedCoords.length < 3) return [];
 
                     // Scale coordinates to match tile resolution
-                    const scaledCoords = parsedCoords.map(([x, y]) => transformToTileCoordinates(x, y));
+                    const scaledCoords = parsedCoords.map(([x, y]) => transformToTileCoordinates(x, y, IMG_DIMENSIONS));
 
                     const alias = generatePolygonAlias(row.label);
                     state.allPolygonAliases.add(alias);
@@ -403,7 +386,7 @@
                         return state.tileCache.get(cacheKey);
                     }
 
-                    const imageUrl = getTileUrl(planeNum, z, y, x);
+                    const imageUrl = getTileUrl(TILE_BASE_URL, planeNum, z, y, x);
                     const promise = loadImage(imageUrl)
                         .catch(error => {
                             console.error('Error loading tile:', error);
@@ -502,7 +485,7 @@
                     coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
                     iconAtlas: state.geneIconAtlas,
                     iconMapping: state.geneIconMapping,
-                    getPosition: d => transformToTileCoordinates(d.x, d.y),
+                    getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
                     getSize: d => GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.z - state.currentPlane)),
                     getIcon: d => d.gene,
                     getColor: [255, 255, 255],
