@@ -75,28 +75,46 @@
         // Import configuration constants
         import {
             TILE_BASE_URL,
-            GENE_DATA_URL,
-            IMG_DIMENSIONS,
             INITIAL_VIEW_STATE,
             MAX_PRELOAD,
-            MAX_TILE_CACHE,
             DEFAULT_STATE,
-            POLYGON_COLOR_PALETTE,
-            POLYGON_ALIAS_THRESHOLDS,
-            UI_ELEMENTS,
-            GENE_SIZE_CONFIG,
-            TIMING
+            UI_ELEMENTS
         } from './config/constants.js';
 
         // Import coordinate transformation utilities
         import {
-            clamp,
-            transformToTileCoordinates,
-            getTileUrl
+            clamp
         } from './utils/coordinateTransform.js';
 
+        // Import data loading functions
+        import {
+            loadGeneData,
+            loadPolygonData,
+            assignColorsToPolygonAliases
+        } from './modules/dataLoaders.js';
+
+        // Import layer creation functions
+        import {
+            createTileLayer,
+            createPolygonLayers,
+            createGeneLayers
+        } from './modules/layerCreators.js';
+
+        // Import UI helper functions
+        import {
+            showLoading,
+            hideLoading,
+            showTooltip,
+            updatePolygonAliasControls
+        } from './modules/uiHelpers.js';
+
+        // Import event handling functions
+        import {
+            setupEventHandlers
+        } from './modules/eventHandlers.js';
+
         // Extract deck.gl components
-        const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer, IconLayer} = deck;
+        const {DeckGL, OrthographicView, COORDINATE_SYSTEM} = deck;
 
         // Application state
         const state = {
@@ -160,362 +178,17 @@
         };
 
         // === UTILITY FUNCTIONS ===
-
-        function showLoading() {
-            state.isLoading = true;
-            elements.loadingIndicator.style.display = 'block';
-        }
-
-        function hideLoading() {
-            state.isLoading = false;
-            elements.loadingIndicator.style.display = 'none';
-        }
-
-        async function loadImage(url) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = () => resolve(img);
-                img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
-                img.src = url;
-            });
-        }
+        // Utility functions have been moved to modules/uiHelpers.js and modules/dataLoaders.js
 
 
         // === GENE DATA FUNCTIONS ===
-        async function loadGeneData() {
-            if (state.geneDataMap.size > 0) return;
-
-            try {
-                const txt = await (await fetch(GENE_DATA_URL)).text();
-                const data = d3.tsvParse(txt, d => ({
-                    x: +d.x,
-                    y: +d.y,
-                    z: +d.plane_id,
-                    gene: d.gene_name
-                }));
-
-                // Group by gene
-                data.forEach(d => {
-                    if (!state.geneDataMap.has(d.gene)) {
-                        state.geneDataMap.set(d.gene, []);
-                    }
-                    state.geneDataMap.get(d.gene).push(d);
-                });
-
-                // Initially all genes are visible
-                state.geneDataMap.forEach((spots, gene) => {
-                    state.selectedGenes.add(gene);
-                });
-
-                // Build icon atlas
-                const genes = Array.from(state.geneDataMap.keys());
-                const {atlas, mapping} = buildGeneIconAtlas(genes);
-                state.geneIconAtlas = atlas;
-                state.geneIconMapping = mapping;
-
-            } catch (err) {
-                console.error('Failed to load gene data:', err);
-            }
-        }
-
-        function buildGeneIconAtlas(genes) {
-            const settings = glyphSettings();
-            const configMap = new Map(settings.map(s => [s.gene, {glyphName: s.glyphName, color: s.color}]));
-            const defaultConfig = configMap.get('Generic') || {glyphName: 'circle', color: '#ffffff'};
-
-            const size = 64;
-            const canvas = document.createElement('canvas');
-            canvas.width = size * genes.length;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
-            const mapping = {};
-
-            genes.forEach((gene, i) => {
-                const cfg = configMap.get(gene) || defaultConfig;
-                const p = {x: i * size + size/2, y: size/2};
-                const r = size * 0.4;
-                
-                ctx.save();
-                ctx.strokeStyle = cfg.color;
-                ctx.lineWidth = 4;
-                ctxPath(cfg.glyphName, ctx, p, r);
-                ctx.stroke();
-                ctx.restore();
-                
-                mapping[gene] = {x: i * size, y: 0, width: size, height: size};
-            });
-
-            return {atlas: canvas, mapping};
-        }
+        // Gene data loading functions have been moved to modules/dataLoaders.js
 
         // === POLYGON DATA FUNCTIONS ===
-        function generatePolygonAlias(label) {
-            if (!label) return 'unknown';
-            const labelStr = label.toString().toLowerCase();
-            const numericPart = parseInt(labelStr.match(/\d+/)?.[0] || '0');
-
-            if (numericPart < POLYGON_ALIAS_THRESHOLDS.GROUP_A_MAX) {
-                return 'group_A';
-            } else if (numericPart < POLYGON_ALIAS_THRESHOLDS.GROUP_B_MAX) {
-                return 'group_B';
-            } else if (numericPart < POLYGON_ALIAS_THRESHOLDS.GROUP_C_MAX) {
-                return 'group_C';
-            } else {
-                return 'group_D';
-            }
-        }
-
-        function tsvToGeoJSON(tsvData, planeId) {
-            const features = tsvData.flatMap(row => {
-                if (!row || !row.coords) return [];
-
-                try {
-                    const parsedCoords = JSON.parse(row.coords);
-                    if (!Array.isArray(parsedCoords) || parsedCoords.length < 3) return [];
-
-                    // Scale coordinates to match tile resolution
-                    const scaledCoords = parsedCoords.map(([x, y]) => transformToTileCoordinates(x, y, IMG_DIMENSIONS));
-
-                    const alias = generatePolygonAlias(row.label);
-                    state.allPolygonAliases.add(alias);
-
-                    return [{
-                        type: 'Feature',
-                        geometry: {
-                            type: 'Polygon',
-                            coordinates: [scaledCoords]
-                        },
-                        properties: {
-                            plane_id: planeId,
-                            label: row.label,
-                            alias: alias
-                        }
-                    }];
-                } catch (e) {
-                    console.error(`Skipping feature due to JSON parsing error`, e);
-                    return [];
-                }
-            });
-
-            return { type: 'FeatureCollection', features: features };
-        }
-
-        async function loadPolygonData(planeNum) {
-            if (state.polygonCache.has(planeNum)) {
-                const cachedData = state.polygonCache.get(planeNum);
-                console.log(`Using cached polygon data for plane ${planeNum}, features: ${cachedData?.features?.length || 0}`);
-                return cachedData;
-            }
-
-            try {
-                console.log(`Loading polygon data for plane ${planeNum}`);
-                const data = await d3.tsv(`planes/plane_${planeNum}.tsv`);
-                console.log(`Loaded ${data.length} polygon rows for plane ${planeNum}`);
-                
-                const geojson = tsvToGeoJSON(data, planeNum);
-                console.log(`Converted to ${geojson.features.length} GeoJSON features`);
-                
-                state.polygonCache.set(planeNum, geojson);
-
-                // Assign colors to new aliases
-                assignColorsToPolygonAliases();
-                updatePolygonAliasControls();
-
-                return geojson;
-            } catch (err) {
-                console.error(`Failed to load polygon data for plane ${planeNum}:`, err);
-                console.error('Error details:', err.message, err.stack);
-                // Don't cache failed results
-                return { type: 'FeatureCollection', features: [] };
-            }
-        }
-
-        function assignColorsToPolygonAliases() {
-            const aliases = Array.from(state.allPolygonAliases);
-            aliases.forEach((alias, index) => {
-                if (!state.polygonAliasColors.has(alias)) {
-                    state.polygonAliasColors.set(alias, POLYGON_COLOR_PALETTE[index % POLYGON_COLOR_PALETTE.length]);
-                }
-                if (!state.polygonAliasVisibility.has(alias)) {
-                    state.polygonAliasVisibility.set(alias, true);
-                }
-            });
-        }
-
-        function updatePolygonAliasControls() {
-            elements.polygonAliasControls.innerHTML = '';
-
-            Array.from(state.allPolygonAliases).sort().forEach(alias => {
-                const controlDiv = document.createElement('div');
-                controlDiv.className = 'alias-control';
-
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = `alias-${alias}`;
-                checkbox.checked = state.polygonAliasVisibility.get(alias);
-                checkbox.addEventListener('change', () => {
-                    state.polygonAliasVisibility.set(alias, checkbox.checked);
-                    updateAllLayers();
-                });
-
-                const label = document.createElement('label');
-                label.htmlFor = `alias-${alias}`;
-                label.textContent = alias;
-
-                const colorIndicator = document.createElement('div');
-                colorIndicator.className = 'color-indicator';
-                const color = state.polygonAliasColors.get(alias);
-                colorIndicator.style.backgroundColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-
-                controlDiv.appendChild(checkbox);
-                controlDiv.appendChild(label);
-                controlDiv.appendChild(colorIndicator);
-                elements.polygonAliasControls.appendChild(controlDiv);
-            });
-        }
+        // Polygon data loading functions have been moved to modules/dataLoaders.js
 
         // === LAYER CREATION FUNCTIONS ===
-        function createTileLayer(planeNum, opacity = 1) {
-            return new TileLayer({
-                id: `tiles-${planeNum}`,
-                pickable: false,
-                tileSize: IMG_DIMENSIONS.tileSize,
-                minZoom: 0,
-                maxZoom: 8,
-                opacity: opacity,
-                visible: state.showTiles,
-                coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-                extent: [0, 0, IMG_DIMENSIONS.width, IMG_DIMENSIONS.height],
-                getTileData: async ({index}) => {
-                    const {x, y, z} = index;
-                    const cacheKey = `${planeNum}-${z}-${y}-${x}`;
-
-                    if (state.tileCache.has(cacheKey)) {
-                        return state.tileCache.get(cacheKey);
-                    }
-
-                    const imageUrl = getTileUrl(TILE_BASE_URL, planeNum, z, y, x);
-                    const promise = loadImage(imageUrl)
-                        .catch(error => {
-                            console.error('Error loading tile:', error);
-                            return null;
-                        });
-
-                    state.tileCache.set(cacheKey, promise);
-
-                    if (state.tileCache.size > MAX_TILE_CACHE) {
-                        const keys = Array.from(state.tileCache.keys());
-                        for (let i = 0; i < Math.floor(MAX_TILE_CACHE / 4); i++) {
-                            state.tileCache.delete(keys[i]);
-                        }
-                    }
-
-                    return promise;
-                },
-                renderSubLayers: (props) => {
-                    if (!props.data) return null;
-
-                    const {left, bottom, right, top} = props.tile.bbox;
-                    const {width, height} = IMG_DIMENSIONS;
-
-                    return new BitmapLayer({
-                        ...props,
-                        id: `${props.id}-bitmap`,
-                        data: null,
-                        image: props.data,
-                        bounds: [
-                            clamp(left, 0, width),
-                            clamp(bottom, 0, height),
-                            clamp(right, 0, width),
-                            clamp(top, 0, height)
-                        ]
-                    });
-                }
-            });
-        }
-
-        function createPolygonLayers(planeNum) {
-            const layers = [];
-            console.log(`createPolygonLayers called for plane ${planeNum}, showPolygons: ${state.showPolygons}`);
-            if (!state.showPolygons) {
-                console.log('Polygons disabled in state');
-                return layers;
-            }
-
-            const geojson = state.polygonCache.get(planeNum);
-            if (!geojson) {
-                console.log(`No polygon data for plane ${planeNum}`);
-                return layers;
-            }
-            
-            console.log(`Creating polygon layers for plane ${planeNum}, features: ${geojson.features.length}`);
-
-            // Group features by alias
-            const groupedFeatures = new Map();
-            geojson.features.forEach(feature => {
-                const alias = feature.properties.alias;
-                if (!groupedFeatures.has(alias)) {
-                    groupedFeatures.set(alias, []);
-                }
-                groupedFeatures.get(alias).push(feature);
-            });
-
-            groupedFeatures.forEach((features, alias) => {
-                if (state.polygonAliasVisibility.get(alias)) {
-                    const color = state.polygonAliasColors.get(alias);
-                    const aliasGeojson = {
-                        type: 'FeatureCollection',
-                        features: features
-                    };
-
-                    const layer = new GeoJsonLayer({
-                        id: `polygons-${planeNum}-${alias}`,
-                        data: aliasGeojson,
-                        pickable: true,
-                        stroked: false,        // No boundaries by default
-                        filled: true,          // Show filled polygons
-                        getFillColor: [...color, 120], // Slightly more opaque fill
-                        coordinateSystem: COORDINATE_SYSTEM.CARTESIAN
-                    });
-
-                    layers.push(layer);
-                }
-            });
-
-            return layers;
-        }
-
-        function createGeneLayers() {
-            const layers = [];
-            if (!state.showGenes || !state.geneIconAtlas) return layers;
-
-            for (const gene of state.geneDataMap.keys()) {
-                const layer = new IconLayer({
-                    id: `genes-${gene}`,
-                    data: state.geneDataMap.get(gene),
-                    visible: state.selectedGenes.has(gene),
-                    pickable: true,
-                    onHover: showTooltip,
-                    coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-                    iconAtlas: state.geneIconAtlas,
-                    iconMapping: state.geneIconMapping,
-                    getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
-                    getSize: d => GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.z - state.currentPlane)),
-                    getIcon: d => d.gene,
-                    getColor: [255, 255, 255],
-                    sizeUnits: 'pixels',
-                    sizeScale: state.geneSizeScale,
-                    updateTriggers: {
-                        getSize: [state.currentPlane]
-                    }
-                });
-
-                layers.push(layer);
-            }
-
-            return layers;
-        }
+        // Layer creation functions have been moved to modules/layerCreators.js
 
         // === MAIN UPDATE FUNCTION ===
         function updateAllLayers() {
@@ -533,14 +206,14 @@
 
             for (let plane = start; plane <= end; plane++) {
                 const opacity = plane === state.currentPlane ? 1 : 0;
-                layers.push(createTileLayer(plane, opacity));
+                layers.push(createTileLayer(plane, opacity, state.tileCache, TILE_BASE_URL, state.showTiles));
             }
 
             // Add polygon layers for current plane
-            layers.push(...createPolygonLayers(state.currentPlane));
+            layers.push(...createPolygonLayers(state.currentPlane, state.polygonCache, state.showPolygons, state.polygonAliasVisibility, state.polygonAliasColors));
 
             // Add gene layers
-            layers.push(...createGeneLayers());
+            layers.push(...createGeneLayers(state.geneDataMap, state.showGenes, state.selectedGenes, state.geneIconAtlas, state.geneIconMapping, state.currentPlane, state.geneSizeScale, (info) => showTooltip(info, elements.tooltip)));
 
             state.deckglInstance.setProps({ layers: layers });
         }
@@ -549,7 +222,7 @@
         async function updatePlane(newPlane) {
             if (state.isLoading) return;
 
-            showLoading();
+            showLoading(state, elements.loadingIndicator);
 
             state.currentPlane = clamp(newPlane, 0, 99);
             elements.slider.value = state.currentPlane;
@@ -557,50 +230,29 @@
 
             // Load polygon data for current plane
             console.log(`updatePlane: About to load polygon data for plane ${state.currentPlane}`);
-            const polygonResult = await loadPolygonData(state.currentPlane);
+            const polygonResult = await loadPolygonData(state.currentPlane, state.polygonCache, state.allPolygonAliases);
             console.log(`updatePlane: loadPolygonData returned:`, polygonResult);
+            
+            // Update polygon controls after loading new data
+            assignColorsToPolygonAliases(state.allPolygonAliases, state.polygonAliasColors, state.polygonAliasVisibility);
+            updatePolygonAliasControls(state.allPolygonAliases, state.polygonAliasVisibility, state.polygonAliasColors, elements.polygonAliasControls, updateAllLayers);
 
             // Preload adjacent polygon data
             if (state.currentPlane > 0) {
-                loadPolygonData(state.currentPlane - 1).catch(() => {});
+                loadPolygonData(state.currentPlane - 1, state.polygonCache, state.allPolygonAliases).catch(() => {});
             }
             if (state.currentPlane < 99) {
-                loadPolygonData(state.currentPlane + 1).catch(() => {});
+                loadPolygonData(state.currentPlane + 1, state.polygonCache, state.allPolygonAliases).catch(() => {});
             }
 
             // Update layers after loading polygon data
             updateAllLayers();
             
-            hideLoading();
+            hideLoading(state, elements.loadingIndicator);
         }
 
         // === TOOLTIP FUNCTIONS ===
-        function showTooltip(info) {
-            const tooltip = elements.tooltip;
-            
-            if (info.object) {
-                let content = '';
-                
-                if (info.object.properties) {
-                    // Polygon tooltip
-                    content = `<strong>Cell Label:</strong> ${info.object.properties.label}<br>
-                              <strong>Alias:</strong> ${info.object.properties.alias}<br>
-                              <strong>Plane:</strong> ${info.object.properties.plane_id}`;
-                } else if (info.object.gene) {
-                    // Gene tooltip
-                    content = `<strong>Gene:</strong> ${info.object.gene}<br>
-                              <strong>Coords:</strong> ${info.object.x.toFixed(2)}, ${info.object.y.toFixed(2)}<br>
-                              <strong>Plane:</strong> ${info.object.z}`;
-                }
-                
-                tooltip.innerHTML = content;
-                tooltip.style.display = 'block';
-                tooltip.style.left = info.x + 20 + 'px';
-                tooltip.style.top = info.y - 60 + 'px';
-            } else {
-                tooltip.style.display = 'none';
-            }
-        }
+        // Tooltip functions have been moved to modules/uiHelpers.js
 
         // === DECK.GL INITIALIZATION ===
         function initializeDeckGL() {
@@ -616,7 +268,7 @@
                     touchZoom: true,
                     keyboard: true
                 },
-                onHover: showTooltip,
+                onHover: (info) => showTooltip(info, elements.tooltip),
                 getCursor: ({isHovering}) => (isHovering ? 'pointer' : 'default'),
                 layers: []
             });
@@ -630,130 +282,11 @@
         }
 
         // === EVENT HANDLERS ===
-        function setupEventHandlers() {
-            // Main slider
-            let sliderTimeout;
-            elements.slider.addEventListener('input', (e) => {
-                clearTimeout(sliderTimeout);
-                sliderTimeout = setTimeout(() => {
-                    updatePlane(parseInt(e.target.value));
-                }, TIMING.SLIDER_DEBOUNCE);
-            });
-
-            // Navigation buttons
-            elements.prevBtn.addEventListener('click', () => {
-                updatePlane(state.currentPlane - 1);
-            });
-
-            elements.nextBtn.addEventListener('click', () => {
-                updatePlane(state.currentPlane + 1);
-            });
-
-            // Keyboard navigation
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'ArrowLeft') {
-                    updatePlane(state.currentPlane - 1);
-                } else if (e.key === 'ArrowRight') {
-                    updatePlane(state.currentPlane + 1);
-                }
-            });
-
-            // Layer toggles
-            elements.showTiles.addEventListener('change', (e) => {
-                state.showTiles = e.target.checked;
-                updateAllLayers();
-            });
-
-            elements.showPolygons.addEventListener('change', (e) => {
-                state.showPolygons = e.target.checked;
-                updateAllLayers();
-            });
-
-            elements.showGenes.addEventListener('change', (e) => {
-                state.showGenes = e.target.checked;
-                updateAllLayers();
-            });
-
-            // Polygon controls
-            elements.toggleAllPolygons.addEventListener('click', () => {
-                const allVisible = Array.from(state.polygonAliasVisibility.values()).every(visible => visible);
-                const newState = !allVisible;
-
-                state.polygonAliasVisibility.forEach((_, alias) => {
-                    state.polygonAliasVisibility.set(alias, newState);
-                });
-
-                document.querySelectorAll('#polygonAliasControls input[type="checkbox"]').forEach(cb => {
-                    cb.checked = newState;
-                });
-
-                updateAllLayers();
-            });
-
-            // Gene controls
-            elements.geneSizeSlider.addEventListener('input', (e) => {
-                state.geneSizeScale = parseFloat(e.target.value);
-                elements.geneSizeValue.textContent = state.geneSizeScale.toFixed(1);
-                updateAllLayers();
-            });
-
-            elements.toggleAllGenes.addEventListener('click', () => {
-                const allVisible = state.selectedGenes.size === state.geneDataMap.size;
-                
-                if (allVisible) {
-                    state.selectedGenes.clear();
-                } else {
-                    state.geneDataMap.forEach((_, gene) => {
-                        state.selectedGenes.add(gene);
-                    });
-                }
-                
-                updateAllLayers();
-            });
-
-            // Gene panel
-            elements.genePanelBtn.addEventListener('click', () => {
-                if (!state.genePanelWin || state.genePanelWin.closed) {
-                    state.genePanelWin = window.open('genes_datatable.html', 'GenePanel');
-                } else {
-                    state.genePanelWin.focus();
-                }
-            });
-
-            // Minimize button
-            elements.minimizeBtn.addEventListener('click', () => {
-                elements.layerControls.classList.toggle('minimized');
-                elements.minimizeBtn.textContent = elements.layerControls.classList.contains('minimized') ? '+' : '−';
-            });
-
-            // Gene panel communication
-            window.addEventListener('message', ev => {
-                const msg = ev.data;
-                if (!msg || !msg.type) return;
-
-                switch (msg.type) {
-                    case 'genePanelReady':
-                        if (state.genePanelWin) {
-                            state.genePanelWin.postMessage({
-                                type: 'geneList',
-                                genes: Array.from(state.geneDataMap.keys()),
-                                chosen: Array.from(state.selectedGenes)
-                            }, '*');
-                        }
-                        break;
-
-                    case 'geneVisibilityUpdate':
-                        state.selectedGenes.clear();
-                        msg.chosen.forEach(g => state.selectedGenes.add(g));
-                        updateAllLayers();
-                        break;
-                }
-            });
-        }
+        // Event handling functions have been moved to modules/eventHandlers.js
 
         // === MAIN INITIALIZATION ===
         async function init() {
-            showLoading();
+            showLoading(state, elements.loadingIndicator);
             
             // Clear polygon cache to ensure fresh load on app restart
             state.polygonCache.clear();
@@ -762,19 +295,25 @@
             initializeDeckGL();
             
             // Setup all UI event listeners (slider, buttons, toggles, etc.)
-            setupEventHandlers();
+            setupEventHandlers(elements, state, updatePlane, updateAllLayers);
             
             // Load gene data first - this builds the gene icon atlas and populates geneDataMap
             // Gene data is shared across all planes, so we only need to load it once
-            await loadGeneData();
+            const {atlas, mapping} = await loadGeneData(state.geneDataMap, state.selectedGenes);
+            state.geneIconAtlas = atlas;
+            state.geneIconMapping = mapping;
             
             // CRITICAL FIX: Explicitly load polygon data for current plane before updating layers
             // Previous bug: updateAllLayers() was called before polygon data was loaded,
             // causing polygons to be missing on initial page load (race condition)
             // This ensures polygon data is cached before any rendering happens
             console.log(`Init: Loading polygon data for plane ${state.currentPlane}`);
-            const polygonResult = await loadPolygonData(state.currentPlane);
+            const polygonResult = await loadPolygonData(state.currentPlane, state.polygonCache, state.allPolygonAliases);
             console.log(`Init: Polygon data loaded:`, polygonResult);
+            
+            // Assign colors and update controls after loading polygon data
+            assignColorsToPolygonAliases(state.allPolygonAliases, state.polygonAliasColors, state.polygonAliasVisibility);
+            updatePolygonAliasControls(state.allPolygonAliases, state.polygonAliasVisibility, state.polygonAliasColors, elements.polygonAliasControls, updateAllLayers);
             
             // Update UI to reflect the current plane state after data loading
             state.currentPlane = DEFAULT_STATE.currentPlane;
@@ -785,7 +324,7 @@
             // This will render: background tiles + gene markers + cell boundary polygons
             updateAllLayers();
             
-            hideLoading();
+            hideLoading(state, elements.loadingIndicator);
         }
 
         // Start the application
