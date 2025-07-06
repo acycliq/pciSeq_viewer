@@ -27,13 +27,19 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
     
     // === PLANE NAVIGATION CONTROLS ===
     
-    // Main slider with debouncing to prevent excessive updates
+    // Optimized slider handling for maximum responsiveness
     let sliderTimeout;
     elements.slider.addEventListener('input', (e) => {
-        clearTimeout(sliderTimeout);
-        sliderTimeout = setTimeout(() => {
-            updatePlaneCallback(parseInt(e.target.value));
-        }, TIMING.SLIDER_DEBOUNCE);
+        const newPlane = parseInt(e.target.value);
+        
+        // Immediate visual update (no debouncing for UI responsiveness)
+        updatePlaneCallback(newPlane);
+        
+        // Optional: Still debounce any expensive operations if needed
+        // clearTimeout(sliderTimeout);
+        // sliderTimeout = setTimeout(() => {
+        //     // Could trigger additional background operations here
+        // }, TIMING.SLIDER_DEBOUNCE);
     });
 
     // Previous/Next navigation buttons
