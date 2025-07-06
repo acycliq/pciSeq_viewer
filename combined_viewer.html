@@ -807,7 +807,9 @@
                 loadPolygonData(state.currentPlane + 1).catch(() => {});
             }
 
+            // Update layers after loading polygon data
             updateAllLayers();
+            
             hideLoading();
         }
 
@@ -1001,7 +1003,7 @@
             // Load gene data
             await loadGeneData();
             
-            // Show gene data immediately while loading plane data
+            // Show gene data immediately (fixes black screen)
             updateAllLayers();
             
             // Load initial plane data
