@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Combined Moon Dataset and Polygon Viewer</title>
+    <title>Combined Image Dataset and Polygon Viewer</title>
     <script src="https://unpkg.com/deck.gl@8.8.27/dist.min.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <!-- Import the polygon boundary highlighter -->
@@ -211,7 +211,7 @@
         };
 
         const TILE_BASE_URL = 'https://storage.googleapis.com/christina_silver_hc/tiles_hc';
-        const MOON_DIMENSIONS = { width: 6411, height: 4412, tileSize: 256 };
+        const IMG_DIMENSIONS = { width: 6411, height: 4412, depth: 99, tileSize: 256 };
         const MAX_PRELOAD = 3;
         const MAX_TILE_CACHE = 1000;
 
@@ -315,8 +315,8 @@
 
                     // Scale coordinates to match tile resolution at current zoom
                     const scaledCoords = parsedCoords.map(([x, y]) => [
-                        x * (MOON_DIMENSIONS.tileSize / MOON_DIMENSIONS.width),
-                        y * (MOON_DIMENSIONS.tileSize / MOON_DIMENSIONS.height * 4412/6411)
+                        x * (IMG_DIMENSIONS.tileSize / IMG_DIMENSIONS.width),
+                        y * (IMG_DIMENSIONS.tileSize / IMG_DIMENSIONS.height * 4412/6411)
                     ]);
 
                     const alias = generateAlias(row.label);
@@ -431,13 +431,13 @@
             return new TileLayer({
                 id: `dataset-${datasetNum}`,
                 pickable: true,
-                tileSize: MOON_DIMENSIONS.tileSize,
+                tileSize: IMG_DIMENSIONS.tileSize,
                 minZoom: 0,
                 maxZoom: 8,
                 opacity: opacity,
                 visible: true,
                 coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-                extent: [0, 0, MOON_DIMENSIONS.width, MOON_DIMENSIONS.height],
+                extent: [0, 0, IMG_DIMENSIONS.width, IMG_DIMENSIONS.height],
                 getTileData: async ({index}) => {
                     const {x, y, z} = index;
                     const cacheKey = `${datasetNum}-${z}-${y}-${x}`;
@@ -468,7 +468,7 @@
                     if (!props.data) return null;
 
                     const {left, bottom, right, top} = props.tile.bbox;
-                    const {width, height} = MOON_DIMENSIONS;
+                    const {width, height} = IMG_DIMENSIONS;
 
                     return new BitmapLayer({
                         ...props,
