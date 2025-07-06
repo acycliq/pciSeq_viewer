@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Combined Gene Expression and Cell Boundary Viewer</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Load configuration first -->
+    <script src="config.js"></script>
     <script src="https://unpkg.com/deck.gl@8.8.27/dist.min.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/d3-dsv@3"></script>
@@ -74,7 +76,6 @@
     <script type="module">
         // Import configuration constants
         import {
-            TILE_BASE_URL,
             INITIAL_VIEW_STATE,
             MAX_PRELOAD,
             DEFAULT_STATE,
@@ -201,12 +202,13 @@
             const preloadAhead = direction === 1 ? MAX_PRELOAD + 1 : MAX_PRELOAD;
             const preloadBehind = direction === -1 ? MAX_PRELOAD + 1 : MAX_PRELOAD;
 
+            const userConfig = window.config();
             const start = Math.max(0, state.currentPlane - preloadBehind);
-            const end = Math.min(99, state.currentPlane + preloadAhead);
+            const end = Math.min(userConfig.totalPlanes - 1, state.currentPlane + preloadAhead);
 
             for (let plane = start; plane <= end; plane++) {
                 const opacity = plane === state.currentPlane ? 1 : 0;
-                layers.push(createTileLayer(plane, opacity, state.tileCache, TILE_BASE_URL, state.showTiles));
+                layers.push(createTileLayer(plane, opacity, state.tileCache, state.showTiles));
             }
 
             // Add polygon layers for current plane
@@ -224,7 +226,8 @@
 
             showLoading(state, elements.loadingIndicator);
 
-            state.currentPlane = clamp(newPlane, 0, 99);
+            const userConfig = window.config();
+            state.currentPlane = clamp(newPlane, 0, userConfig.totalPlanes - 1);
             elements.slider.value = state.currentPlane;
             elements.label.textContent = `Plane: ${state.currentPlane}`;
 
@@ -241,7 +244,7 @@
             if (state.currentPlane > 0) {
                 loadPolygonData(state.currentPlane - 1, state.polygonCache, state.allPolygonAliases).catch(() => {});
             }
-            if (state.currentPlane < 99) {
+            if (state.currentPlane < userConfig.totalPlanes - 1) {
                 loadPolygonData(state.currentPlane + 1, state.polygonCache, state.allPolygonAliases).catch(() => {});
             }
 
@@ -316,7 +319,10 @@
             updatePolygonAliasControls(state.allPolygonAliases, state.polygonAliasVisibility, state.polygonAliasColors, elements.polygonAliasControls, updateAllLayers);
             
             // Update UI to reflect the current plane state after data loading
+            const userConfig = window.config();
             state.currentPlane = DEFAULT_STATE.currentPlane;
+            elements.slider.min = 0;
+            elements.slider.max = userConfig.totalPlanes - 1;
             elements.slider.value = state.currentPlane;
             elements.label.textContent = `Plane: ${state.currentPlane}`;
             

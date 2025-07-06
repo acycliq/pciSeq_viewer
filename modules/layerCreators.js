@@ -8,12 +8,12 @@
 import { 
     IMG_DIMENSIONS, 
     MAX_TILE_CACHE, 
-    GENE_SIZE_CONFIG 
+    GENE_SIZE_CONFIG,
+    getTileUrlPattern 
 } from '../config/constants.js';
 import { 
     clamp, 
-    transformToTileCoordinates, 
-    getTileUrl 
+    transformToTileCoordinates 
 } from '../utils/coordinateTransform.js';
 import { loadImage } from './dataLoaders.js';
 
@@ -26,11 +26,10 @@ const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJ
  * @param {number} planeNum - Plane number for tile source
  * @param {number} opacity - Layer opacity (0-1)
  * @param {Map} tileCache - Cache for loaded tiles
- * @param {string} tileBaseUrl - Base URL for tile server
  * @param {boolean} showTiles - Whether tiles should be visible
  * @returns {TileLayer} Configured tile layer
  */
-export function createTileLayer(planeNum, opacity, tileCache, tileBaseUrl, showTiles) {
+export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
     return new TileLayer({
         id: `tiles-${planeNum}`,
         pickable: false, // Tiles don't need mouse interaction
@@ -52,8 +51,14 @@ export function createTileLayer(planeNum, opacity, tileCache, tileBaseUrl, showT
                 return tileCache.get(cacheKey);
             }
 
-            // Load new tile and cache the promise
-            const imageUrl = getTileUrl(tileBaseUrl, planeNum, z, y, x);
+            // Load new tile using configured URL pattern
+            const urlPattern = getTileUrlPattern();
+            const imageUrl = urlPattern
+                .replace('{plane}', planeNum)
+                .replace('{z}', z)
+                .replace('{y}', y)
+                .replace('{x}', x);
+            console.log(`Loading tile: ${imageUrl}`);
             const promise = loadImage(imageUrl)
                 .catch(error => {
                     console.error('Error loading tile:', error);
