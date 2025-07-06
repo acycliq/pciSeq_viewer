@@ -85,6 +85,7 @@
 
   <script>
     /* === DATA / SETTINGS === */
+    const IMG_DIMENSIONS = { width: 6411, height: 4412, depth: 99, tileSize: 256 };
     const DATA_URL = 'data/geneData.tsv';
     const settings = glyphSettings();
     const configMap = new Map(settings.map(s => [s.gene, {glyphName:s.glyphName, color:s.color}]));
@@ -164,7 +165,7 @@
         coordinateSystem:COORDINATE_SYSTEM.CARTESIAN,
         iconAtlas,
         iconMapping,
-        getPosition:d=>[d.x,-d.y],
+        getPosition:d=>[d.x,d.y-IMG_DIMENSIONS.height],
         getSize:d=>20/Math.sqrt(1+Math.abs(d.z-plane)),
         getIcon:d=>d.gene,
         getColor:[255,255,255],
@@ -211,13 +212,13 @@
         const {atlas,mapping}=buildAtlas(genes);
         iconAtlas=atlas;iconMapping=mapping;
 
-        const zExt=d3.extent(data,d=>d.z);
+        const zExt=[0, IMG_DIMENSIONS.depth];
         const slider=document.getElementById('planeSlider');
         slider.min=zExt[0];slider.max=zExt[1];plane=slider.value=zExt[0];
         document.getElementById('planeValue').textContent=plane;
 
-        const xExt=d3.extent(data,d=>d.x);
-        const yExt=d3.extent(data,d=>d.y);
+        const xExt=[0, IMG_DIMENSIONS.width];
+        const yExt=[0, IMG_DIMENSIONS.height];
         const centerX=(xExt[0]+xExt[1])/2;
         const centerY=-(yExt[0]+yExt[1])/2;
         const canvas=deckgl.canvas;
