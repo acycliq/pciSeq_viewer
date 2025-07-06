@@ -1,0 +1,254 @@
+/* Combined Gene Expression and Cell Boundary Viewer Styles */
+
+/* Base Styles */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+    background-color: #000;
+    color: #fff;
+}
+
+#map {
+    width: 100vw;
+    height: 100vh;
+}
+
+/* Gene Panel Button */
+#genePanelBtn {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+#genePanelBtn:hover {
+    background: rgba(0, 0, 0, 0.9);
+}
+
+/* Main Controls */
+.main-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 12px 24px;
+    border-radius: 8px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+#planeSlider {
+    width: 350px;
+}
+
+#planeLabel {
+    min-width: 120px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.nav-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.nav-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Layer Controls */
+.layer-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 16px;
+    z-index: 10;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    max-width: 280px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.layer-controls h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+.control-section {
+    margin-bottom: 16px;
+}
+
+.control-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #555;
+}
+
+.layer-toggle {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 4px 0;
+}
+
+.layer-toggle input[type="checkbox"] {
+    margin-right: 8px;
+    transform: scale(1.1);
+}
+
+.layer-toggle label {
+    flex-grow: 1;
+    font-size: 14px;
+    cursor: pointer;
+    color: #333;
+}
+
+.alias-control {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    padding: 4px 0;
+}
+
+.alias-control input[type="checkbox"] {
+    margin-right: 8px;
+    transform: scale(1.1);
+}
+
+.alias-control label {
+    flex-grow: 1;
+    font-size: 12px;
+    cursor: pointer;
+    color: #666;
+}
+
+.color-indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    margin-left: 8px;
+    border: 1px solid #ccc;
+}
+
+.toggle-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-right: 8px;
+}
+
+.toggle-btn:hover {
+    background: #0056b3;
+}
+
+.toggle-btn.secondary {
+    background: #6c757d;
+}
+
+.toggle-btn.secondary:hover {
+    background: #545b62;
+}
+
+/* Gene Controls */
+.gene-controls {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #eee;
+}
+
+.gene-size-control {
+    margin-bottom: 12px;
+}
+
+.gene-size-control label {
+    display: block;
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 4px;
+}
+
+.gene-size-control input[type="range"] {
+    width: 100%;
+}
+
+/* Loading indicator */
+.loading-indicator {
+    position: absolute;
+    top: 60px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 6px;
+    z-index: 10;
+    display: none;
+}
+
+/* Minimize button */
+.minimize-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.layer-controls.minimized {
+    height: 40px;
+    overflow: hidden;
+}
+
+.layer-controls.minimized .control-section {
+    display: none;
+}
+
+/* Tooltip */
+#tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    display: none;
+    white-space: nowrap;
+    z-index: 1000;
+    max-width: 300px;
+}
