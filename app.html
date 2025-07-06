@@ -6,6 +6,8 @@
     <title>Combined Moon Dataset and Polygon Viewer</title>
     <script src="https://unpkg.com/deck.gl@8.8.27/dist.min.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- Import the polygon boundary highlighter -->
+    <script src="polygon-boundary-highlighter.js"></script>
     <style>
         body {
             margin: 0;
@@ -238,7 +240,8 @@
             polygonsVisible: true,
             aliasVisibility: new Map(),
             aliasColors: new Map(),
-            allAliases: new Set()
+            allAliases: new Set(),
+            polygonHighlighter: null // Add highlighter to state
         };
 
         // DOM elements
@@ -617,6 +620,13 @@
                 },
                 layers: []
             });
+
+            // Initialize the polygon boundary highlighter
+            state.polygonHighlighter = new PolygonBoundaryHighlighter(
+                state.deckglInstance,
+                COORDINATE_SYSTEM.CARTESIAN
+            );
+            state.polygonHighlighter.initialize();
         }
 
         // Setup UI event handlers
