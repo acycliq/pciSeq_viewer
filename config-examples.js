@@ -15,7 +15,7 @@ function config() {
         imageHeight: 2000,
         
         geneDataFile: "./data/my-gene-data.tsv",
-        cellBoundaryFiles: "./boundaries/plane_{plane}.tsv",
+        cellBoundaryFiles: "./data/cellBoundaries/plane_{plane}.tsv",
         backgroundTiles: "https://myserver.com/tiles/dataset1/plane_{plane}/{z}/{y}/{x}.jpg",
         
         showBackgroundImages: true,
@@ -36,7 +36,7 @@ function config() {
         imageHeight: 6000,
         
         geneDataFile: "./data/large-gene-dataset.tsv",
-        cellBoundaryFiles: "./planes/z{plane}_boundaries.tsv",
+        cellBoundaryFiles: "./data/cellBoundaries/z{plane}_boundaries.tsv",
         backgroundTiles: "https://storage.cloud.com/big-dataset/tiles_{plane}/{z}/{y}/{x}.png",
         
         showBackgroundImages: true,
@@ -56,8 +56,8 @@ function config() {
         imageWidth: 4096,
         imageHeight: 4096,
         
-        geneDataFile: "./local-data/genes.tsv",
-        cellBoundaryFiles: "./local-data/boundaries/plane_{plane}.tsv",
+        geneDataFile: "./data/genes.tsv",
+        cellBoundaryFiles: "./data/cellBoundaries/plane_{plane}.tsv",
         backgroundTiles: "./local-tiles/plane_{plane}/{z}/{y}/{x}.jpg",
         
         showBackgroundImages: true,
@@ -77,8 +77,8 @@ function config() {
         imageWidth: 5000,
         imageHeight: 5000,
         
-        geneDataFile: "./experiment_A/gene_expression.tsv",
-        cellBoundaryFiles: "./experiment_A/cell_masks/slice_{plane}_masks.tsv",
+        geneDataFile: "./data/gene_expression.tsv",
+        cellBoundaryFiles: "./data/cellBoundaries/slice_{plane}_masks.tsv",
         backgroundTiles: "https://data.university.edu/experiment_A/images/slice_{plane}/zoom_{z}/row_{y}/col_{x}.jpg",
         
         showBackgroundImages: true,
@@ -98,8 +98,8 @@ function config() {
         imageWidth: 6411,
         imageHeight: 4412,
         
-        geneDataFile: "./demo/sample-genes.tsv",
-        cellBoundaryFiles: "./demo/plane_{plane}.tsv",
+        geneDataFile: "./data/sample-genes.tsv",
+        cellBoundaryFiles: "./data/cellBoundaries/plane_{plane}.tsv",
         backgroundTiles: "https://demo.website.com/sample-tiles/plane_{plane}/{z}/{y}/{x}.jpg",
         
         showBackgroundImages: true,
