@@ -626,7 +626,7 @@
         function createTileLayer(planeNum, opacity = 1) {
             return new TileLayer({
                 id: `tiles-${planeNum}`,
-                pickable: true,
+                pickable: false,
                 tileSize: IMG_DIMENSIONS.tileSize,
                 minZoom: 0,
                 maxZoom: 8,
@@ -737,6 +737,7 @@
                     data: state.geneDataMap.get(gene),
                     visible: state.selectedGenes.has(gene),
                     pickable: true,
+                    onHover: showTooltip,
                     coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
                     iconAtlas: state.geneIconAtlas,
                     iconMapping: state.geneIconMapping,
@@ -853,6 +854,7 @@
                     keyboard: true
                 },
                 onHover: showTooltip,
+                getCursor: ({isHovering}) => (isHovering ? 'pointer' : 'default'),
                 layers: []
             });
 
