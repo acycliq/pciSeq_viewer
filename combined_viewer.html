@@ -1001,6 +1001,9 @@
             // Load gene data
             await loadGeneData();
             
+            // Show gene data immediately while loading plane data
+            updateAllLayers();
+            
             // Load initial plane data
             await updatePlane(state.currentPlane);
             
