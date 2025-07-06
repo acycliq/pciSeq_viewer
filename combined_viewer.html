@@ -71,48 +71,36 @@
 
     <div class="loading-indicator" id="loadingIndicator">Loading...</div>
 
-    <script>
+    <script type="module">
+        // Import configuration constants
+        import {
+            TILE_BASE_URL,
+            GENE_DATA_URL,
+            IMG_DIMENSIONS,
+            INITIAL_VIEW_STATE,
+            MAX_PRELOAD,
+            MAX_TILE_CACHE,
+            DEFAULT_STATE,
+            POLYGON_COLOR_PALETTE,
+            POLYGON_ALIAS_THRESHOLDS,
+            UI_ELEMENTS,
+            GENE_SIZE_CONFIG,
+            TIMING
+        } from './config/constants.js';
+
         // Extract deck.gl components
         const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer, IconLayer} = deck;
 
-        // Configuration
-        const INITIAL_VIEW_STATE = {
-            target: [256*0.5, 256*0.5*4412/6411, 0],
-            zoom: 4,
-            minZoom: 0,
-            maxZoom: 8
-        };
-
-        const TILE_BASE_URL = 'https://storage.googleapis.com/christina_silver_hc/tiles_hc';
-        const IMG_DIMENSIONS = { width: 6411, height: 4412, depth: 99, tileSize: 256 };
-        const GENE_DATA_URL = 'data/geneData.tsv';
-        const MAX_PRELOAD = 3;
-        const MAX_TILE_CACHE = 1000;
-
-        // Color palette for different polygon aliases
-        const POLYGON_COLOR_PALETTE = [
-            [255, 99, 132],   // Red
-            [54, 162, 235],   // Blue
-            [255, 205, 86],   // Yellow
-            [75, 192, 192],   // Teal
-            [153, 102, 255],  // Purple
-            [255, 159, 64],   // Orange
-            [201, 203, 207],  // Grey
-            [255, 99, 255],   // Pink
-            [99, 255, 132],   // Green
-            [132, 99, 255],   // Indigo
-        ];
-
         // Application state
         const state = {
-            currentPlane: 50,
+            currentPlane: DEFAULT_STATE.currentPlane,
             deckglInstance: null,
             isLoading: false,
             
             // Layer visibility
-            showTiles: true,
-            showPolygons: true,
-            showGenes: true,
+            showTiles: DEFAULT_STATE.showTiles,
+            showPolygons: DEFAULT_STATE.showPolygons,
+            showGenes: DEFAULT_STATE.showGenes,
             
             // Data caches
             tileCache: new Map(),
@@ -128,7 +116,7 @@
             selectedGenes: new Set(),
             geneIconAtlas: null,
             geneIconMapping: null,
-            geneSizeScale: 1.0,
+            geneSizeScale: DEFAULT_STATE.geneSizeScale,
             
             // Interactions
             polygonHighlighter: null,
@@ -137,31 +125,31 @@
 
         // DOM elements
         const elements = {
-            slider: document.getElementById('planeSlider'),
-            label: document.getElementById('planeLabel'),
-            prevBtn: document.getElementById('prevBtn'),
-            nextBtn: document.getElementById('nextBtn'),
-            loadingIndicator: document.getElementById('loadingIndicator'),
+            slider: document.getElementById(UI_ELEMENTS.planeSlider),
+            label: document.getElementById(UI_ELEMENTS.planeLabel),
+            prevBtn: document.getElementById(UI_ELEMENTS.prevBtn),
+            nextBtn: document.getElementById(UI_ELEMENTS.nextBtn),
+            loadingIndicator: document.getElementById(UI_ELEMENTS.loadingIndicator),
             
             // Layer controls
-            showTiles: document.getElementById('showTiles'),
-            showPolygons: document.getElementById('showPolygons'),
-            showGenes: document.getElementById('showGenes'),
+            showTiles: document.getElementById(UI_ELEMENTS.showTiles),
+            showPolygons: document.getElementById(UI_ELEMENTS.showPolygons),
+            showGenes: document.getElementById(UI_ELEMENTS.showGenes),
             
             // Polygon controls
-            toggleAllPolygons: document.getElementById('toggleAllPolygons'),
-            polygonAliasControls: document.getElementById('polygonAliasControls'),
+            toggleAllPolygons: document.getElementById(UI_ELEMENTS.toggleAllPolygons),
+            polygonAliasControls: document.getElementById(UI_ELEMENTS.polygonAliasControls),
             
             // Gene controls
-            geneSizeSlider: document.getElementById('geneSizeSlider'),
-            geneSizeValue: document.getElementById('geneSizeValue'),
-            toggleAllGenes: document.getElementById('toggleAllGenes'),
-            genePanelBtn: document.getElementById('genePanelBtn'),
+            geneSizeSlider: document.getElementById(UI_ELEMENTS.geneSizeSlider),
+            geneSizeValue: document.getElementById(UI_ELEMENTS.geneSizeValue),
+            toggleAllGenes: document.getElementById(UI_ELEMENTS.toggleAllGenes),
+            genePanelBtn: document.getElementById(UI_ELEMENTS.genePanelBtn),
             
             // UI
-            layerControls: document.getElementById('layerControls'),
-            minimizeBtn: document.getElementById('minimizeBtn'),
-            tooltip: document.getElementById('tooltip')
+            layerControls: document.getElementById(UI_ELEMENTS.layerControls),
+            minimizeBtn: document.getElementById(UI_ELEMENTS.minimizeBtn),
+            tooltip: document.getElementById(UI_ELEMENTS.tooltip)
         };
 
         // === UTILITY FUNCTIONS ===
@@ -284,11 +272,11 @@
             const labelStr = label.toString().toLowerCase();
             const numericPart = parseInt(labelStr.match(/\d+/)?.[0] || '0');
 
-            if (numericPart < 2000) {
+            if (numericPart < POLYGON_ALIAS_THRESHOLDS.GROUP_A_MAX) {
                 return 'group_A';
-            } else if (numericPart < 4000) {
+            } else if (numericPart < POLYGON_ALIAS_THRESHOLDS.GROUP_B_MAX) {
                 return 'group_B';
-            } else if (numericPart < 6000) {
+            } else if (numericPart < POLYGON_ALIAS_THRESHOLDS.GROUP_C_MAX) {
                 return 'group_C';
             } else {
                 return 'group_D';
@@ -515,7 +503,7 @@
                     iconAtlas: state.geneIconAtlas,
                     iconMapping: state.geneIconMapping,
                     getPosition: d => transformToTileCoordinates(d.x, d.y),
-                    getSize: d => 20 / Math.sqrt(1 + Math.abs(d.z - state.currentPlane)),
+                    getSize: d => GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.z - state.currentPlane)),
                     getIcon: d => d.gene,
                     getColor: [255, 255, 255],
                     sizeUnits: 'pixels',
@@ -649,7 +637,7 @@
                 clearTimeout(sliderTimeout);
                 sliderTimeout = setTimeout(() => {
                     updatePlane(parseInt(e.target.value));
-                }, 100);
+                }, TIMING.SLIDER_DEBOUNCE);
             });
 
             // Navigation buttons
