@@ -42,7 +42,15 @@ function config() {
         showGeneMarkers: true,
         
         // How big should gene markers be? (1.0 = normal size)
-        geneMarkerSize: 1.0
+        geneMarkerSize: 1.0,
+        
+        // === PERFORMANCE SETTINGS ===
+        
+        // Enable performance optimizations?
+        enablePerformanceMode: true,
+        
+        // Show performance timing in console?
+        showPerformanceStats: true
     };
 }
 
