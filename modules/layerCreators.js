@@ -218,7 +218,7 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
             
             // Dynamic sizing based on distance from current plane (depth effect)
-            getSize: d => GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.z - currentPlane)),
+            getSize: d => GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane)),
             
             getIcon: d => d.gene,
             getColor: [255, 255, 255], // White color for gene markers
