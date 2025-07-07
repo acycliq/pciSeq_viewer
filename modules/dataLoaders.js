@@ -104,20 +104,31 @@ export async function loadCellData(cellDataMap) {
 }
 
 /**
- * Load cell data using Web Worker
- * @returns {Promise<Array>} Processed cell data
+ * Load data using unified Web Worker
+ * @param {string} dataType - Type of data to load (loadGeneData, loadCellData, loadBoundaryData)
+ * @param {string} url - URL to load data from
+ * @param {number} [planeId] - Plane ID for boundary data
+ * @returns {Promise<any>} Processed data
  */
-async function loadCellDataWithWorker() {
+async function loadDataWithUnifiedWorker(dataType, url, planeId = null) {
     return new Promise((resolve, reject) => {
-        const worker = new Worker('./cellWorker.js');
+        const worker = new Worker('./unifiedWorker.js');
         
         worker.onmessage = function(event) {
-            const { type, data, error } = event.data;
+            const { type, data, error, planeId: returnedPlaneId } = event.data;
             
             if (type === 'success') {
+                // For boundary data, check planeId matches
+                if (dataType === 'loadBoundaryData' && returnedPlaneId !== planeId) {
+                    return; // Ignore responses for different planes
+                }
                 worker.terminate();
                 resolve(data);
             } else if (type === 'error') {
+                // For boundary data, check planeId matches
+                if (dataType === 'loadBoundaryData' && returnedPlaneId !== planeId) {
+                    return; // Ignore errors for different planes
+                }
                 worker.terminate();
                 reject(new Error(error));
             }
@@ -128,48 +139,36 @@ async function loadCellDataWithWorker() {
             reject(error);
         };
         
-        // Send absolute URL to worker
-        const cellDataUrl = './data/cellData.tsv'; // Could be configurable
-        const absoluteUrl = new URL(cellDataUrl, window.location.href).href;
-        worker.postMessage({
-            type: 'loadCellData',
+        // Send request to unified worker
+        const absoluteUrl = new URL(url, window.location.href).href;
+        const message = {
+            type: dataType,
             url: absoluteUrl
-        });
+        };
+        
+        if (planeId !== null) {
+            message.planeId = planeId;
+        }
+        
+        worker.postMessage(message);
     });
 }
 
 /**
- * Load gene data using Web Worker
+ * Load cell data using unified Web Worker
+ * @returns {Promise<Array>} Processed cell data
+ */
+async function loadCellDataWithWorker() {
+    const cellDataUrl = './data/cellData.tsv';
+    return loadDataWithUnifiedWorker('loadCellData', cellDataUrl);
+}
+
+/**
+ * Load gene data using unified Web Worker
  * @returns {Promise<Array>} Processed gene data
  */
 async function loadGeneDataWithWorker() {
-    return new Promise((resolve, reject) => {
-        const worker = new Worker('./geneWorker.js');
-        
-        worker.onmessage = function(event) {
-            const { type, data, error } = event.data;
-            
-            if (type === 'success') {
-                worker.terminate();
-                resolve(data);
-            } else if (type === 'error') {
-                worker.terminate();
-                reject(new Error(error));
-            }
-        };
-        
-        worker.onerror = function(error) {
-            worker.terminate();
-            reject(error);
-        };
-        
-        // Send absolute URL to worker
-        const absoluteUrl = new URL(GENE_DATA_URL, window.location.href).href;
-        worker.postMessage({
-            type: 'loadGeneData',
-            url: absoluteUrl
-        });
-    });
+    return loadDataWithUnifiedWorker('loadGeneData', GENE_DATA_URL);
 }
 
 /**
@@ -336,40 +335,13 @@ export async function loadPolygonData(planeNum, polygonCache, allPolygonAliases)
 }
 
 /**
- * Load polygon data using Web Worker
+ * Load polygon data using unified Web Worker
  * @param {number} planeNum - Plane number to load
  * @returns {Promise<Object>} GeoJSON FeatureCollection
  */
 async function loadPolygonDataWithWorker(planeNum) {
-    return new Promise((resolve, reject) => {
-        const worker = new Worker('./boundaryWorker.js');
-        
-        worker.onmessage = function(event) {
-            const { type, data, error, planeId } = event.data;
-            
-            if (type === 'success' && planeId === planeNum) {
-                worker.terminate();
-                resolve(data);
-            } else if (type === 'error' && planeId === planeNum) {
-                worker.terminate();
-                reject(new Error(error));
-            }
-        };
-        
-        worker.onerror = function(error) {
-            worker.terminate();
-            reject(error);
-        };
-        
-        // Build URL and send absolute URL to worker
-        const polygonUrl = getPolygonFileUrl(planeNum);
-        const absoluteUrl = new URL(polygonUrl, window.location.href).href;
-        worker.postMessage({
-            type: 'loadBoundaryData',
-            url: absoluteUrl,
-            planeId: planeNum
-        });
-    });
+    const polygonUrl = getPolygonFileUrl(planeNum);
+    return loadDataWithUnifiedWorker('loadBoundaryData', polygonUrl, planeNum);
 }
 
 /**
