@@ -31,7 +31,7 @@ function processGeneData(rawData) {
     let processedCount = 0;
     let skippedCount = 0;
     
-    rawData.forEach(row => {
+    rawData.forEach((row, rowIndex) => {
         try {
             const gene = row.gene_name;
             const spot = {
@@ -39,8 +39,21 @@ function processGeneData(rawData) {
                 y: parseFloat(row.y),
                 z: parseFloat(row.z),
                 gene: gene,
-                plane_id: parseInt(row.plane_id)
+                plane_id: parseInt(row.plane_id),
+                // Add spot_id as row position in geneData.tsv
+                spot_id: rowIndex,
+                // Parse neighbour and probability fields properly
+                neighbour_array: row.neighbour_array ? JSON.parse(row.neighbour_array) : null,
+                prob_array: row.neighbour_prob ? JSON.parse(row.neighbour_prob) : null
             };
+            
+            // Add derived fields for most likely parent (position 0)
+            if (spot.neighbour_array && spot.neighbour_array.length > 0) {
+                spot.neighbour = spot.neighbour_array[0]; // Most likely parent cell
+            }
+            if (spot.prob_array && spot.prob_array.length > 0) {
+                spot.prob = spot.prob_array[0]; // Probability for most likely parent
+            }
             
             // Skip invalid data
             if (isNaN(spot.x) || isNaN(spot.y) || isNaN(spot.z)) {
