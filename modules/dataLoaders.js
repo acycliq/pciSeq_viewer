@@ -217,7 +217,14 @@ function buildGeneIconAtlas(genes) {
  */
 function getMostProbableCellClass(cellNum, cellDataMap) {
     const cellData = cellDataMap.get(parseInt(cellNum));
-    if (!cellData || !cellData.classification || !cellData.classification.className || !cellData.classification.probability) {
+    
+    if (!cellData) {
+        console.log(`No cell data found for cell ${cellNum}`);
+        return 'Generic';
+    }
+    
+    if (!cellData.classification || !cellData.classification.className || !cellData.classification.probability) {
+        console.log(`Cell ${cellNum} missing classification data:`, cellData);
         return 'Generic'; // Fallback class
     }
     
@@ -232,7 +239,12 @@ function getMostProbableCellClass(cellNum, cellDataMap) {
         }
     });
     
-    return cellData.classification.className[maxProbIndex] || 'Generic';
+    const result = cellData.classification.className[maxProbIndex] || 'Generic';
+    if (parseInt(cellNum) <= 3) {
+        console.log(`Cell ${cellNum}: classes=${cellData.classification.className}, probs=${cellData.classification.probability}, result=${result}`);
+    }
+    
+    return result;
 }
 
 /**
@@ -345,14 +357,23 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
         };
         
         // Extract cell classes from the loaded data and update with cellData if available
+        console.log(`Processing ${geojson.features.length} features for plane ${planeNum}`);
+        console.log('cellDataMap size:', cellDataMap ? cellDataMap.size : 'null');
+        
         if (cellDataMap && cellDataMap.size > 0) {
+            let processedCount = 0;
             geojson.features.forEach(feature => {
                 if (feature.properties && feature.properties.label) {
                     const cellClass = getMostProbableCellClass(feature.properties.label, cellDataMap);
                     feature.properties.cellClass = cellClass;
                     allCellClasses.add(cellClass);
+                    processedCount++;
+                    if (processedCount <= 3) {
+                        console.log(`Feature ${processedCount}: label=${feature.properties.label}, cellClass=${cellClass}`);
+                    }
                 }
             });
+            console.log(`Processed ${processedCount} features, allCellClasses:`, Array.from(allCellClasses));
         } else {
             // Fallback: extract existing cell classes
             geojson.features.forEach(feature => {
@@ -360,6 +381,7 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
                     allCellClasses.add(feature.properties.cellClass);
                 }
             });
+            console.log('Using fallback cell classes:', Array.from(allCellClasses));
         }
         
         console.log(`Loaded ${geojson.features.length} polygons for plane ${planeNum}`);
