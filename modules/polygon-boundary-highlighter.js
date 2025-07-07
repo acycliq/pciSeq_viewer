@@ -10,6 +10,11 @@ class PolygonBoundaryHighlighter {
         this.highlightLayerId = 'polygon-highlight';
         this.highlightColor = [255, 255, 255, 255]; // White highlight
         this.highlightWidth = 3;
+        
+        // Throttling for performance
+        this.lastUpdateTime = 0;
+        this.throttleDelay = 100; // 10fps (100ms) - much less frequent updates
+        this.pendingUpdate = null;
 
         // Bind methods to preserve 'this' context
         this.onHover = this.onHover.bind(this);
@@ -22,8 +27,11 @@ class PolygonBoundaryHighlighter {
      * Initialize the highlighter with the deck.gl instance
      */
     initialize() {
-        // Update the deck.gl instance to include hover handling
+        // Store the original hover handler
         const currentProps = this.deckglInstance.props;
+        this.originalHoverHandler = currentProps.onHover;
+        
+        // Update the deck.gl instance to include hover handling
         this.deckglInstance.setProps({
             ...currentProps,
             onHover: this.onHover
@@ -31,9 +39,37 @@ class PolygonBoundaryHighlighter {
     }
 
     /**
-     * Handle hover events
+     * Handle hover events with throttling
      */
     onHover(info) {
+        const { object, layer } = info;
+        const now = performance.now();
+
+        // Always call the original hover handler immediately (for tooltips)
+        if (this.originalHoverHandler) {
+            this.originalHoverHandler(info);
+        }
+
+        // Throttle highlight updates for performance
+        if (now - this.lastUpdateTime < this.throttleDelay) {
+            // Schedule a pending update
+            if (this.pendingUpdate) {
+                clearTimeout(this.pendingUpdate);
+            }
+            this.pendingUpdate = setTimeout(() => {
+                this.processHover(info);
+            }, this.throttleDelay);
+            return;
+        }
+
+        this.processHover(info);
+        this.lastUpdateTime = now;
+    }
+
+    /**
+     * Process hover events (throttled)
+     */
+    processHover(info) {
         const { object, layer } = info;
 
         // Only handle polygon layers (not tile layers)
@@ -62,7 +98,7 @@ class PolygonBoundaryHighlighter {
             id: this.highlightLayerId,
             data: {
                 type: 'FeatureCollection',
-                features: [polygonFeature]
+                features: polygonFeature ? [polygonFeature] : []
             },
             pickable: false,
             stroked: true,
@@ -82,30 +118,40 @@ class PolygonBoundaryHighlighter {
      * Update the highlight to show the hovered polygon
      */
     updateHighlight(polygonObject) {
+        // Update the existing highlight layer's data instead of recreating it
         const currentLayers = this.deckglInstance.props.layers || [];
-
-        // Remove existing highlight layer
-        const layersWithoutHighlight = currentLayers.filter(layer =>
-            layer.id !== this.highlightLayerId
+        const existingHighlightIndex = currentLayers.findIndex(layer => 
+            layer.id === this.highlightLayerId
         );
 
-        // Add new highlight layer
-        const highlightLayer = this.createHighlightLayer(polygonObject);
-        const newLayers = [...layersWithoutHighlight, highlightLayer];
-
-        this.deckglInstance.setProps({ layers: newLayers });
+        if (existingHighlightIndex >= 0) {
+            // Update existing layer
+            const updatedLayers = [...currentLayers];
+            updatedLayers[existingHighlightIndex] = this.createHighlightLayer(polygonObject);
+            this.deckglInstance.setProps({ layers: updatedLayers });
+        } else {
+            // Add new highlight layer
+            const highlightLayer = this.createHighlightLayer(polygonObject);
+            const newLayers = [...currentLayers, highlightLayer];
+            this.deckglInstance.setProps({ layers: newLayers });
+        }
     }
 
     /**
      * Clear the highlight
      */
     clearHighlight() {
+        // Instead of removing the layer, make it invisible with empty data
         const currentLayers = this.deckglInstance.props.layers || [];
-        const layersWithoutHighlight = currentLayers.filter(layer =>
-            layer.id !== this.highlightLayerId
+        const existingHighlightIndex = currentLayers.findIndex(layer => 
+            layer.id === this.highlightLayerId
         );
 
-        this.deckglInstance.setProps({ layers: layersWithoutHighlight });
+        if (existingHighlightIndex >= 0) {
+            const updatedLayers = [...currentLayers];
+            updatedLayers[existingHighlightIndex] = this.createHighlightLayer(null);
+            this.deckglInstance.setProps({ layers: updatedLayers });
+        }
     }
 
     /**

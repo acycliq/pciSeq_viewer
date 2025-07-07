@@ -130,10 +130,9 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
  * @param {boolean} showPolygons - Whether polygons should be visible
  * @param {Map} cellClassVisibility - Visibility state for each cell class
  * @param {Map} cellClassColors - Color mapping for each cell class
- * @param {Function} onHoverCallback - Callback function for hover events
  * @returns {GeoJsonLayer[]} Array of polygon layers
  */
-export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassVisibility, cellClassColors, onHoverCallback = null) {
+export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassVisibility, cellClassColors) {
     const layers = [];
     console.log(`createPolygonLayers called for plane ${planeNum}, showPolygons: ${showPolygons}`);
     console.log('cellClassVisibility:', cellClassVisibility);
@@ -197,15 +196,6 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
         // Update when visibility changes
         updateTriggers: {
             getFillColor: [cellClassVisibility]
-        },
-        
-        // Add layer-specific hover handler
-        onHover: (info) => {
-            // Always call the callback for both hover and unhover
-            if (onHoverCallback) {
-                onHoverCallback(info);
-            }
-            return true;
         }
     });
     
