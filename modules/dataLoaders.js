@@ -35,7 +35,7 @@ export async function loadImage(url, suppressErrors = false) {
 }
 
 /**
- * Load and parse gene expression data from TSV file
+ * Load and parse gene expression data from TSV file using Web Worker
  * Populates the gene data map and builds icon atlas
  * @param {Map} geneDataMap - Map to store gene data by gene name
  * @param {Set} selectedGenes - Set to track visible genes
@@ -45,25 +45,16 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
     if (geneDataMap.size > 0) return { atlas: null, mapping: null };
 
     try {
-        // Fetch and parse TSV data
-        const txt = await (await fetch(GENE_DATA_URL)).text();
-        const data = d3.tsvParse(txt, d => ({
-            x: +d.x,
-            y: +d.y,
-            z: +d.plane_id,
-            gene: d.gene_name
-        }));
-
-        // Group gene spots by gene name for efficient rendering
-        data.forEach(d => {
-            if (!geneDataMap.has(d.gene)) {
-                geneDataMap.set(d.gene, []);
-            }
-            geneDataMap.get(d.gene).push(d);
-        });
-
-        // Initially all genes are visible
-        geneDataMap.forEach((spots, gene) => {
+        // Use Web Worker for non-blocking data loading
+        const geneData = await loadGeneDataWithWorker();
+        
+        // Clear existing data
+        geneDataMap.clear();
+        selectedGenes.clear();
+        
+        // Populate gene data map (same format as before)
+        geneData.forEach(({ gene, spots }) => {
+            geneDataMap.set(gene, spots);
             selectedGenes.add(gene);
         });
 
@@ -77,6 +68,40 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
         console.error('Failed to load gene data:', err);
         return { atlas: null, mapping: null };
     }
+}
+
+/**
+ * Load gene data using Web Worker
+ * @returns {Promise<Array>} Processed gene data
+ */
+async function loadGeneDataWithWorker() {
+    return new Promise((resolve, reject) => {
+        const worker = new Worker('./geneWorker.js');
+        
+        worker.onmessage = function(event) {
+            const { type, data, error } = event.data;
+            
+            if (type === 'success') {
+                worker.terminate();
+                resolve(data);
+            } else if (type === 'error') {
+                worker.terminate();
+                reject(new Error(error));
+            }
+        };
+        
+        worker.onerror = function(error) {
+            worker.terminate();
+            reject(error);
+        };
+        
+        // Send absolute URL to worker
+        const absoluteUrl = new URL(GENE_DATA_URL, window.location.href).href;
+        worker.postMessage({
+            type: 'loadGeneData',
+            url: absoluteUrl
+        });
+    });
 }
 
 /**
