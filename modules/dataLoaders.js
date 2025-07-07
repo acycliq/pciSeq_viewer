@@ -208,7 +208,7 @@ function tsvToGeoJSON(tsvData, planeId, allPolygonAliases) {
 }
 
 /**
- * Load polygon boundary data for a specific plane
+ * Load polygon boundary data for a specific plane using Web Worker
  * Handles caching, coordinate transformation, and alias generation
  * @param {number} planeNum - Plane number to load
  * @param {Map} polygonCache - Cache for polygon data
@@ -224,17 +224,35 @@ export async function loadPolygonData(planeNum, polygonCache, allPolygonAliases)
     }
 
     try {
-        console.log(`Loading polygon data for plane ${planeNum}`);
+        console.log(`Loading polygon data for plane ${planeNum} with Web Worker`);
         
-        // Load TSV data for the specific plane using configured path
-        const polygonUrl = getPolygonFileUrl(planeNum);
-        console.log(`Loading from: ${polygonUrl}`);
-        const data = await d3.tsv(polygonUrl);
-        console.log(`Loaded ${data.length} polygon rows for plane ${planeNum}`);
+        // Use Web Worker for non-blocking data loading
+        const rawGeojson = await loadPolygonDataWithWorker(planeNum);
         
-        // Convert to GeoJSON with coordinate transformation
-        const geojson = tsvToGeoJSON(data, planeNum, allPolygonAliases);
-        console.log(`Converted to ${geojson.features.length} GeoJSON features`);
+        // Transform coordinates from image space to tile space (same as original)
+        const geojson = {
+            type: 'FeatureCollection',
+            features: rawGeojson.features.map(feature => ({
+                ...feature,
+                geometry: {
+                    ...feature.geometry,
+                    coordinates: [
+                        feature.geometry.coordinates[0].map(([x, y]) => 
+                            transformToTileCoordinates(x, y, IMG_DIMENSIONS)
+                        )
+                    ]
+                }
+            }))
+        };
+        
+        // Extract aliases from the loaded data (same as before)
+        geojson.features.forEach(feature => {
+            if (feature.properties && feature.properties.alias) {
+                allPolygonAliases.add(feature.properties.alias);
+            }
+        });
+        
+        console.log(`Loaded ${geojson.features.length} polygons for plane ${planeNum}`);
         
         // Cache the result for future use
         polygonCache.set(planeNum, geojson);
@@ -247,6 +265,43 @@ export async function loadPolygonData(planeNum, polygonCache, allPolygonAliases)
         // Return empty collection on error (don't cache failures)
         return { type: 'FeatureCollection', features: [] };
     }
+}
+
+/**
+ * Load polygon data using Web Worker
+ * @param {number} planeNum - Plane number to load
+ * @returns {Promise<Object>} GeoJSON FeatureCollection
+ */
+async function loadPolygonDataWithWorker(planeNum) {
+    return new Promise((resolve, reject) => {
+        const worker = new Worker('./boundaryWorker.js');
+        
+        worker.onmessage = function(event) {
+            const { type, data, error, planeId } = event.data;
+            
+            if (type === 'success' && planeId === planeNum) {
+                worker.terminate();
+                resolve(data);
+            } else if (type === 'error' && planeId === planeNum) {
+                worker.terminate();
+                reject(new Error(error));
+            }
+        };
+        
+        worker.onerror = function(error) {
+            worker.terminate();
+            reject(error);
+        };
+        
+        // Build URL and send absolute URL to worker
+        const polygonUrl = getPolygonFileUrl(planeNum);
+        const absoluteUrl = new URL(polygonUrl, window.location.href).href;
+        worker.postMessage({
+            type: 'loadBoundaryData',
+            url: absoluteUrl,
+            planeId: planeNum
+        });
+    });
 }
 
 /**
