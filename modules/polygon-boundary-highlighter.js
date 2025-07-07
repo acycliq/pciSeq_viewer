@@ -3,13 +3,18 @@
  * Provides functionality to highlight polygon boundaries on mouseover
  */
 class PolygonBoundaryHighlighter {
-    constructor(deckglInstance, coordinateSystem) {
+    constructor(deckglInstance, coordinateSystem, cellToSpotsIndex = null, geneToId = null) {
         this.deckglInstance = deckglInstance;
         this.coordinateSystem = coordinateSystem;
         this.hoveredPolygon = null;
         this.highlightLayerId = 'polygon-highlight';
+        this.linesLayerId = 'cell-spot-lines';
         this.highlightColor = [255, 255, 255, 255]; // White highlight
         this.highlightWidth = 3;
+        
+        // Cell-to-spot connections
+        this.cellToSpotsIndex = cellToSpotsIndex;
+        this.geneToId = geneToId;
         
         // Throttling for performance
         this.lastUpdateTime = 0;
@@ -19,8 +24,11 @@ class PolygonBoundaryHighlighter {
         // Bind methods to preserve 'this' context
         this.onHover = this.onHover.bind(this);
         this.createHighlightLayer = this.createHighlightLayer.bind(this);
+        this.createLineLayer = this.createLineLayer.bind(this);
         this.updateHighlight = this.updateHighlight.bind(this);
         this.clearHighlight = this.clearHighlight.bind(this);
+        this.calculatePolygonCentroid = this.calculatePolygonCentroid.bind(this);
+        this.getGeneColor = this.getGeneColor.bind(this);
     }
 
     /**
@@ -115,43 +123,68 @@ class PolygonBoundaryHighlighter {
     }
 
     /**
-     * Update the highlight to show the hovered polygon
+     * Update the highlight to show the hovered polygon and cell-to-spot lines
      */
     updateHighlight(polygonObject) {
-        // Update the existing highlight layer's data instead of recreating it
         const currentLayers = this.deckglInstance.props.layers || [];
-        const existingHighlightIndex = currentLayers.findIndex(layer => 
+        let updatedLayers = [...currentLayers];
+        
+        // Handle polygon highlight layer
+        const existingHighlightIndex = updatedLayers.findIndex(layer => 
             layer.id === this.highlightLayerId
         );
-
+        
+        const highlightLayer = this.createHighlightLayer(polygonObject);
         if (existingHighlightIndex >= 0) {
-            // Update existing layer
-            const updatedLayers = [...currentLayers];
-            updatedLayers[existingHighlightIndex] = this.createHighlightLayer(polygonObject);
-            this.deckglInstance.setProps({ layers: updatedLayers });
+            updatedLayers[existingHighlightIndex] = highlightLayer;
         } else {
-            // Add new highlight layer
-            const highlightLayer = this.createHighlightLayer(polygonObject);
-            const newLayers = [...currentLayers, highlightLayer];
-            this.deckglInstance.setProps({ layers: newLayers });
+            updatedLayers.push(highlightLayer);
         }
+        
+        // Handle cell-to-spot lines layer
+        const existingLinesIndex = updatedLayers.findIndex(layer => 
+            layer.id === this.linesLayerId
+        );
+        
+        const lineLayer = this.createLineLayer(polygonObject);
+        if (lineLayer) {
+            if (existingLinesIndex >= 0) {
+                updatedLayers[existingLinesIndex] = lineLayer;
+            } else {
+                updatedLayers.push(lineLayer);
+            }
+        } else if (existingLinesIndex >= 0) {
+            // Remove line layer if no spots found
+            updatedLayers.splice(existingLinesIndex, 1);
+        }
+        
+        this.deckglInstance.setProps({ layers: updatedLayers });
     }
 
     /**
-     * Clear the highlight
+     * Clear the highlight and lines
      */
     clearHighlight() {
-        // Instead of removing the layer, make it invisible with empty data
         const currentLayers = this.deckglInstance.props.layers || [];
-        const existingHighlightIndex = currentLayers.findIndex(layer => 
+        let updatedLayers = [...currentLayers];
+        
+        // Clear polygon highlight layer
+        const existingHighlightIndex = updatedLayers.findIndex(layer => 
             layer.id === this.highlightLayerId
         );
-
         if (existingHighlightIndex >= 0) {
-            const updatedLayers = [...currentLayers];
             updatedLayers[existingHighlightIndex] = this.createHighlightLayer(null);
-            this.deckglInstance.setProps({ layers: updatedLayers });
         }
+        
+        // Remove lines layer completely
+        const existingLinesIndex = updatedLayers.findIndex(layer => 
+            layer.id === this.linesLayerId
+        );
+        if (existingLinesIndex >= 0) {
+            updatedLayers.splice(existingLinesIndex, 1);
+        }
+        
+        this.deckglInstance.setProps({ layers: updatedLayers });
     }
 
     /**
@@ -172,6 +205,118 @@ class PolygonBoundaryHighlighter {
         if (this.hoveredPolygon) {
             this.updateHighlight(this.hoveredPolygon);
         }
+    }
+
+    /**
+     * Calculate polygon centroid from coordinates
+     */
+    calculatePolygonCentroid(polygonCoords) {
+        if (!polygonCoords || polygonCoords.length === 0) return null;
+        
+        let sumX = 0, sumY = 0;
+        const points = polygonCoords[0]; // Get the outer ring
+        
+        for (const [x, y] of points) {
+            sumX += x;
+            sumY += y;
+        }
+        
+        return [sumX / points.length, sumY / points.length];
+    }
+
+    /**
+     * Transform spot coordinates to tile space (same as gene layers)
+     */
+    transformSpotCoordinates(x, y) {
+        // Use the same transformation as gene layers with proper aspect ratio handling
+        const imageDimensions = {
+            width: 6411,
+            height: 4412,
+            tileSize: 256
+        };
+        
+        const {width, height, tileSize} = imageDimensions;
+        const maxDimension = Math.max(width, height);
+        
+        // Adjustment factors to handle aspect ratio (same as transformToTileCoordinates)
+        const xAdjustment = width / maxDimension;
+        const yAdjustment = height / maxDimension;
+        
+        return [
+            x * (tileSize / width) * xAdjustment,
+            y * (tileSize / height) * yAdjustment
+        ];
+    }
+
+    /**
+     * Get gene color based on gene name
+     */
+    getGeneColor(geneName) {
+        // Try to get color from glyphSettings if available
+        if (typeof glyphSettings === 'function') {
+            const settings = glyphSettings();
+            const geneSetting = settings.find(s => s.gene === geneName);
+            if (geneSetting && geneSetting.color) {
+                // Convert hex to RGB array
+                const hex = geneSetting.color.replace('#', '');
+                return [
+                    parseInt(hex.substr(0, 2), 16),
+                    parseInt(hex.substr(2, 2), 16),
+                    parseInt(hex.substr(4, 2), 16),
+                    200 // Alpha for line transparency
+                ];
+            }
+        }
+        
+        // Fallback to white with transparency
+        return [255, 255, 255, 150];
+    }
+
+    /**
+     * Create line layer for cell-to-spot connections
+     */
+    createLineLayer(polygonObject) {
+        if (!this.cellToSpotsIndex || !polygonObject?.properties?.label) {
+            return null;
+        }
+
+        const { LineLayer } = deck;
+        const cellLabel = polygonObject.properties.label;
+        
+        // Get all spots for this cell
+        const spots = this.cellToSpotsIndex.get(cellLabel) || [];
+        if (spots.length === 0) return null;
+        
+        // Calculate cell centroid
+        const centroid = this.calculatePolygonCentroid(polygonObject.geometry.coordinates);
+        if (!centroid) return null;
+        
+        // Create line data from each spot to centroid
+        // Transform spot coordinates to tile space to match gene markers
+        const lineData = spots.map(spot => {
+            // Transform using the same method as gene layers
+            const sourcePosition = this.transformSpotCoordinates(spot.x, spot.y);
+            
+            return {
+                sourcePosition: centroid,
+                targetPosition: sourcePosition,
+                color: this.getGeneColor(spot.gene)
+            };
+        });
+
+        console.log(`Creating line layer with ${lineData.length} connections for cell ${cellLabel}`);
+
+        return new LineLayer({
+            id: this.linesLayerId,
+            data: lineData,
+            pickable: false,
+            getSourcePosition: d => d.sourcePosition,
+            getTargetPosition: d => d.targetPosition,
+            getColor: d => d.color, // Use gene-specific colors
+            getWidth: 1.5, // Thin elegant lines
+            widthUnits: 'pixels',
+            coordinateSystem: this.coordinateSystem
+        });
     }
 
     /**

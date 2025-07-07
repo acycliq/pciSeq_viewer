@@ -493,12 +493,7 @@
                 layers: []
             });
 
-            // Initialize polygon highlighter
-            state.polygonHighlighter = new PolygonBoundaryHighlighter(
-                state.deckglInstance,
-                COORDINATE_SYSTEM.CARTESIAN
-            );
-            state.polygonHighlighter.initialize();
+            // Initialize polygon highlighter - will be done after indexes are built
         }
 
         // === EVENT HANDLERS ===
@@ -537,6 +532,15 @@
             
             // Build lightning-fast lookup indexes after gene data is loaded
             buildGeneSpotIndexes(state.geneDataMap, state.cellToSpotsIndex, state.spotToParentsIndex);
+            
+            // Initialize polygon highlighter with access to cell-to-spot indexes
+            state.polygonHighlighter = new PolygonBoundaryHighlighter(
+                state.deckglInstance,
+                COORDINATE_SYSTEM.CARTESIAN,
+                state.cellToSpotsIndex,
+                state.geneToId
+            );
+            state.polygonHighlighter.initialize();
             
             // Load cell data - this is also shared across all planes
             console.log('Loading cell data...');
