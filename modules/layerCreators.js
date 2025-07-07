@@ -124,15 +124,15 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
 
 /**
  * Create polygon layers for cell boundary visualization
- * Groups polygons by alias and creates separate layers for each group
+ * Groups polygons by cell class and creates separate layers for each class
  * @param {number} planeNum - Current plane number
  * @param {Map} polygonCache - Cache containing polygon data
  * @param {boolean} showPolygons - Whether polygons should be visible
- * @param {Map} polygonAliasVisibility - Visibility state for each alias
- * @param {Map} polygonAliasColors - Color mapping for each alias
+ * @param {Map} cellClassVisibility - Visibility state for each cell class
+ * @param {Map} cellClassColors - Color mapping for each cell class
  * @returns {GeoJsonLayer[]} Array of polygon layers
  */
-export function createPolygonLayers(planeNum, polygonCache, showPolygons, polygonAliasVisibility, polygonAliasColors) {
+export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassVisibility, cellClassColors) {
     const layers = [];
     console.log(`createPolygonLayers called for plane ${planeNum}, showPolygons: ${showPolygons}`);
     
@@ -149,28 +149,28 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, polygo
     
     console.log(`Creating polygon layers for plane ${planeNum}, features: ${geojson.features.length}`);
 
-    // Group features by alias for separate layer rendering
+    // Group features by cell class for separate layer rendering
     const groupedFeatures = new Map();
     geojson.features.forEach(feature => {
-        const alias = feature.properties.alias;
-        if (!groupedFeatures.has(alias)) {
-            groupedFeatures.set(alias, []);
+        const cellClass = feature.properties.cellClass || feature.properties.alias || 'Generic';
+        if (!groupedFeatures.has(cellClass)) {
+            groupedFeatures.set(cellClass, []);
         }
-        groupedFeatures.get(alias).push(feature);
+        groupedFeatures.get(cellClass).push(feature);
     });
 
-    // Create a separate layer for each visible alias group
-    groupedFeatures.forEach((features, alias) => {
-        if (polygonAliasVisibility.get(alias)) {
-            const color = polygonAliasColors.get(alias);
-            const aliasGeojson = {
+    // Create a separate layer for each visible cell class group
+    groupedFeatures.forEach((features, cellClass) => {
+        if (cellClassVisibility.get(cellClass)) {
+            const color = cellClassColors.get(cellClass) || [192, 192, 192]; // Default gray
+            const classGeojson = {
                 type: 'FeatureCollection',
                 features: features
             };
 
             const layer = new GeoJsonLayer({
-                id: `polygons-${planeNum}-${alias}`,
-                data: aliasGeojson,
+                id: `polygons-${planeNum}-${cellClass}`,
+                data: classGeojson,
                 pickable: true, // Enable mouse interactions for tooltips
                 stroked: false, // No polygon outlines by default
                 filled: true,   // Show filled polygons

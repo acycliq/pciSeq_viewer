@@ -14,6 +14,8 @@ import {
 } from '../config/constants.js';
 import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
 
+// Note: classColorsCodes function is loaded globally from classConfig.js
+
 /**
  * Load image with promise wrapper for error handling
  * @param {string} url - Image URL to load
@@ -208,24 +210,53 @@ function buildGeneIconAtlas(genes) {
 }
 
 /**
- * Generate polygon alias based on label for grouping and coloring
- * @param {string|number} label - Original polygon label
- * @returns {string} Generated alias (group_A, group_B, etc.)
+ * Get the most probable cell class from cellData
+ * @param {string|number} cellNum - Cell number
+ * @param {Map} cellDataMap - Map containing cell data
+ * @returns {string} Most probable cell class
  */
-function generatePolygonAlias(label) {
-    if (!label) return 'unknown';
-    const labelStr = label.toString().toLowerCase();
-    const numericPart = parseInt(labelStr.match(/\d+/)?.[0] || '0');
-
-    if (numericPart < POLYGON_ALIAS_THRESHOLDS.GROUP_A_MAX) {
-        return 'group_A';
-    } else if (numericPart < POLYGON_ALIAS_THRESHOLDS.GROUP_B_MAX) {
-        return 'group_B';
-    } else if (numericPart < POLYGON_ALIAS_THRESHOLDS.GROUP_C_MAX) {
-        return 'group_C';
-    } else {
-        return 'group_D';
+function getMostProbableCellClass(cellNum, cellDataMap) {
+    const cellData = cellDataMap.get(parseInt(cellNum));
+    if (!cellData || !cellData.classification || !cellData.classification.className || !cellData.classification.probability) {
+        return 'Generic'; // Fallback class
     }
+    
+    // Find the class with highest probability
+    let maxProbIndex = 0;
+    let maxProb = 0;
+    
+    cellData.classification.probability.forEach((prob, index) => {
+        if (prob > maxProb) {
+            maxProb = prob;
+            maxProbIndex = index;
+        }
+    });
+    
+    return cellData.classification.className[maxProbIndex] || 'Generic';
+}
+
+/**
+ * Get color for a cell class using classConfig
+ * @param {string} className - Cell class name
+ * @returns {Array} RGB color array
+ */
+function getCellClassColor(className) {
+    // Import and use the classColorsCodes function from classConfig
+    if (typeof classColorsCodes === 'function') {
+        const colorConfig = classColorsCodes();
+        const classEntry = colorConfig.find(entry => entry.className === className);
+        if (classEntry && classEntry.color) {
+            // Convert hex color to RGB array
+            const hex = classEntry.color.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            return [r, g, b];
+        }
+    }
+    
+    // Fallback to generic gray color
+    return [192, 192, 192]; // #C0C0C0
 }
 
 /**
@@ -236,7 +267,7 @@ function generatePolygonAlias(label) {
  * @param {Set} allPolygonAliases - Set to track all discovered aliases
  * @returns {Object} GeoJSON FeatureCollection
  */
-function tsvToGeoJSON(tsvData, planeId, allPolygonAliases) {
+function tsvToGeoJSON(tsvData, planeId, allCellClasses, cellDataMap) {
     const features = tsvData.flatMap(row => {
         if (!row || !row.coords) return [];
 
@@ -250,8 +281,9 @@ function tsvToGeoJSON(tsvData, planeId, allPolygonAliases) {
                 transformToTileCoordinates(x, y, IMG_DIMENSIONS)
             );
 
-            const alias = generatePolygonAlias(row.label);
-            allPolygonAliases.add(alias);
+            // Get most probable cell class instead of alias
+            const cellClass = getMostProbableCellClass(row.label, cellDataMap);
+            allCellClasses.add(cellClass);
 
             return [{
                 type: 'Feature',
@@ -262,7 +294,7 @@ function tsvToGeoJSON(tsvData, planeId, allPolygonAliases) {
                 properties: {
                     plane_id: planeId,
                     label: row.label,
-                    alias: alias
+                    cellClass: cellClass // Use cellClass instead of alias
                 }
             }];
         } catch (e) {
@@ -282,7 +314,7 @@ function tsvToGeoJSON(tsvData, planeId, allPolygonAliases) {
  * @param {Set} allPolygonAliases - Set to track all polygon aliases
  * @returns {Promise<Object>} GeoJSON FeatureCollection
  */
-export async function loadPolygonData(planeNum, polygonCache, allPolygonAliases) {
+export async function loadPolygonData(planeNum, polygonCache, allCellClasses, cellDataMap = null) {
     // Return cached data if available
     if (polygonCache.has(planeNum)) {
         const cachedData = polygonCache.get(planeNum);
@@ -312,12 +344,23 @@ export async function loadPolygonData(planeNum, polygonCache, allPolygonAliases)
             }))
         };
         
-        // Extract aliases from the loaded data (same as before)
-        geojson.features.forEach(feature => {
-            if (feature.properties && feature.properties.alias) {
-                allPolygonAliases.add(feature.properties.alias);
-            }
-        });
+        // Extract cell classes from the loaded data and update with cellData if available
+        if (cellDataMap && cellDataMap.size > 0) {
+            geojson.features.forEach(feature => {
+                if (feature.properties && feature.properties.label) {
+                    const cellClass = getMostProbableCellClass(feature.properties.label, cellDataMap);
+                    feature.properties.cellClass = cellClass;
+                    allCellClasses.add(cellClass);
+                }
+            });
+        } else {
+            // Fallback: extract existing cell classes
+            geojson.features.forEach(feature => {
+                if (feature.properties && feature.properties.cellClass) {
+                    allCellClasses.add(feature.properties.cellClass);
+                }
+            });
+        }
         
         console.log(`Loaded ${geojson.features.length} polygons for plane ${planeNum}`);
         
@@ -350,14 +393,15 @@ async function loadPolygonDataWithWorker(planeNum) {
  * @param {Map} polygonAliasColors - Map to store alias colors
  * @param {Map} polygonAliasVisibility - Map to store alias visibility
  */
-export function assignColorsToPolygonAliases(allPolygonAliases, polygonAliasColors, polygonAliasVisibility) {
-    const aliases = Array.from(allPolygonAliases);
-    aliases.forEach((alias, index) => {
-        if (!polygonAliasColors.has(alias)) {
-            polygonAliasColors.set(alias, POLYGON_COLOR_PALETTE[index % POLYGON_COLOR_PALETTE.length]);
+export function assignColorsToCellClasses(allCellClasses, cellClassColors, cellClassVisibility) {
+    const classes = Array.from(allCellClasses);
+    classes.forEach((cellClass) => {
+        if (!cellClassColors.has(cellClass)) {
+            const color = getCellClassColor(cellClass);
+            cellClassColors.set(cellClass, color);
         }
-        if (!polygonAliasVisibility.has(alias)) {
-            polygonAliasVisibility.set(alias, true);
+        if (!cellClassVisibility.has(cellClass)) {
+            cellClassVisibility.set(cellClass, true);
         }
     });
 }
