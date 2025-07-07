@@ -133,6 +133,9 @@
             polygonCache: new Map(),
             geneDataMap: new Map(),
             
+            // Layer persistence for better performance
+            tileLayers: new Map(), // Cache tile layer instances
+            
             // Performance tracking
             polygonLoadTimes: new Map(),
             lastCleanupTime: Date.now(),
@@ -201,7 +204,7 @@
 
             const layers = [];
 
-            // Add tile layers
+            // Add tile layers - keep same instances, only change opacity
             const direction = elements.slider.value > state.currentPlane ? 1 : -1;
             const preloadAhead = direction === 1 ? MAX_PRELOAD + 1 : MAX_PRELOAD;
             const preloadBehind = direction === -1 ? MAX_PRELOAD + 1 : MAX_PRELOAD;
@@ -212,11 +215,29 @@
 
             for (let plane = start; plane <= end; plane++) {
                 const opacity = plane === state.currentPlane ? 1 : 0;
-                layers.push(createTileLayer(plane, opacity, state.tileCache, state.showTiles));
+                const layerId = `tiles-${plane}`;
+                
+                // Reuse existing layer instance or create new one
+                let tileLayer = state.tileLayers.get(layerId);
+                if (!tileLayer) {
+                    tileLayer = createTileLayer(plane, opacity, state.tileCache, state.showTiles);
+                    state.tileLayers.set(layerId, tileLayer);
+                } else {
+                    // Update existing layer's opacity and visibility
+                    tileLayer = tileLayer.clone({
+                        opacity: opacity,
+                        visible: state.showTiles
+                    });
+                    state.tileLayers.set(layerId, tileLayer);
+                }
+                
+                layers.push(tileLayer);
             }
 
-            // Add polygon layers for current plane
-            layers.push(...createPolygonLayers(state.currentPlane, state.polygonCache, state.showPolygons, state.polygonAliasVisibility, state.polygonAliasColors));
+            // Add polygon layers for current plane ONLY if cached
+            if (state.polygonCache.has(state.currentPlane)) {
+                layers.push(...createPolygonLayers(state.currentPlane, state.polygonCache, state.showPolygons, state.polygonAliasVisibility, state.polygonAliasColors));
+            }
 
             // Add gene layers
             layers.push(...createGeneLayers(state.geneDataMap, state.showGenes, state.selectedGenes, state.geneIconAtlas, state.geneIconMapping, state.currentPlane, state.geneSizeScale, (info) => showTooltip(info, elements.tooltip)));
@@ -286,7 +307,7 @@
                         updatePolygonAliasControls(state.allPolygonAliases, state.polygonAliasVisibility, state.polygonAliasColors, elements.polygonAliasControls, updateAllLayers);
                     }
                     
-                    // Refresh layers to show new polygon data
+                    // Refresh layers to show new polygon data (only if still current plane)
                     updateAllLayers();
                 }
                 
@@ -379,8 +400,20 @@
             // Step 1: Immediate visual update (5-20ms)
             updatePlaneImmediate(newPlane);
             
-            // Step 2: Load polygon data in background (doesn't block UI)
-            updatePlanePolygonsAsync(state.currentPlane);
+            // Step 2: Load polygon data for current plane + adjacent planes immediately
+            const userConfig = window.config();
+            const planesToLoad = [
+                Math.max(0, state.currentPlane - 1),           // Previous plane
+                state.currentPlane,                            // Current plane
+                Math.min(userConfig.totalPlanes - 1, state.currentPlane + 1)  // Next plane
+            ];
+            
+            // Start loading all planes in parallel
+            planesToLoad.forEach(plane => {
+                if (!state.polygonCache.has(plane)) {
+                    updatePlanePolygonsAsync(plane);
+                }
+            });
         }
 
         // === TOOLTIP FUNCTIONS ===
@@ -447,13 +480,28 @@
             state.geneIconAtlas = atlas;
             state.geneIconMapping = mapping;
             
-            // CRITICAL FIX: Explicitly load polygon data for current plane before updating layers
-            // Previous bug: updateAllLayers() was called before polygon data was loaded,
-            // causing polygons to be missing on initial page load (race condition)
-            // This ensures polygon data is cached before any rendering happens
-            console.log(`Init: Loading polygon data for plane ${state.currentPlane}`);
+            // CRITICAL FIX: Load polygon data for current plane + adjacent planes during initialization
+            // This prevents flickering on the very first slider movement
+            console.log(`Init: Loading polygon data for plane ${state.currentPlane} + adjacent planes`);
+            
+            // Load current plane first (blocking)
             const polygonResult = await loadPolygonData(state.currentPlane, state.polygonCache, state.allPolygonAliases);
-            console.log(`Init: Polygon data loaded:`, polygonResult);
+            console.log(`Init: Current plane polygon data loaded:`, polygonResult);
+            
+            // Preload adjacent planes (non-blocking)
+            const adjacentPlanes = [
+                Math.max(0, state.currentPlane - 1),
+                Math.min(userConfig.totalPlanes - 1, state.currentPlane + 1)
+            ];
+            
+            adjacentPlanes.forEach(async (plane) => {
+                if (plane !== state.currentPlane && !state.polygonCache.has(plane)) {
+                    console.log(`Init: Preloading polygon data for adjacent plane ${plane}`);
+                    loadPolygonData(plane, state.polygonCache, state.allPolygonAliases).catch(() => {
+                        console.log(`Init: Failed to preload plane ${plane} (non-critical)`);
+                    });
+                }
+            });
             
             // Assign colors and update controls after loading polygon data
             assignColorsToPolygonAliases(state.allPolygonAliases, state.polygonAliasColors, state.polygonAliasVisibility);
