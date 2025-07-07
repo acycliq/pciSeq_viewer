@@ -194,22 +194,7 @@ function parseCoordinates(coordString) {
     }
 }
 
-function generatePolygonAlias(label) {
-    if (!label) return 'unknown';
-    const labelStr = label.toString().toLowerCase();
-    const numericPart = parseInt(labelStr.match(/\d+/)?.[0] || '0');
-    
-    // Using same thresholds as original
-    if (numericPart < 2000) {
-        return 'group_A';
-    } else if (numericPart < 4000) {
-        return 'group_B';
-    } else if (numericPart < 6000) {
-        return 'group_C';
-    } else {
-        return 'group_D';
-    }
-}
+// Cell class assignment will be done in main thread where cellData is available
 
 function processBoundaryData(rawData, planeId) {
     const features = [];
@@ -236,7 +221,7 @@ function processBoundaryData(rawData, planeId) {
                 properties: {
                     label: label,
                     plane_id: planeId,
-                    alias: generatePolygonAlias(label)
+                    cellClass: null // Will be assigned in main thread
                 }
             };
             

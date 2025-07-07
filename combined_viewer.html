@@ -16,6 +16,8 @@
     <!-- Import glyph helpers -->
     <script src="modules/glyphPaths.js"></script>
     <script src="modules/glyphConfig.js"></script>
+    <!-- Import cell class configuration -->
+    <script src="modules/classConfig.js"></script>
 </head>
 <body>
     <div id="map"></div>
@@ -92,7 +94,7 @@
             loadGeneData,
             loadPolygonData,
             loadCellData,
-            assignColorsToPolygonAliases
+            assignColorsToCellClasses
         } from './modules/dataLoaders.js';
 
         // Import layer creation functions
@@ -142,10 +144,10 @@
             polygonLoadTimes: new Map(),
             lastCleanupTime: Date.now(),
             
-            // Polygon data
-            polygonAliasVisibility: new Map(),
-            polygonAliasColors: new Map(),
-            allPolygonAliases: new Set(),
+            // Cell class data (was polygon alias data)
+            cellClassVisibility: new Map(),
+            cellClassColors: new Map(),
+            allCellClasses: new Set(),
             
             // Gene data
             selectedGenes: new Set(),
@@ -266,7 +268,7 @@
 
             // Add polygon layers for current plane ONLY if cached
             if (state.polygonCache.has(state.currentPlane)) {
-                layers.push(...createPolygonLayers(state.currentPlane, state.polygonCache, state.showPolygons, state.polygonAliasVisibility, state.polygonAliasColors));
+                layers.push(...createPolygonLayers(state.currentPlane, state.polygonCache, state.showPolygons, state.cellClassVisibility, state.cellClassColors));
             }
 
             // Add gene layers
@@ -317,7 +319,7 @@
                 }, 50); // Show loading after 50ms delay
                 
                 console.log(`Background loading polygon data for plane ${planeNum}`);
-                await loadPolygonData(planeNum, state.polygonCache, state.allPolygonAliases);
+                await loadPolygonData(planeNum, state.polygonCache, state.allCellClasses, state.cellDataMap);
                 
                 clearTimeout(loadingTimeout);
                 hideLoading(state, elements.loadingIndicator);
@@ -327,14 +329,14 @@
                 
                 // Only update UI if this is still the current plane (user might have moved on)
                 if (state.currentPlane === planeNum) {
-                    // Check if we actually got new polygon groups
-                    const prevGroupCount = state.polygonAliasColors.size;
-                    assignColorsToPolygonAliases(state.allPolygonAliases, state.polygonAliasColors, state.polygonAliasVisibility);
+                    // Check if we actually got new cell classes
+                    const prevGroupCount = state.cellClassColors.size;
+                    assignColorsToCellClasses(state.allCellClasses, state.cellClassColors, state.cellClassVisibility);
                     
-                    // Only rebuild UI controls if new groups were added
-                    if (state.polygonAliasColors.size > prevGroupCount) {
-                        console.log(`New polygon groups detected, updating controls`);
-                        updatePolygonAliasControls(state.allPolygonAliases, state.polygonAliasVisibility, state.polygonAliasColors, elements.polygonAliasControls, updateAllLayers);
+                    // Only rebuild UI controls if new classes were added
+                    if (state.cellClassColors.size > prevGroupCount) {
+                        console.log(`New cell classes detected, updating controls`);
+                        updatePolygonAliasControls(state.allCellClasses, state.cellClassVisibility, state.cellClassColors, elements.polygonAliasControls, updateAllLayers);
                     }
                     
                     // Refresh layers to show new polygon data (only if still current plane)
@@ -417,7 +419,7 @@
                 setTimeout(() => {
                     if (!state.polygonCache.has(plane)) { // Double-check it's still needed
                         console.log(`Preloading plane ${plane} in background`);
-                        loadPolygonData(plane, state.polygonCache, state.allPolygonAliases).catch(() => {});
+                        loadPolygonData(plane, state.polygonCache, state.allCellClasses, state.cellDataMap).catch(() => {});
                     }
                 }, index * 200); // Stagger requests by 200ms
             });
@@ -519,7 +521,7 @@
             console.log(`Init: Loading polygon data for plane ${state.currentPlane} + adjacent planes`);
             
             // Load current plane first (blocking)
-            const polygonResult = await loadPolygonData(state.currentPlane, state.polygonCache, state.allPolygonAliases);
+            const polygonResult = await loadPolygonData(state.currentPlane, state.polygonCache, state.allCellClasses, state.cellDataMap);
             console.log(`Init: Current plane polygon data loaded:`, polygonResult);
             
             // Preload adjacent planes (non-blocking)
@@ -531,15 +533,15 @@
             adjacentPlanes.forEach(async (plane) => {
                 if (plane !== state.currentPlane && !state.polygonCache.has(plane)) {
                     console.log(`Init: Preloading polygon data for adjacent plane ${plane}`);
-                    loadPolygonData(plane, state.polygonCache, state.allPolygonAliases).catch(() => {
+                    loadPolygonData(plane, state.polygonCache, state.allCellClasses, state.cellDataMap).catch(() => {
                         console.log(`Init: Failed to preload plane ${plane} (non-critical)`);
                     });
                 }
             });
             
             // Assign colors and update controls after loading polygon data
-            assignColorsToPolygonAliases(state.allPolygonAliases, state.polygonAliasColors, state.polygonAliasVisibility);
-            updatePolygonAliasControls(state.allPolygonAliases, state.polygonAliasVisibility, state.polygonAliasColors, elements.polygonAliasControls, updateAllLayers);
+            assignColorsToCellClasses(state.allCellClasses, state.cellClassColors, state.cellClassVisibility);
+            updatePolygonAliasControls(state.allCellClasses, state.cellClassVisibility, state.cellClassColors, elements.polygonAliasControls, updateAllLayers);
             
             // Update UI to reflect the current plane state after data loading
             state.currentPlane = DEFAULT_STATE.currentPlane;
