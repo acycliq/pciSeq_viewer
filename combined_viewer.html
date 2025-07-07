@@ -288,7 +288,7 @@
 
             // Add polygon layers for current plane ONLY if cached
             if (state.polygonCache.has(state.currentPlane)) {
-                layers.push(...createPolygonLayers(state.currentPlane, state.polygonCache, state.showPolygons, state.cellClassVisibility, state.cellClassColors, (info) => showTooltip(info, elements.tooltip)));
+                layers.push(...createPolygonLayers(state.currentPlane, state.polygonCache, state.showPolygons, state.cellClassVisibility, state.cellClassColors));
             }
 
             // Add gene layers
