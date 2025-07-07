@@ -46,9 +46,15 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
             const {x, y, z} = index;
             const cacheKey = `${planeNum}-${z}-${y}-${x}`;
 
-            // Return cached tile if available
+            // Return cached tile if available (instant return!)
             if (tileCache.has(cacheKey)) {
-                return tileCache.get(cacheKey);
+                const cachedData = tileCache.get(cacheKey);
+                // If it's already resolved data, return immediately
+                if (cachedData && typeof cachedData.then !== 'function') {
+                    return cachedData;
+                }
+                // If it's still a promise, await it
+                return await cachedData;
             }
 
             // Load new tile using configured URL pattern
@@ -64,14 +70,22 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
             const suppressErrors = !userConfig.showTileErrors;
             
             const promise = loadImage(imageUrl, suppressErrors)
+                .then(imageData => {
+                    // Cache the resolved image data, not the promise
+                    tileCache.set(cacheKey, imageData);
+                    return imageData;
+                })
                 .catch(error => {
                     // Only log error if not suppressed
                     if (!error.suppressLogging) {
                         console.error('Error loading tile:', error);
                     }
+                    // Cache null for failed loads to avoid repeated requests
+                    tileCache.set(cacheKey, null);
                     return null;
                 });
 
+            // Initially cache the promise while loading
             tileCache.set(cacheKey, promise);
 
             // Clean cache if it gets too large (LRU-style cleanup)
