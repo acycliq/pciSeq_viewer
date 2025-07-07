@@ -158,6 +158,34 @@
             genePanelWin: null
         };
 
+        // === DEBUG/CONSOLE ACCESS ===
+        // Expose data for console access and debugging
+        window.debugData = {
+            // Raw data access
+            geneData: () => state.geneDataMap,
+            cellData: () => state.cellDataMap,
+            boundaries: () => state.polygonCache,
+            
+            // Helper functions for common queries
+            getGeneSpots: (geneName) => state.geneDataMap.get(geneName),
+            getCell: (cellNum) => state.cellDataMap.get(cellNum),
+            getBoundaries: (planeNum) => state.polygonCache.get(planeNum),
+            
+            // Summary functions
+            listGenes: () => Array.from(state.geneDataMap.keys()),
+            listCells: () => Array.from(state.cellDataMap.keys()),
+            listPlanes: () => Array.from(state.polygonCache.keys()),
+            
+            // Statistics
+            geneCount: () => state.geneDataMap.size,
+            cellCount: () => state.cellDataMap.size,
+            planesLoaded: () => state.polygonCache.size,
+            
+            // Current state
+            currentPlane: () => state.currentPlane,
+            appState: () => state
+        };
+
         // DOM elements
         const elements = {
             slider: document.getElementById(UI_ELEMENTS.planeSlider),
