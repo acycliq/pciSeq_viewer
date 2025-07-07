@@ -91,6 +91,7 @@
         import {
             loadGeneData,
             loadPolygonData,
+            loadCellData,
             assignColorsToPolygonAliases
         } from './modules/dataLoaders.js';
 
@@ -132,6 +133,7 @@
             tileCache: new Map(),
             polygonCache: new Map(),
             geneDataMap: new Map(),
+            cellDataMap: new Map(),
             
             // Layer persistence for better performance
             tileLayers: new Map(), // Cache tile layer instances
@@ -479,6 +481,10 @@
             const {atlas, mapping} = await loadGeneData(state.geneDataMap, state.selectedGenes);
             state.geneIconAtlas = atlas;
             state.geneIconMapping = mapping;
+            
+            // Load cell data - this is also shared across all planes
+            console.log('Loading cell data...');
+            await loadCellData(state.cellDataMap);
             
             // CRITICAL FIX: Load polygon data for current plane + adjacent planes during initialization
             // This prevents flickering on the very first slider movement

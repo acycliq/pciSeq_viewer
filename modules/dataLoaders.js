@@ -71,6 +71,74 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
 }
 
 /**
+ * Load and parse cell metadata from TSV file using Web Worker
+ * Populates the cell data map
+ * @param {Map} cellDataMap - Map to store cell data by cell number
+ * @returns {Promise<boolean>} Success status
+ */
+export async function loadCellData(cellDataMap) {
+    if (cellDataMap.size > 0) {
+        console.log('Cell data already loaded');
+        return true;
+    }
+
+    try {
+        // Use Web Worker for non-blocking data loading
+        const cellData = await loadCellDataWithWorker();
+        
+        // Clear existing data
+        cellDataMap.clear();
+        
+        // Populate cell data map
+        cellData.forEach(cell => {
+            cellDataMap.set(cell.cellNum, cell);
+        });
+        
+        console.log(`✅ Cell data loaded: ${cellDataMap.size} cells`);
+        return true;
+
+    } catch (err) {
+        console.error('Failed to load cell data:', err);
+        return false;
+    }
+}
+
+/**
+ * Load cell data using Web Worker
+ * @returns {Promise<Array>} Processed cell data
+ */
+async function loadCellDataWithWorker() {
+    return new Promise((resolve, reject) => {
+        const worker = new Worker('./cellWorker.js');
+        
+        worker.onmessage = function(event) {
+            const { type, data, error } = event.data;
+            
+            if (type === 'success') {
+                worker.terminate();
+                resolve(data);
+            } else if (type === 'error') {
+                worker.terminate();
+                reject(new Error(error));
+            }
+        };
+        
+        worker.onerror = function(error) {
+            worker.terminate();
+            reject(error);
+        };
+        
+        // Send absolute URL to worker
+        const cellDataUrl = './data/cellData.tsv'; // Could be configurable
+        const absoluteUrl = new URL(cellDataUrl, window.location.href).href;
+        worker.postMessage({
+            type: 'loadCellData',
+            url: absoluteUrl
+        });
+    });
+}
+
+/**
  * Load gene data using Web Worker
  * @returns {Promise<Array>} Processed gene data
  */
