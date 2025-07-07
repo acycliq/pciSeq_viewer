@@ -18,7 +18,7 @@ import {
 import { loadImage } from './dataLoaders.js';
 
 // Extract deck.gl components for layer creation
-const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer, IconLayer} = deck;
+const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer, IconLayer, DataFilterExtension} = deck;
 
 /**
  * Create a tile layer for background image display
@@ -130,11 +130,14 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
  * @param {boolean} showPolygons - Whether polygons should be visible
  * @param {Map} cellClassVisibility - Visibility state for each cell class
  * @param {Map} cellClassColors - Color mapping for each cell class
+ * @param {Function} onHoverCallback - Callback function for hover events
  * @returns {GeoJsonLayer[]} Array of polygon layers
  */
-export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassVisibility, cellClassColors) {
+export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassVisibility, cellClassColors, onHoverCallback = null) {
     const layers = [];
     console.log(`createPolygonLayers called for plane ${planeNum}, showPolygons: ${showPolygons}`);
+    console.log('cellClassVisibility:', cellClassVisibility);
+    console.log('cellClassColors:', cellClassColors);
     
     if (!showPolygons) {
         console.log('Polygons disabled in state');
@@ -148,6 +151,8 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
     }
     
     console.log(`Creating polygon layers for plane ${planeNum}, features: ${geojson.features.length}`);
+    console.log('Sample feature:', geojson.features[0]);
+    console.log('Sample feature properties:', geojson.features[0]?.properties);
 
     // Group features by cell class for separate layer rendering
     const groupedFeatures = new Map();
@@ -159,28 +164,55 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
         groupedFeatures.get(cellClass).push(feature);
     });
 
-    // Create a separate layer for each visible cell class group
-    groupedFeatures.forEach((features, cellClass) => {
-        if (cellClassVisibility.get(cellClass)) {
-            const color = cellClassColors.get(cellClass) || [192, 192, 192]; // Default gray
-            const classGeojson = {
-                type: 'FeatureCollection',
-                features: features
-            };
-
-            const layer = new GeoJsonLayer({
-                id: `polygons-${planeNum}-${cellClass}`,
-                data: classGeojson,
-                pickable: true, // Enable mouse interactions for tooltips
-                stroked: false, // No polygon outlines by default
-                filled: true,   // Show filled polygons
-                getFillColor: [...color, 120], // Semi-transparent fill
-                coordinateSystem: COORDINATE_SYSTEM.CARTESIAN
-            });
-
-            layers.push(layer);
+    // Create cell class to ID mapping for DataFilterExtension
+    const cellClassArray = Array.from(new Set(geojson.features.map(f => f.properties.cellClass || 'Generic')));
+    const cellClassToId = new Map(cellClassArray.map((cls, idx) => [cls, idx]));
+    
+    // Add cellClassId to each feature for filtering
+    geojson.features.forEach(feature => {
+        const cellClass = feature.properties.cellClass || 'Generic';
+        feature.properties.cellClassId = cellClassToId.get(cellClass);
+    });
+    
+    // Create simple filtering: show all features, hide with getFillColor alpha
+    console.log(`Creating single polygon layer with ${geojson.features.length} features`);
+    console.log('Cell class visibility map:', cellClassVisibility);
+    
+    const layer = new GeoJsonLayer({
+        id: `polygons-${planeNum}`,
+        data: geojson,
+        pickable: true,
+        stroked: false,
+        filled: true,
+        coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+        
+        // Color by cell class, with alpha 0 for hidden classes
+        getFillColor: f => {
+            const cellClass = f.properties.cellClass || 'Generic';
+            const isVisible = cellClassVisibility.get(cellClass);
+            const color = cellClassColors.get(cellClass) || [192, 192, 192];
+            return [...color, isVisible ? 120 : 0]; // Alpha 0 = invisible
+        },
+        
+        // Update when visibility changes
+        updateTriggers: {
+            getFillColor: [cellClassVisibility]
+        },
+        
+        // Add layer-specific hover handler
+        onHover: (info) => {
+            // Always call the callback for both hover and unhover
+            if (onHoverCallback) {
+                onHoverCallback(info);
+            }
+            return true;
         }
     });
+    
+    console.log(`Created polygon layer: ${layer.id}`);
+    layers.push(layer);
+    
+    console.log(`Total polygon layers created: ${layers.length}`);
 
     return layers;
 }
@@ -208,8 +240,8 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             id: `genes-${gene}`,
             data: geneDataMap.get(gene),
             visible: selectedGenes.has(gene),
-            pickable: true, // Enable mouse interactions
-            onHover: showTooltip,
+            pickable: true, // Enable gene picking
+            onHover: showTooltip, // Gene hover handler
             coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
             iconAtlas: geneIconAtlas,
             iconMapping: geneIconMapping,

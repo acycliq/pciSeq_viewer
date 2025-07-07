@@ -34,14 +34,17 @@ export function hideLoading(state, loadingElement) {
  * @param {HTMLElement} tooltipElement - Tooltip DOM element
  */
 export function showTooltip(info, tooltipElement) {
-    if (info.object) {
+    if (info.picked && info.object) {
         let content = '';
         
-        if (info.object.properties) {
+        // Check if this is a polygon layer
+        if (info.layer?.id?.startsWith('polygons-')) {
             // Polygon tooltip - show cell information
-            content = `<strong>Cell Label:</strong> ${info.object.properties.label}<br>
-                      <strong>Alias:</strong> ${info.object.properties.alias}<br>
-                      <strong>Plane:</strong> ${info.object.properties.plane_id}`;
+            if (info.object.properties) {
+                content = `<strong>Cell Label:</strong> ${info.object.properties.label}<br>
+                          <strong>Cell Class:</strong> ${info.object.properties.cellClass}<br>
+                          <strong>Plane:</strong> ${info.object.properties.plane_id}`;
+            }
         } else if (info.object.gene) {
             // Gene tooltip - show gene expression information
             content = `<strong>Gene:</strong> ${info.object.gene}<br>
@@ -49,11 +52,16 @@ export function showTooltip(info, tooltipElement) {
                       <strong>Plane:</strong> ${info.object.plane_id}`;
         }
         
-        tooltipElement.innerHTML = content;
-        tooltipElement.style.display = 'block';
-        tooltipElement.style.left = info.x + 20 + 'px';
-        tooltipElement.style.top = info.y - 60 + 'px';
+        if (content) {
+            tooltipElement.innerHTML = content;
+            tooltipElement.style.display = 'block';
+            tooltipElement.style.left = info.x + 20 + 'px';
+            tooltipElement.style.top = info.y - 60 + 'px';
+        } else {
+            tooltipElement.style.display = 'none';
+        }
     } else {
+        // Hide tooltip when not hovering over anything
         tooltipElement.style.display = 'none';
     }
 }
