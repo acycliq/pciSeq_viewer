@@ -46,7 +46,7 @@ export function showTooltip(info, tooltipElement) {
             // Gene tooltip - show gene expression information
             content = `<strong>Gene:</strong> ${info.object.gene}<br>
                       <strong>Coords:</strong> ${info.object.x.toFixed(2)}, ${info.object.y.toFixed(2)}<br>
-                      <strong>Plane:</strong> ${info.object.z}`;
+                      <strong>Plane:</strong> ${info.object.plane_id}`;
         }
         
         tooltipElement.innerHTML = content;
