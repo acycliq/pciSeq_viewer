@@ -39,17 +39,58 @@ export function showTooltip(info, tooltipElement) {
         
         // Check if this is a polygon layer
         if (info.layer?.id?.startsWith('polygons-')) {
-            // Polygon tooltip - show cell information
+            // Polygon tooltip - show enhanced cell information
             if (info.object.properties) {
-                content = `<strong>Cell Label:</strong> ${info.object.properties.label}<br>
-                          <strong>Cell Class:</strong> ${info.object.properties.cellClass}<br>
-                          <strong>Plane:</strong> ${info.object.properties.plane_id}`;
+                const cellLabel = info.object.properties.label;
+                const cellClass = info.object.properties.cellClass || 'Unknown';
+                const planeId = info.object.properties.plane_id;
+                
+                // Get cell coordinates and probability from cellData
+                let cellInfo = '';
+                if (window.debugData && window.debugData.getCell) {
+                    const cellData = window.debugData.getCell(parseInt(cellLabel));
+                    if (cellData && cellData.position) {
+                        const coords = cellData.position;
+                        cellInfo = `<strong>Cell Coords:</strong> (${coords.x.toFixed(2)}, ${coords.y.toFixed(2)}, ${coords.z.toFixed(2)})<br>`;
+                        
+                        // Get cell class probability if available
+                        if (cellData.classification && cellData.classification.className && cellData.classification.probability) {
+                            const classIndex = cellData.classification.className.indexOf(cellClass);
+                            if (classIndex >= 0) {
+                                const prob = cellData.classification.probability[classIndex];
+                                cellInfo += `<strong>Class Probability:</strong> ${(prob * 100).toFixed(1)}%<br>`;
+                            }
+                        }
+                    }
+                }
+                
+                content = `${cellInfo}<strong>Cell Label:</strong> ${cellLabel}<br>
+                          <strong>Cell Class:</strong> ${cellClass}<br>
+                          <strong>Plane:</strong> ${planeId}`;
             }
         } else if (info.object.gene) {
-            // Gene tooltip - show gene expression information
-            content = `<strong>Gene:</strong> ${info.object.gene}<br>
-                      <strong>Coords:</strong> ${info.object.x.toFixed(2)}, ${info.object.y.toFixed(2)}<br>
-                      <strong>Plane:</strong> ${info.object.plane_id}`;
+            // Gene tooltip - show enhanced gene spot information
+            const gene = info.object.gene;
+            const coords = `(${info.object.x.toFixed(2)}, ${info.object.y.toFixed(2)}, ${info.object.z.toFixed(2)})`;
+            const planeId = info.object.plane_id;
+            
+            // Get spot_id and parent information
+            let spotInfo = '';
+            if (info.object.spot_id !== undefined) {
+                spotInfo = `<strong>Spot ID:</strong> ${info.object.spot_id}<br>`;
+            }
+            
+            // Get parent cell information
+            let parentInfo = '';
+            if (info.object.neighbour && info.object.prob !== undefined) {
+                parentInfo = `<strong>Parent Cell:</strong> ${info.object.neighbour}<br>
+                             <strong>Parent Probability:</strong> ${(info.object.prob * 100).toFixed(1)}%<br>`;
+            }
+            
+            content = `${spotInfo}<strong>Gene:</strong> ${gene}<br>
+                      <strong>Coords:</strong> ${coords}<br>
+                      <strong>Plane:</strong> ${planeId}<br>
+                      ${parentInfo}`;
         }
         
         if (content) {
