@@ -21,17 +21,125 @@
   <script src="modules/glyphConfig.js"></script>
 
   <style>
-    body { margin: 20px; font-family: sans-serif; }
-    table.dataTable td.dt-checkboxes-select input {
-      transform: scale(1.1);
-      margin-top: -2px;
+    body { 
+      margin: 20px; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      color: #333;
+      line-height: 1.5;
     }
-    canvas { display: block; margin: auto; }
+    
+    h2 {
+      margin: 0 0 24px 0;
+      font-size: 24px;
+      font-weight: 600;
+      color: #333;
+      border-bottom: 2px solid #e9ecef;
+      padding-bottom: 12px;
+    }
+    
+    .subtitle {
+      color: #6c757d;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    
+    /* Clean table styling */
+    table.dataTable {
+      border-collapse: separate !important;
+      border-spacing: 0;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      background: white;
+    }
+    
+    table.dataTable thead th {
+      background: #f8f9fa !important;
+      color: #495057 !important;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 16px 12px;
+      border-bottom: 2px solid #dee2e6;
+      border-right: 1px solid #dee2e6;
+    }
+    
+    table.dataTable thead th:last-child {
+      border-right: none;
+    }
+    
+    table.dataTable tbody td {
+      padding: 12px;
+      border-bottom: 1px solid #dee2e6;
+      border-right: 1px solid #dee2e6;
+      background: white;
+    }
+    
+    table.dataTable tbody td:last-child {
+      border-right: none;
+    }
+    
+    table.dataTable tbody tr:hover td {
+      background: #f8f9fa;
+    }
+    
+    /* Search box */
+    .dataTables_filter label {
+      color: #495057;
+      font-weight: 500;
+    }
+    
+    .dataTables_filter input {
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      padding: 6px 12px;
+      margin-left: 8px;
+      font-size: 14px;
+    }
+    
+    .dataTables_filter input:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    }
+    
+    /* Checkbox styling */
+    table.dataTable td.dt-checkboxes-select input {
+      transform: scale(1.2);
+      accent-color: #007bff;
+    }
+    
+    /* Color indicator */
+    .color-indicator {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      border: 1px solid #ced4da;
+      margin: 0 auto;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    /* Glyph canvas */
+    canvas { 
+      display: block; 
+      margin: 0 auto;
+      border-radius: 2px;
+    }
+    
+    /* Info text */
+    .dataTables_info {
+      color: #6c757d;
+      font-size: 13px;
+      margin-top: 16px;
+    }
   </style>
 </head>
 <body>
 
-<h2>Gene Panel</h2>
+<h2>🧬 Gene Panel</h2>
+<p class="subtitle">Select genes to visualize in the main viewer. Use the search box to quickly find specific genes.</p>
 
 <table id="example" class="display compact" style="width:100%">
   <thead>
@@ -73,36 +181,35 @@ function buildTable(genes) {
   const rows = genes.map((g, idx) => {
     const cfg = glyphSettings().find(d => d.gene === g) ||
                 glyphSettings().find(d => d.gene === 'Generic');
-    return [idx, g, cfg.glyphName, cfg.color];   // five-column row
+    return [idx, g, cfg.glyphName, cfg.color];   // four-column row
   });
 
   table = $('#example').DataTable({
     data: rows,
     paging: false,
     order: [[1, 'asc']],
-    select: { style: 'multi' },          // rows get the “selected” class
+    select: { style: 'multi' },
     columnDefs: [{
       targets: 0,
-      checkboxes: { selectRow: true }    // real checkboxes
+      checkboxes: { 
+        selectRow: false,    // Don't highlight rows
+        selectCallback: false // Don't use their callback system
+      }
     }],
     columns: [
       { data: 0 },                       // checkbox column (index)
       { data: 1, title: 'Gene Name' },
       { data: 2, title: 'Glyph Name' },
       { data: 3, title: 'Glyph Color',
-        render: c => `<div style="width:12px;height:12px;border:1px solid #666;background:${c}"></div>`
+        render: c => `<div class="color-indicator" style="background:${c}"></div>`
       },
       { title: 'Glyph',
-        render: function (_, __, row) {
-          const [, gene, glyphName, color] = row;
+        render: function (data, type, row, meta) {
+          const gene = row[1];
           const canv = document.createElement('canvas');
-          canv.width = canv.height = 14;
-          const ctx = canv.getContext('2d');
-          ctxPath(glyphName, ctx, {x:7, y:7},
-                  ['star5','star6'].includes(glyphName) ? 7 : 5);
-          ctx.strokeStyle = color;
-          ctx.lineWidth   = 1.5;
-          ctx.stroke();
+          canv.id = gene; // gene name will be the id
+          canv.width = 18;
+          canv.height = 18;
           return canv.outerHTML;
         }
       }
@@ -110,16 +217,48 @@ function buildTable(genes) {
     initComplete: function () {
       // tick every row
       this.api().column(0).checkboxes.select();
-
+      
+      // Draw glyphs on canvases
+      rows.forEach(row => {
+        const [, gene, glyphName, color] = row;
+        const canvas = document.getElementById(gene);
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          const p = {x: 9, y: 9};
+          const r = ['star5','star6'].includes(glyphName) ? 8 : 6;
+          
+          ctxPath(glyphName, ctx, p, r);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      });
+      
+      // Send initial state to main viewer (all genes selected)
+      const allGenes = genes.slice(); // All gene names
+      if (window.opener) {
+        window.opener.postMessage({ type: 'geneVisibilityUpdate', chosen: allGenes }, '*');
+      }
     }
   });
 
-  /* whenever user selects/unselects rows, notify opener */
-  $('#example').on('select.dt deselect.dt', () => {
-    const chosen = table.rows({ selected: true })
-                        .data().pluck(1).toArray();   // column 1 = gene name
-    if (window.opener)
-      window.opener.postMessage({ type: 'geneVisibilityUpdate', chosen }, '*');
+  /* whenever user checks/unchecks checkboxes, notify opener */
+  $('#example').on('change', 'input[type="checkbox"]', function() {
+    // Get all checked checkboxes directly from DOM
+    const chosen = [];
+    $('#example tbody input[type="checkbox"]:checked').each(function() {
+      const row = $(this).closest('tr');
+      const rowData = table.row(row).data();
+      if (rowData && rowData[1]) {
+        chosen.push(rowData[1]); // column 1 = gene name
+      }
+    });
+    
+    console.log('Gene panel: sending', chosen.length, 'selected genes:', chosen.slice(0, 5));
+    
+    if (window.opener) {
+      window.opener.postMessage({ type: 'geneVisibilityUpdate', chosen: chosen }, '*');
+    }
   });
 }
 </script>
