@@ -294,6 +294,11 @@
             // Add gene layers
             layers.push(...createGeneLayers(state.geneDataMap, state.showGenes, state.selectedGenes, state.geneIconAtlas, state.geneIconMapping, state.currentPlane, state.geneSizeScale, (info) => showTooltip(info, elements.tooltip)));
 
+            // Preserve pinned line layers before updating
+            if (state.polygonHighlighter && state.polygonHighlighter.pinnedLineLayer) {
+                layers.push(state.polygonHighlighter.pinnedLineLayer);
+            }
+
             state.deckglInstance.setProps({ layers: layers });
         }
 
