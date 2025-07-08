@@ -75,15 +75,6 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         updateLayersCallback();
     });
 
-    // Gene expression markers toggle
-    elements.showGenes.addEventListener('change', (e) => {
-        state.showGenes = e.target.checked;
-        updateLayersCallback();
-    });
-
-    // === POLYGON GROUP CONTROLS ===
-    // Removed - no longer using polygon group filtering
-
     // === GENE EXPRESSION CONTROLS ===
     
     // Gene size slider
@@ -91,16 +82,7 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         updateGeneSize(
             parseFloat(e.target.value),
             state,
-            elements.geneSizeValue,
-            updateLayersCallback
-        );
-    });
-
-    // Toggle all genes visibility
-    elements.toggleAllGenes.addEventListener('click', () => {
-        toggleAllGenes(
-            state.selectedGenes,
-            state.geneDataMap,
+            elements.geneSizeValue, // Display element for value
             updateLayersCallback
         );
     });
@@ -115,13 +97,6 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
     // Cross-window communication with gene panel
     window.addEventListener('message', (event) => {
         handleGenePanelMessage(event, state, updateLayersCallback);
-    });
-
-    // === UI CONTROLS ===
-    
-    // Layer controls panel minimize/expand
-    elements.minimizeBtn.addEventListener('click', () => {
-        toggleLayerControls(elements.layerControls, elements.minimizeBtn);
     });
 }
 

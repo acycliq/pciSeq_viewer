@@ -17,21 +17,17 @@ body {
 
 /* Gene Panel Button */
 #genePanelBtn {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    z-index: 1000;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.9);
     border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
+    padding: 0;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
+    user-select: none;
 }
 
 #genePanelBtn:hover {
-    background: rgba(0, 0, 0, 0.9);
+    color: #007bff;
 }
 
 /* Main Controls */
@@ -74,129 +70,82 @@ body {
     background: rgba(255, 255, 255, 0.3);
 }
 
-/* Layer Controls */
-.layer-controls {
+/* Minimal Layer Controls */
+.minimal-controls {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 16px;
+    top: 15px;
+    right: 15px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 12px;
     z-index: 10;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    max-width: 280px;
-    max-height: 70vh;
-    overflow-y: auto;
-}
-
-.layer-controls h3 {
-    margin: 0 0 12px 0;
-    font-size: 16px;
-    color: #333;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 8px;
-}
-
-.control-section {
-    margin-bottom: 16px;
-}
-
-.control-section h4 {
-    margin: 0 0 8px 0;
-    font-size: 14px;
-    color: #555;
-}
-
-.layer-toggle {
-    display: flex;
-    align-items: center;
-    margin-bottom: 8px;
-    padding: 4px 0;
-}
-
-.layer-toggle input[type="checkbox"] {
-    margin-right: 8px;
-    transform: scale(1.1);
-}
-
-.layer-toggle label {
-    flex-grow: 1;
-    font-size: 14px;
-    cursor: pointer;
-    color: #333;
-}
-
-.alias-control {
-    display: flex;
-    align-items: center;
-    margin-bottom: 6px;
-    padding: 4px 0;
-}
-
-.alias-control input[type="checkbox"] {
-    margin-right: 8px;
-    transform: scale(1.1);
-}
-
-.alias-control label {
-    flex-grow: 1;
-    font-size: 12px;
-    cursor: pointer;
-    color: #666;
-}
-
-.color-indicator {
-    width: 16px;
-    height: 16px;
-    border-radius: 3px;
-    margin-left: 8px;
-    border: 1px solid #ccc;
-}
-
-.toggle-btn {
-    background: #007bff;
-    color: white;
-    border: none;
-    padding: 6px 12px;
     border-radius: 4px;
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 12px;
+    color: white;
+}
+
+.control-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.control-item input[type="checkbox"] {
+    transform: scale(0.9);
+    accent-color: #007bff;
+}
+
+.control-item label {
+    font-size: 13px;
     cursor: pointer;
-    font-size: 12px;
-    margin-right: 8px;
+    color: rgba(255, 255, 255, 0.9);
+    user-select: none;
 }
 
-.toggle-btn:hover {
-    background: #0056b3;
+.gene-size-item {
+    gap: 4px;
 }
 
-.toggle-btn.secondary {
-    background: #6c757d;
+.gene-size-item input[type="range"] {
+    width: 60px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    appearance: none;
+    outline: none;
 }
 
-.toggle-btn.secondary:hover {
-    background: #545b62;
+.gene-size-item input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: pointer;
 }
 
-/* Gene Controls */
-.gene-controls {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid #eee;
+.gene-size-item input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
 }
 
-.gene-size-control {
-    margin-bottom: 12px;
+.gene-size-item #geneSizeValue {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.8);
+    min-width: 24px;
+    text-align: center;
+    font-family: monospace;
 }
 
-.gene-size-control label {
-    display: block;
-    font-size: 12px;
-    color: #555;
-    margin-bottom: 4px;
-}
-
-.gene-size-control input[type="range"] {
-    width: 100%;
-}
+/* Removed unused styles for cleaner minimal UI */
 
 /* Loading indicator */
 .loading-indicator {
