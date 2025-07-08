@@ -89,16 +89,71 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         );
     });
 
-    // === GENE PANEL MANAGEMENT ===
+    // === GENE WIDGET MANAGEMENT ===
     
-    // Open gene panel window
+    // Open gene widget
     elements.genePanelBtn.addEventListener('click', () => {
-        openGenePanel(state);
+        window.showGeneWidget();
     });
-
-    // Cross-window communication with gene panel
+    
+    // Close gene widget
+    elements.geneWidgetClose.addEventListener('click', () => {
+        window.hideGeneWidget();
+    });
+    
+    // Undock gene widget
+    elements.geneWidgetUndock.addEventListener('click', () => {
+        window.undockGeneWidget();
+    });
+    
+    // Close widget on backdrop click
+    elements.geneWidgetBackdrop.addEventListener('click', () => {
+        window.hideGeneWidget();
+    });
+    
+    // Gene search functionality
+    elements.geneSearch.addEventListener('input', (e) => {
+        window.filterGenes(e.target.value);
+    });
+    
+    // Toggle all genes button
+    elements.toggleAllGenes.addEventListener('click', () => {
+        window.toggleAllGenes();
+    });
+    
+    // Escape key to close widget
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !elements.geneWidget.classList.contains('hidden')) {
+            window.hideGeneWidget();
+        }
+    });
+    
+    // Handle messages from undocked gene panel
     window.addEventListener('message', (event) => {
-        handleGenePanelMessage(event, state, updateLayersCallback);
+        const msg = event.data;
+        if (!msg || !msg.type) return;
+        
+        switch (msg.type) {
+            case 'genePanelReady':
+                // Send gene list to undocked panel
+                if (state.genePanelWin) {
+                    const genes = Array.from(state.geneDataMap.keys());
+                    const chosen = Array.from(state.selectedGenes);
+                    state.genePanelWin.postMessage({
+                        type: 'geneList',
+                        genes: genes,
+                        chosen: chosen
+                    }, '*');
+                }
+                break;
+                
+            case 'geneVisibilityUpdate':
+                // Update gene visibility from undocked panel
+                state.selectedGenes.clear();
+                msg.chosen.forEach(g => state.selectedGenes.add(g));
+                updateLayersCallback();
+                break;
+        }
     });
 }
 
