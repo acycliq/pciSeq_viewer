@@ -33,41 +33,70 @@ body {
 /* Main Controls */
 .main-controls {
     position: absolute;
-    bottom: 20px;
+    bottom: 15px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 10;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 12px 24px;
-    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 16px;
+    border-radius: 4px;
+    backdrop-filter: blur(10px);
     color: white;
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 12px;
+    font-size: 13px;
 }
 
 #planeSlider {
-    width: 350px;
+    width: 300px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    appearance: none;
+    outline: none;
+}
+
+#planeSlider::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+#planeSlider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
 }
 
 #planeLabel {
-    min-width: 120px;
+    min-width: 80px;
     text-align: center;
-    font-weight: bold;
+    font-weight: normal;
+    color: rgba(255, 255, 255, 0.9);
+    font-family: monospace;
 }
 
 .nav-btn {
-    background: rgba(255, 255, 255, 0.2);
+    background: transparent;
     border: none;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.8);
+    padding: 4px 8px;
+    border-radius: 2px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 14px;
+    user-select: none;
 }
 
 .nav-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
+    color: #007bff;
+    background: rgba(255, 255, 255, 0.1);
 }
 
 /* Minimal Layer Controls */
