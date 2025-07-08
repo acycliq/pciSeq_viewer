@@ -349,16 +349,8 @@
         }
         
         function showGeneWidget() {
-            // Reset widget position and show
-            elements.geneWidget.style.transform = 'translateX(-420px)';
             elements.geneWidget.classList.remove('hidden');
             elements.geneWidgetBackdrop.classList.remove('hidden');
-            
-            // Animate in
-            setTimeout(() => {
-                elements.geneWidget.style.transform = 'translateX(0)';
-            }, 50);
-            
             populateGeneWidget();
             setupDragFunctionality();
         }
@@ -437,19 +429,14 @@
         }
         
         function hideGeneWidget() {
-            // Animate out
-            elements.geneWidget.style.transform = 'translateX(-420px)';
+            elements.geneWidget.classList.add('hidden');
+            elements.geneWidgetBackdrop.classList.add('hidden');
             elements.geneWidget.classList.remove('dragging');
             
-            // Hide after animation
-            setTimeout(() => {
-                elements.geneWidget.classList.add('hidden');
-                elements.geneWidgetBackdrop.classList.add('hidden');
-                
-                // Reset position
-                elements.geneWidget.style.left = '20px';
-                elements.geneWidget.style.top = '20px';
-            }, 300);
+            // Reset position for next time
+            elements.geneWidget.style.left = '20px';
+            elements.geneWidget.style.top = '20px';
+            elements.geneWidget.style.transform = 'translateX(0)';
         }
         
         function filterGenes(searchTerm) {
