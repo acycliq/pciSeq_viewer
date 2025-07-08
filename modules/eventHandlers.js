@@ -50,16 +50,18 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         updatePlaneCallback(state.currentPlane + 1);
     });
 
-    // Keyboard navigation (arrow keys)
+    // Keyboard navigation (arrow keys) - use capture phase to intercept before deck.gl
     document.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowLeft') {
             e.preventDefault(); // Prevent page scrolling
+            e.stopPropagation(); // Stop deck.gl from getting this event
             updatePlaneCallback(state.currentPlane - 1);
         } else if (e.key === 'ArrowRight') {
             e.preventDefault();
+            e.stopPropagation(); // Stop deck.gl from getting this event
             updatePlaneCallback(state.currentPlane + 1);
         }
-    });
+    }, true); // Use capture phase (true) to intercept before deck.gl
 
     // === LAYER VISIBILITY TOGGLES ===
     
@@ -166,13 +168,7 @@ export function setupAdvancedKeyboardShortcuts(state, updatePlaneCallback, updat
                 updateLayersCallback();
                 break;
                 
-            case 'g':
-            case 'G':
-                // Toggle genes
-                state.showGenes = !state.showGenes;
-                document.getElementById('showGenes').checked = state.showGenes;
-                updateLayersCallback();
-                break;
+            // Gene toggle removed - genes are always visible
         }
     });
 }
