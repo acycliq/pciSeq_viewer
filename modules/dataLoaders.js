@@ -320,6 +320,7 @@ function getCellClassColor(className) {
     // Import and use the classColorsCodes function from classConfig
     if (typeof classColorsCodes === 'function') {
         const colorConfig = classColorsCodes();
+        console.log(`Looking up color for ${className}, available classes:`, colorConfig.map(c => c.className));
         const classEntry = colorConfig.find(entry => entry.className === className);
         if (classEntry && classEntry.color) {
             // Convert hex color to RGB array
@@ -327,8 +328,13 @@ function getCellClassColor(className) {
             const r = parseInt(hex.substr(0, 2), 16);
             const g = parseInt(hex.substr(2, 2), 16);
             const b = parseInt(hex.substr(4, 2), 16);
+            console.log(`Found color for ${className}: ${classEntry.color} -> [${r}, ${g}, ${b}]`);
             return [r, g, b];
+        } else {
+            console.log(`No color found for ${className}, using fallback gray`);
         }
+    } else {
+        console.log('classColorsCodes function not available, using fallback gray');
     }
     
     // Fallback to generic gray color
@@ -420,20 +426,29 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
             }))
         };
         
-        // Extract cell classes from the loaded data and update with cellData if available
+        // Process cell classes for coloring
         console.log(`Processing ${geojson.features.length} features for plane ${planeNum}`);
         console.log('cellDataMap size:', cellDataMap ? cellDataMap.size : 'null');
+        
+        // Debug: Check first few features before processing
+        if (geojson.features.length > 0) {
+            console.log('Sample feature before processing:', geojson.features[0]);
+            console.log('Sample feature properties:', geojson.features[0].properties);
+        }
         
         if (cellDataMap && cellDataMap.size > 0) {
             let processedCount = 0;
             geojson.features.forEach(feature => {
                 if (feature.properties && feature.properties.label) {
+                    console.log(`Processing feature ${processedCount + 1}: label=${feature.properties.label}`);
                     const cellClass = getMostProbableCellClass(feature.properties.label, cellDataMap);
+                    console.log(`Got cellClass: ${cellClass}`);
                     feature.properties.cellClass = cellClass;
                     allCellClasses.add(cellClass);
                     processedCount++;
-                    if (processedCount <= 3) {
+                    if (processedCount <= 5) {
                         console.log(`Feature ${processedCount}: label=${feature.properties.label}, cellClass=${cellClass}`);
+                        console.log('Feature after assignment:', feature.properties);
                     }
                 }
             });
@@ -474,20 +489,21 @@ async function loadPolygonDataWithWorker(planeNum) {
 }
 
 /**
- * Assign colors to polygon aliases for consistent visualization
- * @param {Set} allPolygonAliases - All discovered aliases
- * @param {Map} polygonAliasColors - Map to store alias colors
- * @param {Map} polygonAliasVisibility - Map to store alias visibility
+ * Assign colors to cell classes for consistent visualization
+ * @param {Set} allCellClasses - All discovered cell classes
+ * @param {Map} cellClassColors - Map to store cell class colors
  */
-export function assignColorsToCellClasses(allCellClasses, cellClassColors, cellClassVisibility) {
+export function assignColorsToCellClasses(allCellClasses, cellClassColors) {
     const classes = Array.from(allCellClasses);
+    console.log(`Assigning colors for ${classes.length} cell classes:`, classes);
+    
     classes.forEach((cellClass) => {
         if (!cellClassColors.has(cellClass)) {
             const color = getCellClassColor(cellClass);
             cellClassColors.set(cellClass, color);
-        }
-        if (!cellClassVisibility.has(cellClass)) {
-            cellClassVisibility.set(cellClass, true);
+            console.log(`Assigned color to ${cellClass}:`, color);
         }
     });
+    
+    console.log('Final color map:', Array.from(cellClassColors.entries()));
 }

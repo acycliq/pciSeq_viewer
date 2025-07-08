@@ -124,19 +124,16 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
 
 /**
  * Create polygon layers for cell boundary visualization
- * Groups polygons by cell class and creates separate layers for each class
+ * Single layer with all polygons colored by cell class (no filtering)
  * @param {number} planeNum - Current plane number
  * @param {Map} polygonCache - Cache containing polygon data
  * @param {boolean} showPolygons - Whether polygons should be visible
- * @param {Map} cellClassVisibility - Visibility state for each cell class
  * @param {Map} cellClassColors - Color mapping for each cell class
  * @returns {GeoJsonLayer[]} Array of polygon layers
  */
-export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassVisibility, cellClassColors) {
+export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors) {
     const layers = [];
     console.log(`createPolygonLayers called for plane ${planeNum}, showPolygons: ${showPolygons}`);
-    console.log('cellClassVisibility:', cellClassVisibility);
-    console.log('cellClassColors:', cellClassColors);
     
     if (!showPolygons) {
         console.log('Polygons disabled in state');
@@ -149,34 +146,9 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
         return layers;
     }
     
-    console.log(`Creating polygon layers for plane ${planeNum}, features: ${geojson.features.length}`);
-    console.log('Sample feature:', geojson.features[0]);
-    console.log('Sample feature properties:', geojson.features[0]?.properties);
-
-    // Group features by cell class for separate layer rendering
-    const groupedFeatures = new Map();
-    geojson.features.forEach(feature => {
-        const cellClass = feature.properties.cellClass || feature.properties.alias || 'Generic';
-        if (!groupedFeatures.has(cellClass)) {
-            groupedFeatures.set(cellClass, []);
-        }
-        groupedFeatures.get(cellClass).push(feature);
-    });
-
-    // Create cell class to ID mapping for DataFilterExtension
-    const cellClassArray = Array.from(new Set(geojson.features.map(f => f.properties.cellClass || 'Generic')));
-    const cellClassToId = new Map(cellClassArray.map((cls, idx) => [cls, idx]));
+    console.log(`Creating polygon layer for plane ${planeNum}, features: ${geojson.features.length}`);
     
-    // Add cellClassId to each feature for filtering
-    geojson.features.forEach(feature => {
-        const cellClass = feature.properties.cellClass || 'Generic';
-        feature.properties.cellClassId = cellClassToId.get(cellClass);
-    });
-    
-    // Create simple filtering: show all features, hide with getFillColor alpha
-    console.log(`Creating single polygon layer with ${geojson.features.length} features`);
-    console.log('Cell class visibility map:', cellClassVisibility);
-    
+    // Create single layer with all polygons colored by cell class
     const layer = new GeoJsonLayer({
         id: `polygons-${planeNum}`,
         data: geojson,
@@ -185,17 +157,19 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
         filled: true,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
         
-        // Color by cell class, with alpha 0 for hidden classes
-        getFillColor: f => {
-            const cellClass = f.properties.cellClass || 'Generic';
-            const isVisible = cellClassVisibility.get(cellClass);
-            const color = cellClassColors.get(cellClass) || [192, 192, 192];
-            return [...color, isVisible ? 120 : 0]; // Alpha 0 = invisible
+        // Color cells by their cell class
+        getFillColor: d => {
+            const cellClass = d.properties.cellClass;
+            if (cellClass && cellClassColors && cellClassColors.has(cellClass)) {
+                const color = cellClassColors.get(cellClass);
+                return [...color, 120]; // Add alpha for transparency
+            }
+            return [192, 192, 192, 120]; // Fallback gray with alpha
         },
         
-        // Update when visibility changes
+        // Update when colors change
         updateTriggers: {
-            getFillColor: [cellClassVisibility]
+            getFillColor: [cellClassColors]
         }
     });
     

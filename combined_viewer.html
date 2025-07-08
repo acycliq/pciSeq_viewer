@@ -55,13 +55,6 @@
             </div>
         </div>
 
-        <div class="control-section">
-            <h4>Polygon Groups</h4>
-            <button class="toggle-btn secondary" id="toggleAllPolygons">Toggle All Groups</button>
-            <div id="polygonAliasControls">
-                <!-- Dynamically populated -->
-            </div>
-        </div>
 
         <div class="control-section gene-controls">
             <h4>Gene Display</h4>
@@ -109,8 +102,7 @@
         import {
             showLoading,
             hideLoading,
-            showTooltip,
-            updatePolygonAliasControls
+            showTooltip
         } from './modules/uiHelpers.js';
 
         // Import event handling functions
@@ -149,8 +141,7 @@
             polygonLoadTimes: new Map(),
             lastCleanupTime: Date.now(),
             
-            // Cell class data (was polygon alias data)
-            cellClassVisibility: new Map(),
+            // Cell class data for coloring (no filtering, just colors)
             cellClassColors: new Map(),
             allCellClasses: new Set(),
             
@@ -221,9 +212,6 @@
             showPolygons: document.getElementById(UI_ELEMENTS.showPolygons),
             showGenes: document.getElementById(UI_ELEMENTS.showGenes),
             
-            // Polygon controls
-            toggleAllPolygons: document.getElementById(UI_ELEMENTS.toggleAllPolygons),
-            polygonAliasControls: document.getElementById(UI_ELEMENTS.polygonAliasControls),
             
             // Gene controls
             geneSizeSlider: document.getElementById(UI_ELEMENTS.geneSizeSlider),
@@ -288,7 +276,7 @@
 
             // Add polygon layers for current plane ONLY if cached
             if (state.polygonCache.has(state.currentPlane)) {
-                layers.push(...createPolygonLayers(state.currentPlane, state.polygonCache, state.showPolygons, state.cellClassVisibility, state.cellClassColors));
+                layers.push(...createPolygonLayers(state.currentPlane, state.polygonCache, state.showPolygons, state.cellClassColors));
             }
 
             // Add gene layers
@@ -354,15 +342,8 @@
                 
                 // Only update UI if this is still the current plane (user might have moved on)
                 if (state.currentPlane === planeNum) {
-                    // Check if we actually got new cell classes
-                    const prevGroupCount = state.cellClassColors.size;
-                    assignColorsToCellClasses(state.allCellClasses, state.cellClassColors, state.cellClassVisibility);
-                    
-                    // Only rebuild UI controls if new classes were added
-                    if (state.cellClassColors.size > prevGroupCount) {
-                        console.log(`New cell classes detected, updating controls`);
-                        updatePolygonAliasControls(state.allCellClasses, state.cellClassVisibility, state.cellClassColors, elements.polygonAliasControls, updateAllLayers);
-                    }
+                    // Assign colors to newly discovered cell classes
+                    assignColorsToCellClasses(state.allCellClasses, state.cellClassColors);
                     
                     // Refresh layers to show new polygon data (only if still current plane)
                     updateAllLayers();
@@ -559,6 +540,9 @@
             const polygonResult = await loadPolygonData(state.currentPlane, state.polygonCache, state.allCellClasses, state.cellDataMap);
             console.log(`Init: Current plane polygon data loaded:`, polygonResult);
             
+            // Assign colors to cell classes after loading polygon data
+            assignColorsToCellClasses(state.allCellClasses, state.cellClassColors);
+            
             // Preload adjacent planes (non-blocking)
             const adjacentPlanes = [
                 Math.max(0, state.currentPlane - 1),
@@ -573,10 +557,6 @@
                     });
                 }
             });
-            
-            // Assign colors and update controls after loading polygon data
-            assignColorsToCellClasses(state.allCellClasses, state.cellClassColors, state.cellClassVisibility);
-            updatePolygonAliasControls(state.allCellClasses, state.cellClassVisibility, state.cellClassColors, elements.polygonAliasControls, updateAllLayers);
             
             // Update UI to reflect the current plane state after data loading
             state.currentPlane = DEFAULT_STATE.currentPlane;

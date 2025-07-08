@@ -76,8 +76,6 @@ export const UI_ELEMENTS = {
     showTiles: 'showTiles',
     showPolygons: 'showPolygons',
     showGenes: 'showGenes',
-    toggleAllPolygons: 'toggleAllPolygons',
-    polygonAliasControls: 'polygonAliasControls',
     geneSizeSlider: 'geneSizeSlider',
     geneSizeValue: 'geneSizeValue',
     toggleAllGenes: 'toggleAllGenes',
