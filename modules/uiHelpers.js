@@ -209,7 +209,9 @@ export function toggleAllGenes(selectedGenes, geneDataMap, updateLayersCallback)
  */
 export function updateGeneSize(newScale, state, displayElement, updateLayersCallback) {
     state.geneSizeScale = newScale;
-    displayElement.textContent = newScale.toFixed(1);
+    if (displayElement) {
+        displayElement.textContent = newScale.toFixed(1);
+    }
     updateLayersCallback();
 }
 
