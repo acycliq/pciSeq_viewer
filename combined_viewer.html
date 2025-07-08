@@ -94,7 +94,8 @@
 
         // Import event handling functions
         import {
-            setupEventHandlers
+            setupEventHandlers,
+            setupAdvancedKeyboardShortcuts
         } from './modules/eventHandlers.js';
 
         // Extract deck.gl components
@@ -453,7 +454,7 @@
                     scrollZoom: true,
                     doubleClickZoom: true,
                     touchZoom: true,
-                    keyboard: true
+                    keyboard: false  // Disable deck.gl keyboard to prevent conflicts
                 },
                 onHover: (info) => {
                     console.log('Main deck.gl onHover called:', info.layer?.id, info.picked);
@@ -493,6 +494,9 @@
             
             // Setup all UI event listeners (slider, buttons, toggles, etc.)
             setupEventHandlers(elements, state, updatePlane, updateAllLayers);
+            
+            // Setup advanced keyboard shortcuts
+            setupAdvancedKeyboardShortcuts(state, updatePlane, updateAllLayers);
             
             // Load gene data first - this builds the gene icon atlas and populates geneDataMap
             // Gene data is shared across all planes, so we only need to load it once
