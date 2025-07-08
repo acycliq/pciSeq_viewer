@@ -7,7 +7,6 @@
 
 import { TIMING } from '../config/constants.js';
 import { 
-    toggleAllPolygonAliases, 
     toggleAllGenes, 
     updateGeneSize, 
     handleGenePanelMessage, 
@@ -83,15 +82,7 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
     });
 
     // === POLYGON GROUP CONTROLS ===
-    
-    // Toggle all polygon groups visibility
-    elements.toggleAllPolygons.addEventListener('click', () => {
-        toggleAllPolygonAliases(
-            state.polygonAliasVisibility,
-            elements.polygonAliasControls,
-            updateLayersCallback
-        );
-    });
+    // Removed - no longer using polygon group filtering
 
     // === GENE EXPRESSION CONTROLS ===
     
