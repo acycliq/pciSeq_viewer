@@ -23,9 +23,14 @@
     <div id="map"></div>
     <div id="tooltip"></div>
 
-    <!-- Gene Panel Button -->
+    <!-- Gene Panel Button with Size Slider -->
     <div class="minimal-controls" style="top: 15px; left: 15px; right: auto;">
         <button id="genePanelBtn">🧬 Genes</button>
+        <div class="control-item gene-size-item">
+            <label for="geneSizeSlider">Size</label>
+            <input type="range" id="geneSizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
+            <span id="geneSizeValue">1.0</span>
+        </div>
     </div>
 
     <!-- Floating Gene Panel Widget -->
@@ -67,10 +72,10 @@
             <input type="checkbox" id="showPolygons" checked>
             <label for="showPolygons">Cells</label>
         </div>
-        <div class="control-item gene-size-item">
-            <label for="geneSizeSlider">Size</label>
-            <input type="range" id="geneSizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
-            <span id="geneSizeValue">1.0</span>
+        <div class="control-item polygon-opacity-item">
+            <label for="polygonOpacitySlider">Opacity</label>
+            <input type="range" id="polygonOpacitySlider" min="0.0" max="1.0" step="0.1">
+            <span id="polygonOpacityValue">0.4</span>
         </div>
     </div>
 
@@ -160,6 +165,9 @@
             geneIconMapping: null,
             geneSizeScale: DEFAULT_STATE.geneSizeScale,
             
+            // Polygon opacity
+            polygonOpacity: DEFAULT_STATE.polygonOpacity,
+            
             // Interactions
             polygonHighlighter: null,
             genePanelWin: null
@@ -220,6 +228,9 @@
             showTiles: document.getElementById(UI_ELEMENTS.showTiles),
             showPolygons: document.getElementById(UI_ELEMENTS.showPolygons),
             
+            // Polygon controls
+            polygonOpacitySlider: document.getElementById(UI_ELEMENTS.polygonOpacitySlider),
+            polygonOpacityValue: document.getElementById(UI_ELEMENTS.polygonOpacityValue),
             
             // Gene controls
             geneSizeSlider: document.getElementById(UI_ELEMENTS.geneSizeSlider),
@@ -531,7 +542,7 @@
 
             // Add polygon layers for current plane ONLY if cached
             if (state.polygonCache.has(state.currentPlane)) {
-                layers.push(...createPolygonLayers(state.currentPlane, state.polygonCache, state.showPolygons, state.cellClassColors));
+                layers.push(...createPolygonLayers(state.currentPlane, state.polygonCache, state.showPolygons, state.cellClassColors, state.polygonOpacity));
             }
 
             // Add gene layers
