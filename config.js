@@ -1,8 +1,6 @@
 /**
  * Basic settings that users typically need to modify
  * when adapting the viewer to their own dataset.
- * 
- * For advanced settings, see: advanced-config.js
  */
 
 function config() {
