@@ -39,7 +39,8 @@ export const DEFAULT_STATE = {
     showTiles: userConfig.showBackgroundImages,
     showPolygons: userConfig.showCellBoundaries,
     showGenes: userConfig.showGeneMarkers,
-    geneSizeScale: userConfig.geneMarkerSize
+    geneSizeScale: userConfig.geneMarkerSize,
+    polygonOpacity: 0.4
 };
 
 // Color palette for different polygon aliases
@@ -78,6 +79,8 @@ export const UI_ELEMENTS = {
     showGenes: 'showGenes',
     geneSizeSlider: 'geneSizeSlider',
     geneSizeValue: 'geneSizeValue',
+    polygonOpacitySlider: 'polygonOpacitySlider',
+    polygonOpacityValue: 'polygonOpacityValue',
     toggleAllGenes: 'toggleAllGenes',
     layerControls: 'layerControls',
     minimizeBtn: 'minimizeBtn'

@@ -77,6 +77,14 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         updateLayersCallback();
     });
 
+    // Polygon opacity slider
+    elements.polygonOpacitySlider.addEventListener('input', (e) => {
+        const newOpacity = parseFloat(e.target.value);
+        state.polygonOpacity = newOpacity;
+        elements.polygonOpacityValue.textContent = newOpacity.toFixed(1);
+        updateLayersCallback();
+    });
+
     // === GENE EXPRESSION CONTROLS ===
     
     // Gene size slider
