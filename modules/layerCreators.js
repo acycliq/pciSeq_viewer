@@ -66,8 +66,8 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
                 .replace('{x}', x);
             
             // Check if we should show tile errors
-            const userConfig = window.config ? window.config() : { showTileErrors: false };
-            const suppressErrors = !userConfig.showTileErrors;
+            const advancedConfig = window.advancedConfig ? window.advancedConfig() : { performance: { showTileErrors: false } };
+            const suppressErrors = !advancedConfig.performance.showTileErrors;
             
             const promise = loadImage(imageUrl, suppressErrors)
                 .then(imageData => {

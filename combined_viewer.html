@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Load configuration first -->
     <script src="config.js"></script>
+    <script src="advanced-config.js"></script>
     <script src="https://unpkg.com/deck.gl@8.8.27/dist.min.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/d3-dsv@3"></script>
@@ -574,7 +575,8 @@
             updateAllLayers();
             
             const perfTime = performance.now() - perfStart;
-            if (userConfig.showPerformanceStats) {
+            const advancedConfig = window.advancedConfig();
+            if (advancedConfig.performance.showPerformanceStats) {
                 console.log(`⚡ Immediate plane update: ${perfTime.toFixed(1)}ms`);
             }
         }
@@ -756,9 +758,10 @@
             showLoading(state, elements.loadingIndicator);
             
             const userConfig = window.config();
+            const advancedConfig = window.advancedConfig();
             
             // Performance optimization info
-            if (userConfig.enablePerformanceMode) {
+            if (advancedConfig.performance.enablePerformanceMode) {
                 console.log('🚀 Performance optimizations enabled:');
                 console.log('  • Two-phase updates (immediate UI + background data)');
                 console.log('  • Smart caching with automatic cleanup');
@@ -840,7 +843,7 @@
             
             hideLoading(state, elements.loadingIndicator);
             
-            if (userConfig.showPerformanceStats) {
+            if (advancedConfig.performance.showPerformanceStats) {
                 console.log('✅ Initialization complete. Slider should now be very responsive!');
             }
         }
