@@ -129,9 +129,10 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
  * @param {Map} polygonCache - Cache containing polygon data
  * @param {boolean} showPolygons - Whether polygons should be visible
  * @param {Map} cellClassColors - Color mapping for each cell class
+ * @param {number} polygonOpacity - Opacity value (0.0 to 1.0)
  * @returns {GeoJsonLayer[]} Array of polygon layers
  */
-export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors) {
+export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5) {
     const layers = [];
     console.log(`createPolygonLayers called for plane ${planeNum}, showPolygons: ${showPolygons}`);
     
@@ -160,16 +161,17 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
         // Color cells by their cell class
         getFillColor: d => {
             const cellClass = d.properties.cellClass;
+            const alpha = Math.round(polygonOpacity * 255); // Convert 0-1 to 0-255
             if (cellClass && cellClassColors && cellClassColors.has(cellClass)) {
                 const color = cellClassColors.get(cellClass);
-                return [...color, 120]; // Add alpha for transparency
+                return [...color, alpha]; // Use dynamic alpha
             }
-            return [192, 192, 192, 120]; // Fallback gray with alpha
+            return [192, 192, 192, alpha]; // Fallback gray with dynamic alpha
         },
         
-        // Update when colors change
+        // Update when colors or opacity change
         updateTriggers: {
-            getFillColor: [cellClassColors]
+            getFillColor: [cellClassColors, polygonOpacity]
         }
     });
     
