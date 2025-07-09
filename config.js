@@ -9,7 +9,7 @@ function config() {
     return {
 
         // How many planes/slices does your dataset have?
-        totalPlanes: 100,
+        totalPlanes: 102,
         
         // Which plane should the app start on? (0 to totalPlanes-1)
         startingPlane: 50,
