@@ -6,7 +6,8 @@
  */
 
 import { 
-    GENE_DATA_URL, 
+    GENE_DATA_URL,
+    CELL_DATA_URL,
     IMG_DIMENSIONS, 
     POLYGON_ALIAS_THRESHOLDS,
     POLYGON_COLOR_PALETTE,
@@ -161,8 +162,7 @@ async function loadDataWithUnifiedWorker(dataType, url, planeId = null) {
  * @returns {Promise<Array>} Processed cell data
  */
 async function loadCellDataWithWorker() {
-    const cellDataUrl = './data/cellData.tsv';
-    return loadDataWithUnifiedWorker('loadCellData', cellDataUrl);
+    return loadDataWithUnifiedWorker('loadCellData', CELL_DATA_URL);
 }
 
 /**
