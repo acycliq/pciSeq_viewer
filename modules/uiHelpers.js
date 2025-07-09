@@ -82,8 +82,11 @@ export function showTooltip(info, tooltipElement) {
             
             // Get parent cell information
             let parentInfo = '';
-            if (info.object.neighbour && info.object.prob !== undefined) {
-                parentInfo = `<strong>Parent Cell:</strong> ${info.object.neighbour}<br>
+            let label = info.object.neighbour;
+            let neighbour;
+            label === 0? neighbour = 'Background' : neighbour = label;
+            if (neighbour && info.object.prob !== undefined) {
+                parentInfo = `<strong>Parent Cell:</strong> ${neighbour}<br>
                              <strong>Parent Probability:</strong> ${(info.object.prob * 100).toFixed(1)}%<br>`;
             }
             
