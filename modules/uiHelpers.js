@@ -47,6 +47,7 @@ export function showTooltip(info, tooltipElement) {
                 
                 // Get cell coordinates and probability from cellData
                 let cellInfo = '';
+                let classProb = '';
                 if (window.debugData && window.debugData.getCell) {
                     const cellData = window.debugData.getCell(parseInt(cellLabel));
                     if (cellData && cellData.position) {
@@ -58,15 +59,17 @@ export function showTooltip(info, tooltipElement) {
                             const classIndex = cellData.classification.className.indexOf(cellClass);
                             if (classIndex >= 0) {
                                 const prob = cellData.classification.probability[classIndex];
-                                cellInfo += `<strong>Class Probability:</strong> ${(prob * 100).toFixed(1)}%<br>`;
+                                classProb = `<strong>Class Probability:</strong> ${(prob * 100).toFixed(1)}%<br>`;
                             }
                         }
                     }
                 }
                 
-                content = `${cellInfo}<strong>Cell Label:</strong> ${cellLabel}<br>
-                          <strong>Cell Class:</strong> ${cellClass}<br>
-                          <strong>Plane:</strong> ${planeId}`;
+                content =  `${cellInfo}
+                            <strong>Plane:</strong>${planeId}<br>
+                            <strong>Cell Label:</strong> ${cellLabel}<br>
+                            <strong>Cell Class:</strong> ${cellClass}<br>
+                            ${classProb}`;
             }
         } else if (info.object.gene) {
             // Gene tooltip - show enhanced gene spot information
