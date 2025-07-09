@@ -7,9 +7,14 @@
 
 // Get the user configuration
 const userConfig = window.config ? window.config() : null;
+const advancedUserConfig = window.advancedConfig ? window.advancedConfig() : null;
 
 if (!userConfig) {
     throw new Error('Configuration not found. Make sure config.js is loaded before this file.');
+}
+
+if (!advancedUserConfig) {
+    throw new Error('Advanced configuration not found. Make sure advanced-config.js is loaded before this file.');
 }
 
 // Transform user config into application constants
@@ -31,16 +36,16 @@ export const INITIAL_VIEW_STATE = {
     maxZoom: 8
 };
 
-export const MAX_PRELOAD = 3;
-export const MAX_TILE_CACHE = 1000;
+export const MAX_PRELOAD = advancedUserConfig.performance.preloadRadius;
+export const MAX_TILE_CACHE = advancedUserConfig.performance.maxTileCache;
 
 export const DEFAULT_STATE = {
     currentPlane: userConfig.startingPlane,
-    showTiles: userConfig.showBackgroundImages,
-    showPolygons: userConfig.showCellBoundaries,
-    showGenes: userConfig.showGeneMarkers,
-    geneSizeScale: userConfig.geneMarkerSize,
-    polygonOpacity: 0.4
+    showTiles: advancedUserConfig.display.showBackgroundImages,
+    showPolygons: advancedUserConfig.display.showCellBoundaries,
+    showGenes: advancedUserConfig.display.showGeneMarkers,
+    geneSizeScale: advancedUserConfig.display.geneMarkerSize,
+    polygonOpacity: advancedUserConfig.display.polygonOpacity
 };
 
 // Color palette for different polygon aliases
@@ -88,17 +93,17 @@ export const UI_ELEMENTS = {
 
 // Gene Size Configuration
 export const GENE_SIZE_CONFIG = {
-    BASE_SIZE: 20,
-    MIN_SCALE: 0.5,
-    MAX_SCALE: 3.0,
-    SCALE_STEP: 0.1,
-    DEFAULT_SCALE: userConfig.geneMarkerSize
+    BASE_SIZE: advancedUserConfig.visualization.geneBaseSize,
+    MIN_SCALE: advancedUserConfig.visualization.geneMinScale,
+    MAX_SCALE: advancedUserConfig.visualization.geneMaxScale,
+    SCALE_STEP: advancedUserConfig.visualization.geneScaleStep,
+    DEFAULT_SCALE: advancedUserConfig.display.geneMarkerSize
 };
 
 // Timing Configuration
 export const TIMING = {
-    SLIDER_DEBOUNCE: 100, // ms
-    LOADING_TIMEOUT: 2000 // ms
+    SLIDER_DEBOUNCE: advancedUserConfig.performance.sliderDebounce, // ms
+    LOADING_TIMEOUT: advancedUserConfig.performance.loadingTimeout // ms
 };
 
 // Helper function to get polygon file URL for a specific plane

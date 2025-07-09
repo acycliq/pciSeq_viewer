@@ -32,28 +32,7 @@ function config() {
         
         // Where are your background image tiles?
         // Use {plane}, {z}, {y}, {x} as placeholders
-        backgroundTiles: "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg",
-        
-        // === BASIC DISPLAY SETTINGS ===
-        
-        // Should these layers be visible when the app starts?
-        showBackgroundImages: true,
-        showCellBoundaries: true,
-        showGeneMarkers: true,
-        
-        // How big should gene markers be? (1.0 = normal size)
-        geneMarkerSize: 1.0,
-        
-        // === PERFORMANCE SETTINGS ===
-        
-        // Enable performance optimizations?
-        enablePerformanceMode: true,
-        
-        // Show performance timing in console?
-        showPerformanceStats: true,
-        
-        // Show tile loading errors in console? (can be noisy when zooming)
-        showTileErrors: false
+        backgroundTiles: "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg"
     };
 }
 
