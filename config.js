@@ -1,7 +1,5 @@
 /**
- * Simple Application Configuration
- * 
- * This file contains the basic settings that users typically need to modify
+ * Basic settings that users typically need to modify
  * when adapting the viewer to their own dataset.
  * 
  * For advanced settings, see: advanced-config.js
@@ -9,8 +7,7 @@
 
 function config() {
     return {
-        // === YOUR DATASET INFORMATION ===
-        
+
         // How many planes/slices does your dataset have?
         totalPlanes: 100,
         
@@ -20,18 +17,14 @@ function config() {
         // What are the dimensions of your images? (in pixels)
         imageWidth: 6411,
         imageHeight: 4412,
-        
-        // === YOUR DATA FILE LOCATIONS ===
-        
-        // Where is your gene expression data file?
+
         geneDataFile: "./data/geneData.tsv",
-        
-        // Where are your cell boundary files? 
+        cellDataFile: "./data/cellData.tsv",
+
         // Use {plane} as placeholder - it will be replaced with the actual plane number
         cellBoundaryFiles: "./data/cellBoundaries/plane_{plane}.tsv",
-        
-        // Where are your background image tiles?
-        // Use {plane}, {z}, {y}, {x} as placeholders
+
+        // Background image: use {plane}, {z}, {y}, {x} as placeholders
         backgroundTiles: "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg"
     };
 }

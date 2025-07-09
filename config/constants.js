@@ -21,6 +21,7 @@ if (!advancedUserConfig) {
 export const TILE_BASE_URL = userConfig.backgroundTiles.replace('/{z}/{y}/{x}.jpg', '').replace('/{z}/{y}/{x}.png', '');
 
 export const GENE_DATA_URL = userConfig.geneDataFile;
+export const CELL_DATA_URL = userConfig.cellDataFile;
 
 export const IMG_DIMENSIONS = {
     width: userConfig.imageWidth,
