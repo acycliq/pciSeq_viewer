@@ -3,7 +3,7 @@
  * Provides functionality to highlight polygon boundaries on mouseover
  */
 class PolygonBoundaryHighlighter {
-    constructor(deckglInstance, coordinateSystem, cellToSpotsIndex = null, geneToId = null) {
+    constructor(deckglInstance, coordinateSystem, cellToSpotsIndex = null, geneToId = null, cellDataMap = null) {
         this.deckglInstance = deckglInstance;
         this.coordinateSystem = coordinateSystem;
         this.hoveredPolygon = null;
@@ -15,6 +15,7 @@ class PolygonBoundaryHighlighter {
         // Cell-to-spot connections
         this.cellToSpotsIndex = cellToSpotsIndex;
         this.geneToId = geneToId;
+        this.cellDataMap = cellDataMap;
         
         // Pinned lines state
         this.pinnedCell = null; // Cell label that's pinned
@@ -227,9 +228,20 @@ class PolygonBoundaryHighlighter {
     }
 
     /**
-     * Calculate polygon centroid from coordinates
+     * Calculate polygon centroid - uses actual cell coordinates from cellData if available,
+     * otherwise falls back to polygon vertex average
      */
-    calculatePolygonCentroid(polygonCoords) {
+    calculatePolygonCentroid(polygonCoords, cellLabel = null) {
+        // Try to use actual cell coordinates from cellData.tsv first
+        if (cellLabel && this.cellDataMap && this.cellDataMap.has(cellLabel)) {
+            const cellData = this.cellDataMap.get(cellLabel);
+            if (cellData && cellData.X !== undefined && cellData.Y !== undefined) {
+                // Transform cell coordinates to tile space (same transformation as gene spots)
+                return this.transformSpotCoordinates(cellData.X, cellData.Y);
+            }
+        }
+        
+        // Fallback to polygon vertex average if cellData not available
         if (!polygonCoords || polygonCoords.length === 0) return null;
         
         let sumX = 0, sumY = 0;
@@ -306,8 +318,8 @@ class PolygonBoundaryHighlighter {
         const spots = this.cellToSpotsIndex.get(cellLabel) || [];
         if (spots.length === 0) return null;
         
-        // Calculate cell centroid
-        const centroid = this.calculatePolygonCentroid(polygonObject.geometry.coordinates);
+        // Calculate cell centroid using actual cell coordinates if available
+        const centroid = this.calculatePolygonCentroid(polygonObject.geometry.coordinates, cellLabel);
         if (!centroid) return null;
         
         // Create line data from each spot to centroid
