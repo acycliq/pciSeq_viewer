@@ -188,7 +188,7 @@ async function searchAndNavigateToCell(cellId) {
     console.log(`🎯 Navigating to cell using X,Y coordinates only (ignoring Z=${cellData.z})`);
     
     // CRITICAL: Use high zoom for close-up view of the cell
-    const targetZoom = 6.5; // High zoom for detailed cell view
+    const targetZoom = 8; // Maximum zoom for detailed cell view
 
     // Get current view state from deck.gl instance
     const deckInstance = window.appState?.deckglInstance;
