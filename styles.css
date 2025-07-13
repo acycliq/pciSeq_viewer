@@ -1,5 +1,124 @@
 /* Combined Gene Expression and Cell Boundary Viewer Styles */
 
+/* Cell Lookup Magnifying Glass */
+.cell-lookup {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 1000;
+}
+
+.magnifying-glass {
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #0066cc;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 24px;
+    color: #0066cc;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.magnifying-glass:hover {
+    background: rgba(0, 102, 204, 0.2);
+    transform: scale(1.1);
+}
+
+/* Cell Search Modal */
+.cell-search-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+}
+
+.cell-search-dialog {
+    background: #1a1a1a;
+    border: 2px solid #0066cc;
+    border-radius: 8px;
+    padding: 30px;
+    max-width: 400px;
+    width: 90%;
+    color: white;
+}
+
+.cell-search-dialog h3 {
+    margin-top: 0;
+    color: #0066cc;
+    text-align: center;
+}
+
+.cell-search-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background: #333;
+    color: #fff;
+    font-size: 16px;
+    margin-bottom: 20px;
+    box-sizing: border-box;
+}
+
+.cell-search-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.cell-search-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.cell-search-btn.primary {
+    background: #0066cc;
+    color: white;
+}
+
+.cell-search-btn.primary:hover {
+    background: #0052a3;
+}
+
+.cell-search-btn.secondary {
+    background: #444;
+    color: white;
+}
+
+.cell-search-btn.secondary:hover {
+    background: #555;
+}
+
+.cell-search-status {
+    margin-top: 15px;
+    text-align: center;
+    font-size: 14px;
+    min-height: 20px;
+}
+
+.cell-search-status.error {
+    color: #ff6b6b;
+}
+
+.cell-search-status.success {
+    color: #00ff88;
+}
+
 /* Base Styles */
 body {
     margin: 0;

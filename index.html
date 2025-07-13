@@ -19,10 +19,32 @@
     <script src="modules/glyphConfig.js"></script>
     <!-- Import cell class configuration -->
     <script src="modules/classConfig.js"></script>
+    <!-- Import cell lookup module -->
+    <script src="modules/cellLookup.js"></script>
 </head>
 <body>
     <div id="map"></div>
     <div id="tooltip"></div>
+
+    <!-- Cell Lookup Magnifying Glass -->
+    <div class="cell-lookup">
+        <div class="magnifying-glass" id="cellLookupBtn" title="Search for cell by ID">
+            🔍
+        </div>
+    </div>
+
+    <!-- Cell Search Modal -->
+    <div class="cell-search-modal" id="cellSearchModal">
+        <div class="cell-search-dialog">
+            <h3>🔍 Cell Lookup</h3>
+            <input type="text" class="cell-search-input" id="cellSearchInput" placeholder="Enter cell ID (e.g., 1, 42, 1000...)" />
+            <div class="cell-search-buttons">
+                <button class="cell-search-btn primary" id="cellSearchGo">Go to Cell</button>
+                <button class="cell-search-btn secondary" id="cellSearchCancel">Cancel</button>
+            </div>
+            <div class="cell-search-status" id="cellSearchStatus"></div>
+        </div>
+    </div>
 
     <!-- Gene Panel Button with Size Slider -->
     <div class="minimal-controls" style="top: 15px; left: 15px; right: auto;">
@@ -173,6 +195,9 @@
             polygonHighlighter: null,
             genePanelWin: null
         };
+
+        // Expose state globally for cell lookup module
+        window.appState = state;
 
         // === DEBUG/CONSOLE ACCESS ===
         // Expose data for console access and debugging
@@ -722,6 +747,9 @@
             });
         }
 
+        // Expose updatePlane globally for cell lookup module
+        window.updatePlane = updatePlane;
+
         // === TOOLTIP FUNCTIONS ===
         // Tooltip functions have been moved to modules/uiHelpers.js
 
@@ -850,7 +878,15 @@
         }
 
         // Start the application
-        window.addEventListener('load', init);
+        window.addEventListener('load', async () => {
+            await init();
+            
+            // Initialize cell lookup UI only (no data loading to avoid slowing startup)
+            if (window.cellLookup) {
+                window.cellLookup.setupUI();
+                console.log('🔍 Cell lookup UI ready (data will load on first search)');
+            }
+        });
     </script>
 </body>
 </html>
