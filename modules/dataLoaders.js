@@ -320,7 +320,7 @@ function getCellClassColor(className) {
     // Import and use the classColorsCodes function from classConfig
     if (typeof classColorsCodes === 'function') {
         const colorConfig = classColorsCodes();
-        console.log(`Looking up color for ${className}, available classes:`, colorConfig.map(c => c.className));
+        // console.log(`Looking up color for ${className}, available classes:`, colorConfig.map(c => c.className));
         const classEntry = colorConfig.find(entry => entry.className === className);
         if (classEntry && classEntry.color) {
             // Convert hex color to RGB array
@@ -328,7 +328,7 @@ function getCellClassColor(className) {
             const r = parseInt(hex.substr(0, 2), 16);
             const g = parseInt(hex.substr(2, 2), 16);
             const b = parseInt(hex.substr(4, 2), 16);
-            console.log(`Found color for ${className}: ${classEntry.color} -> [${r}, ${g}, ${b}]`);
+            // console.log(`Found color for ${className}: ${classEntry.color} -> [${r}, ${g}, ${b}]`);
             return [r, g, b];
         } else {
             console.log(`No color found for ${className}, using fallback gray`);
@@ -432,27 +432,27 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
         
         // Debug: Check first few features before processing
         if (geojson.features.length > 0) {
-            console.log('Sample feature before processing:', geojson.features[0]);
-            console.log('Sample feature properties:', geojson.features[0].properties);
+            // console.log('Sample feature before processing:', geojson.features[0]);
+            // console.log('Sample feature properties:', geojson.features[0].properties);
         }
         
         if (cellDataMap && cellDataMap.size > 0) {
             let processedCount = 0;
             geojson.features.forEach(feature => {
                 if (feature.properties && feature.properties.label) {
-                    console.log(`Processing feature ${processedCount + 1}: label=${feature.properties.label}`);
+                    // console.log(`Processing feature ${processedCount + 1}: label=${feature.properties.label}`);
                     const cellClass = getMostProbableCellClass(feature.properties.label, cellDataMap);
-                    console.log(`Got cellClass: ${cellClass}`);
+                    // console.log(`Got cellClass: ${cellClass}`);
                     feature.properties.cellClass = cellClass;
                     allCellClasses.add(cellClass);
                     processedCount++;
                     if (processedCount <= 5) {
-                        console.log(`Feature ${processedCount}: label=${feature.properties.label}, cellClass=${cellClass}`);
-                        console.log('Feature after assignment:', feature.properties);
+                        // console.log(`Feature ${processedCount}: label=${feature.properties.label}, cellClass=${cellClass}`);
+                        // console.log('Feature after assignment:', feature.properties);
                     }
                 }
             });
-            console.log(`Processed ${processedCount} features, allCellClasses:`, Array.from(allCellClasses));
+            // console.log(`Processed ${processedCount} features, allCellClasses:`, Array.from(allCellClasses));
         } else {
             // Fallback: extract existing cell classes
             geojson.features.forEach(feature => {
@@ -501,7 +501,7 @@ export function assignColorsToCellClasses(allCellClasses, cellClassColors) {
         if (!cellClassColors.has(cellClass)) {
             const color = getCellClassColor(cellClass);
             cellClassColors.set(cellClass, color);
-            console.log(`Assigned color to ${cellClass}:`, color);
+            // console.log(`Assigned color to ${cellClass}:`, color);
         }
     });
     
