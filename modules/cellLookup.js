@@ -237,25 +237,35 @@ async function searchAndNavigateToCell(cellId) {
  * Setup cell lookup UI event handlers
  */
 function setupCellLookupUI() {
-    const lookupBtn = document.getElementById('cellLookupBtn');
     const modal = document.getElementById('cellSearchModal');
     const input = document.getElementById('cellSearchInput');
     const goBtn = document.getElementById('cellSearchGo');
     const cancelBtn = document.getElementById('cellSearchCancel');
     const status = document.getElementById('cellSearchStatus');
 
-    // Open modal when magnifying glass is clicked
-    lookupBtn.addEventListener('click', () => {
-        modal.style.display = 'flex';
-        input.focus();
-        input.select();
-        status.textContent = '';
-        status.className = 'cell-search-status';
+    // Open modal when Ctrl+F is pressed
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'f') {
+            e.preventDefault(); // Prevent browser's default find dialog
+            modal.style.display = 'flex';
+            input.focus();
+            input.select();
+            status.textContent = '';
+            status.className = 'cell-search-status';
+            console.log('🔍 Cell lookup opened with Ctrl+F');
+        }
     });
 
-    // Close modal when cancel is clicked
+    // Close modal when cancel is clicked or Escape is pressed
     cancelBtn.addEventListener('click', () => {
         modal.style.display = 'none';
+    });
+
+    // Close modal when Escape key is pressed
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.style.display === 'flex') {
+            modal.style.display = 'none';
+        }
     });
 
     // Close modal when clicking outside dialog
@@ -310,7 +320,7 @@ function setupCellLookupUI() {
         status.className = `cell-search-status ${type}`;
     }
 
-    console.log('🔍 Cell lookup UI initialized');
+    console.log('🔍 Cell lookup UI initialized - Press Ctrl+F to search for cells');
 }
 
 // Export functions for use in main application
