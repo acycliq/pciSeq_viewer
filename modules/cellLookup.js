@@ -50,9 +50,16 @@ async function initializeCellLookup() {
  * Load and parse cell data from TSV file
  */
 async function loadCellData() {
-    const response = await fetch('data/newSpots_newSegmentation/cellData.tsv');
+    const config = window.config ? window.config() : {};
+    const cellDataPath = config.cellDataFile || 'data/newSpots_newSegmentation/cellData.tsv';
+    console.log('🌐 Fetching cell data from:', cellDataPath);
+    
+    const response = await fetch(cellDataPath);
+    console.log('📡 Response status:', response.status, response.statusText);
+    console.log('📡 Response headers:', [...response.headers.entries()]);
+    
     if (!response.ok) {
-        throw new Error(`Failed to load cell data: ${response.status}`);
+        throw new Error(`Failed to load cell data: ${response.status} ${response.statusText} from ${cellDataPath}`);
     }
 
     const tsvText = await response.text();
