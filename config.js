@@ -15,6 +15,9 @@ function config() {
         // What are the dimensions of your images? (in pixels)
         imageWidth: 6411,
         imageHeight: 4412,
+        
+        // Voxel resolution in pixels per micrometer [x, y, z]
+        voxelResolution: [0.28, 0.28, 0.7],
 
         geneDataFile: "https://storage.googleapis.com/christina_silver_hc/zeisel/newSpots_newSegmentation/geneData.tsv",
         cellDataFile: "https://storage.googleapis.com/christina_silver_hc/zeisel/newSpots_newSegmentation/cellData.tsv",
