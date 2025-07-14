@@ -16,11 +16,11 @@ function config() {
         imageWidth: 6411,
         imageHeight: 4412,
 
-        geneDataFile: "./data/geneData.tsv",
-        cellDataFile: "./data/cellData.tsv",
+        geneDataFile: "https://storage.googleapis.com/christina_silver_hc/zeisel/newSpots_newSegmentation/geneData.tsv",
+        cellDataFile: "https://storage.googleapis.com/christina_silver_hc/zeisel/newSpots_newSegmentation/cellData.tsv",
 
         // Use {plane} as placeholder - it will be replaced with the actual plane number
-        cellBoundaryFiles: "./data/cellBoundaries/plane_{plane}.tsv",
+        cellBoundaryFiles: "https://storage.googleapis.com/christina_silver_hc/zeisel/newSpots_newSegmentation/cellBoundaries/new_segmentation/plane_{plane}.tsv",
 
         // Background image: use {plane}, {z}, {y}, {x} as placeholders
         backgroundTiles: "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg"
