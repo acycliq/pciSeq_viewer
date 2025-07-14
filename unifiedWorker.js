@@ -44,7 +44,10 @@ function processGeneData(rawData) {
                 spot_id: rowIndex,
                 // Parse neighbour and probability fields properly
                 neighbour_array: row.neighbour_array ? JSON.parse(row.neighbour_array) : null,
-                prob_array: row.neighbour_prob ? JSON.parse(row.neighbour_prob) : null
+                prob_array: row.neighbour_prob ? JSON.parse(row.neighbour_prob) : null,
+                // Add score and intensity fields
+                score: row.omp_score ? parseFloat(row.omp_score) : null,
+                intensity: row.omp_intensity ? parseFloat(row.omp_intensity) : null
             };
             
             // Add derived fields for most likely parent (position 0)

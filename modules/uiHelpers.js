@@ -46,13 +46,13 @@ export function showTooltip(info, tooltipElement) {
                 const planeId = info.object.properties.plane_id;
                 
                 // Get cell coordinates and probability from cellData
-                let cellInfo = '';
+                let cellCoords = '';
                 let classProb = '';
                 if (window.debugData && window.debugData.getCell) {
                     const cellData = window.debugData.getCell(parseInt(cellLabel));
                     if (cellData && cellData.position) {
                         const coords = cellData.position;
-                        cellInfo = `<strong>Cell Coords:</strong> (${coords.x.toFixed(2)}, ${coords.y.toFixed(2)}, ${coords.z.toFixed(2)})<br>`;
+                        cellCoords = `<strong>Cell Coords:</strong> (${coords.x.toFixed(2)}, ${coords.y.toFixed(2)}, ${coords.z.toFixed(2)})<br>`;
                         
                         // Get cell class probability if available
                         if (cellData.classification && cellData.classification.className && cellData.classification.probability) {
@@ -65,9 +65,9 @@ export function showTooltip(info, tooltipElement) {
                     }
                 }
                 
-                content =  `${cellInfo}
+                content =  `<strong>Cell Label:</strong> ${cellLabel}<br>
+                            ${cellCoords}
                             <strong>Plane:</strong>${planeId}<br>
-                            <strong>Cell Label:</strong> ${cellLabel}<br>
                             <strong>Cell Class:</strong> ${cellClass}<br>
                             ${classProb}`;
             }
@@ -93,10 +93,19 @@ export function showTooltip(info, tooltipElement) {
                              <strong>Parent Probability:</strong> ${(info.object.prob * 100).toFixed(1)}%<br>`;
             }
             
+            // Get score and intensity information
+            let qualityInfo = '';
+            if (info.object.score !== undefined && info.object.score !== null) {
+                qualityInfo += `<strong>Score:</strong> ${info.object.score.toFixed(3)}<br>`;
+            }
+            if (info.object.intensity !== undefined && info.object.intensity !== null) {
+                qualityInfo += `<strong>Intensity:</strong> ${info.object.intensity.toFixed(3)}<br>`;
+            }
+            
             content = `${spotInfo}<strong>Gene:</strong> ${gene}<br>
                       <strong>Coords:</strong> ${coords}<br>
                       <strong>Plane:</strong> ${planeId}<br>
-                      ${parentInfo}`;
+                      ${parentInfo}${qualityInfo}`;
         }
         
         if (content) {
