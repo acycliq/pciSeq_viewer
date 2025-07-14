@@ -318,7 +318,8 @@
                 
                 const name = document.createElement('span');
                 name.className = 'gene-name';
-                name.textContent = gene;
+                const spotCount = state.geneDataMap.get(gene)?.length || 0;
+                name.textContent = `${gene} (${spotCount.toLocaleString()})`;
                 
                 item.appendChild(checkbox);
                 item.appendChild(glyph);
