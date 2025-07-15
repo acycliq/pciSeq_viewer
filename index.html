@@ -103,6 +103,13 @@
         <div class="scale-bar-line"></div>
         <div class="scale-bar-label">100 μm</div>
     </div>
+    
+    <!-- Coordinate Display -->
+    <div id="coordinateDisplay" class="coordinate-display" style="display: none;">
+        <span id="pixelCoords">---, ---</span> px | 
+        <span id="micronCoords">---, ---</span> μm | 
+        <span id="deckglCoords">---, ---</span> deck
+    </div>
 
     <script type="module">
         // Import configuration constants
@@ -593,6 +600,40 @@
             // Add some debug info
             console.log(`Scale bar: ${formatDistance(distance)} = ${pixels.toFixed(1)}px at zoom ${viewState.zoom.toFixed(1)}`);
         }
+        
+        // === COORDINATE DISPLAY FUNCTIONS ===
+        function updateCoordinateDisplay(info) {
+            const coordDisplay = document.getElementById('coordinateDisplay');
+            if (!coordDisplay) return;
+            
+            if (info.coordinate) {
+                const config = window.config();
+                const [deckX, deckY] = info.coordinate;
+                
+                // Convert deck.gl coordinates to image pixels
+                // deck.gl (256, 256) should map to image (6411, 6411) if image is 6411x4412 for example
+                const longSide = Math.max(config.imageWidth, config.imageHeight);
+                const imageX = deckX * longSide / 256;
+                const imageY = deckY * longSide / 256;
+                
+                // Convert to microns
+                const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
+                const micronX = imageX * xVoxel;
+                const micronY = imageY * yVoxel;
+                
+                // Update display elements
+                document.getElementById('pixelCoords').textContent = 
+                    `${Math.round(imageX)}, ${Math.round(imageY)}`;
+                document.getElementById('micronCoords').textContent = 
+                    `${micronX.toFixed(1)}, ${micronY.toFixed(1)}`;
+                document.getElementById('deckglCoords').textContent = 
+                    `${deckX.toFixed(2)}, ${deckY.toFixed(2)}`;
+                    
+                coordDisplay.style.display = 'block';
+            } else {
+                coordDisplay.style.display = 'none';
+            }
+        }
 
         // === MAIN UPDATE FUNCTION ===
         function updateAllLayers() {
@@ -838,6 +879,7 @@
                 },
                 onHover: (info) => {
                     console.log('Main deck.gl onHover called:', info.layer?.id, info.picked);
+                    updateCoordinateDisplay(info);
                     showTooltip(info, elements.tooltip);
                 },
                 getCursor: ({isHovering}) => (isHovering ? 'pointer' : 'default'),
