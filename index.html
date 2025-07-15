@@ -534,7 +534,8 @@
         // === SCALE BAR FUNCTIONS ===
         function calculateScaleBar(viewState) {
             const config = window.config();
-            const resolution = config.resolution; // microns per pixel in original image
+            const voxelSize = config.voxelSize;
+            const resolution = voxelSize[0]; // microns per pixel in original image
             
             // Deck.gl coordinate system: image is mapped to 256x256 coordinate space
             // So 1 deck.gl unit = imageWidth/256 image pixels
@@ -948,15 +949,16 @@
             }
         }
 
-        // Start the application
-        window.addEventListener('load', async () => {
-            await init();
-            
-            // Initialize cell lookup UI only (no data loading to avoid slowing startup)
+        // Initialize cell lookup UI immediately when page loads (before data loading)
+        window.addEventListener('load', () => {
+            // Initialize cell lookup UI first - this sets up the Ctrl+F event listener
             if (window.cellLookup) {
                 window.cellLookup.setupUI();
-                console.log('🔍 Cell lookup UI ready (data will load on first search)');
+                console.log('🔍 Cell lookup UI ready immediately (data will load on first search)');
             }
+            
+            // Then start the main application initialization
+            init();
         });
     </script>
 </body>
