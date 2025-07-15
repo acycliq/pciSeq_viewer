@@ -597,3 +597,24 @@ body {
     font-weight: normal;
     white-space: nowrap;
 }
+
+/* Coordinate Display */
+.coordinate-display {
+    position: fixed;
+    bottom: 15px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    z-index: 1000;
+    pointer-events: none;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.coordinate-display span {
+    color: rgba(255, 255, 255, 0.9);
+}
