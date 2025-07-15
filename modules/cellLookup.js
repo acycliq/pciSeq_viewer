@@ -191,8 +191,22 @@ async function searchAndNavigateToCell(cellId) {
     console.log(`   Original: (${cellData.x}, ${cellData.y})`);
     console.log(`   Transformed: (${transformedX}, ${transformedY})`);
     
-    // IGNORE Z coordinate - only navigate using X,Y coordinates
-    console.log(`🎯 Navigating to cell using X,Y coordinates only (ignoring Z=${cellData.z})`);
+    // Calculate plane number from Z coordinate
+    const [xVoxelSize, yVoxelSize, zVoxelSize] = config.voxelSize; // [0.28, 0.28, 0.7]
+    const planeNumber = Math.floor(cellData.z * xVoxelSize / zVoxelSize);
+    
+    console.log(`🎯 Cell Z coordinate: ${cellData.z}`);
+    console.log(`📐 Voxel sizes: x=${xVoxelSize}, y=${yVoxelSize}, z=${zVoxelSize}`);
+    console.log(`🧮 Calculation: ${cellData.z} * ${xVoxelSize} / ${zVoxelSize} = ${cellData.z * xVoxelSize / zVoxelSize}`);
+    console.log(`✈️ Calculated plane number: ${planeNumber} (valid range: 0-${config.totalPlanes - 1})`);
+    
+    // Switch to the calculated plane
+    if (window.updatePlane && typeof window.updatePlane === 'function') {
+        window.updatePlane(planeNumber);
+        console.log(`🎚️ Switched to plane ${planeNumber}`);
+    } else {
+        console.warn('⚠️ Could not switch plane - updatePlane function not available');
+    }
     
     // CRITICAL: Use high zoom for close-up view of the cell
     const targetZoom = 8; // Maximum zoom for detailed cell view

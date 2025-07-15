@@ -16,14 +16,14 @@ function config() {
         imageWidth: 6411,
         imageHeight: 4412,
         
-        // Voxel resolution in micron per pixels. Coordinates have already been adjusted for anisotropy.
-        resolution: 0.28,
+        // Size of a cubic pixel in microns (x, y, z)
+        voxelSize: [0.28, 0.28, 0.7],
 
-        geneDataFile: "https://storage.googleapis.com/christina_silver_hc/zeisel/newSpots_newSegmentation/geneData.tsv",
-        cellDataFile: "https://storage.googleapis.com/christina_silver_hc/zeisel/newSpots_newSegmentation/cellData.tsv",
+        geneDataFile: "./data/newSpots_newSegmentation/geneData.tsv",
+        cellDataFile: "./data/newSpots_newSegmentation/cellData.tsv",
 
         // Use {plane} as placeholder - it will be replaced with the actual plane number
-        cellBoundaryFiles: "https://storage.googleapis.com/christina_silver_hc/zeisel/newSpots_newSegmentation/cellBoundaries/new_segmentation/plane_{plane}.tsv",
+        cellBoundaryFiles: "./data/cellBoundaries/new_segmentation/plane_{plane}.tsv",
 
         // Background image: use {plane}, {z}, {y}, {x} as placeholders
         backgroundTiles: "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg"
