@@ -635,6 +635,40 @@
             }
         }
 
+        // === DEBUG FUNCTIONS ===
+        function createDebugDots() {
+            const config = window.config();
+            
+            // Define pixel coordinates for the four corners
+            const pixelCoords = [
+                [0, 0],           // Top-left
+                [0, 4412],        // Bottom-left  
+                [6411, 4412],     // Bottom-right
+                [6411, 0]         // Top-right
+            ];
+            
+            // Convert pixel coordinates to deck.gl coordinates
+            const longSide = Math.max(config.imageWidth, config.imageHeight);
+            const debugPoints = pixelCoords.map(([x, y], index) => ({
+                position: [x * 256 / longSide, y * 256 / longSide],
+                color: [255, 0, 0], // Bright red
+                radius: 0.5, // 0.5 pixel radius = 1 pixel diameter
+                id: index
+            }));
+            
+            return new deck.ScatterplotLayer({
+                id: 'debug-dots',
+                data: debugPoints,
+                getPosition: d => d.position,
+                getRadius: d => d.radius,
+                getFillColor: d => d.color,
+                radiusUnits: 'pixels',
+                pickable: true,
+                radiusMinPixels: 0.5,
+                radiusMaxPixels: 0.5
+            });
+        }
+
         // === MAIN UPDATE FUNCTION ===
         function updateAllLayers() {
             if (!state.deckglInstance) return;
@@ -683,6 +717,9 @@
             if (state.polygonHighlighter && state.polygonHighlighter.pinnedLineLayer) {
                 layers.push(state.polygonHighlighter.pinnedLineLayer);
             }
+
+            // Add debug dots for coordinate sanity checking
+            // layers.push(createDebugDots());
 
             state.deckglInstance.setProps({ layers: layers });
         }
