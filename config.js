@@ -16,8 +16,8 @@ function config() {
         imageWidth: 6411,
         imageHeight: 4412,
         
-        // Voxel resolution in pixels per micrometer [x, y, z]
-        voxelResolution: [0.28, 0.28, 0.7],
+        // Voxel resolution in micron per pixels. Coordinates have already been adjusted for anisotropy.
+        resolution: 0.28,
 
         geneDataFile: "https://storage.googleapis.com/christina_silver_hc/zeisel/newSpots_newSegmentation/geneData.tsv",
         cellDataFile: "https://storage.googleapis.com/christina_silver_hc/zeisel/newSpots_newSegmentation/cellData.tsv",

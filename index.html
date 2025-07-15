@@ -534,11 +534,19 @@
         // === SCALE BAR FUNCTIONS ===
         function calculateScaleBar(viewState) {
             const config = window.config();
-            const voxelResolution = config.voxelResolution; // [x, y, z] in pixels per micrometer
+            const resolution = config.resolution; // microns per pixel in original image
             
-            // Use X voxel resolution (0.28 pixels per micrometer at zoom 0)
-            const pixelsPerMicrometer = voxelResolution[0] * Math.pow(2, viewState.zoom);
-            const micrometersPerPixel = 1 / pixelsPerMicrometer;
+            // Deck.gl coordinate system: image is mapped to 256x256 coordinate space
+            // So 1 deck.gl unit = imageWidth/256 image pixels
+            const deckglUnitsPerImagePixel = 256 / config.imageWidth;
+            
+            // Convert from deck.gl coordinates to microns
+            // 1 deck.gl unit = (imageWidth/256) image pixels = (imageWidth/256) * resolution microns
+            const micronsPerDeckglUnit = (config.imageWidth / 256) * resolution;
+            
+            // Account for zoom level
+            const micronsPerPixel = micronsPerDeckglUnit / Math.pow(2, viewState.zoom);
+            const pixelsPerMicron = 1 / micronsPerPixel;
             
             // Choose appropriate scale length
             const scaleOptions = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]; // μm
@@ -546,7 +554,7 @@
             
             let bestScale = scaleOptions[0];
             for (const scale of scaleOptions) {
-                const pixels = scale / micrometersPerPixel;
+                const pixels = scale / micronsPerPixel;
                 if (pixels <= targetPixels && pixels >= 40) { // Min 40px for readability
                     bestScale = scale;
                 } else if (pixels > targetPixels) {
@@ -554,17 +562,17 @@
                 }
             }
             
-            const actualPixels = bestScale / micrometersPerPixel;
+            const actualPixels = bestScale / micronsPerPixel;
             return { pixels: actualPixels, distance: bestScale };
         }
         
-        function formatDistance(micrometers) {
-            if (micrometers < 1) {
-                return `${(micrometers * 1000).toFixed(0)} nm`;
-            } else if (micrometers < 1000) {
-                return `${micrometers} μm`;
+        function formatDistance(microns) {
+            if (microns < 1) {
+                return `${(microns * 1000).toFixed(0)} nm`;
+            } else if (microns < 1000) {
+                return `${microns} μm`;
             } else {
-                return `${(micrometers / 1000).toFixed(1)} mm`;
+                return `${(microns / 1000).toFixed(1)} mm`;
             }
         }
         
