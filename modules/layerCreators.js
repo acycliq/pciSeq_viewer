@@ -150,21 +150,31 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
     
     console.log(`Creating polygon layer for plane ${planeNum}, features: ${geojson.features.length}`);
     
-    // Filter data based on selected cell classes (if filtering is enabled)
+    // Filter data based on selected cell classes
     let filteredData = geojson;
-    if (selectedCellClasses && selectedCellClasses.size > 0) {
-        console.log(`Filtering with selectedCellClasses:`, Array.from(selectedCellClasses));
-        filteredData = {
-            ...geojson,
-            features: geojson.features.filter(feature => {
-                const cellClass = feature.properties.cellClass;
-                const shouldInclude = cellClass && selectedCellClasses.has(cellClass);
-                return shouldInclude;
-            })
-        };
+    if (selectedCellClasses) {
+        if (selectedCellClasses.size === 0) {
+            // No cell classes selected - hide all polygons
+            console.log(`Hiding all polygons - no cell classes selected`);
+            filteredData = {
+                ...geojson,
+                features: []
+            };
+        } else {
+            // Filter to show only selected cell classes
+            console.log(`Filtering with selectedCellClasses:`, Array.from(selectedCellClasses));
+            filteredData = {
+                ...geojson,
+                features: geojson.features.filter(feature => {
+                    const cellClass = feature.properties.cellClass;
+                    const shouldInclude = cellClass && selectedCellClasses.has(cellClass);
+                    return shouldInclude;
+                })
+            };
+        }
         console.log(`Filtered from ${geojson.features.length} to ${filteredData.features.length} features`);
     } else {
-        console.log(`No filtering applied - selectedCellClasses size: ${selectedCellClasses ? selectedCellClasses.size : 'null'}`);
+        console.log(`No filtering applied - selectedCellClasses is null`);
     }
     
     // Create single layer with filtered polygons colored by cell class

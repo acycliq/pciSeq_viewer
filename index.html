@@ -51,7 +51,7 @@
     </div>
 
     <!-- Cell Class Panel Button -->
-    <div class="minimal-controls" style="top: 70px; left: 15px; right: auto;">
+    <div class="minimal-controls" style="top: 70px; right: 15px; left: auto;">
         <button id="cellClassPanelBtn">🔬 Cell Classes</button>
     </div>
 
@@ -74,7 +74,7 @@
     </div>
 
     <!-- Floating Cell Class Panel Widget -->
-    <div id="cellClassWidget" class="gene-widget hidden">
+    <div id="cellClassWidget" class="gene-widget hidden" style="top: 100px; right: 20px; left: auto;">
         <div class="gene-widget-header">
             <span class="gene-widget-title">🔬 Cell Class Panel</span>
             <div class="widget-header-buttons">
@@ -577,10 +577,7 @@
             const cellClasses = Array.from(state.allCellClasses).sort();
             console.log(`Populating cell class widget with ${cellClasses.length} classes:`, cellClasses);
             
-            // Initially select all cell classes if none are selected
-            if (state.selectedCellClasses.size === 0) {
-                cellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
-            }
+            // Don't modify selectedCellClasses here - preserve the current state
             
             elements.cellClassList.innerHTML = '';
             
@@ -632,11 +629,17 @@
         function toggleAllCellClasses() {
             const shouldSelectAll = state.selectedCellClasses.size !== state.allCellClasses.size;
             
+            console.log(`Toggle all cell classes: shouldSelectAll = ${shouldSelectAll}`);
+            console.log(`Before: selectedCellClasses.size = ${state.selectedCellClasses.size}, allCellClasses.size = ${state.allCellClasses.size}`);
+            
             if (shouldSelectAll) {
                 state.allCellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
             } else {
                 state.selectedCellClasses.clear();
             }
+            
+            console.log(`After: selectedCellClasses.size = ${state.selectedCellClasses.size}`);
+            console.log(`Selected cell classes:`, Array.from(state.selectedCellClasses));
             
             // Update all checkboxes in the widget
             const checkboxes = elements.cellClassList.querySelectorAll('.gene-checkbox');
@@ -664,10 +667,14 @@
             const widget = elements.cellClassWidget;
             const header = widget.querySelector('.gene-widget-header');
             let isDragging = false;
-            let currentX = 0;
-            let currentY = 0;
+            let currentX = window.innerWidth - 420; // Start from right side
+            let currentY = 100; // Start from top
             let initialX = 0;
             let initialY = 0;
+            
+            // Set initial position
+            widget.style.left = currentX + 'px';
+            widget.style.top = currentY + 'px';
             
             function dragStart(e) {
                 if (e.target.tagName === 'BUTTON') return;
