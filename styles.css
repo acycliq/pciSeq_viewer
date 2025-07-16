@@ -122,17 +122,22 @@ body {
 
 /* Cell Class Panel Button */
 #cellClassPanelBtn {
-    background: transparent;
-    color: rgba(255, 255, 255, 0.9);
+    background: url('./cluster_2.png') no-repeat center;
+    background-size: 24px 24px;
+    width: 28px;
+    height: 28px;
     border: none;
-    padding: 0;
     cursor: pointer;
-    font-size: 13px;
     user-select: none;
+    opacity: 0.9;
+    transition: all 0.2s ease;
+    font-size: 0; /* Hide text */
+    filter: brightness(1.2);
 }
 
 #cellClassPanelBtn:hover {
-    color: #007bff;
+    opacity: 1;
+    filter: brightness(1.4);
 }
 
 /* Main Controls */
