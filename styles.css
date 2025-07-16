@@ -120,6 +120,21 @@ body {
     color: #007bff;
 }
 
+/* Cell Class Panel Button */
+#cellClassPanelBtn {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.9);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: 13px;
+    user-select: none;
+}
+
+#cellClassPanelBtn:hover {
+    color: #007bff;
+}
+
 /* Main Controls */
 .main-controls {
     position: absolute;
