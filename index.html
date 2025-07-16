@@ -710,9 +710,51 @@
                         <head>
                             <title>Cell Class Panel</title>
                             <style>
-                                ${document.querySelector('style') ? document.querySelector('style').innerHTML : ''}
-                                body { margin: 0; padding: 20px; background: #1a1a1a; color: white; font-family: Arial, sans-serif; }
-                                .gene-widget-content { max-height: none; overflow-y: auto; }
+                                body { 
+                                    margin: 0; 
+                                    padding: 20px; 
+                                    background: #1a1a1a; 
+                                    color: white; 
+                                    font-family: Arial, sans-serif; 
+                                }
+                                .gene-widget-content { 
+                                    max-height: none; 
+                                    overflow-y: auto; 
+                                }
+                                .gene-item {
+                                    display: flex;
+                                    align-items: center;
+                                    padding: 8px 0;
+                                    cursor: pointer;
+                                    transition: background-color 0.15s ease;
+                                    gap: 12px;
+                                }
+                                .gene-item:hover {
+                                    background: rgba(255, 255, 255, 0.05);
+                                }
+                                .gene-checkbox {
+                                    transform: scale(1.1);
+                                    accent-color: #007bff;
+                                }
+                                .gene-glyph {
+                                    width: 20px;
+                                    height: 20px;
+                                    border-radius: 2px;
+                                    background: rgba(255, 255, 255, 0.1);
+                                    flex-shrink: 0;
+                                }
+                                .gene-name {
+                                    color: white;
+                                    font-size: 13px;
+                                    font-family: monospace;
+                                    flex: 1;
+                                }
+                                h3 {
+                                    color: #0066cc;
+                                    margin-bottom: 20px;
+                                    border-bottom: 1px solid #333;
+                                    padding-bottom: 10px;
+                                }
                             </style>
                         </head>
                         <body>
