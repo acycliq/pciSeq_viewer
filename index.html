@@ -575,7 +575,6 @@
             }
             
             const cellClasses = Array.from(state.allCellClasses).sort();
-            console.log(`Populating cell class widget with ${cellClasses.length} classes:`, cellClasses);
             
             // Don't modify selectedCellClasses here - preserve the current state
             
@@ -595,8 +594,6 @@
                     } else {
                         state.selectedCellClasses.delete(cellClass);
                     }
-                    console.log(`Cell class ${cellClass} toggled to ${checkbox.checked}`);
-                    console.log(`Selected cell classes:`, Array.from(state.selectedCellClasses));
                     updateAllLayers();
                     updateToggleAllCellClassesButton();
                 });
@@ -629,17 +626,11 @@
         function toggleAllCellClasses() {
             const shouldSelectAll = state.selectedCellClasses.size !== state.allCellClasses.size;
             
-            console.log(`Toggle all cell classes: shouldSelectAll = ${shouldSelectAll}`);
-            console.log(`Before: selectedCellClasses.size = ${state.selectedCellClasses.size}, allCellClasses.size = ${state.allCellClasses.size}`);
-            
             if (shouldSelectAll) {
                 state.allCellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
             } else {
                 state.selectedCellClasses.clear();
             }
-            
-            console.log(`After: selectedCellClasses.size = ${state.selectedCellClasses.size}`);
-            console.log(`Selected cell classes:`, Array.from(state.selectedCellClasses));
             
             // Update all checkboxes in the widget
             const checkboxes = elements.cellClassList.querySelectorAll('.gene-checkbox');
