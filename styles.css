@@ -122,10 +122,10 @@ body {
 
 /* Cell Class Panel Button */
 #cellClassPanelBtn {
-    background: url('./cluster_2.png') no-repeat center;
-    background-size: 24px 24px;
-    width: 28px;
-    height: 28px;
+    background: url('./cluster_3.png') no-repeat center;
+    /*background-size: 20px 20px;*/
+    width: 22px;
+    height: 22px;
     border: none;
     cursor: pointer;
     user-select: none;
@@ -214,8 +214,9 @@ body {
     position: absolute;
     top: 15px;
     right: 15px;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.0);
+    /*padding: 8px 12px;*/
+    padding: 4px 4px;
     z-index: 10;
     border-radius: 4px;
     backdrop-filter: blur(10px);
