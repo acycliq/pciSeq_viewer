@@ -50,6 +50,11 @@
         </div>
     </div>
 
+    <!-- Cell Class Panel Button -->
+    <div class="minimal-controls" style="top: 70px; left: 15px; right: auto;">
+        <button id="cellClassPanelBtn">🔬 Cell Classes</button>
+    </div>
+
     <!-- Floating Gene Panel Widget -->
     <div id="geneWidget" class="gene-widget hidden">
         <div class="gene-widget-header">
@@ -68,8 +73,27 @@
         </div>
     </div>
 
+    <!-- Floating Cell Class Panel Widget -->
+    <div id="cellClassWidget" class="gene-widget hidden">
+        <div class="gene-widget-header">
+            <span class="gene-widget-title">🔬 Cell Class Panel</span>
+            <div class="widget-header-buttons">
+                <button id="cellClassWidgetUndock" class="widget-undock-btn" title="Open in separate window">⧉</button>
+                <button id="cellClassWidgetClose" class="widget-close-btn">×</button>
+            </div>
+        </div>
+        <div class="gene-widget-search">
+            <input type="text" id="cellClassSearch" placeholder="Search cell classes..."/>
+            <button id="toggleAllCellClasses" class="toggle-all-btn">Unselect All</button>
+        </div>
+        <div class="gene-widget-content" id="cellClassList">
+            <!-- Cell class list will be populated here -->
+        </div>
+    </div>
+
     <!-- Widget overlay backdrop -->
     <div id="geneWidgetBackdrop" class="widget-backdrop hidden"></div>
+    <div id="cellClassWidgetBackdrop" class="widget-backdrop hidden"></div>
 
     <!-- Main Controls -->
     <div class="main-controls">
@@ -188,6 +212,7 @@
             // Cell class data for coloring (no filtering, just colors)
             cellClassColors: new Map(),
             allCellClasses: new Set(),
+            selectedCellClasses: new Set(), // For filtering visibility
             
             // Gene data
             selectedGenes: new Set(),
@@ -278,6 +303,16 @@
             geneSearch: document.getElementById('geneSearch'),
             geneList: document.getElementById('geneList'),
             toggleAllGenes: document.getElementById('toggleAllGenes'),
+            
+            // Cell class widget
+            cellClassPanelBtn: document.getElementById('cellClassPanelBtn'),
+            cellClassWidget: document.getElementById('cellClassWidget'),
+            cellClassWidgetBackdrop: document.getElementById('cellClassWidgetBackdrop'),
+            cellClassWidgetClose: document.getElementById('cellClassWidgetClose'),
+            cellClassWidgetUndock: document.getElementById('cellClassWidgetUndock'),
+            cellClassSearch: document.getElementById('cellClassSearch'),
+            cellClassList: document.getElementById('cellClassList'),
+            toggleAllCellClasses: document.getElementById('toggleAllCellClasses'),
             
             // UI
             layerControls: document.getElementById(UI_ELEMENTS.layerControls),
@@ -525,6 +560,218 @@
         window.toggleAllGenes = toggleAllGenes;
         window.undockGeneWidget = undockGeneWidget;
         
+        // Cell class widget functions
+        window.showCellClassWidget = showCellClassWidget;
+        window.hideCellClassWidget = hideCellClassWidget;
+        window.filterCellClasses = filterCellClasses;
+        window.toggleAllCellClasses = toggleAllCellClasses;
+        window.undockCellClassWidget = undockCellClassWidget;
+        
+        // === CELL CLASS WIDGET FUNCTIONS ===
+        function populateCellClassWidget() {
+            if (!state.allCellClasses || state.allCellClasses.size === 0) {
+                elements.cellClassList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">No cell classes available</div>';
+                return;
+            }
+            
+            const cellClasses = Array.from(state.allCellClasses).sort();
+            console.log(`Populating cell class widget with ${cellClasses.length} classes:`, cellClasses);
+            
+            // Initially select all cell classes if none are selected
+            if (state.selectedCellClasses.size === 0) {
+                cellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
+            }
+            
+            elements.cellClassList.innerHTML = '';
+            
+            cellClasses.forEach(cellClass => {
+                const item = document.createElement('div');
+                item.className = 'gene-item';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'gene-checkbox';
+                checkbox.checked = state.selectedCellClasses.has(cellClass);
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        state.selectedCellClasses.add(cellClass);
+                    } else {
+                        state.selectedCellClasses.delete(cellClass);
+                    }
+                    console.log(`Cell class ${cellClass} toggled to ${checkbox.checked}`);
+                    console.log(`Selected cell classes:`, Array.from(state.selectedCellClasses));
+                    updateAllLayers();
+                    updateToggleAllCellClassesButton();
+                });
+                
+                const colorSwatch = document.createElement('div');
+                colorSwatch.className = 'gene-glyph';
+                const color = state.cellClassColors.get(cellClass) || [192, 192, 192];
+                colorSwatch.style.backgroundColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                
+                const name = document.createElement('span');
+                name.className = 'gene-name';
+                name.textContent = cellClass;
+                
+                item.appendChild(checkbox);
+                item.appendChild(colorSwatch);
+                item.appendChild(name);
+                
+                elements.cellClassList.appendChild(item);
+            });
+            
+            updateToggleAllCellClassesButton();
+        }
+        
+        function updateToggleAllCellClassesButton() {
+            const allSelected = state.selectedCellClasses.size === state.allCellClasses.size;
+            elements.toggleAllCellClasses.textContent = allSelected ? 'Unselect All' : 'Select All';
+            elements.toggleAllCellClasses.className = allSelected ? 'toggle-all-btn unselect' : 'toggle-all-btn';
+        }
+        
+        function toggleAllCellClasses() {
+            const shouldSelectAll = state.selectedCellClasses.size !== state.allCellClasses.size;
+            
+            if (shouldSelectAll) {
+                state.allCellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
+            } else {
+                state.selectedCellClasses.clear();
+            }
+            
+            // Update all checkboxes in the widget
+            const checkboxes = elements.cellClassList.querySelectorAll('.gene-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = shouldSelectAll;
+            });
+            
+            updateAllLayers();
+            updateToggleAllCellClassesButton();
+        }
+        
+        function showCellClassWidget() {
+            elements.cellClassWidget.classList.remove('hidden');
+            elements.cellClassWidgetBackdrop.classList.remove('hidden');
+            populateCellClassWidget();
+            setupCellClassDragFunctionality();
+        }
+        
+        function hideCellClassWidget() {
+            elements.cellClassWidget.classList.add('hidden');
+            elements.cellClassWidgetBackdrop.classList.add('hidden');
+        }
+        
+        function setupCellClassDragFunctionality() {
+            const widget = elements.cellClassWidget;
+            const header = widget.querySelector('.gene-widget-header');
+            let isDragging = false;
+            let currentX = 0;
+            let currentY = 0;
+            let initialX = 0;
+            let initialY = 0;
+            
+            function dragStart(e) {
+                if (e.target.tagName === 'BUTTON') return;
+                
+                initialX = e.clientX - currentX;
+                initialY = e.clientY - currentY;
+                
+                if (e.target === header || header.contains(e.target)) {
+                    isDragging = true;
+                    widget.classList.add('dragging');
+                }
+            }
+            
+            function dragEnd() {
+                isDragging = false;
+                widget.classList.remove('dragging');
+            }
+            
+            function drag(e) {
+                if (isDragging) {
+                    e.preventDefault();
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
+                    
+                    widget.style.left = currentX + 'px';
+                    widget.style.top = currentY + 'px';
+                }
+            }
+            
+            header.addEventListener('mousedown', dragStart);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
+        }
+        
+        function undockCellClassWidget() {
+            // Create a new window with the cell class list
+            const newWindow = window.open('', 'CellClassPanel', 'width=450,height=600,scrollbars=yes');
+            
+            if (newWindow) {
+                newWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>Cell Class Panel</title>
+                            <style>
+                                ${document.querySelector('style') ? document.querySelector('style').innerHTML : ''}
+                                body { margin: 0; padding: 20px; background: #1a1a1a; color: white; font-family: Arial, sans-serif; }
+                                .gene-widget-content { max-height: none; overflow-y: auto; }
+                            </style>
+                        </head>
+                        <body>
+                            <h3>🔬 Cell Class Panel</h3>
+                            <div class="gene-widget-content" id="undockedCellClassList"></div>
+                            <script>
+                                // Copy the current cell class list content
+                                document.getElementById('undockedCellClassList').innerHTML = ${JSON.stringify(elements.cellClassList.innerHTML)};
+                                
+                                // Add event listeners to the new checkboxes
+                                const checkboxes = document.querySelectorAll('.gene-checkbox');
+                                checkboxes.forEach((checkbox, index) => {
+                                    checkbox.addEventListener('change', () => {
+                                        // Send message back to parent window
+                                        window.opener.postMessage({
+                                            type: 'cellClassToggle',
+                                            index: index,
+                                            checked: checkbox.checked
+                                        }, '*');
+                                    });
+                                });
+                            <\/script>
+                        </body>
+                    </html>
+                `);
+                newWindow.document.close();
+                
+                // Listen for messages from the undocked window
+                window.addEventListener('message', (event) => {
+                    if (event.data.type === 'cellClassToggle') {
+                        const checkboxes = elements.cellClassList.querySelectorAll('.gene-checkbox');
+                        const checkbox = checkboxes[event.data.index];
+                        if (checkbox) {
+                            checkbox.checked = event.data.checked;
+                            checkbox.dispatchEvent(new Event('change'));
+                        }
+                    }
+                });
+                
+                hideCellClassWidget();
+            }
+        }
+        
+        function filterCellClasses(searchTerm) {
+            const items = elements.cellClassList.querySelectorAll('.gene-item');
+            const term = searchTerm.toLowerCase();
+            
+            items.forEach(item => {
+                const cellClassName = item.querySelector('.gene-name').textContent.toLowerCase();
+                if (cellClassName.includes(term)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
         // === UTILITY FUNCTIONS ===
         // Utility functions have been moved to modules/uiHelpers.js and modules/dataLoaders.js
 
@@ -707,7 +954,14 @@
 
             // Add polygon layers for current plane ONLY if cached
             if (state.polygonCache.has(state.currentPlane)) {
-                layers.push(...createPolygonLayers(state.currentPlane, state.polygonCache, state.showPolygons, state.cellClassColors, state.polygonOpacity));
+                layers.push(...createPolygonLayers(
+                    state.currentPlane, 
+                    state.polygonCache, 
+                    state.showPolygons, 
+                    state.cellClassColors, 
+                    state.polygonOpacity,
+                    state.selectedCellClasses
+                ));
             }
 
             // Add gene layers
@@ -994,6 +1248,11 @@
             
             // Assign colors to cell classes after loading polygon data
             assignColorsToCellClasses(state.allCellClasses, state.cellClassColors);
+            
+            // Initialize cell class widget with all classes selected by default
+            if (state.selectedCellClasses.size === 0) {
+                state.allCellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
+            }
             
             // Preload adjacent planes (non-blocking)
             const adjacentPlanes = [
