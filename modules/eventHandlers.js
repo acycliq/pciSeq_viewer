@@ -129,10 +129,47 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         window.toggleAllGenes();
     });
     
-    // Escape key to close widget
+    // === CELL CLASS WIDGET MANAGEMENT ===
+    
+    // Open cell class widget
+    elements.cellClassPanelBtn.addEventListener('click', () => {
+        window.showCellClassWidget();
+    });
+    
+    // Close cell class widget
+    elements.cellClassWidgetClose.addEventListener('click', () => {
+        window.hideCellClassWidget();
+    });
+    
+    // Undock cell class widget
+    elements.cellClassWidgetUndock.addEventListener('click', () => {
+        window.undockCellClassWidget();
+    });
+    
+    // Close widget on backdrop click
+    elements.cellClassWidgetBackdrop.addEventListener('click', () => {
+        window.hideCellClassWidget();
+    });
+    
+    // Cell class search functionality
+    elements.cellClassSearch.addEventListener('input', (e) => {
+        window.filterCellClasses(e.target.value);
+    });
+    
+    // Toggle all cell classes button
+    elements.toggleAllCellClasses.addEventListener('click', () => {
+        window.toggleAllCellClasses();
+    });
+    
+    // Escape key to close widgets
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !elements.geneWidget.classList.contains('hidden')) {
-            window.hideGeneWidget();
+        if (e.key === 'Escape') {
+            if (!elements.geneWidget.classList.contains('hidden')) {
+                window.hideGeneWidget();
+            }
+            if (!elements.cellClassWidget.classList.contains('hidden')) {
+                window.hideCellClassWidget();
+            }
         }
     });
     

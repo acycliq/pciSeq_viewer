@@ -124,15 +124,16 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
 
 /**
  * Create polygon layers for cell boundary visualization
- * Single layer with all polygons colored by cell class (no filtering)
+ * Single layer with all polygons colored by cell class with optional filtering
  * @param {number} planeNum - Current plane number
  * @param {Map} polygonCache - Cache containing polygon data
  * @param {boolean} showPolygons - Whether polygons should be visible
  * @param {Map} cellClassColors - Color mapping for each cell class
  * @param {number} polygonOpacity - Opacity value (0.0 to 1.0)
+ * @param {Set} selectedCellClasses - Set of selected cell classes for filtering
  * @returns {GeoJsonLayer[]} Array of polygon layers
  */
-export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5) {
+export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null) {
     const layers = [];
     console.log(`createPolygonLayers called for plane ${planeNum}, showPolygons: ${showPolygons}`);
     
@@ -149,10 +150,27 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
     
     console.log(`Creating polygon layer for plane ${planeNum}, features: ${geojson.features.length}`);
     
-    // Create single layer with all polygons colored by cell class
+    // Filter data based on selected cell classes (if filtering is enabled)
+    let filteredData = geojson;
+    if (selectedCellClasses && selectedCellClasses.size > 0) {
+        console.log(`Filtering with selectedCellClasses:`, Array.from(selectedCellClasses));
+        filteredData = {
+            ...geojson,
+            features: geojson.features.filter(feature => {
+                const cellClass = feature.properties.cellClass;
+                const shouldInclude = cellClass && selectedCellClasses.has(cellClass);
+                return shouldInclude;
+            })
+        };
+        console.log(`Filtered from ${geojson.features.length} to ${filteredData.features.length} features`);
+    } else {
+        console.log(`No filtering applied - selectedCellClasses size: ${selectedCellClasses ? selectedCellClasses.size : 'null'}`);
+    }
+    
+    // Create single layer with filtered polygons colored by cell class
     const layer = new GeoJsonLayer({
         id: `polygons-${planeNum}`,
-        data: geojson,
+        data: filteredData,
         pickable: true,
         stroked: false,
         filled: true,
@@ -169,9 +187,10 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
             return [192, 192, 192, alpha]; // Fallback gray with dynamic alpha
         },
         
-        // Update when colors or opacity change
+        // Update when colors, opacity, or selected classes change
         updateTriggers: {
-            getFillColor: [cellClassColors, polygonOpacity]
+            getFillColor: [cellClassColors, polygonOpacity],
+            data: [selectedCellClasses]
         }
     });
     
