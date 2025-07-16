@@ -596,6 +596,16 @@
                     }
                     updateAllLayers();
                     updateToggleAllCellClassesButton();
+                    
+                    // Sync to undocked window if it exists
+                    if (window.undockedCellClassWindow && !window.undockedCellClassWindow.closed) {
+                        const checkboxes = elements.cellClassList.querySelectorAll('.gene-checkbox');
+                        const checkboxStates = Array.from(checkboxes).map(cb => cb.checked);
+                        window.undockedCellClassWindow.postMessage({
+                            type: 'updateCheckboxes',
+                            checkboxStates: checkboxStates
+                        }, '*');
+                    }
                 });
                 
                 const colorSwatch = document.createElement('div');
@@ -640,6 +650,16 @@
             
             updateAllLayers();
             updateToggleAllCellClassesButton();
+            
+            // Sync to undocked window if it exists
+            if (window.undockedCellClassWindow && !window.undockedCellClassWindow.closed) {
+                const checkboxes = elements.cellClassList.querySelectorAll('.gene-checkbox');
+                const checkboxStates = Array.from(checkboxes).map(cb => cb.checked);
+                window.undockedCellClassWindow.postMessage({
+                    type: 'updateCheckboxes',
+                    checkboxStates: checkboxStates
+                }, '*');
+            }
         }
         
         function showCellClassWidget() {
@@ -704,6 +724,9 @@
             // Create a new window with the cell class list
             const newWindow = window.open('', 'CellClassPanel', 'width=450,height=600,scrollbars=yes');
             
+            // Store reference to undocked window
+            window.undockedCellClassWindow = newWindow;
+            
             if (newWindow) {
                 newWindow.document.write(`
                     <html>
@@ -755,10 +778,60 @@
                                     border-bottom: 1px solid #333;
                                     padding-bottom: 10px;
                                 }
+                                .gene-widget-search {
+                                    padding: 16px 0;
+                                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                                    display: flex;
+                                    gap: 12px;
+                                    align-items: center;
+                                    margin-bottom: 20px;
+                                }
+                                .gene-widget-search input {
+                                    flex: 1;
+                                    padding: 10px 12px;
+                                    background: rgba(255, 255, 255, 0.1);
+                                    border: 1px solid rgba(255, 255, 255, 0.2);
+                                    border-radius: 6px;
+                                    color: white;
+                                    font-size: 14px;
+                                    outline: none;
+                                }
+                                .gene-widget-search input::placeholder {
+                                    color: rgba(255, 255, 255, 0.5);
+                                }
+                                .gene-widget-search input:focus {
+                                    border-color: #007bff;
+                                    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+                                }
+                                .toggle-all-btn {
+                                    padding: 8px 16px;
+                                    background: #007bff;
+                                    border: none;
+                                    border-radius: 4px;
+                                    color: white;
+                                    font-size: 12px;
+                                    font-weight: 500;
+                                    cursor: pointer;
+                                    white-space: nowrap;
+                                    transition: background-color 0.15s ease;
+                                }
+                                .toggle-all-btn:hover {
+                                    background: #0056b3;
+                                }
+                                .toggle-all-btn.unselect {
+                                    background: #dc3545;
+                                }
+                                .toggle-all-btn.unselect:hover {
+                                    background: #c82333;
+                                }
                             </style>
                         </head>
                         <body>
                             <h3>🔬 Cell Class Panel</h3>
+                            <div class="gene-widget-search">
+                                <input type="text" id="undockedCellClassSearch" placeholder="Search cell classes..."/>
+                                <button id="undockedToggleAllCellClasses" class="toggle-all-btn">Unselect All</button>
+                            </div>
                             <div class="gene-widget-content" id="undockedCellClassList"></div>
                             <script>
                                 // Copy the current cell class list content
@@ -776,14 +849,77 @@
                                         }, '*');
                                     });
                                 });
+                                
+                                // Add search functionality
+                                const searchInput = document.getElementById('undockedCellClassSearch');
+                                searchInput.addEventListener('input', (e) => {
+                                    const term = e.target.value.toLowerCase();
+                                    const items = document.querySelectorAll('.gene-item');
+                                    items.forEach(item => {
+                                        const cellClassName = item.querySelector('.gene-name').textContent.toLowerCase();
+                                        if (cellClassName.includes(term)) {
+                                            item.style.display = 'flex';
+                                        } else {
+                                            item.style.display = 'none';
+                                        }
+                                    });
+                                });
+                                
+                                // Add toggle all functionality
+                                const toggleAllBtn = document.getElementById('undockedToggleAllCellClasses');
+                                toggleAllBtn.addEventListener('click', () => {
+                                    // Send message back to parent window
+                                    window.opener.postMessage({
+                                        type: 'cellClassToggleAll'
+                                    }, '*');
+                                });
+                                
+                                // Update toggle button based on current state
+                                function updateToggleButton() {
+                                    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+                                    toggleAllBtn.textContent = allChecked ? 'Unselect All' : 'Select All';
+                                    toggleAllBtn.className = allChecked ? 'toggle-all-btn unselect' : 'toggle-all-btn';
+                                }
+                                
+                                // Initial update
+                                updateToggleButton();
+                                
+                                // Listen for checkbox changes to update toggle button
+                                checkboxes.forEach(checkbox => {
+                                    checkbox.addEventListener('change', updateToggleButton);
+                                });
+                                
+                                // Listen for messages from parent window
+                                window.addEventListener('message', (event) => {
+                                    if (event.data.type === 'updateCheckboxes') {
+                                        event.data.checkboxStates.forEach((checked, index) => {
+                                            if (checkboxes[index]) {
+                                                checkboxes[index].checked = checked;
+                                            }
+                                        });
+                                        updateToggleButton();
+                                    }
+                                });
                             <\/script>
                         </body>
                     </html>
                 `);
                 newWindow.document.close();
                 
+                // Send initial checkbox states to undocked window
+                setTimeout(() => {
+                    if (window.undockedCellClassWindow && !window.undockedCellClassWindow.closed) {
+                        const checkboxes = elements.cellClassList.querySelectorAll('.gene-checkbox');
+                        const checkboxStates = Array.from(checkboxes).map(cb => cb.checked);
+                        window.undockedCellClassWindow.postMessage({
+                            type: 'updateCheckboxes',
+                            checkboxStates: checkboxStates
+                        }, '*');
+                    }
+                }, 100);
+                
                 // Listen for messages from the undocked window
-                window.addEventListener('message', (event) => {
+                const messageHandler = (event) => {
                     if (event.data.type === 'cellClassToggle') {
                         const checkboxes = elements.cellClassList.querySelectorAll('.gene-checkbox');
                         const checkbox = checkboxes[event.data.index];
@@ -791,8 +927,25 @@
                             checkbox.checked = event.data.checked;
                             checkbox.dispatchEvent(new Event('change'));
                         }
+                    } else if (event.data.type === 'cellClassToggleAll') {
+                        // Handle toggle all from undocked window
+                        toggleAllCellClasses();
+                        
+                        // Send updated state back to undocked window
+                        setTimeout(() => {
+                            if (window.undockedCellClassWindow && !window.undockedCellClassWindow.closed) {
+                                const checkboxes = elements.cellClassList.querySelectorAll('.gene-checkbox');
+                                const checkboxStates = Array.from(checkboxes).map(cb => cb.checked);
+                                window.undockedCellClassWindow.postMessage({
+                                    type: 'updateCheckboxes',
+                                    checkboxStates: checkboxStates
+                                }, '*');
+                            }
+                        }, 50);
                     }
-                });
+                };
+                
+                window.addEventListener('message', messageHandler);
                 
                 hideCellClassWidget();
             }
