@@ -161,10 +161,11 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         window.toggleAllCellClasses();
     });
     
-    // View aggregated classes button
-    elements.viewAggregatedClasses.addEventListener('click', () => {
+    // Aggregated classes button
+    elements.aggregatedClassesBtn.addEventListener('click', () => {
         window.openAggregatedClassesView();
     });
+    
     
     // Escape key to close widgets
     document.addEventListener('keydown', (e) => {
