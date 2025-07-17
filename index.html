@@ -89,6 +89,9 @@
         <div class="gene-widget-content" id="cellClassList">
             <!-- Cell class list will be populated here -->
         </div>
+        <div class="gene-widget-footer">
+            <button id="viewAggregatedClasses" class="view-aggregated-btn">View Aggregated Classes</button>
+        </div>
     </div>
 
     <!-- Widget overlay backdrop -->
@@ -313,6 +316,7 @@
             cellClassSearch: document.getElementById('cellClassSearch'),
             cellClassList: document.getElementById('cellClassList'),
             toggleAllCellClasses: document.getElementById('toggleAllCellClasses'),
+            viewAggregatedClasses: document.getElementById('viewAggregatedClasses'),
             
             // UI
             layerControls: document.getElementById(UI_ELEMENTS.layerControls),
@@ -566,6 +570,7 @@
         window.filterCellClasses = filterCellClasses;
         window.toggleAllCellClasses = toggleAllCellClasses;
         window.undockCellClassWidget = undockCellClassWidget;
+        window.openAggregatedClassesView = openAggregatedClassesView;
         
         // === CELL CLASS WIDGET FUNCTIONS ===
         function populateCellClassWidget() {
@@ -824,6 +829,31 @@
                                 .toggle-all-btn.unselect:hover {
                                     background: #c82333;
                                 }
+                                .gene-widget-footer {
+                                    padding: 10px 15px;
+                                    border-top: 1px solid #dee2e6;
+                                    background: #f8f9fa;
+                                    border-radius: 0 0 8px 8px;
+                                }
+                                .view-aggregated-btn {
+                                    width: 100%;
+                                    padding: 10px 16px;
+                                    background: #28a745;
+                                    border: none;
+                                    border-radius: 4px;
+                                    color: white;
+                                    font-size: 13px;
+                                    font-weight: 500;
+                                    cursor: pointer;
+                                    transition: background-color 0.15s ease;
+                                }
+                                .view-aggregated-btn:hover {
+                                    background: #218838;
+                                }
+                                .view-aggregated-btn:disabled {
+                                    background: #6c757d;
+                                    cursor: not-allowed;
+                                }
                             </style>
                         </head>
                         <body>
@@ -964,6 +994,498 @@
                 }
             });
         }
+
+        // === AGGREGATED CLASSES VIEW ===
+        function openAggregatedClassesView() {
+            const selectedClasses = Array.from(state.selectedCellClasses);
+            
+            if (selectedClasses.length === 0) {
+                alert('Please select at least one cell class to view aggregated.');
+                return;
+            }
+            
+            // Check if cell data is loaded
+            if (!state.cellDataMap || state.cellDataMap.size === 0) {
+                alert('Cell data is not loaded yet. Please wait for the data to load and try again.');
+                return;
+            }
+            
+            // Create new window for aggregated view
+            const aggregatedWindow = window.open('', 'aggregatedClassesView', 'width=1200,height=800');
+            
+            // Calculate mid-plane for background
+            const config = window.config();
+            const maxPlane = config.totalPlanes - 1;
+            const midPlane = Math.floor(maxPlane / 2);
+            
+            // Generate window content
+            const windowContent = generateAggregatedViewHTML(selectedClasses, midPlane);
+            
+            aggregatedWindow.document.write(windowContent);
+            aggregatedWindow.document.close();
+            
+            // Set up communication with the new window
+            setupAggregatedViewCommunication(aggregatedWindow, selectedClasses, midPlane);
+        }
+
+        function generateAggregatedViewHTML(selectedClasses, midPlane) {
+            const classNames = selectedClasses.join(', ');
+            const config = window.config();
+            const maxPlane = config.totalPlanes - 1;
+            
+            const html = [
+                '<!DOCTYPE html>',
+                '<html>',
+                '<head>',
+                '<title>Aggregated Cell Classes - ' + classNames + '</title>',
+                '<link rel="stylesheet" href="styles.css">',
+                '<script src="https://unpkg.com/deck.gl@8.8.27/dist.min.js"><' + '/script>',
+                '<script src="config.js"><' + '/script>',
+                '<script src="advanced-config.js"><' + '/script>',
+                '<style>',
+                'body { margin: 0; padding: 0; background: #1a1a1a; color: white; font-family: Arial, sans-serif; }',
+                '#aggregated-map { width: 100vw; height: 100vh; }',
+                '.aggregated-controls {',
+                '    position: absolute;',
+                '    top: 15px;',
+                '    left: 15px;',
+                '    background: rgba(0, 0, 0, 0.8);',
+                '    padding: 15px;',
+                '    border-radius: 8px;',
+                '    z-index: 1000;',
+                '}',
+                '.aggregated-controls h3 {',
+                '    margin: 0 0 10px 0;',
+                '    color: #28a745;',
+                '}',
+                '.control-group {',
+                '    margin: 10px 0;',
+                '}',
+                '.control-group label {',
+                '    display: block;',
+                '    margin-bottom: 5px;',
+                '    font-size: 12px;',
+                '}',
+                '.control-group select, .control-group input {',
+                '    width: 100%;',
+                '    padding: 5px;',
+                '    border: 1px solid #444;',
+                '    background: #333;',
+                '    color: white;',
+                '    border-radius: 4px;',
+                '}',
+                '.close-btn {',
+                '    position: absolute;',
+                '    top: 10px;',
+                '    right: 15px;',
+                '    background: #dc3545;',
+                '    border: none;',
+                '    color: white;',
+                '    padding: 5px 10px;',
+                '    border-radius: 4px;',
+                '    cursor: pointer;',
+                '}',
+                '</style>',
+                '</head>',
+                '<body>',
+                '<div id="aggregated-map"></div>',
+                '<div class="aggregated-controls">',
+                '<h3>📊 Aggregated Classes</h3>',
+                '<div><strong>Classes:</strong> ' + classNames + '</div>',
+                '<div class="control-group">',
+                '<label for="backgroundPlane">Background Plane:</label>',
+                '<select id="backgroundPlane">',
+                '<option value="' + midPlane + '" selected>Plane ' + midPlane + ' (Mid)</option>',
+                '<option value="0">Plane 0</option>',
+                '<option value="' + Math.floor(maxPlane * 0.25) + '">Plane ' + Math.floor(maxPlane * 0.25) + ' (25%)</option>',
+                '<option value="' + Math.floor(maxPlane * 0.75) + '">Plane ' + Math.floor(maxPlane * 0.75) + ' (75%)</option>',
+                '<option value="' + maxPlane + '">Plane ' + maxPlane + ' (Max)</option>',
+                '</select>',
+                '</div>',
+                '<div class="control-group">',
+                '<label for="cellOpacity">Cell Opacity:</label>',
+                '<input type="range" id="cellOpacity" min="0.1" max="1.0" step="0.1" value="0.4">',
+                '<span id="cellOpacityValue">0.4</span>',
+                '</div>',
+                '<button class="close-btn" onclick="window.close()">×</button>',
+                '</div>',
+                '<script>',
+                '// Aggregated view initialization',
+                'let aggregatedDeck = null;',
+                'let aggregatedCells = [];',
+                'let currentPlane = 50;',
+                '',
+                'function initializeAggregatedDeck(cellData, midPlane) {',
+                '    aggregatedCells = cellData;',
+                '    currentPlane = midPlane;',
+                '    ',
+                '    // Wait for deck.gl to load',
+                '    if (typeof deck === "undefined") {',
+                '        setTimeout(() => initializeAggregatedDeck(cellData, midPlane), 100);',
+                '        return;',
+                '    }',
+                '    ',
+                '    try {',
+                '        const {DeckGL, OrthographicView, ScatterplotLayer, TileLayer, BitmapLayer} = deck;',
+                '        ',
+                '        // Create tile layer exactly like main viewer',
+                '        const cfg = window.config();',
+                '        const backgroundLayer = new TileLayer({',
+                '            id: "background-tiles",',
+                '            tileSize: 256,',
+                '            minZoom: 0,',
+                '            maxZoom: 8,',
+                '            extent: [0, 0, 256, 256],',
+                '            coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN,',
+                '            getTileData: async ({index}) => {',
+                '                const {x, y, z} = index;',
+                '                const tileUrl = cfg.backgroundTiles.replace("{plane}", currentPlane.toString().padStart(2, "0")).replace("{z}", z).replace("{y}", y).replace("{x}", x);',
+                '                return tileUrl;',
+                '            },',
+                '            renderSubLayers: (props) => {',
+                '                if (!props.data) return null;',
+                '                const {tile} = props;',
+                '                const {left, bottom, right, top} = tile.bbox;',
+                '                return new BitmapLayer({',
+                '                    id: props.id + "-bitmap",',
+                '                    image: props.data,',
+                '                    bounds: [left, bottom, right, top]',
+                '                });',
+                '            }',
+                '        });',
+                '        ',
+                '        // Create cell layer',
+                '        const cellLayer = new ScatterplotLayer({',
+                '            id: "aggregated-cells",',
+                '            data: aggregatedCells,',
+                '            getPosition: d => [d.x, d.y],',
+                '            getFillColor: d => d.color,',
+                '            getRadius: 2,',
+                '            filled: true,',
+                '            stroked: true,',
+                '            getLineColor: [255, 255, 255, 200],',
+                '            getLineWidth: 1,',
+                '            pickable: true',
+                '        });',
+                '        ',
+                '        // Initialize deck.gl exactly like main viewer',
+                '        const config = window.config();',
+                '        aggregatedDeck = new DeckGL({',
+                '            container: document.getElementById("aggregated-map"),',
+                '            views: [new OrthographicView({id: "ortho"})],',
+                '            initialViewState: {',
+                '                target: [256 * 0.5, 256 * 0.5 * config.imageHeight / config.imageWidth, 0],',
+                '                zoom: 4,',
+                '                minZoom: 0,',
+                '                maxZoom: 8',
+                '            },',
+                '            controller: {',
+                '                minZoom: 0,',
+                '                maxZoom: 8,',
+                '                scrollZoom: true,',
+                '                doubleClickZoom: true,',
+                '                touchZoom: true,',
+                '                keyboard: false',
+                '            },',
+                '            layers: [backgroundLayer, cellLayer]',
+                '        });',
+                '        ',
+                '        console.log("Aggregated deck initialized with", aggregatedCells.length, "cells");',
+                '        ',
+                '    } catch (error) {',
+                '        console.error("Failed to initialize aggregated deck:", error);',
+                '    }',
+                '}',
+                '',
+                '// Background plane change handler',
+                'function updateBackgroundPlane(newPlane) {',
+                '    if (!aggregatedDeck) return;',
+                '    currentPlane = parseInt(newPlane);',
+                '    ',
+                '    // Recreate layers with new plane',
+                '    const {TileLayer, BitmapLayer, ScatterplotLayer} = deck;',
+                '    ',
+                '    const cfg = window.config();',
+                '    const backgroundLayer = new TileLayer({',
+                '        id: "background-tiles",',
+                '        tileSize: 256,',
+                '        minZoom: 0,',
+                '        maxZoom: 8,',
+                '        extent: [0, 0, 256, 256],',
+                '        coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN,',
+                '        getTileData: async ({index}) => {',
+                '            const {x, y, z} = index;',
+                '            const tileUrl = cfg.backgroundTiles.replace("{plane}", currentPlane.toString().padStart(2, "0")).replace("{z}", z).replace("{y}", y).replace("{x}", x);',
+                '            return tileUrl;',
+                '        },',
+                '        renderSubLayers: (props) => {',
+                '            if (!props.data) return null;',
+                '            const {tile} = props;',
+                '            const {left, bottom, right, top} = tile.bbox;',
+                '            return new BitmapLayer({',
+                '                id: props.id + "-bitmap",',
+                '                image: props.data,',
+                '                bounds: [left, bottom, right, top]',
+                '            });',
+                '        }',
+                '    });',
+                '    ',
+                '    const cellLayer = new ScatterplotLayer({',
+                '        id: "aggregated-cells",',
+                '        data: aggregatedCells,',
+                '        getPosition: d => [d.x, d.y],',
+                '        getFillColor: d => d.color,',
+                '        getRadius: 2,',
+                '        filled: true,',
+                '        stroked: true,',
+                '        getLineColor: [255, 255, 255, 200],',
+                '        getLineWidth: 1,',
+                '        pickable: true',
+                '    });',
+                '    ',
+                '    aggregatedDeck.setProps({layers: [backgroundLayer, cellLayer]});',
+                '}',
+                '',
+                '// Opacity change handler',
+                'function updateCellOpacity(opacity) {',
+                '    if (!aggregatedDeck) return;',
+                '    ',
+                '    const {TileLayer, BitmapLayer, ScatterplotLayer} = deck;',
+                '    ',
+                '    const cfg = window.config();',
+                '    const backgroundLayer = new TileLayer({',
+                '        id: "background-tiles",',
+                '        tileSize: 256,',
+                '        minZoom: 0,',
+                '        maxZoom: 8,',
+                '        extent: [0, 0, 256, 256],',
+                '        coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN,',
+                '        getTileData: async ({index}) => {',
+                '            const {x, y, z} = index;',
+                '            const tileUrl = cfg.backgroundTiles.replace("{plane}", currentPlane.toString().padStart(2, "0")).replace("{z}", z).replace("{y}", y).replace("{x}", x);',
+                '            return tileUrl;',
+                '        },',
+                '        renderSubLayers: (props) => {',
+                '            if (!props.data) return null;',
+                '            const {tile} = props;',
+                '            const {left, bottom, right, top} = tile.bbox;',
+                '            return new BitmapLayer({',
+                '                id: props.id + "-bitmap",',
+                '                image: props.data,',
+                '                bounds: [left, bottom, right, top]',
+                '            });',
+                '        }',
+                '    });',
+                '    ',
+                '    const cellLayer = new ScatterplotLayer({',
+                '        id: "aggregated-cells",',
+                '        data: aggregatedCells,',
+                '        getPosition: d => [d.x, d.y],',
+                '        getFillColor: d => d.color,',
+                '        getRadius: 2,',
+                '        filled: true,',
+                '        stroked: true,',
+                '        getLineColor: [255, 255, 255, 200],',
+                '        getLineWidth: 1,',
+                '        pickable: true,',
+                '        opacity: opacity',
+                '    });',
+                '    ',
+                '    aggregatedDeck.setProps({layers: [backgroundLayer, cellLayer]});',
+                '}',
+                '',
+                '// Set up controls',
+                'window.addEventListener("load", () => {',
+                '    const backgroundSelect = document.getElementById("backgroundPlane");',
+                '    const opacitySlider = document.getElementById("cellOpacity");',
+                '    const opacityValue = document.getElementById("cellOpacityValue");',
+                '    ',
+                '    if (backgroundSelect) {',
+                '        backgroundSelect.addEventListener("change", (e) => {',
+                '            updateBackgroundPlane(e.target.value);',
+                '        });',
+                '    }',
+                '    ',
+                '    if (opacitySlider) {',
+                '        opacitySlider.addEventListener("input", (e) => {',
+                '            const opacity = parseFloat(e.target.value);',
+                '            opacityValue.textContent = opacity.toFixed(1);',
+                '            updateCellOpacity(opacity);',
+                '        });',
+                '    }',
+                '});',
+                '<' + '/script>',
+                '</body>',
+                '</html>'
+            ].join('\n');
+            
+            return html;
+        }
+
+        function setupAggregatedViewCommunication(aggregatedWindow, selectedClasses, midPlane) {
+            // Wait for the window to load
+            aggregatedWindow.onload = () => {
+                // Get aggregated cell data from all planes
+                const aggregatedCells = getAggregatedCellData(selectedClasses);
+                
+                // Pass data to the new window and initialize
+                aggregatedWindow.initializeAggregatedDeck(aggregatedCells, midPlane);
+                
+                console.log(`✅ Aggregated view initialized with ${aggregatedCells.length} cells from classes:`, selectedClasses);
+            };
+        }
+
+        function getAggregatedCellData(selectedClasses) {
+            const aggregatedCells = [];
+            
+            console.log('🔍 Cell data extraction debug:');
+            console.log('Selected classes:', selectedClasses);
+            console.log('Cell data map size:', state.cellDataMap.size);
+            console.log('All cell classes:', Array.from(state.allCellClasses));
+            
+            // Check first few cells to understand structure
+            let cellCount = 0;
+            let matchingCells = 0;
+            for (const [cellNum, cellData] of state.cellDataMap) {
+                if (cellCount < 3) {
+                    console.log(`Sample cell ${cellNum}:`, cellData);
+                    console.log(`  - position:`, cellData.position);
+                    console.log(`  - classification:`, cellData.classification);
+                    console.log(`  - className:`, cellData.className);
+                    console.log(`  - x,y,z:`, cellData.x, cellData.y, cellData.z);
+                    cellCount++;
+                }
+                
+                // Check if this cell belongs to any of the selected classes
+                let hasSelectedClass = false;
+                let matchingClass = null;
+                let primaryProb = 1.0;
+                
+                // Method 1: Check classification object
+                if (cellData.classification && cellData.classification.classes) {
+                    const classes = cellData.classification.classes;
+                    if (Array.isArray(classes)) {
+                        // Find which selected class matches this cell
+                        matchingClass = classes.find(className => selectedClasses.includes(className));
+                        if (matchingClass) {
+                            hasSelectedClass = true;
+                            // Get probability for the matching class
+                            const classIndex = classes.indexOf(matchingClass);
+                            primaryProb = cellData.classification.probabilities?.[classIndex] || 1.0;
+                        }
+                    }
+                }
+                
+                // Method 2: Check classification.className
+                if (!hasSelectedClass && cellData.classification && cellData.classification.className) {
+                    if (Array.isArray(cellData.classification.className)) {
+                        // Find which selected class matches this cell
+                        matchingClass = cellData.classification.className.find(className => selectedClasses.includes(className));
+                        if (matchingClass) {
+                            hasSelectedClass = true;
+                            // Get probability for the matching class
+                            const classIndex = cellData.classification.className.indexOf(matchingClass);
+                            primaryProb = cellData.classification.probabilities?.[classIndex] || 1.0;
+                        }
+                    } else {
+                        if (selectedClasses.includes(cellData.classification.className)) {
+                            hasSelectedClass = true;
+                            matchingClass = cellData.classification.className;
+                            primaryProb = 1.0;
+                        }
+                    }
+                }
+                
+                // Method 3: Check direct className property
+                if (!hasSelectedClass && cellData.className) {
+                    if (Array.isArray(cellData.className)) {
+                        // Find which selected class matches this cell
+                        matchingClass = cellData.className.find(className => selectedClasses.includes(className));
+                        if (matchingClass) {
+                            hasSelectedClass = true;
+                        }
+                    } else {
+                        if (selectedClasses.includes(cellData.className)) {
+                            hasSelectedClass = true;
+                            matchingClass = cellData.className;
+                        }
+                    }
+                }
+                
+                if (hasSelectedClass) {
+                    matchingCells++;
+                    if (matchingCells <= 3) {
+                        console.log(`✅ Found matching cell ${cellNum}:`, cellData);
+                    }
+                    
+                    // Get coordinates from position object
+                    let x, y, z;
+                    if (cellData.position) {
+                        x = cellData.position.x;
+                        y = cellData.position.y;
+                        z = cellData.position.z;
+                    } else {
+                        x = cellData.x;
+                        y = cellData.y;
+                        z = cellData.z;
+                    }
+                    
+                    // Skip if no coordinates
+                    if (x === undefined || y === undefined) {
+                        console.log(`⚠️ Cell ${cellNum} has no coordinates`);
+                        continue;
+                    }
+                    
+                    // Transform coordinates from image space to 256x256 space using proper aspect ratio
+                    const config = window.config();
+                    const imageDimensions = {
+                        width: config.imageWidth,
+                        height: config.imageHeight,
+                        tileSize: 256
+                    };
+                    
+                    // Use the same transformation as the main viewer to ensure proper alignment
+                    const maxDimension = Math.max(imageDimensions.width, imageDimensions.height);
+                    const xAdjustment = imageDimensions.width / maxDimension;
+                    const yAdjustment = imageDimensions.height / maxDimension;
+                    
+                    const transformedX = x * (imageDimensions.tileSize / imageDimensions.width) * xAdjustment;
+                    const transformedY = y * (imageDimensions.tileSize / imageDimensions.height) * yAdjustment;
+                    
+                    // Create aggregated cell entry
+                    const aggregatedCell = {
+                        cellNum: cellNum,
+                        x: transformedX,
+                        y: transformedY,
+                        z: z || 50,
+                        className: matchingClass,
+                        probability: primaryProb,
+                        color: state.cellClassColors.get(matchingClass) || [128, 128, 128]
+                    };
+                    
+                    aggregatedCells.push(aggregatedCell);
+                }
+            }
+            
+            console.log(`📊 SUMMARY:`);
+            console.log(`  - Total cells in dataset: ${state.cellDataMap.size}`);
+            console.log(`  - Cells matching selected classes: ${matchingCells}`);
+            console.log(`  - Cells added to aggregated view: ${aggregatedCells.length}`);
+            
+            if (aggregatedCells.length > 0) {
+                console.log('✅ First aggregated cell sample:', aggregatedCells[0]);
+            } else {
+                console.log('❌ No cells found! Check if:');
+                console.log('  1. Cell data is loaded');
+                console.log('  2. Selected classes match available classes');
+                console.log('  3. Cell data structure matches expected format');
+                console.log('  4. Coordinates are available in position object');
+            }
+            
+            return aggregatedCells;
+        }
+
+        // Removed unused functions - all logic is now in the new window
 
         // === UTILITY FUNCTIONS ===
         // Utility functions have been moved to modules/uiHelpers.js and modules/dataLoaders.js

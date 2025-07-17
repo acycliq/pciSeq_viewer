@@ -531,6 +531,35 @@ body {
     background: rgba(255, 255, 255, 0.5);
 }
 
+.gene-widget-footer {
+    padding: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 0 0 8px 8px;
+}
+
+.view-aggregated-btn {
+    width: 100%;
+    padding: 12px 16px;
+    background: #28a745;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.view-aggregated-btn:hover {
+    background: #218838;
+}
+
+.view-aggregated-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
 /* Loading indicator */
 .loading-indicator {
     position: absolute;
