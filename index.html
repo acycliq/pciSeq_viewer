@@ -54,6 +54,11 @@
     <div class="minimal-controls" style="top: 50px; right: 15px; left: auto;">
         <button id="cellClassPanelBtn">🔬 Cell Classes</button>
     </div>
+    
+    <!-- Aggregated Classes Button -->
+    <div class="minimal-controls" style="top: 80px; right: 15px; left: auto;">
+        <button id="aggregatedClassesBtn">📊 Aggregated View</button>
+    </div>
 
     <!-- Floating Gene Panel Widget -->
     <div id="geneWidget" class="gene-widget hidden">
@@ -88,9 +93,6 @@
         </div>
         <div class="gene-widget-content" id="cellClassList">
             <!-- Cell class list will be populated here -->
-        </div>
-        <div class="gene-widget-footer">
-            <button id="viewAggregatedClasses" class="view-aggregated-btn">View Aggregated Classes</button>
         </div>
     </div>
 
@@ -309,6 +311,7 @@
             
             // Cell class widget
             cellClassPanelBtn: document.getElementById('cellClassPanelBtn'),
+            aggregatedClassesBtn: document.getElementById('aggregatedClassesBtn'),
             cellClassWidget: document.getElementById('cellClassWidget'),
             cellClassWidgetBackdrop: document.getElementById('cellClassWidgetBackdrop'),
             cellClassWidgetClose: document.getElementById('cellClassWidgetClose'),
@@ -316,7 +319,6 @@
             cellClassSearch: document.getElementById('cellClassSearch'),
             cellClassList: document.getElementById('cellClassList'),
             toggleAllCellClasses: document.getElementById('toggleAllCellClasses'),
-            viewAggregatedClasses: document.getElementById('viewAggregatedClasses'),
             
             // UI
             layerControls: document.getElementById(UI_ELEMENTS.layerControls),
@@ -571,6 +573,7 @@
         window.toggleAllCellClasses = toggleAllCellClasses;
         window.undockCellClassWidget = undockCellClassWidget;
         window.openAggregatedClassesView = openAggregatedClassesView;
+        window.getAggregatedCellData = getAggregatedCellData;
         
         // === CELL CLASS WIDGET FUNCTIONS ===
         function populateCellClassWidget() {
@@ -829,31 +832,6 @@
                                 .toggle-all-btn.unselect:hover {
                                     background: #c82333;
                                 }
-                                .gene-widget-footer {
-                                    padding: 10px 15px;
-                                    border-top: 1px solid #dee2e6;
-                                    background: #f8f9fa;
-                                    border-radius: 0 0 8px 8px;
-                                }
-                                .view-aggregated-btn {
-                                    width: 100%;
-                                    padding: 10px 16px;
-                                    background: #28a745;
-                                    border: none;
-                                    border-radius: 4px;
-                                    color: white;
-                                    font-size: 13px;
-                                    font-weight: 500;
-                                    cursor: pointer;
-                                    transition: background-color 0.15s ease;
-                                }
-                                .view-aggregated-btn:hover {
-                                    background: #218838;
-                                }
-                                .view-aggregated-btn:disabled {
-                                    background: #6c757d;
-                                    cursor: not-allowed;
-                                }
                             </style>
                         </head>
                         <body>
@@ -997,13 +975,6 @@
 
         // === AGGREGATED CLASSES VIEW ===
         function openAggregatedClassesView() {
-            const selectedClasses = Array.from(state.selectedCellClasses);
-            
-            if (selectedClasses.length === 0) {
-                alert('Please select at least one cell class to view aggregated.');
-                return;
-            }
-            
             // Check if cell data is loaded
             if (!state.cellDataMap || state.cellDataMap.size === 0) {
                 alert('Cell data is not loaded yet. Please wait for the data to load and try again.');
@@ -1017,6 +988,9 @@
             const config = window.config();
             const maxPlane = config.totalPlanes - 1;
             const midPlane = Math.floor(maxPlane / 2);
+            
+            // Start with empty cell data - user will select classes in the new window
+            const selectedClasses = [];
             
             // Generate window content
             const windowContent = generateAggregatedViewHTML(selectedClasses, midPlane);
@@ -1074,6 +1048,43 @@
                 '    color: white;',
                 '    border-radius: 4px;',
                 '}',
+                '.class-selection-widget {',
+                '    position: absolute;',
+                '    top: 15px;',
+                '    right: 15px;',
+                '    background: rgba(0, 0, 0, 0.8);',
+                '    padding: 15px;',
+                '    border-radius: 8px;',
+                '    z-index: 1000;',
+                '    max-width: 300px;',
+                '    max-height: 400px;',
+                '    overflow-y: auto;',
+                '}',
+                '.class-selection-widget h3 {',
+                '    margin: 0 0 10px 0;',
+                '    color: #28a745;',
+                '    font-size: 14px;',
+                '}',
+                '.class-item {',
+                '    display: flex;',
+                '    align-items: center;',
+                '    margin-bottom: 8px;',
+                '    padding: 4px 0;',
+                '}',
+                '.class-checkbox {',
+                '    margin-right: 8px;',
+                '}',
+                '.class-color-swatch {',
+                '    width: 16px;',
+                '    height: 16px;',
+                '    border-radius: 3px;',
+                '    margin-right: 8px;',
+                '    border: 1px solid #444;',
+                '}',
+                '.class-name {',
+                '    font-size: 12px;',
+                '    flex: 1;',
+                '}',
                 '.close-btn {',
                 '    position: absolute;',
                 '    top: 10px;',
@@ -1089,6 +1100,10 @@
                 '</head>',
                 '<body>',
                 '<div id="aggregated-map"></div>',
+                '<div class="class-selection-widget">',
+                '<h3>🔬 Cell Classes</h3>',
+                '<div id="class-list"></div>',
+                '</div>',
                 '<div class="aggregated-controls">',
                 '<h3>📊 Aggregated Classes</h3>',
                 '<div><strong>Classes:</strong> ' + classNames + '</div>',
@@ -1114,6 +1129,160 @@
                 'let aggregatedDeck = null;',
                 'let aggregatedCells = [];',
                 'let currentPlane = 50;',
+                'let selectedClasses = new Set();',
+                '',
+                '// Populate class selection widget',
+                'function populateClassList() {',
+                '    const classList = document.getElementById("class-list");',
+                '    // Get all cell classes from parent window',
+                '    const parentWindow = window.opener;',
+                '    if (!parentWindow) {',
+                '        classList.innerHTML = "<div>No parent window available</div>";',
+                '        return;',
+                '    }',
+                '    ',
+                '    // Access the state object from the parent window',
+                '    const parentState = parentWindow.appState;',
+                '    if (!parentState || !parentState.allCellClasses) {',
+                '        classList.innerHTML = "<div>No cell classes available</div>";',
+                '        console.log("Debug: parentState:", parentState);',
+                '        return;',
+                '    }',
+                '    ',
+                '    const allClasses = Array.from(parentState.allCellClasses).sort();',
+                '    const cellClassColors = parentState.cellClassColors;',
+                '    console.log("Debug: Found classes:", allClasses);',
+                '    ',
+                '    classList.innerHTML = "";',
+                '    allClasses.forEach(className => {',
+                '        const item = document.createElement("div");',
+                '        item.className = "class-item";',
+                '        ',
+                '        const checkbox = document.createElement("input");',
+                '        checkbox.type = "checkbox";',
+                '        checkbox.className = "class-checkbox";',
+                '        checkbox.id = "class-" + className;',
+                '        checkbox.addEventListener("change", () => {',
+                '            if (checkbox.checked) {',
+                '                selectedClasses.add(className);',
+                '            } else {',
+                '                selectedClasses.delete(className);',
+                '            }',
+                '            updateCellsDisplay();',
+                '        });',
+                '        ',
+                '        const colorSwatch = document.createElement("div");',
+                '        colorSwatch.className = "class-color-swatch";',
+                '        const color = cellClassColors.get(className) || [128, 128, 128];',
+                '        colorSwatch.style.backgroundColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;',
+                '        ',
+                '        const label = document.createElement("label");',
+                '        label.className = "class-name";',
+                '        label.textContent = className;',
+                '        label.setAttribute("for", "class-" + className);',
+                '        label.style.cursor = "pointer";',
+                '        ',
+                '        item.appendChild(checkbox);',
+                '        item.appendChild(colorSwatch);',
+                '        item.appendChild(label);',
+                '        classList.appendChild(item);',
+                '    });',
+                '}',
+                '',
+                '// Update cells display based on selected classes',
+                'function updateCellsDisplay() {',
+                '    console.log("Debug: updateCellsDisplay called, selectedClasses:", Array.from(selectedClasses));',
+                '    if (selectedClasses.size === 0) {',
+                '        // No classes selected, show only background',
+                '        aggregatedCells = [];',
+                '        updateDeckLayers();',
+                '        return;',
+                '    }',
+                '    ',
+                '    // Get aggregated cell data from parent window',
+                '    const parentWindow = window.opener;',
+                '    if (parentWindow && parentWindow.getAggregatedCellData) {',
+                '        const selectedClassesArray = Array.from(selectedClasses);',
+                '        console.log("Debug: Calling getAggregatedCellData with:", selectedClassesArray);',
+                '        aggregatedCells = parentWindow.getAggregatedCellData(selectedClassesArray);',
+                '        console.log("Debug: Got aggregated cells:", aggregatedCells.length);',
+                '        if (aggregatedCells.length > 0) {',
+                '            console.log("Debug: Sample cell data:", aggregatedCells[0]);',
+                '        }',
+                '        updateDeckLayers();',
+                '    } else {',
+                '        console.log("Debug: Parent window or getAggregatedCellData not available");',
+                '        console.log("Debug: parentWindow:", !!parentWindow);',
+                '        console.log("Debug: getAggregatedCellData:", !!parentWindow?.getAggregatedCellData);',
+                '    }',
+                '}',
+                '',
+                '// Update deck.gl layers',
+                'function updateDeckLayers() {',
+                '    console.log("Debug: updateDeckLayers called, aggregatedCells:", aggregatedCells.length);',
+                '    if (!aggregatedDeck) {',
+                '        console.log("Debug: aggregatedDeck not initialized");',
+                '        return;',
+                '    }',
+                '    ',
+                '    const {TileLayer, BitmapLayer, ScatterplotLayer} = deck;',
+                '    ',
+                '    // Background layer',
+                '    const cfg = window.config();',
+                '    const backgroundLayer = new TileLayer({',
+                '        id: "background-tiles",',
+                '        tileSize: 256,',
+                '        minZoom: 0,',
+                '        maxZoom: 8,',
+                '        extent: [0, 0, 256, 256],',
+                '        coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN,',
+                '        getTileData: async ({index}) => {',
+                '            const {x, y, z} = index;',
+                '            const imageUrl = cfg.backgroundTiles',
+                '                .replace("{plane}", currentPlane)',
+                '                .replace("{z}", z)',
+                '                .replace("{y}", y)',
+                '                .replace("{x}", x);',
+                '            ',
+                '            try {',
+                '                const img = new Image();',
+                '                img.crossOrigin = "anonymous";',
+                '                return new Promise((resolve, reject) => {',
+                '                    img.onload = () => resolve(img);',
+                '                    img.onerror = reject;',
+                '                    img.src = imageUrl;',
+                '                });',
+                '            } catch (e) {',
+                '                return null;',
+                '            }',
+                '        },',
+                '        renderSubLayers: (props) => {',
+                '            if (!props.data) return null;',
+                '            const {left, bottom, right, top} = props.tile.bbox;',
+                '            return new BitmapLayer({',
+                '                ...props,',
+                '                id: props.id + "-bitmap",',
+                '                data: null,',
+                '                image: props.data,',
+                '                bounds: [left, bottom, right, top]',
+                '            });',
+                '        }',
+                '    });',
+                '    ',
+                '    // Cell layer',
+                '    const cellLayer = new ScatterplotLayer({',
+                '        id: "aggregated-cells",',
+                '        data: aggregatedCells,',
+                '        getPosition: d => [d.x, d.y],',
+                '        getFillColor: d => d.color,',
+                '        getRadius: 1,',
+                '        filled: true,',
+                '        stroked: false,',
+                '        pickable: true',
+                '    });',
+                '    ',
+                '    aggregatedDeck.setProps({layers: [backgroundLayer, cellLayer]});',
+                '}',
                 '',
                 'function initializeAggregatedDeck(cellData, midPlane) {',
                 '    aggregatedCells = cellData;',
@@ -1197,6 +1366,13 @@
                 '',
                 '// Background plane change handler',
                 'function updateBackgroundPlane(newPlane) {',
+                '    if (!aggregatedDeck) return;',
+                '    currentPlane = parseInt(newPlane);',
+                '    updateDeckLayers();',
+                '}',
+                '',
+                '// Original function for compatibility',
+                'function updateBackgroundPlaneOld(newPlane) {',
                 '    if (!aggregatedDeck) return;',
                 '    currentPlane = parseInt(newPlane);',
                 '    ',
@@ -1290,6 +1466,9 @@
                 '',
                 '// Set up controls',
                 'window.addEventListener("load", () => {',
+                '    // Populate class selection widget',
+                '    populateClassList();',
+                '    ',
                 '    const backgroundSelect = document.getElementById("backgroundPlane");',
                 '    const opacitySlider = document.getElementById("cellOpacity");',
                 '    const opacityValue = document.getElementById("cellOpacityValue");',
