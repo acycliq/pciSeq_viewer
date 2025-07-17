@@ -1021,32 +1021,59 @@
                 '#aggregated-map { width: 100vw; height: 100vh; }',
                 '.aggregated-controls {',
                 '    position: absolute;',
-                '    top: 15px;',
-                '    left: 15px;',
-                '    background: rgba(0, 0, 0, 0.8);',
-                '    padding: 15px;',
-                '    border-radius: 8px;',
-                '    z-index: 1000;',
-                '}',
-                '.aggregated-controls h3 {',
-                '    margin: 0 0 10px 0;',
-                '    color: #28a745;',
-                '}',
-                '.control-group {',
-                '    margin: 10px 0;',
-                '}',
-                '.control-group label {',
-                '    display: block;',
-                '    margin-bottom: 5px;',
-                '    font-size: 12px;',
-                '}',
-                '.control-group select, .control-group input {',
-                '    width: 100%;',
-                '    padding: 5px;',
-                '    border: 1px solid #444;',
-                '    background: #333;',
-                '    color: white;',
+                '    bottom: 15px;',
+                '    left: 50%;',
+                '    transform: translateX(-50%);',
+                '    background: rgba(0, 0, 0, 0.7);',
+                '    padding: 8px 16px;',
                 '    border-radius: 4px;',
+                '    backdrop-filter: blur(10px);',
+                '    z-index: 1000;',
+                '    display: flex;',
+                '    align-items: center;',
+                '    gap: 16px;',
+                '    font-size: 13px;',
+                '}',
+                '.control-item {',
+                '    display: flex;',
+                '    align-items: center;',
+                '    gap: 6px;',
+                '    white-space: nowrap;',
+                '}',
+                '.control-item label {',
+                '    font-size: 12px;',
+                '    color: rgba(255, 255, 255, 0.9);',
+                '}',
+                '.control-item input[type="range"] {',
+                '    width: 60px;',
+                '    height: 4px;',
+                '    background: rgba(255, 255, 255, 0.3);',
+                '    border-radius: 2px;',
+                '    appearance: none;',
+                '    outline: none;',
+                '}',
+                '.control-item input[type="range"]::-webkit-slider-thumb {',
+                '    appearance: none;',
+                '    width: 12px;',
+                '    height: 12px;',
+                '    background: #007bff;',
+                '    border-radius: 50%;',
+                '    cursor: pointer;',
+                '}',
+                '.control-item input[type="range"]::-moz-range-thumb {',
+                '    width: 12px;',
+                '    height: 12px;',
+                '    background: #007bff;',
+                '    border-radius: 50%;',
+                '    cursor: pointer;',
+                '    border: none;',
+                '}',
+                '.control-item .value-display {',
+                '    font-size: 10px;',
+                '    color: rgba(255, 255, 255, 0.8);',
+                '    min-width: 24px;',
+                '    text-align: center;',
+                '    font-family: monospace;',
                 '}',
                 '.class-selection-widget {',
                 '    position: absolute;',
@@ -1085,17 +1112,6 @@
                 '    font-size: 12px;',
                 '    flex: 1;',
                 '}',
-                '.close-btn {',
-                '    position: absolute;',
-                '    top: 10px;',
-                '    right: 15px;',
-                '    background: #dc3545;',
-                '    border: none;',
-                '    color: white;',
-                '    padding: 5px 10px;',
-                '    border-radius: 4px;',
-                '    cursor: pointer;',
-                '}',
                 '</style>',
                 '</head>',
                 '<body>',
@@ -1105,24 +1121,16 @@
                 '<div id="class-list"></div>',
                 '</div>',
                 '<div class="aggregated-controls">',
-                '<h3>📊 Aggregated Classes</h3>',
-                '<div><strong>Classes:</strong> ' + classNames + '</div>',
-                '<div class="control-group">',
-                '<label for="backgroundPlane">Background Plane:</label>',
-                '<select id="backgroundPlane">',
-                '<option value="' + midPlane + '" selected>Plane ' + midPlane + ' (Mid)</option>',
-                '<option value="0">Plane 0</option>',
-                '<option value="' + Math.floor(maxPlane * 0.25) + '">Plane ' + Math.floor(maxPlane * 0.25) + ' (25%)</option>',
-                '<option value="' + Math.floor(maxPlane * 0.75) + '">Plane ' + Math.floor(maxPlane * 0.75) + ' (75%)</option>',
-                '<option value="' + maxPlane + '">Plane ' + maxPlane + ' (Max)</option>',
-                '</select>',
+                '<div class="control-item">',
+                '<label for="cellOpacity">Opacity:</label>',
+                '<input type="range" id="cellOpacity" min="0" max="1.0" step="0.05" value="0.4">',
+                '<span id="cellOpacityValue" class="value-display">0.4</span>',
                 '</div>',
-                '<div class="control-group">',
-                '<label for="cellOpacity">Cell Opacity:</label>',
-                '<input type="range" id="cellOpacity" min="0.1" max="1.0" step="0.1" value="0.4">',
-                '<span id="cellOpacityValue">0.4</span>',
+                '<div class="control-item">',
+                '<label for="cellSize">Size:</label>',
+                '<input type="range" id="cellSize" min="0.1" max="5" step="0.1" value="1">',
+                '<span id="cellSizeValue" class="value-display">1.0</span>',
                 '</div>',
-                '<button class="close-btn" onclick="window.close()">×</button>',
                 '</div>',
                 '<script>',
                 '// Aggregated view initialization',
@@ -1130,6 +1138,7 @@
                 'let aggregatedCells = [];',
                 'let currentPlane = 50;',
                 'let selectedClasses = new Set();',
+                'let cellSize = 1;',
                 '',
                 '// Populate class selection widget',
                 'function populateClassList() {',
@@ -1261,7 +1270,7 @@
                 '        data: aggregatedCells,',
                 '        getPosition: d => [d.x, d.y],',
                 '        getFillColor: d => d.color,',
-                '        getRadius: 1,',
+                '        getRadius: cellSize,',
                 '        filled: true,',
                 '        stroked: false,',
                 '        pickable: true',
@@ -1395,7 +1404,7 @@
                 '        data: aggregatedCells,',
                 '        getPosition: d => [d.x, d.y],',
                 '        getFillColor: d => d.color,',
-                '        getRadius: 1,',
+                '        getRadius: cellSize,',
                 '        filled: true,',
                 '        stroked: false,',
                 '        pickable: true',
@@ -1440,7 +1449,7 @@
                 '        data: aggregatedCells,',
                 '        getPosition: d => [d.x, d.y],',
                 '        getFillColor: d => d.color,',
-                '        getRadius: 1,',
+                '        getRadius: cellSize,',
                 '        filled: true,',
                 '        stroked: false,',
                 '        pickable: true,',
@@ -1450,26 +1459,35 @@
                 '    aggregatedDeck.setProps({layers: [backgroundLayer, cellLayer]});',
                 '}',
                 '',
+                '// Size change handler',
+                'function updateCellSize(size) {',
+                '    cellSize = size;',
+                '    updateDeckLayers(); // Refresh the layers with new size',
+                '}',
+                '',
                 '// Set up controls',
                 'window.addEventListener("load", () => {',
                 '    // Populate class selection widget',
                 '    populateClassList();',
                 '    ',
-                '    const backgroundSelect = document.getElementById("backgroundPlane");',
                 '    const opacitySlider = document.getElementById("cellOpacity");',
                 '    const opacityValue = document.getElementById("cellOpacityValue");',
-                '    ',
-                '    if (backgroundSelect) {',
-                '        backgroundSelect.addEventListener("change", (e) => {',
-                '            updateBackgroundPlane(e.target.value);',
-                '        });',
-                '    }',
+                '    const sizeSlider = document.getElementById("cellSize");',
+                '    const sizeValue = document.getElementById("cellSizeValue");',
                 '    ',
                 '    if (opacitySlider) {',
                 '        opacitySlider.addEventListener("input", (e) => {',
                 '            const opacity = parseFloat(e.target.value);',
-                '            opacityValue.textContent = opacity.toFixed(1);',
+                '            opacityValue.textContent = opacity.toFixed(2);',
                 '            updateCellOpacity(opacity);',
+                '        });',
+                '    }',
+                '    ',
+                '    if (sizeSlider) {',
+                '        sizeSlider.addEventListener("input", (e) => {',
+                '            const size = parseFloat(e.target.value);',
+                '            sizeValue.textContent = size.toFixed(1);',
+                '            updateCellSize(size);',
                 '        });',
                 '    }',
                 '});',
@@ -1531,6 +1549,15 @@
                             // Get probability for the matching class
                             const classIndex = classes.indexOf(matchingClass);
                             primaryProb = cellData.classification.probabilities?.[classIndex] || 1.0;
+                            
+                            // Debug: Log all class variants found for first few matches
+                            if (matchingCells < 3) {
+                                console.log(`🔍 Method 1 match for cell ${cellNum}:`);
+                                console.log(`   All classes in cell:`, classes);
+                                console.log(`   Selected classes:`, selectedClasses);
+                                console.log(`   Matching class found: "${matchingClass}"`);
+                                console.log(`   Probabilities:`, cellData.classification.probabilities);
+                            }
                         }
                     }
                 }
@@ -1545,12 +1572,24 @@
                             // Get probability for the matching class
                             const classIndex = cellData.classification.className.indexOf(matchingClass);
                             primaryProb = cellData.classification.probabilities?.[classIndex] || 1.0;
+                            
+                            // Debug: Log method 2 matches
+                            if (matchingCells < 3) {
+                                console.log(`🔍 Method 2 match for cell ${cellNum}:`);
+                                console.log(`   All className:`, cellData.classification.className);
+                                console.log(`   Matching class found: "${matchingClass}"`);
+                            }
                         }
                     } else {
                         if (selectedClasses.includes(cellData.classification.className)) {
                             hasSelectedClass = true;
                             matchingClass = cellData.classification.className;
                             primaryProb = 1.0;
+                            
+                            // Debug: Log method 2 string match
+                            if (matchingCells < 3) {
+                                console.log(`🔍 Method 2 string match for cell ${cellNum}: "${matchingClass}"`);
+                            }
                         }
                     }
                 }
@@ -1562,11 +1601,23 @@
                         matchingClass = cellData.className.find(className => selectedClasses.includes(className));
                         if (matchingClass) {
                             hasSelectedClass = true;
+                            
+                            // Debug: Log method 3 array match
+                            if (matchingCells < 3) {
+                                console.log(`🔍 Method 3 array match for cell ${cellNum}:`);
+                                console.log(`   All className:`, cellData.className);
+                                console.log(`   Matching class found: "${matchingClass}"`);
+                            }
                         }
                     } else {
                         if (selectedClasses.includes(cellData.className)) {
                             hasSelectedClass = true;
                             matchingClass = cellData.className;
+                            
+                            // Debug: Log method 3 string match
+                            if (matchingCells < 3) {
+                                console.log(`🔍 Method 3 string match for cell ${cellNum}: "${matchingClass}"`);
+                            }
                         }
                     }
                 }
@@ -1595,21 +1646,45 @@
                         continue;
                     }
                     
-                    // Transform coordinates from image space to 256x256 space using proper aspect ratio
+                    // Transform coordinates using the exact same function as gene spots for perfect alignment
+                    // Import the coordinate transform utility function directly
+                    const transformCoords = (x, y, imageDims) => {
+                        const {width, height, tileSize} = imageDims;
+                        const maxDimension = Math.max(width, height);
+                        const xAdjustment = width / maxDimension;
+                        const yAdjustment = height / maxDimension;
+                        return [
+                            x * (tileSize / width) * xAdjustment,
+                            y * (tileSize / height) * yAdjustment
+                        ];
+                    };
+                    
                     const config = window.config();
-                    const imageDimensions = {
+                    const [transformedX, transformedY] = transformCoords(x, y, {
                         width: config.imageWidth,
                         height: config.imageHeight,
                         tileSize: 256
-                    };
+                    });
                     
-                    // Use the same transformation as the main viewer to ensure proper alignment
-                    const maxDimension = Math.max(imageDimensions.width, imageDimensions.height);
-                    const xAdjustment = imageDimensions.width / maxDimension;
-                    const yAdjustment = imageDimensions.height / maxDimension;
+                    // Get color for the matching class
+                    const classColor = state.cellClassColors.get(matchingClass) || [128, 128, 128];
                     
-                    const transformedX = x * (imageDimensions.tileSize / imageDimensions.width) * xAdjustment;
-                    const transformedY = y * (imageDimensions.tileSize / imageDimensions.height) * yAdjustment;
+                    // Debug color assignment for first few cells
+                    if (matchingCells <= 5) {
+                        console.log(`🎨 Cell ${cellNum}: matchingClass="${matchingClass}", color=[${classColor.join(', ')}]`);
+                        console.log(`   Color map for ${matchingClass}:`, state.cellClassColors.get(matchingClass));
+                        console.log(`   Available colors in map:`, Array.from(state.cellClassColors.entries()).slice(0, 5));
+                        
+                        // Check if the class exists with different casing or spacing
+                        const colorMapKeys = Array.from(state.cellClassColors.keys());
+                        const similarKeys = colorMapKeys.filter(key => 
+                            key.toLowerCase().includes(matchingClass.toLowerCase()) ||
+                            matchingClass.toLowerCase().includes(key.toLowerCase())
+                        );
+                        if (similarKeys.length > 0) {
+                            console.log(`   Similar keys found:`, similarKeys);
+                        }
+                    }
                     
                     // Create aggregated cell entry
                     const aggregatedCell = {
@@ -1619,7 +1694,7 @@
                         z: z || 50,
                         className: matchingClass,
                         probability: primaryProb,
-                        color: state.cellClassColors.get(matchingClass) || [128, 128, 128]
+                        color: classColor
                     };
                     
                     aggregatedCells.push(aggregatedCell);
