@@ -1386,7 +1386,7 @@
                 '        data: aggregatedCells,',
                 '        getPosition: d => [d.x, d.y],',
                 '        getFillColor: d => {',
-                '            const classOpacity = classOpacityMap.get(d.className) || 1.0;',
+                '            const classOpacity = classOpacityMap.has(d.className) ? classOpacityMap.get(d.className) : 1.0;',
                 '            const [r, g, b] = d.color;',
                 '            // Debug first few cells',
                 '            if (Math.random() < 0.001) {',
