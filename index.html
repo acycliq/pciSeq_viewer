@@ -1255,7 +1255,11 @@
                 '',
                 '// Update deck.gl layers',
                 'function updateDeckLayers() {',
-                '    if (!aggregatedDeck) return;',
+                '    console.log("🎨 updateDeckLayers called with cellSize:", cellSize);',
+                '    if (!aggregatedDeck) {',
+                '        console.warn("⚠️ aggregatedDeck not initialized");',
+                '        return;',
+                '    }',
                 '    ',
                 '    const {TileLayer, BitmapLayer, ScatterplotLayer} = deck;',
                 '    ',
@@ -1307,7 +1311,7 @@
                 '        data: aggregatedCells,',
                 '        getPosition: d => [d.x, d.y],',
                 '        getFillColor: d => d.color,',
-                '        getRadius: d => cellSize * Math.sqrt(d.probability),',
+                '        getRadius: cellSize,',
                 '        filled: true,',
                 '        stroked: false,',
                 '        pickable: true',
@@ -1442,7 +1446,7 @@
                 '        data: aggregatedCells,',
                 '        getPosition: d => [d.x, d.y],',
                 '        getFillColor: d => d.color,',
-                '        getRadius: d => cellSize * Math.sqrt(d.probability),',
+                '        getRadius: cellSize,',
                 '        filled: true,',
                 '        stroked: false,',
                 '        pickable: true,',
@@ -1488,7 +1492,7 @@
                 '        data: aggregatedCells,',
                 '        getPosition: d => [d.x, d.y],',
                 '        getFillColor: d => d.color,',
-                '        getRadius: d => cellSize * Math.sqrt(d.probability),',
+                '        getRadius: cellSize,',
                 '        filled: true,',
                 '        stroked: false,',
                 '        pickable: true,',
@@ -1500,8 +1504,11 @@
                 '',
                 '// Size change handler',
                 'function updateCellSize(size) {',
+                '    console.log("🔧 Updating cell size from", cellSize, "to", size);',
                 '    cellSize = size;',
+                '    console.log("🔧 Cell size updated to", cellSize);',
                 '    updateDeckLayers(); // Refresh the layers with new size',
+                '    console.log("🔧 Layers updated with new size");',
                 '}',
                 '',
                 '// Set up controls',
@@ -1522,12 +1529,17 @@
                 '        });',
                 '    }',
                 '    ',
-                '    if (sizeSlider) {',
+                '    if (sizeSlider && sizeValue) {',
+                '        // Initialize the display value',
+                '        sizeValue.textContent = sizeSlider.value;',
+                '        ',
                 '        sizeSlider.addEventListener("input", (e) => {',
                 '            const size = parseFloat(e.target.value);',
                 '            sizeValue.textContent = size.toFixed(1);',
                 '            updateCellSize(size);',
                 '        });',
+                '    } else {',
+                '        console.warn("Size slider or size value element not found");',
                 '    }',
                 '});',
                 '<' + '/script>',
@@ -1558,6 +1570,21 @@
             console.log('Selected classes:', selectedClasses);
             console.log('Cell data map size:', state.cellDataMap.size);
             console.log('All cell classes:', Array.from(state.allCellClasses));
+            
+            // Debug first few cell classes to see actual data structure
+            let debugCount = 0;
+            for (const [cellNum, cellData] of state.cellDataMap) {
+                if (debugCount < 3) {
+                    console.log(`🔍 Sample cell ${cellNum} classes:`, cellData.classification);
+                    if (cellData.classification && cellData.classification.className) {
+                        console.log('  - className array:', cellData.classification.className);
+                    }
+                    if (cellData.primaryClass) {
+                        console.log('  - primaryClass:', cellData.primaryClass);
+                    }
+                    debugCount++;
+                }
+            }
             
             // Check first few cells to understand structure
             let cellCount = 0;
@@ -1756,6 +1783,16 @@
                 console.log('  2. Selected classes match available classes');
                 console.log('  3. Cell data structure matches expected format');
                 console.log('  4. Coordinates are available in position object');
+            }
+            
+            console.log(`🎯 Final result: Found ${aggregatedCells.length} cells for classes [${selectedClasses.join(', ')}]`);
+            if (aggregatedCells.length > 0) {
+                console.log('📍 Sample aggregated cell:', aggregatedCells[0]);
+            } else {
+                console.log('❌ No cells found! Check if:');
+                console.log('  1. Selected class names match exactly (case sensitive)');
+                console.log('  2. Cell data is properly loaded');
+                console.log('  3. Classification structure is correct');
             }
             
             return aggregatedCells;
