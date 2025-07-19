@@ -14,8 +14,7 @@ import {
     getPolygonFileUrl 
 } from '../config/constants.js';
 import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
-
-// Note: classColorsCodes function is loaded globally from classConfig.js
+// Note: classColorsCodes is loaded globally from color scheme files
 
 /**
  * Load image with promise wrapper for error handling
@@ -317,7 +316,7 @@ function getMostProbableCellClass(cellNum, cellDataMap) {
  * @returns {Array} RGB color array
  */
 function getCellClassColor(className) {
-    // Import and use the classColorsCodes function from classConfig
+    // Use the global classColorsCodes function
     if (typeof classColorsCodes === 'function') {
         const colorConfig = classColorsCodes();
         // console.log(`Looking up color for ${className}, available classes:`, colorConfig.map(c => c.className));
