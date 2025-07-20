@@ -139,17 +139,9 @@
         const deck = window.opener.deck;
         const {DeckGL, OrthographicView, COORDINATE_SYSTEM} = deck;
         
-        // Transform coordinates using the exact same function as gene spots for perfect alignment
-        const transformCoords = (x, y, imageDims) => {
-            const {width, height, tileSize} = imageDims;
-            const maxDimension = Math.max(width, height);
-            const xAdjustment = width / maxDimension;
-            const yAdjustment = height / maxDimension;
-            return [
-                x * (tileSize / width) * xAdjustment,
-                y * (tileSize / height) * yAdjustment
-            ];
-        };
+        // Use the shared coordinate transformation function from the parent window
+        // This ensures perfect alignment and eliminates code duplication
+        const transformCoords = window.opener.transformToTileCoordinates;
         
         // Get configuration from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
