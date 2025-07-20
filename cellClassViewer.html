@@ -188,7 +188,8 @@
                     container: container,
                     views: [new OrthographicView({
                         id: 'ortho',
-                        controller: true
+                        controller: true,
+                        clear: {color: [0, 0, 0, 1]} // Black background
                     })],
                     initialViewState: {
                         target: [256 * 0.5, 256 * 0.5 * config.imageHeight / config.imageWidth, 0],
@@ -205,7 +206,8 @@
                         keyboard: false
                     },
                     parameters: {
-                        preserveDrawingBuffer: true
+                        preserveDrawingBuffer: true,
+                        clearColor: [0, 0, 0, 1] // Black background
                     },
                     getTooltip: ({object}) => {
                         if (object && object.cellNum) {
@@ -583,7 +585,7 @@
                     const blob = await response.blob();
                     
                     // Create file handle and write
-                    const fileName = `cellclass_${className.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
+                    const fileName = `${className.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
                     const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
                     const writable = await fileHandle.createWritable();
                     await writable.write(blob);
