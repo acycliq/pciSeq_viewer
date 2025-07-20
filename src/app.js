@@ -587,6 +587,10 @@ async function init() {
     }
 }
 
+// Export coordinate transformation function for child windows
+import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
+window.transformToTileCoordinates = transformToTileCoordinates;
+
 // Initialize cell lookup UI immediately when page loads (before data loading)
 window.addEventListener('load', () => {
     // Initialize cell lookup UI first - this sets up the Ctrl+F event listener

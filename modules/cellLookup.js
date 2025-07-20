@@ -3,23 +3,8 @@
  * Provides cell search functionality with smooth camera transitions
  */
 
-/**
- * Transform coordinates from original image space to tile coordinate space
- * (copied from utils/coordinateTransform.js)
- */
-function transformToTileCoordinates(x, y, imageDimensions) {
-    const {width, height, tileSize} = imageDimensions;
-    const maxDimension = Math.max(width, height);
-    
-    // Adjustment factors to handle aspect ratio
-    const xAdjustment = width / maxDimension;
-    const yAdjustment = height / maxDimension;
-    
-    return [
-        x * (tileSize / width) * xAdjustment,
-        y * (tileSize / height) * yAdjustment
-    ];
-}
+// Import the shared coordinate transformation function
+import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
 
 // Global cell data storage
 let cellLookupData = new Map(); // cellId -> { x, y, z, bounds }
