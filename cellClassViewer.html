@@ -186,7 +186,10 @@
             try {
                 cellClassDeck = new DeckGL({
                     container: container,
-                    views: [new OrthographicView({id: 'ortho'})],
+                    views: [new OrthographicView({
+                        id: 'ortho',
+                        controller: true
+                    })],
                     initialViewState: {
                         target: [256 * 0.5, 256 * 0.5 * config.imageHeight / config.imageWidth, 0],
                         zoom: 2,
@@ -497,6 +500,9 @@
                     selectedClasses.add(className);
                     classOpacityMap.set(className, 1.0);
                     
+                    console.log(`Set selectedClasses to:`, Array.from(selectedClasses));
+                    console.log(`Set classOpacityMap for ${className} to:`, classOpacityMap.get(className));
+                    
                     // Update display and wait for render
                     updateCellsDisplay();
                     
@@ -508,19 +514,30 @@
                     // Debug info
                     console.log(`Capturing ${className}: visible cells =`, visibleCells.length);
                     
-                    // Use onAfterRender callback but optimized for speed
+                    // Back to working callback approach but with longer timeout
                     const dataURL = await new Promise((resolve, reject) => {
                         let captured = false;
                         const timeout = setTimeout(() => {
                             if (!captured) {
                                 captured = true;
-                                cellClassDeck.setProps({ onAfterRender: null });
-                                reject(new Error('Capture timeout'));
+                                console.warn(`Timeout waiting for render of ${className}`);
+                                // Don't reject, try to capture anyway
+                                try {
+                                    const canvas = cellClassDeck.canvas;
+                                    if (canvas) {
+                                        const dataURL = canvas.toDataURL('image/png');
+                                        resolve(dataURL);
+                                    } else {
+                                        reject(new Error('Canvas not available after timeout'));
+                                    }
+                                } catch (e) {
+                                    reject(e);
+                                }
                             }
-                        }, 5000); // 5 second timeout instead of waiting forever
+                        }, 10000); // Much longer timeout - 10 seconds
                         
                         const onAfterRender = () => {
-                            if (captured) return; // Prevent multiple captures
+                            if (captured) return;
                             
                             console.log(`Render completed for ${className}`);
                             
@@ -531,12 +548,6 @@
                                 }
                                 
                                 console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
-                                
-                                // Get full canvas including device pixel ratio
-                                const rect = canvas.getBoundingClientRect();
-                                const dpr = window.devicePixelRatio || 1;
-                                console.log(`Canvas rect: ${rect.width}x${rect.height}, DPR: ${dpr}`);
-                                
                                 const dataURL = canvas.toDataURL('image/png');
                                 console.log('DataURL length:', dataURL.length);
                                 
@@ -557,7 +568,7 @@
                             }
                         };
                         
-                        // Set the callback and force redraw
+                        // Set callback and trigger render
                         cellClassDeck.setProps({ onAfterRender });
                         cellClassDeck.redraw();
                     });
