@@ -568,7 +568,9 @@ function generateAggregatedViewHTML(selectedClasses, midPlane) {
                         const [r, g, b] = d.color;
                         const classOpacity = aggregatedViewState.classOpacityMap.has(d.className) ? aggregatedViewState.classOpacityMap.get(d.className) : 1.0;
                         const finalOpacity = aggregatedViewState.cellOpacity * classOpacity;
-                        const color = [r, g, b, Math.round(finalOpacity * 255)];
+                        const finalAlpha = Math.round(finalOpacity * 255);
+                        
+                        const color = [r, g, b, finalAlpha];
                         return color;
                     },
 
