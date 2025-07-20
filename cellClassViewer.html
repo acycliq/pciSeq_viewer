@@ -514,23 +514,69 @@
                     // Debug info
                     console.log(`Capturing ${className}: visible cells =`, visibleCells.length);
                     
-                    // SAFE APPROACH: Don't interfere with deck.gl callbacks
-                    // Just wait and use the existing preserveDrawingBuffer
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    
-                    // Capture directly - preserveDrawingBuffer should work
-                    const canvas = cellClassDeck.canvas;
-                    if (!canvas) {
-                        throw new Error('Canvas not available');
-                    }
-                    
-                    console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
-                    const dataURL = canvas.toDataURL('image/png');
-                    console.log('DataURL length:', dataURL.length);
-                    
-                    if (dataURL.length < 1000) {
-                        console.warn('DataURL suspiciously short, might be empty');
-                    }
+                    // SAFE CAPTURE: Use temporary callback that doesn't interfere
+                    const dataURL = await new Promise((resolve, reject) => {
+                        let captured = false;
+                        let originalCallback = null;
+                        
+                        const timeout = setTimeout(() => {
+                            if (!captured) {
+                                captured = true;
+                                // Restore original callback if any
+                                cellClassDeck.setProps({ onAfterRender: originalCallback });
+                                
+                                // Try direct capture as fallback
+                                try {
+                                    const canvas = cellClassDeck.canvas;
+                                    if (canvas) {
+                                        const dataURL = canvas.toDataURL('image/png');
+                                        console.warn('Using fallback capture for', className);
+                                        resolve(dataURL);
+                                    } else {
+                                        reject(new Error('Canvas not available'));
+                                    }
+                                } catch (e) {
+                                    reject(e);
+                                }
+                            }
+                        }, 3000);
+                        
+                        const tempCallback = () => {
+                            if (captured) return;
+                            
+                            console.log(`Safe render completed for ${className}`);
+                            
+                            try {
+                                const canvas = cellClassDeck.canvas;
+                                if (!canvas) {
+                                    throw new Error('Canvas not available');
+                                }
+                                
+                                console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+                                const dataURL = canvas.toDataURL('image/png');
+                                console.log('DataURL length:', dataURL.length);
+                                
+                                captured = true;
+                                clearTimeout(timeout);
+                                
+                                // Restore original callback immediately
+                                cellClassDeck.setProps({ onAfterRender: originalCallback });
+                                
+                                resolve(dataURL);
+                                
+                            } catch (error) {
+                                captured = true;
+                                clearTimeout(timeout);
+                                cellClassDeck.setProps({ onAfterRender: originalCallback });
+                                reject(error);
+                            }
+                        };
+                        
+                        // Store original callback and set temporary one
+                        originalCallback = cellClassDeck.props.onAfterRender || null;
+                        cellClassDeck.setProps({ onAfterRender: tempCallback });
+                        cellClassDeck.redraw();
+                    });
                     
                     // Convert to blob and save
                     const response = await fetch(dataURL);
