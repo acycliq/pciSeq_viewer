@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cell Class Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="config.js"></script>
+    <script src="advanced-config.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background: #000000; color: white; font-family: Arial, sans-serif; }
+        #cell-class-map { width: 100vw; height: 100vh; }
+        .cell-class-controls {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 12px 16px;
+            border-radius: 4px;
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            font-size: 13px;
+            color: white;
+        }
+        .control-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .control-item label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .control-item input[type="range"] {
+            width: 60px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            appearance: none;
+            outline: none;
+        }
+        .control-item input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #007bff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .control-item .value-display {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.8);
+            min-width: 24px;
+            text-align: center;
+            font-family: monospace;
+        }
+        .class-selection-widget {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+            max-width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            color: white;
+        }
+        .class-selection-widget h3 {
+            margin: 0 0 10px 0;
+            color: #28a745;
+            font-size: 14px;
+        }
+        .class-item {
+            display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+            padding: 4px; border-radius: 4px;
+        }
+        .class-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .color-swatch {
+            width: 16px; height: 16px; border-radius: 3px; border: 1px solid #ccc;
+        }
+        .class-name {
+            flex: 1; font-size: 12px;
+        }
+        .class-opacity-slider {
+            width: 60px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            appearance: none;
+            outline: none;
+        }
+        .class-opacity-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #007bff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="cell-class-map"></div>
+    <!-- Global Controls Panel (Top-Left) -->
+    <div class="cell-class-controls">
+        <div class="control-item">
+            <label for="cellOpacity">Opacity:</label>
+            <input type="range" id="cellOpacity" min="0" max="1" step="0.05" value="0.6">
+            <span id="cellOpacityValue" class="value-display">0.6</span>
+        </div>
+        <div class="control-item">
+            <label for="cellSize">Size:</label>
+            <input type="range" id="cellSize" min="0" max="5" step="0.1" value="1.0">
+            <span id="cellSizeValue" class="value-display">1.0</span>
+        </div>
+        <div class="control-item">
+            <button id="captureScreenshots" style="background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;">📷 Capture All Classes</button>
+        </div>
+        <div class="control-item" id="screenshotProgress" style="display: none;">
+            <span id="progressText" style="font-size: 10px; color: #28a745;">Ready</span>
+        </div>
+    </div>
+
+    <!-- Cell Class Selection Widget (Top-Right) -->
+    <div class="class-selection-widget">
+        <h3>&#128300; Cell Classes</h3>
+        <div id="class-list">
+            <!-- This will be populated dynamically with JavaScript -->
+        </div>
+    </div>
+    <script>
+        // Get deck.gl from the opener window to avoid CORS issues
+        const deck = window.opener.deck;
+        const {DeckGL, OrthographicView, COORDINATE_SYSTEM} = deck;
+        
+        // Transform coordinates using the exact same function as gene spots for perfect alignment
+        const transformCoords = (x, y, imageDims) => {
+            const {width, height, tileSize} = imageDims;
+            const maxDimension = Math.max(width, height);
+            const xAdjustment = width / maxDimension;
+            const yAdjustment = height / maxDimension;
+            return [
+                x * (tileSize / width) * xAdjustment,
+                y * (tileSize / height) * yAdjustment
+            ];
+        };
+        
+        // Get configuration from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentPlane = parseInt(urlParams.get('midPlane')) || 50;
+        
+        // Simple variables (like original implementation)
+        let cellSize = 1.0;
+        let cellOpacity = 1.0;
+        let selectedClasses = new Set();
+        let classOpacityMap = new Map();
+        let cellClassCells = [];
+        let cellClassDeck = null;
+        let cellClassColors = new Map();
+        
+        function initializeCellClassViewer() {
+            const container = document.getElementById('cell-class-map');
+            if (!container) {
+                setTimeout(initializeCellClassViewer, 100);
+                return;
+            }
+            
+            if (typeof deck === 'undefined') {
+                setTimeout(initializeCellClassViewer, 100);
+                return;
+            }
+            
+            const config = window.config();
+            if (!config) {
+                setTimeout(initializeCellClassViewer, 100);
+                return;
+            }
+            
+            
+            try {
+                cellClassDeck = new DeckGL({
+                    container: container,
+                    views: [new OrthographicView({id: 'ortho'})],
+                    initialViewState: {
+                        target: [256 * 0.5, 256 * 0.5 * config.imageHeight / config.imageWidth, 0],
+                        zoom: 2,
+                        minZoom: 0,
+                        maxZoom: 8
+                    },
+                    controller: {
+                        minZoom: 0,
+                        maxZoom: 8,
+                        scrollZoom: true,
+                        doubleClickZoom: true,
+                        touchZoom: true,
+                        keyboard: false
+                    },
+                    parameters: {
+                        preserveDrawingBuffer: true
+                    },
+                    getTooltip: ({object}) => {
+                        if (object && object.cellNum) {
+                            return {
+                                html: '<div style="position: absolute; pointer-events: none; background: rgba(0, 0, 0, 0.8); color: #fff; padding: 8px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; z-index: 1000; max-width: 300px; border: none; outline: none; box-shadow: none; margin: 0; font-family: inherit;">' +
+                                      '<strong>Cell ' + object.cellNum + '</strong><br/>' +
+                                      'Class: ' + object.className + '<br/>' +
+                                      'Prob: ' + (object.probability * 100).toFixed(1) + '%<br/>' +
+                                      'Position: (' + object.x.toFixed(0) + ', ' + object.y.toFixed(0) + ')' +
+                                      '</div>'
+                            };
+                        }
+                    },
+                    layers: []
+                });
+                
+                // Initialize simple state
+                initializeClassSelection();
+                createAggregatedCellData();
+                populateClassList();
+                setupGlobalControls();
+                setupScreenshotCapture();
+                updateCellsDisplay();
+                
+            } catch (error) {
+                console.error('Failed to create DeckGL instance:', error);
+                setTimeout(initializeAggregatedDeck, 500);
+            }
+        }
+        
+        function initializeClassSelection() {
+            selectedClasses = new Set();
+            classOpacityMap = new Map();
+        }
+
+        function createAggregatedCellData() {
+            const parentState = window.opener.appState;
+            if (parentState && parentState.cellDataMap && parentState.cellClassColors) {
+                cellClassColors = new Map(parentState.cellClassColors);
+                cellClassCells = [];
+                
+                parentState.cellDataMap.forEach((cell, cellId) => {
+                    if (cell && cell.position && cell.position.x !== undefined && cell.position.y !== undefined) {
+                        const primaryClassName = cell.primaryClass || 'Unknown';
+                        const color = cellClassColors.get(primaryClassName) || [128, 128, 128];
+                        
+                        cellClassCells.push({
+                            cellNum: cell.cellNum || cellId,
+                            x: cell.position.x,
+                            y: cell.position.y,
+                            originalZ: cell.position.z,
+                            className: primaryClassName,
+                            probability: cell.primaryProb || 0,
+                            color: color
+                        });
+                    }
+                });
+                
+                console.log('Loaded ' + cellClassCells.length + ' cells for aggregated view');
+            }
+        }
+        
+        function setupGlobalControls() {
+            const opacitySlider = document.getElementById('cellOpacity');
+            const opacityValue = document.getElementById('cellOpacityValue');
+
+            if (opacitySlider && opacityValue) {
+                opacitySlider.value = cellOpacity;
+                opacityValue.textContent = cellOpacity.toFixed(2);
+                
+                opacitySlider.addEventListener('input', (e) => {
+                    cellOpacity = parseFloat(e.target.value);
+                    opacityValue.textContent = cellOpacity.toFixed(2);
+                    updateCellsDisplay();
+                });
+            }
+
+            const sizeSlider = document.getElementById('cellSize');
+            const sizeValue = document.getElementById('cellSizeValue');
+
+            if (sizeSlider && sizeValue) {
+                sizeSlider.value = cellSize;
+                sizeValue.textContent = cellSize.toFixed(1);
+                
+                sizeSlider.addEventListener('input', (e) => {
+                    cellSize = parseFloat(e.target.value);
+                    sizeValue.textContent = cellSize.toFixed(1);
+                    updateCellsDisplay();
+                });
+            }
+        }
+        
+        function populateClassList() {
+            const classList = document.getElementById('class-list');
+            classList.innerHTML = '';
+
+            // Get all unique cell classes from the data
+            const allClasses = new Set();
+            cellClassCells.forEach(cell => {
+                allClasses.add(cell.className);
+            });
+
+            // Create controls for each cell class - SORTED ALPHABETICALLY
+            Array.from(allClasses).sort().forEach(className => {
+                const classItem = document.createElement('div');
+                classItem.className = 'class-item';
+
+                // Checkbox for show/hide - starts UNCHECKED
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = false;
+                checkbox.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        selectedClasses.add(className);
+                        if (!classOpacityMap.has(className)) {
+                            classOpacityMap.set(className, 1.0);
+                        }
+                    } else {
+                        selectedClasses.delete(className);
+                    }
+                    updateCellsDisplay();
+                });
+
+                // Color swatch
+                const colorSwatch = document.createElement('div');
+                colorSwatch.className = 'color-swatch';
+                const [r, g, b] = cellClassColors.get(className) || [128, 128, 128];
+                colorSwatch.style.backgroundColor = 'rgb(' + r + ', ' + g + ', ' + b + ')';
+
+                // Class name label
+                const nameLabel = document.createElement('span');
+                nameLabel.className = 'class-name';
+                nameLabel.textContent = className;
+
+                // Individual opacity slider
+                const opacitySlider = document.createElement('input');
+                opacitySlider.type = 'range';
+                opacitySlider.min = '0';
+                opacitySlider.max = '1';
+                opacitySlider.step = '0.1';
+                opacitySlider.value = '1.0';
+                opacitySlider.className = 'class-opacity-slider';
+
+                // Opacity value display
+                const opacityValue = document.createElement('span');
+                opacityValue.textContent = '1.0';
+                opacityValue.style.fontSize = '10px';
+                opacityValue.style.minWidth = '25px';
+
+                // Opacity slider event handler
+                opacitySlider.addEventListener('input', (e) => {
+                    const opacity = parseFloat(e.target.value);
+                    opacityValue.textContent = opacity.toFixed(1);
+                    classOpacityMap.set(className, opacity);
+                    updateCellsDisplay();
+                });
+
+                // Assemble the class item
+                classItem.appendChild(checkbox);
+                classItem.appendChild(colorSwatch);
+                classItem.appendChild(nameLabel);
+                classItem.appendChild(opacitySlider);
+                classItem.appendChild(opacityValue);
+
+                classList.appendChild(classItem);
+            });
+        }
+        
+        function updateCellsDisplay() {
+            if (!cellClassDeck) {
+                return;
+            }
+
+            const layers = [];
+            const cfg = window.config();
+            
+            // Add background tile layer
+            const backgroundLayer = new deck.TileLayer({
+                id: 'background-tiles',
+                tileSize: 256,
+                minZoom: 0,
+                maxZoom: 8,
+                extent: [0, 0, 256, 256],
+                coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN,
+                getTileData: async ({index}) => {
+                    const {x, y, z} = index;
+                    const tileUrl = cfg.backgroundTiles
+                        .replace('{plane}', currentPlane.toString().padStart(2, '0'))
+                        .replace('{z}', z)
+                        .replace('{y}', y)
+                        .replace('{x}', x);
+                    return tileUrl;
+                },
+                renderSubLayers: (props) => {
+                    if (!props.data) return null;
+                    const {tile} = props;
+                    const {left, bottom, right, top} = tile.bbox;
+                    return new deck.BitmapLayer({
+                        id: props.id + '-bitmap',
+                        image: props.data,
+                        bounds: [left, bottom, right, top]
+                    });
+                }
+            });
+            layers.push(backgroundLayer);
+
+            // Filter cells based on selected classes
+            let visibleCells = [];
+            if (selectedClasses.size === 0) {
+                visibleCells = [];
+            } else {
+                visibleCells = cellClassCells.filter(cell =>
+                    selectedClasses.has(cell.className)
+                );
+            }
+
+            if (visibleCells.length > 0) {
+                const cellLayer = new deck.ScatterplotLayer({
+                    id: 'cell-class-cells',
+                    data: visibleCells,
+
+                    // Position from cell coordinates - transform to tile coordinates
+                    getPosition: d => {
+                        const config = window.config();
+                        const imageDims = {
+                            width: config.imageWidth,
+                            height: config.imageHeight,
+                            tileSize: 256
+                        };
+                        return transformCoords(d.x, d.y, imageDims);
+                    },
+
+                    getFillColor: d => {
+                        const [r, g, b] = d.color;
+                        const classOpacity = classOpacityMap.has(d.className) ? classOpacityMap.get(d.className) : 1.0;
+                        const finalOpacity = cellOpacity * classOpacity;
+                        const finalAlpha = Math.round(finalOpacity * 255);
+                        return [r, g, b, finalAlpha];
+                    },
+
+                    getRadius: cellSize,
+                    filled: true,
+                    stroked: false,
+                    pickable: true,
+                    coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN,
+
+                    updateTriggers: {
+                        getFillColor: [cellOpacity, Array.from(classOpacityMap.entries())],
+                        getRadius: [cellSize]
+                    }
+                });
+
+                layers.push(cellLayer);
+            }
+
+            cellClassDeck.setProps({layers: layers});
+        }
+        
+        // Screenshot capture functionality
+        async function captureAllClassScreenshots() {
+            const progressElement = document.getElementById('screenshotProgress');
+            const progressText = document.getElementById('progressText');
+            const captureBtn = document.getElementById('captureScreenshots');
+            
+            try {
+                // Show file picker for directory selection
+                const dirHandle = await window.showDirectoryPicker();
+                
+                progressElement.style.display = 'block';
+                captureBtn.disabled = true;
+                captureBtn.textContent = '⏳ Capturing...';
+                
+                // Get all unique cell classes
+                const allClasses = new Set();
+                cellClassCells.forEach(cell => {
+                    allClasses.add(cell.className);
+                });
+                
+                const classList = Array.from(allClasses).sort();
+                let currentIndex = 0;
+                
+                // Store current state
+                const originalSelectedClasses = new Set(selectedClasses);
+                const originalOpacityMap = new Map(classOpacityMap);
+                
+                // Function to capture single class
+                async function captureSingleClass(className) {
+                    progressText.textContent = `Capturing ${className} (${currentIndex + 1}/${classList.length})`;
+                    
+                    // Clear all selections and set only current class visible
+                    selectedClasses.clear();
+                    selectedClasses.add(className);
+                    classOpacityMap.set(className, 1.0);
+                    
+                    // Update display and wait for render
+                    updateCellsDisplay();
+                    
+                    // Calculate visible cells for this class
+                    const visibleCells = cellClassCells.filter(cell => 
+                        selectedClasses.has(cell.className)
+                    );
+                    
+                    // Debug info
+                    console.log(`Capturing ${className}: visible cells =`, visibleCells.length);
+                    
+                    // Use onAfterRender callback but optimized for speed
+                    const dataURL = await new Promise((resolve, reject) => {
+                        let captured = false;
+                        const timeout = setTimeout(() => {
+                            if (!captured) {
+                                captured = true;
+                                cellClassDeck.setProps({ onAfterRender: null });
+                                reject(new Error('Capture timeout'));
+                            }
+                        }, 5000); // 5 second timeout instead of waiting forever
+                        
+                        const onAfterRender = () => {
+                            if (captured) return; // Prevent multiple captures
+                            
+                            console.log(`Render completed for ${className}`);
+                            
+                            try {
+                                const canvas = cellClassDeck.canvas;
+                                if (!canvas) {
+                                    throw new Error('Canvas not available');
+                                }
+                                
+                                console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+                                
+                                // Get full canvas including device pixel ratio
+                                const rect = canvas.getBoundingClientRect();
+                                const dpr = window.devicePixelRatio || 1;
+                                console.log(`Canvas rect: ${rect.width}x${rect.height}, DPR: ${dpr}`);
+                                
+                                const dataURL = canvas.toDataURL('image/png');
+                                console.log('DataURL length:', dataURL.length);
+                                
+                                if (dataURL.length < 1000) {
+                                    console.warn('DataURL suspiciously short, might be empty');
+                                }
+                                
+                                captured = true;
+                                clearTimeout(timeout);
+                                cellClassDeck.setProps({ onAfterRender: null });
+                                resolve(dataURL);
+                                
+                            } catch (error) {
+                                captured = true;
+                                clearTimeout(timeout);
+                                cellClassDeck.setProps({ onAfterRender: null });
+                                reject(error);
+                            }
+                        };
+                        
+                        // Set the callback and force redraw
+                        cellClassDeck.setProps({ onAfterRender });
+                        cellClassDeck.redraw();
+                    });
+                    
+                    // Convert to blob and save
+                    const response = await fetch(dataURL);
+                    const blob = await response.blob();
+                    
+                    // Create file handle and write
+                    const fileName = `cellclass_${className.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
+                    const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    
+                    currentIndex++;
+                }
+                
+                // Capture each class sequentially
+                for (const className of classList) {
+                    await captureSingleClass(className);
+                }
+                
+                // Restore original state
+                selectedClasses.clear();
+                originalSelectedClasses.forEach(cls => selectedClasses.add(cls));
+                classOpacityMap.clear();
+                originalOpacityMap.forEach((opacity, cls) => classOpacityMap.set(cls, opacity));
+                updateCellsDisplay();
+                
+                // Update UI checkboxes to match restored state
+                document.querySelectorAll('.class-item input[type="checkbox"]').forEach(checkbox => {
+                    const className = checkbox.parentElement.querySelector('.class-name').textContent;
+                    checkbox.checked = selectedClasses.has(className);
+                });
+                
+                progressText.textContent = `✅ Captured ${classList.length} screenshots`;
+                setTimeout(() => {
+                    progressElement.style.display = 'none';
+                }, 3000);
+                
+            } catch (error) {
+                console.error('Screenshot capture failed:', error);
+                progressText.textContent = '❌ Capture failed';
+                setTimeout(() => {
+                    progressElement.style.display = 'none';
+                }, 3000);
+            } finally {
+                captureBtn.disabled = false;
+                captureBtn.textContent = '📷 Capture All Classes';
+            }
+        }
+        
+        // Setup screenshot button event listener
+        function setupScreenshotCapture() {
+            const captureBtn = document.getElementById('captureScreenshots');
+            if (captureBtn) {
+                captureBtn.addEventListener('click', captureAllClassScreenshots);
+            }
+        }
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeCellClassViewer);
+        } else {
+            setTimeout(initializeCellClassViewer, 100);
+        }
+    </script>
+</body>
+</html>
