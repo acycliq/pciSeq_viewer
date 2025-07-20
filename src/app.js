@@ -59,9 +59,9 @@ import {
     undockCellClassWidget
 } from './cellClassWidget.js';
 import {
-    openAggregatedClassesView,
-    getAggregatedCellData
-} from './aggregatedViews.js';
+    openCellClassViewer,
+    getCellClassViewerData
+} from './cellClassViewer.js';
 
 // Extract deck.gl components
 const {DeckGL, OrthographicView, COORDINATE_SYSTEM} = deck;
@@ -79,8 +79,8 @@ window.hideCellClassWidget = hideCellClassWidget;
 window.filterCellClasses = filterCellClasses;
 window.toggleAllCellClasses = toggleAllCellClasses;
 window.undockCellClassWidget = undockCellClassWidget;
-window.openAggregatedClassesView = openAggregatedClassesView;
-window.getAggregatedCellData = getAggregatedCellData;
+window.openCellClassViewer = openCellClassViewer;
+window.getCellClassViewerData = getCellClassViewerData;
 
 // === SCALE BAR FUNCTIONS ===
 function calculateScaleBar(viewState) {

@@ -33,7 +33,7 @@ const elements = {
     
     // Cell class widget
     cellClassPanelBtn: document.getElementById('cellClassPanelBtn'),
-    aggregatedClassesBtn: document.getElementById('aggregatedClassesBtn'),
+    cellClassViewerBtn: document.getElementById('cellClassViewerBtn'),
     cellClassWidget: document.getElementById('cellClassWidget'),
     cellClassWidgetBackdrop: document.getElementById('cellClassWidgetBackdrop'),
     cellClassWidgetClose: document.getElementById('cellClassWidgetClose'),
