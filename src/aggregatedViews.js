@@ -3,47 +3,21 @@ import { state } from './stateManager.js';
 
 // === AGGREGATED CLASSES VIEW ===
 function openAggregatedClassesView() {
-    const startTime = performance.now();
-    console.log(`[${startTime.toFixed(2)}ms] START: openAggregatedClassesView`);
-    
-    // Check if cell data is loaded
     if (!state.cellDataMap || state.cellDataMap.size === 0) {
         alert('Cell data is not loaded yet. Please wait for the data to load and try again.');
         return;
     }
     
-    const windowOpenTime = performance.now();
-    // Create new window for aggregated view
     const aggregatedWindow = window.open('', 'aggregatedClassesView', 'width=1200,height=800');
-    console.log(`[${performance.now().toFixed(2)}ms] Window opened (took ${(performance.now() - windowOpenTime).toFixed(2)}ms)`);
-    
-    const configTime = performance.now();
-    // Calculate mid-plane for background
     const config = window.config();
-    const maxPlane = config.totalPlanes - 1;
-    const midPlane = Math.floor(maxPlane / 2);
-    console.log(`[${performance.now().toFixed(2)}ms] Config processed (took ${(performance.now() - configTime).toFixed(2)}ms)`);
-    
-    // Start with empty cell data - user will select classes in the new window
+    const midPlane = Math.floor((config.totalPlanes - 1) / 2);
     const selectedClasses = [];
     
-    const htmlGenTime = performance.now();
-    // Generate and write the HTML content
     const windowContent = generateAggregatedViewHTML(selectedClasses, midPlane);
-    console.log(`[${performance.now().toFixed(2)}ms] HTML generated (took ${(performance.now() - htmlGenTime).toFixed(2)}ms)`);
-    
-    const writeTime = performance.now();
     aggregatedWindow.document.write(windowContent);
     aggregatedWindow.document.close();
-    console.log(`[${performance.now().toFixed(2)}ms] HTML written (took ${(performance.now() - writeTime).toFixed(2)}ms)`);
     
-    const commTime = performance.now();
-    // Set up communication with the new window
     setupAggregatedViewCommunication(aggregatedWindow, selectedClasses, midPlane);
-    console.log(`[${performance.now().toFixed(2)}ms] Communication setup (took ${(performance.now() - commTime).toFixed(2)}ms)`);
-    
-    const totalTime = performance.now() - startTime;
-    console.log(`[${performance.now().toFixed(2)}ms] TOTAL openAggregatedClassesView TIME: ${totalTime.toFixed(2)}ms`);
 }
 
 function generateAggregatedViewHTML(selectedClasses, midPlane) {
@@ -198,57 +172,36 @@ function generateAggregatedViewHTML(selectedClasses, midPlane) {
             ];
         };
         
-        // Global state for the aggregated view following user specification
-        const aggregatedViewState = {
-            cellSize: 1.0,                    // Global cell size
-            cellOpacity: 1.0,                 // Global cell opacity
-            selectedClasses: new Set(),       // Which cell types are visible
-            classOpacityMap: new Map(),       // Individual opacity per cell type
-            aggregatedCells: [],              // Processed cell data
-            deckInstance: null,               // deck.gl instance
-            currentPlane: ${midPlane},        // Current plane for background
-            cellClassColors: new Map()        // Cell class color mapping
-        };
+        // Simple variables (like original implementation)
+        let cellSize = 1.0;
+        let cellOpacity = 1.0;
+        let selectedClasses = new Set();
+        let classOpacityMap = new Map();
+        let aggregatedCells = [];
+        let aggregatedDeck = null;
+        let currentPlane = ${midPlane};
+        let cellClassColors = new Map();
         
         function initializeAggregatedDeck() {
-            const startTime = performance.now();
-            console.log('[' + startTime.toFixed(2) + 'ms] START: Initializing aggregated deck...');
-            
-            // Wait for the container to be available
-            const containerCheckTime = performance.now();
             const container = document.getElementById('aggregated-map');
             if (!container) {
-                console.error('[' + containerCheckTime.toFixed(2) + 'ms] Container element not found, retrying...');
                 setTimeout(initializeAggregatedDeck, 100);
                 return;
             }
             
-            console.log('[' + performance.now().toFixed(2) + 'ms] Container found:', container);
-            
-            // Check if deck is available
-            const deckCheckTime = performance.now();
             if (typeof deck === 'undefined') {
-                console.error('[' + deckCheckTime.toFixed(2) + 'ms] deck.gl not available, retrying...');
                 setTimeout(initializeAggregatedDeck, 100);
                 return;
             }
             
-            console.log('[' + performance.now().toFixed(2) + 'ms] deck.gl available');
-            
-            const configCheckTime = performance.now();
             const config = window.config();
             if (!config) {
-                console.error('[' + configCheckTime.toFixed(2) + 'ms] Config not available, retrying...');
                 setTimeout(initializeAggregatedDeck, 100);
                 return;
             }
             
-            console.log('[' + performance.now().toFixed(2) + 'ms] Config loaded');
-            
             try {
-                const deckCreateTime = performance.now();
-                console.log('[' + deckCreateTime.toFixed(2) + 'ms] Creating DeckGL instance...');
-                aggregatedViewState.deckInstance = new DeckGL({
+                aggregatedDeck = new DeckGL({
                     container: container,
                     views: [new OrthographicView({id: 'ortho'})],
                     initialViewState: {
@@ -280,51 +233,36 @@ function generateAggregatedViewHTML(selectedClasses, midPlane) {
                     layers: []
                 });
                 
-                const deckCreatedTime = performance.now();
-                console.log('[' + deckCreatedTime.toFixed(2) + 'ms] DeckGL instance created successfully (took ' + (deckCreatedTime - deckCreateTime).toFixed(2) + 'ms)');
-                
-                const initTime = performance.now();
-                // Initialize following user specification pattern
+                // Initialize simple state
                 initializeClassSelection();
                 createAggregatedCellData();
                 populateClassList();
                 setupGlobalControls();
-                updateCellsDisplay(); // Initial visualization
-                console.log('[' + performance.now().toFixed(2) + 'ms] Full initialization complete (took ' + (performance.now() - initTime).toFixed(2) + 'ms)');
-                
-                const totalTime = performance.now() - startTime;
-                console.log('[' + performance.now().toFixed(2) + 'ms] TOTAL INITIALIZATION TIME: ' + totalTime.toFixed(2) + 'ms');
+                updateCellsDisplay();
                 
             } catch (error) {
-                console.error('[' + performance.now().toFixed(2) + 'ms] Failed to create DeckGL instance:', error);
+                console.error('Failed to create DeckGL instance:', error);
                 setTimeout(initializeAggregatedDeck, 500);
             }
         }
         
-        // Initialize with EMPTY selection - user must actively check boxes to see cells
         function initializeClassSelection() {
-            // selectedClasses starts EMPTY - no cells visible initially
-            aggregatedViewState.selectedClasses = new Set();  // Empty set
-            
-            // classOpacityMap starts empty too - will be populated when classes are selected
-            aggregatedViewState.classOpacityMap = new Map();
+            selectedClasses = new Set();
+            classOpacityMap = new Map();
         }
 
         function createAggregatedCellData() {
             const parentState = window.opener.appState;
             if (parentState && parentState.cellDataMap && parentState.cellClassColors) {
-                // Copy cell class colors
-                aggregatedViewState.cellClassColors = new Map(parentState.cellClassColors);
-                
-                // Create aggregated cell data from all cells
-                aggregatedViewState.aggregatedCells = [];
+                cellClassColors = new Map(parentState.cellClassColors);
+                aggregatedCells = [];
                 
                 parentState.cellDataMap.forEach((cell, cellId) => {
                     if (cell && cell.position && cell.position.x !== undefined && cell.position.y !== undefined) {
                         const primaryClassName = cell.primaryClass || 'Unknown';
-                        const color = aggregatedViewState.cellClassColors.get(primaryClassName) || [128, 128, 128];
+                        const color = cellClassColors.get(primaryClassName) || [128, 128, 128];
                         
-                        aggregatedViewState.aggregatedCells.push({
+                        aggregatedCells.push({
                             cellNum: cell.cellNum || cellId,
                             x: cell.position.x,
                             y: cell.position.y,
@@ -336,43 +274,36 @@ function generateAggregatedViewHTML(selectedClasses, midPlane) {
                     }
                 });
                 
-                console.log('Loaded ' + aggregatedViewState.aggregatedCells.length + ' cells for aggregated view');
+                console.log('Loaded ' + aggregatedCells.length + ' cells for aggregated view');
             }
         }
         
-        // Set up global control event handlers
         function setupGlobalControls() {
-            // Global opacity control
             const opacitySlider = document.getElementById('cellOpacity');
             const opacityValue = document.getElementById('cellOpacityValue');
 
             if (opacitySlider && opacityValue) {
-                // Initialize slider to match state value
-                opacitySlider.value = aggregatedViewState.cellOpacity;
-                opacityValue.textContent = aggregatedViewState.cellOpacity.toFixed(2);
+                opacitySlider.value = cellOpacity;
+                opacityValue.textContent = cellOpacity.toFixed(2);
                 
                 opacitySlider.addEventListener('input', (e) => {
-                    const opacity = parseFloat(e.target.value);
-                    opacityValue.textContent = opacity.toFixed(2);
-                    aggregatedViewState.cellOpacity = opacity;
-                    updateCellsDisplay(); // Refresh the visualization
+                    cellOpacity = parseFloat(e.target.value);
+                    opacityValue.textContent = cellOpacity.toFixed(2);
+                    updateCellsDisplay();
                 });
             }
 
-            // Global size control
             const sizeSlider = document.getElementById('cellSize');
             const sizeValue = document.getElementById('cellSizeValue');
 
             if (sizeSlider && sizeValue) {
-                // Initialize slider to match state value
-                sizeSlider.value = aggregatedViewState.cellSize;
-                sizeValue.textContent = aggregatedViewState.cellSize.toFixed(1);
+                sizeSlider.value = cellSize;
+                sizeValue.textContent = cellSize.toFixed(1);
                 
                 sizeSlider.addEventListener('input', (e) => {
-                    const size = parseFloat(e.target.value);
-                    sizeValue.textContent = size.toFixed(1);
-                    aggregatedViewState.cellSize = size;
-                    updateCellsDisplay(); // Refresh the visualization
+                    cellSize = parseFloat(e.target.value);
+                    sizeValue.textContent = cellSize.toFixed(1);
+                    updateCellsDisplay();
                 });
             }
         }
@@ -384,7 +315,7 @@ function generateAggregatedViewHTML(selectedClasses, midPlane) {
 
             // Get all unique cell classes from the data
             const allClasses = new Set();
-            aggregatedViewState.aggregatedCells.forEach(cell => {
+            aggregatedCells.forEach(cell => {
                 allClasses.add(cell.className);
             });
 
@@ -398,29 +329,21 @@ function generateAggregatedViewHTML(selectedClasses, midPlane) {
                 checkbox.type = 'checkbox';
                 checkbox.checked = false; // Start UNCHECKED - no cells visible initially
                 checkbox.addEventListener('change', (e) => {
-                    console.log('Checkbox changed for class:', className, 'checked:', e.target.checked);
                     if (e.target.checked) {
-                        // User CHECKED the box - add this class and initialize its opacity
-                        aggregatedViewState.selectedClasses.add(className);
-                        // Initialize opacity for this class when first selected
-                        if (!aggregatedViewState.classOpacityMap.has(className)) {
-                            aggregatedViewState.classOpacityMap.set(className, 1.0);
+                        selectedClasses.add(className);
+                        if (!classOpacityMap.has(className)) {
+                            classOpacityMap.set(className, 1.0);
                         }
-                        console.log('Added class to selectedClasses:', className);
-                        console.log('selectedClasses now:', Array.from(aggregatedViewState.selectedClasses));
                     } else {
-                        // User UNCHECKED the box - remove this class
-                        aggregatedViewState.selectedClasses.delete(className);
-                        console.log('Removed class from selectedClasses:', className);
+                        selectedClasses.delete(className);
                     }
-                    console.log('Calling updateCellsDisplay...');
-                    updateCellsDisplay(); // Refresh the visualization
+                    updateCellsDisplay();
                 });
 
                 // Color swatch
                 const colorSwatch = document.createElement('div');
                 colorSwatch.className = 'color-swatch';
-                const [r, g, b] = aggregatedViewState.cellClassColors.get(className) || [128, 128, 128];
+                const [r, g, b] = cellClassColors.get(className) || [128, 128, 128];
                 colorSwatch.style.backgroundColor = 'rgb(' + r + ', ' + g + ', ' + b + ')';
 
                 // Class name label
@@ -447,8 +370,8 @@ function generateAggregatedViewHTML(selectedClasses, midPlane) {
                 opacitySlider.addEventListener('input', (e) => {
                     const opacity = parseFloat(e.target.value);
                     opacityValue.textContent = opacity.toFixed(1);
-                    aggregatedViewState.classOpacityMap.set(className, opacity);
-                    updateCellsDisplay(); // Refresh the visualization
+                    classOpacityMap.set(className, opacity);
+                    updateCellsDisplay();
                 });
 
                 // Assemble the class item
@@ -462,15 +385,8 @@ function generateAggregatedViewHTML(selectedClasses, midPlane) {
             });
         }
         
-        // Create the ScatterplotLayer update function
         function updateCellsDisplay() {
-            console.log('updateCellsDisplay called');
-            console.log('deckInstance exists:', !!aggregatedViewState.deckInstance);
-            console.log('selectedClasses:', Array.from(aggregatedViewState.selectedClasses));
-            console.log('total aggregatedCells:', aggregatedViewState.aggregatedCells.length);
-            
-            if (!aggregatedViewState.deckInstance) {
-                console.log('No deckInstance, returning early');
+            if (!aggregatedDeck) {
                 return;
             }
 
@@ -488,7 +404,7 @@ function generateAggregatedViewHTML(selectedClasses, midPlane) {
                 getTileData: async ({index}) => {
                     const {x, y, z} = index;
                     const tileUrl = cfg.backgroundTiles
-                        .replace('{plane}', aggregatedViewState.currentPlane.toString().padStart(2, '0'))
+                        .replace('{plane}', currentPlane.toString().padStart(2, '0'))
                         .replace('{z}', z)
                         .replace('{y}', y)
                         .replace('{x}', x);
@@ -509,44 +425,15 @@ function generateAggregatedViewHTML(selectedClasses, midPlane) {
 
             // Filter cells based on selected classes
             let visibleCells = [];
-            if (aggregatedViewState.selectedClasses.size === 0) {
-                // If nothing selected, show empty (initial state)
+            if (selectedClasses.size === 0) {
                 visibleCells = [];
-                console.log('No classes selected, showing empty');
             } else {
-                // Filter to show only selected classes
-                visibleCells = aggregatedViewState.aggregatedCells.filter(cell =>
-                    aggregatedViewState.selectedClasses.has(cell.className)
+                visibleCells = aggregatedCells.filter(cell =>
+                    selectedClasses.has(cell.className)
                 );
-                console.log('Filtering completed. visibleCells:', visibleCells.length);
-                if (visibleCells.length > 0) {
-                    console.log('Sample visible cell:', visibleCells[0]);
-                } else {
-                    console.log('No cells match selected classes!');
-                    console.log('Available cell classes in data:', [...new Set(aggregatedViewState.aggregatedCells.map(c => c.className))]);
-                }
             }
 
-            // Create the ScatterplotLayer with current settings
             if (visibleCells.length > 0) {
-                console.log('Creating ScatterplotLayer with', visibleCells.length, 'cells');
-                
-                // Debug: Check first cell properties
-                const firstCell = visibleCells[0];
-                const config = window.config();
-                const imageDims = {
-                    width: config.imageWidth,
-                    height: config.imageHeight,
-                    tileSize: 256
-                };
-                const [transformedX, transformedY] = transformCoords(firstCell.x, firstCell.y, imageDims);
-                
-                console.log('First cell original position:', [firstCell.x, firstCell.y]);
-                console.log('First cell TRANSFORMED position:', [transformedX, transformedY]);
-                console.log('Image dimensions:', imageDims.width, 'x', imageDims.height);
-                console.log('First cell color:', firstCell.color);
-                console.log('Current cell size:', aggregatedViewState.cellSize);
-                console.log('Current cell opacity:', aggregatedViewState.cellOpacity);
                 
                 const cellLayer = new deck.ScatterplotLayer({
                     id: 'aggregated-cells',
@@ -563,46 +450,30 @@ function generateAggregatedViewHTML(selectedClasses, midPlane) {
                         return transformCoords(d.x, d.y, imageDims);
                     },
 
-                    // Color with combined opacity (global + per-class)
                     getFillColor: d => {
                         const [r, g, b] = d.color;
-                        const classOpacity = aggregatedViewState.classOpacityMap.has(d.className) ? aggregatedViewState.classOpacityMap.get(d.className) : 1.0;
-                        const finalOpacity = aggregatedViewState.cellOpacity * classOpacity;
+                        const classOpacity = classOpacityMap.has(d.className) ? classOpacityMap.get(d.className) : 1.0;
+                        const finalOpacity = cellOpacity * classOpacity;
                         const finalAlpha = Math.round(finalOpacity * 255);
-                        
-                        const color = [r, g, b, finalAlpha];
-                        return color;
+                        return [r, g, b, finalAlpha];
                     },
 
-                    // Size from global setting
-                    getRadius: aggregatedViewState.cellSize,
-
-                    // Visual properties
+                    getRadius: cellSize,
                     filled: true,
                     stroked: false,
                     pickable: true,
                     coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN,
 
-                    // Performance optimization - tell deck.gl when to recalculate
                     updateTriggers: {
-                        getFillColor: [
-                            aggregatedViewState.cellOpacity,
-                            Array.from(aggregatedViewState.classOpacityMap.entries())
-                        ],
-                        getRadius: [aggregatedViewState.cellSize]
+                        getFillColor: [cellOpacity, Array.from(classOpacityMap.entries())],
+                        getRadius: [cellSize]
                     }
                 });
 
                 layers.push(cellLayer);
             }
 
-            // Update the deck.gl instance
-            console.log('Setting layers on deck instance. Total layers:', layers.length);
-            layers.forEach((layer, i) => console.log('Layer', i, ':', layer.id));
-            aggregatedViewState.deckInstance.setProps({
-                layers: layers
-            });
-            console.log('Deck layers updated');
+            aggregatedDeck.setProps({layers: layers});
         }
         
         // Initialize when DOM is ready
