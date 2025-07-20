@@ -514,64 +514,23 @@
                     // Debug info
                     console.log(`Capturing ${className}: visible cells =`, visibleCells.length);
                     
-                    // Back to working callback approach but with longer timeout
-                    const dataURL = await new Promise((resolve, reject) => {
-                        let captured = false;
-                        const timeout = setTimeout(() => {
-                            if (!captured) {
-                                captured = true;
-                                console.warn(`Timeout waiting for render of ${className}`);
-                                // Don't reject, try to capture anyway
-                                try {
-                                    const canvas = cellClassDeck.canvas;
-                                    if (canvas) {
-                                        const dataURL = canvas.toDataURL('image/png');
-                                        resolve(dataURL);
-                                    } else {
-                                        reject(new Error('Canvas not available after timeout'));
-                                    }
-                                } catch (e) {
-                                    reject(e);
-                                }
-                            }
-                        }, 10000); // Much longer timeout - 10 seconds
-                        
-                        const onAfterRender = () => {
-                            if (captured) return;
-                            
-                            console.log(`Render completed for ${className}`);
-                            
-                            try {
-                                const canvas = cellClassDeck.canvas;
-                                if (!canvas) {
-                                    throw new Error('Canvas not available');
-                                }
-                                
-                                console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
-                                const dataURL = canvas.toDataURL('image/png');
-                                console.log('DataURL length:', dataURL.length);
-                                
-                                if (dataURL.length < 1000) {
-                                    console.warn('DataURL suspiciously short, might be empty');
-                                }
-                                
-                                captured = true;
-                                clearTimeout(timeout);
-                                cellClassDeck.setProps({ onAfterRender: null });
-                                resolve(dataURL);
-                                
-                            } catch (error) {
-                                captured = true;
-                                clearTimeout(timeout);
-                                cellClassDeck.setProps({ onAfterRender: null });
-                                reject(error);
-                            }
-                        };
-                        
-                        // Set callback and trigger render
-                        cellClassDeck.setProps({ onAfterRender });
-                        cellClassDeck.redraw();
-                    });
+                    // SAFE APPROACH: Don't interfere with deck.gl callbacks
+                    // Just wait and use the existing preserveDrawingBuffer
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    // Capture directly - preserveDrawingBuffer should work
+                    const canvas = cellClassDeck.canvas;
+                    if (!canvas) {
+                        throw new Error('Canvas not available');
+                    }
+                    
+                    console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+                    const dataURL = canvas.toDataURL('image/png');
+                    console.log('DataURL length:', dataURL.length);
+                    
+                    if (dataURL.length < 1000) {
+                        console.warn('DataURL suspiciously short, might be empty');
+                    }
                     
                     // Convert to blob and save
                     const response = await fetch(dataURL);
