@@ -161,9 +161,9 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         window.toggleAllCellClasses();
     });
     
-    // Aggregated classes button
-    elements.aggregatedClassesBtn.addEventListener('click', () => {
-        window.openAggregatedClassesView();
+    // Cell class viewer button
+    elements.cellClassViewerBtn.addEventListener('click', () => {
+        window.openCellClassViewer();
     });
     
     
