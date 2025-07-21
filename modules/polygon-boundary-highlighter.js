@@ -2,7 +2,7 @@
  * Polygon Boundary Highlighter
  * Provides functionality to highlight polygon boundaries on mouseover
  */
-class PolygonBoundaryHighlighter {
+export class PolygonBoundaryHighlighter {
     constructor(deckglInstance, coordinateSystem, cellToSpotsIndex = null, geneToId = null, cellDataMap = null) {
         this.deckglInstance = deckglInstance;
         this.coordinateSystem = coordinateSystem;
@@ -491,5 +491,5 @@ class PolygonBoundaryHighlighter {
     }
 }
 
-// Export for use in main application
+// Export for use in main application (keeping window export for backward compatibility)
 window.PolygonBoundaryHighlighter = PolygonBoundaryHighlighter;
