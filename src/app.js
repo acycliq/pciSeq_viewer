@@ -7,6 +7,7 @@ import {
 } from '../config/constants.js';
 
 // Import coordinate transformation utilities
+import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
 import {
     clamp
 } from '../utils/coordinateTransform.js';
@@ -588,7 +589,6 @@ async function init() {
 }
 
 // Export coordinate transformation function for child windows
-import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
 window.transformToTileCoordinates = transformToTileCoordinates;
 
 // Initialize cell lookup UI immediately when page loads (before data loading)
