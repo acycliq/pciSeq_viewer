@@ -18,8 +18,6 @@ if (!advancedUserConfig) {
 }
 
 // Transform user config into application constants
-export const TILE_BASE_URL = userConfig.backgroundTiles.replace('/{z}/{y}/{x}.jpg', '').replace('/{z}/{y}/{x}.png', '');
-
 export const GENE_DATA_URL = userConfig.geneDataFile;
 export const CELL_DATA_URL = userConfig.cellDataFile;
 
@@ -101,11 +99,6 @@ export const GENE_SIZE_CONFIG = {
     DEFAULT_SCALE: advancedUserConfig.display.geneMarkerSize
 };
 
-// Timing Configuration
-export const TIMING = {
-    SLIDER_DEBOUNCE: advancedUserConfig.performance.sliderDebounce, // ms
-    LOADING_TIMEOUT: advancedUserConfig.performance.loadingTimeout // ms
-};
 
 // Helper function to get polygon file URL for a specific plane
 export function getPolygonFileUrl(planeNumber) {
@@ -117,10 +110,3 @@ export function getTileUrlPattern() {
     return userConfig.backgroundTiles;
 }
 
-// Validation
-console.log('Configuration loaded:', {
-    totalPlanes: userConfig.totalPlanes,
-    startingPlane: userConfig.startingPlane,
-    dimensions: `${userConfig.imageWidth}x${userConfig.imageHeight}`,
-    geneDataFile: userConfig.geneDataFile
-});

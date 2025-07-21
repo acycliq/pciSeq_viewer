@@ -5,7 +5,6 @@
  * including slider controls, navigation buttons, layer toggles, and keyboard shortcuts
  */
 
-import { TIMING } from '../config/constants.js';
 import { 
     toggleAllGenes, 
     updateGeneSize, 
