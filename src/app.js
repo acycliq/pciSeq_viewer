@@ -41,8 +41,8 @@ import {
     setupAdvancedKeyboardShortcuts
 } from '../modules/eventHandlers.js';
 
-// Import polygon boundary highlighter
-import { PolygonBoundaryHighlighter } from '../modules/polygon-boundary-highlighter.js';
+// Import polygon interactions
+import { PolygonBoundaryHighlighter } from '../modules/polygonInteractions.js';
 
 // Import modular components
 import { state } from './stateManager.js';

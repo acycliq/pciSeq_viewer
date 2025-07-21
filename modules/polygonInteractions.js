@@ -1,10 +1,28 @@
+/**
+* Polygon Interactions Module
+*
+* Keep here mouse events and interactive behaviors for cell polygons:
+* - Hover highlighting with white outlines
+* - Click-to-pin functionality for persistent cell selection
+* - Cell-to-spot line visualization on hover/pin
+* - Event delegation and throttling for performance
+* - UI notifications for pin/unpin actions
+* Keep here mouse events and interactive behaviors for cell polygons.
+*
+* This module handles all polygon-related mouse interactions and visual feedback
+* to provide smooth, responsive user experience with large datasets.
+* When you hover over a cell polygon, it gets a white outline and shows lines
+* connecting to all the gene spots inside that cell. Click on a cell to pin
+* those lines so they stay visible even when you move to other planes.
+*
+* The hover events are throttled because otherwise the UI gets laggy with
+* lots of polygons. Also handles the little notification messages when
+* you pin/unpin cells.
+*/
+
+
 import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
 import { IMG_DIMENSIONS } from '../config/constants.js';
-
-/**
- * Polygon Boundary Highlighter
- * Provides functionality to highlight polygon boundaries on mouseover
- */
 export class PolygonBoundaryHighlighter {
     constructor(deckglInstance, coordinateSystem, cellToSpotsIndex = null, geneToId = null, cellDataMap = null) {
         this.deckglInstance = deckglInstance;
