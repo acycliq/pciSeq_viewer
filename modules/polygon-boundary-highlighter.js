@@ -1,3 +1,6 @@
+import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
+import { IMG_DIMENSIONS } from '../config/constants.js';
+
 /**
  * Polygon Boundary Highlighter
  * Provides functionality to highlight polygon boundaries on mouseover
@@ -237,7 +240,7 @@ export class PolygonBoundaryHighlighter {
             const cellData = this.cellDataMap.get(cellLabel);
             if (cellData && cellData.X !== undefined && cellData.Y !== undefined) {
                 // Transform cell coordinates to tile space (same transformation as gene spots)
-                return this.transformSpotCoordinates(cellData.X, cellData.Y);
+                return transformToTileCoordinates(cellData.X, cellData.Y, IMG_DIMENSIONS);
             }
         }
         
@@ -255,29 +258,6 @@ export class PolygonBoundaryHighlighter {
         return [sumX / points.length, sumY / points.length];
     }
 
-    /**
-     * Transform spot coordinates to tile space (same as gene layers)
-     */
-    transformSpotCoordinates(x, y) {
-        // Use the same transformation as gene layers with proper aspect ratio handling
-        const imageDimensions = {
-            width: 6411,
-            height: 4412,
-            tileSize: 256
-        };
-        
-        const {width, height, tileSize} = imageDimensions;
-        const maxDimension = Math.max(width, height);
-        
-        // Adjustment factors to handle aspect ratio (same as transformToTileCoordinates)
-        const xAdjustment = width / maxDimension;
-        const yAdjustment = height / maxDimension;
-        
-        return [
-            x * (tileSize / width) * xAdjustment,
-            y * (tileSize / height) * yAdjustment
-        ];
-    }
 
     /**
      * Get gene color based on gene name
@@ -326,7 +306,7 @@ export class PolygonBoundaryHighlighter {
         // Transform spot coordinates to tile space to match gene markers
         const lineData = spots.map(spot => {
             // Transform using the same method as gene layers
-            const sourcePosition = this.transformSpotCoordinates(spot.x, spot.y);
+            const sourcePosition = transformToTileCoordinates(spot.x, spot.y, IMG_DIMENSIONS);
             
             return {
                 sourcePosition: centroid,
