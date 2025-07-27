@@ -465,6 +465,12 @@
             const captureBtn = document.getElementById('captureScreenshots');
             
             try {
+                // Check if browser supports File System Access API
+                if (!window.showDirectoryPicker) {
+                    alert('Operation is not supported in this browser.\n\nPlease use Chrome/Opera/Edge.');
+                    return;
+                }
+                
                 // Show file picker for directory selection
                 const dirHandle = await window.showDirectoryPicker();
                 
