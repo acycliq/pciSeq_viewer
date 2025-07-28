@@ -311,22 +311,6 @@ export class RectangularSelection {
         if (!notification) {
             notification = document.createElement('div');
             notification.id = 'selection-mode-notification';
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(34, 139, 34, 0.9);
-                color: white;
-                padding: 12px 24px;
-                border-radius: 8px;
-                font-family: Arial, sans-serif;
-                font-size: 14px;
-                font-weight: bold;
-                z-index: 10001;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                border: 2px solid #22C55E;
-            `;
             document.body.appendChild(notification);
         }
         
