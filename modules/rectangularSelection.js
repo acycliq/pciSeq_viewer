@@ -79,17 +79,20 @@ export class RectangularSelection {
         const mapContainer = document.getElementById('map');
         
         if (this.isActive) {
-            mapContainer.style.cursor = 'crosshair';
-            console.log('Rectangular selection mode ON - Click and drag to select');
+            console.log('Rectangular selection mode ON - Hold Ctrl + Left Mouse button and drag to selec');
+            this.showSelectionNotification();
         } else {
-            mapContainer.style.cursor = 'default';
             this.clearSelection();
             console.log('Rectangular selection mode OFF');
+            this.hideSelectionNotification();
         }
     }
     
     onMouseDown(event) {
         if (!this.isActive || event.button !== 0) return;
+        
+        // Require Ctrl key to be pressed for selection
+        if (!event.ctrlKey) return;
         
         event.preventDefault();
         event.stopPropagation();
@@ -302,6 +305,42 @@ export class RectangularSelection {
         }
     }
     
+    showSelectionNotification() {
+        // Create or get existing notification element
+        let notification = document.getElementById('selection-mode-notification');
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'selection-mode-notification';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(34, 139, 34, 0.9);
+                color: white;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                font-weight: bold;
+                z-index: 10001;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                border: 2px solid #22C55E;
+            `;
+            document.body.appendChild(notification);
+        }
+        
+        notification.textContent = 'Selection Mode ON - Hold Ctrl + Left Mouse button and drag to select';
+        notification.style.display = 'block';
+    }
+    
+    hideSelectionNotification() {
+        const notification = document.getElementById('selection-mode-notification');
+        if (notification) {
+            notification.style.display = 'none';
+        }
+    }
+    
     clearSelection() {
         this.selectionOverlay.style.display = 'none';
         this.ctx.clearRect(0, 0, this.selectionOverlay.width, this.selectionOverlay.height);
@@ -312,6 +351,7 @@ export class RectangularSelection {
     
     destroy() {
         this.clearSelection();
+        this.hideSelectionNotification();
         
         const mapContainer = document.getElementById('map');
         mapContainer.removeEventListener('mousedown', this.onMouseDown);
@@ -321,6 +361,12 @@ export class RectangularSelection {
         
         if (this.selectionOverlay) {
             this.selectionOverlay.remove();
+        }
+        
+        // Remove notification element
+        const notification = document.getElementById('selection-mode-notification');
+        if (notification) {
+            notification.remove();
         }
     }
 }
