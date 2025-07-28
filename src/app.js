@@ -44,6 +44,9 @@ import {
 // Import polygon interactions
 import { PolygonBoundaryHighlighter } from '../modules/polygonInteractions.js';
 
+// Import rectangular selection
+import { RectangularSelection } from '../modules/rectangularSelection.js';
+
 // Import modular components
 import { state } from './stateManager.js';
 import { elements } from './domElements.js';
@@ -537,6 +540,19 @@ async function init() {
         state.cellDataMap
     );
     state.polygonHighlighter.initialize();
+    
+    // Initialize rectangular selection tool
+    state.rectangularSelection = new RectangularSelection(state.deckglInstance, state);
+    
+    // Setup selection tool button
+    const selectionToolBtn = document.getElementById('selectionToolBtn');
+    if (selectionToolBtn) {
+        selectionToolBtn.addEventListener('click', () => {
+            state.rectangularSelection.toggleSelectionMode();
+        });
+    }
+    
+    console.log('📐 Rectangular selection ready - Click selection tool icon to toggle');
     
     // Load cell data - this is also shared across all planes
     console.log('Loading cell data...');
