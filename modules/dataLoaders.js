@@ -392,10 +392,12 @@ function tsvToGeoJSON(tsvData, planeId, allCellClasses, cellDataMap) {
  * Handles caching, coordinate transformation, and alias generation
  * @param {number} planeNum - Plane number to load
  * @param {Map} polygonCache - Cache for polygon data
- * @param {Set} allPolygonAliases - Set to track all polygon aliases
+ * @param {Set} allCellClasses - Set to track all cell classes
+ * @param {Map} cellDataMap - Map containing cell data
+ * @param {Map} cellBoundaryIndex - Optional index to update for fast cell boundary lookup
  * @returns {Promise<Object>} GeoJSON FeatureCollection
  */
-export async function loadPolygonData(planeNum, polygonCache, allCellClasses, cellDataMap = null) {
+export async function loadPolygonData(planeNum, polygonCache, allCellClasses, cellDataMap = null, cellBoundaryIndex = null) {
     // Return cached data if available
     if (polygonCache.has(planeNum)) {
         const cachedData = polygonCache.get(planeNum);
@@ -466,6 +468,11 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
         
         // Cache the result for future use
         polygonCache.set(planeNum, geojson);
+        
+        // Update cell boundary index if provided
+        if (cellBoundaryIndex) {
+            updateCellBoundaryIndex(planeNum, geojson, cellBoundaryIndex);
+        }
 
         return geojson;
     } catch (err) {
@@ -485,6 +492,77 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
 async function loadPolygonDataWithWorker(planeNum) {
     const polygonUrl = getPolygonFileUrl(planeNum);
     return loadDataWithUnifiedWorker('loadBoundaryData', polygonUrl, planeNum);
+}
+
+/**
+ * Build cell boundary index for fast lookup
+ * @param {Map} polygonCache - Cache containing polygon data by plane
+ * @param {Map} cellBoundaryIndex - Index to populate: cellId -> [planeId1, planeId2, ...]
+ */
+export function buildCellBoundaryIndex(polygonCache, cellBoundaryIndex) {
+    console.log('Building cell boundary index for fast lookup...');
+    
+    // Clear existing index
+    cellBoundaryIndex.clear();
+    
+    let totalBoundaries = 0;
+    
+    // Iterate through all planes in polygon cache
+    polygonCache.forEach((geojson, planeId) => {
+        if (geojson && geojson.features) {
+            geojson.features.forEach(feature => {
+                if (feature.properties && feature.properties.label) {
+                    const cellId = parseInt(feature.properties.label);
+                    
+                    // Add plane to this cell's plane list
+                    if (!cellBoundaryIndex.has(cellId)) {
+                        cellBoundaryIndex.set(cellId, []);
+                    }
+                    cellBoundaryIndex.get(cellId).push(planeId);
+                    totalBoundaries++;
+                }
+            });
+        }
+    });
+    
+    console.log(`✅ Built cell boundary index: ${cellBoundaryIndex.size} cells across ${polygonCache.size} planes (${totalBoundaries} total boundaries)`);
+}
+
+/**
+ * Update cell boundary index when new polygon data is loaded
+ * @param {number} planeId - Plane ID that was just loaded
+ * @param {Object} geojson - GeoJSON data for the plane
+ * @param {Map} cellBoundaryIndex - Index to update
+ */
+export function updateCellBoundaryIndex(planeId, geojson, cellBoundaryIndex) {
+    if (!geojson || !geojson.features) return;
+    
+    geojson.features.forEach(feature => {
+        if (feature.properties && feature.properties.label) {
+            const cellId = parseInt(feature.properties.label);
+            
+            // Add plane to this cell's plane list
+            if (!cellBoundaryIndex.has(cellId)) {
+                cellBoundaryIndex.set(cellId, []);
+            }
+            
+            // Only add if not already present
+            const planes = cellBoundaryIndex.get(cellId);
+            if (!planes.includes(planeId)) {
+                planes.push(planeId);
+            }
+        }
+    });
+}
+
+/**
+ * Get all plane IDs where a cell has boundaries
+ * @param {number} cellId - Cell ID to lookup
+ * @param {Map} cellBoundaryIndex - Cell boundary index
+ * @returns {number[]} Array of plane IDs where this cell has boundaries
+ */
+export function getCellBoundaryPlanes(cellId, cellBoundaryIndex) {
+    return cellBoundaryIndex.get(cellId) || [];
 }
 
 /**

@@ -21,6 +21,7 @@ const state = {
     // Lightning-fast lookup indexes
     cellToSpotsIndex: new Map(), // cellLabel -> array of spots (O(1) lookup)
     spotToParentsIndex: new Map(), // spotId -> parent info (O(1) lookup)
+    cellBoundaryIndex: new Map(), // cellId -> [planeId1, planeId2, ...] (O(1) lookup)
     
     // Layer persistence for better performance
     tileLayers: new Map(), // Cache tile layer instances
@@ -75,6 +76,11 @@ window.debugData = {
         return state.spotToParentsIndex.get(spot_id) || null;
     },
     
+    // Get all plane IDs where a cell has boundaries (O(1) lookup)
+    getCellBoundaryPlanes: (cellId) => {
+        return state.cellBoundaryIndex.get(cellId) || [];
+    },
+    
     // Summary functions
     listGenes: () => Array.from(state.geneDataMap.keys()),
     listCells: () => Array.from(state.cellDataMap.keys()),
@@ -86,7 +92,8 @@ window.debugData = {
     planesLoaded: () => state.polygonCache.size,
     indexStats: () => ({
         cellsIndexed: state.cellToSpotsIndex.size,
-        spotsIndexed: state.spotToParentsIndex.size
+        spotsIndexed: state.spotToParentsIndex.size,
+        cellBoundariesIndexed: state.cellBoundaryIndex.size
     }),
     
     // Current state
