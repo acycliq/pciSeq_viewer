@@ -205,6 +205,11 @@ export class RectangularSelection {
             bottom: Math.max(deckStart[1], deckEnd[1])
         };
         
+        console.log('Selection bounding box:', bounds);
+        
+        // TEST: Check if cell 7113 boundary is clipped on plane 50
+        this.testCell7113Intersection(bounds);
+        
         // Extract spots within bounds
         const selectedSpots = this.extractSpotsInBounds(bounds);
         const selectedCells = this.extractCellsInBounds(bounds);
@@ -272,6 +277,122 @@ export class RectangularSelection {
         });
         
         return cells;
+    }
+    
+    testCell7113Intersection(bounds) {
+        const targetPlane = 50;
+        const targetCell = 7113;
+        
+        console.log(`=== TESTING CELL ${targetCell} ON PLANE ${targetPlane} ===`);
+        
+        // Check if we're on the right plane
+        if (this.state.currentPlane !== targetPlane) {
+            console.log(`❌ Not on target plane. Current plane: ${this.state.currentPlane}, Target plane: ${targetPlane}`);
+            return;
+        }
+        
+        // Get polygon data for current plane
+        const geojson = this.state.polygonCache.get(targetPlane);
+        if (!geojson || !geojson.features) {
+            console.log(`❌ No polygon data for plane ${targetPlane}`);
+            return;
+        }
+        
+        // Find cell 7113 boundary
+        const cell7113 = geojson.features.find(feature => 
+            feature.properties.label === targetCell
+        );
+        
+        if (!cell7113) {
+            console.log(`❌ Cell ${targetCell} not found on plane ${targetPlane}`);
+            return;
+        }
+        
+        console.log(`✅ Found cell ${targetCell} on plane ${targetPlane}`);
+        
+        // Get cell boundary coordinates
+        const cellCoords = cell7113.geometry.coordinates[0];
+        console.log(`Cell ${targetCell} boundary coordinates:`, cellCoords.slice(0, 3)); // Show first 3 points
+        
+        // Create selection rectangle as a Turf polygon
+        const selectionRectangle = turf.polygon([[
+            [bounds.left, bounds.top],
+            [bounds.right, bounds.top], 
+            [bounds.right, bounds.bottom],
+            [bounds.left, bounds.bottom],
+            [bounds.left, bounds.top] // Close the polygon
+        ]]);
+        
+        // Create cell boundary as a Turf polygon
+        const cellPolygon = turf.polygon([cellCoords]);
+        
+        console.log('Selection rectangle:', selectionRectangle.geometry.coordinates[0]);
+        console.log(`Cell ${targetCell} polygon has ${cellCoords.length} vertices`);
+        
+        try {
+            // Check if polygons intersect
+            const intersects = turf.booleanIntersects(cellPolygon, selectionRectangle);
+            
+            if (intersects) {
+                console.log(`🎯 YES! Selection box CLIPS cell ${targetCell} boundary!`);
+                
+                // Get the clipped polygon boundary
+                const intersection = turf.intersect(cellPolygon, selectionRectangle);
+                
+                if (intersection) {
+                    console.log(`📐 CLIPPED BOUNDARY COORDINATES:`);
+                    console.log('Intersection type:', intersection.geometry.type);
+                    
+                    if (intersection.geometry.type === 'Polygon') {
+                        const clippedCoords = intersection.geometry.coordinates[0];
+                        console.log(`Clipped polygon has ${clippedCoords.length} vertices:`);
+                        console.log('Clipped coordinates:', clippedCoords);
+                        
+                        // Return the clipped coordinates for further use
+                        return {
+                            intersects: true,
+                            clippedBoundary: clippedCoords,
+                            originalBoundary: cellCoords,
+                            cellId: targetCell,
+                            plane: targetPlane
+                        };
+                    } else if (intersection.geometry.type === 'MultiPolygon') {
+                        console.log(`Clipped result is MultiPolygon with ${intersection.geometry.coordinates.length} parts:`);
+                        intersection.geometry.coordinates.forEach((poly, index) => {
+                            console.log(`Part ${index + 1}:`, poly[0]);
+                        });
+                        
+                        return {
+                            intersects: true,
+                            clippedBoundary: intersection.geometry.coordinates,
+                            originalBoundary: cellCoords,
+                            cellId: targetCell,
+                            plane: targetPlane,
+                            isMultiPolygon: true
+                        };
+                    }
+                } else {
+                    console.log(`⚠️ Polygons intersect but turf.intersect returned null`);
+                }
+            } else {
+                console.log(`❌ NO intersection with cell ${targetCell} boundary`);
+                return {
+                    intersects: false,
+                    cellId: targetCell,
+                    plane: targetPlane
+                };
+            }
+        } catch (error) {
+            console.error('Error during polygon intersection:', error);
+            return {
+                intersects: false,
+                error: error.message,
+                cellId: targetCell,
+                plane: targetPlane
+            };
+        }
+        
+        console.log('===================================');
     }
     
     outputResults(bounds, spots, cells) {
