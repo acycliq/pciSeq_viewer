@@ -4,7 +4,6 @@
  * Provides rectangular selection functionality with animated marching ants outline
  */
 
-import { transformFromTileCoordinates } from '../utils/coordinateTransform.js';
 import { IMG_DIMENSIONS } from '../config/constants.js';
 
 export class RectangularSelection {
@@ -198,15 +197,12 @@ export class RectangularSelection {
         const deckStart = viewport.unproject([this.startPoint.x, this.startPoint.y]);
         const deckEnd = viewport.unproject([this.endPoint.x, this.endPoint.y]);
         
-        // Convert deck.gl tile coordinates to world/image coordinates
-        const worldStart = transformFromTileCoordinates(deckStart[0], deckStart[1], IMG_DIMENSIONS);
-        const worldEnd = transformFromTileCoordinates(deckEnd[0], deckEnd[1], IMG_DIMENSIONS);
-        
+        // Keep in tile coordinates - same as polygon data
         const bounds = {
-            left: Math.min(worldStart[0], worldEnd[0]),
-            right: Math.max(worldStart[0], worldEnd[0]),
-            top: Math.min(worldStart[1], worldEnd[1]),
-            bottom: Math.max(worldStart[1], worldEnd[1])
+            left: Math.min(deckStart[0], deckEnd[0]),
+            right: Math.max(deckStart[0], deckEnd[0]),
+            top: Math.min(deckStart[1], deckEnd[1]),
+            bottom: Math.max(deckStart[1], deckEnd[1])
         };
         
         // Extract spots within bounds
@@ -285,7 +281,7 @@ export class RectangularSelection {
                 right: bounds.right.toFixed(2),
                 top: bounds.top.toFixed(2),
                 bottom: bounds.bottom.toFixed(2),
-                note: 'Coordinates in world/image space'
+                note: 'Coordinates in tile space'
             },
             spots: {
                 count: spots.length,
