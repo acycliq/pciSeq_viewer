@@ -47,6 +47,9 @@ import { PolygonBoundaryHighlighter } from '../modules/polygonInteractions.js';
 // Import rectangular selection
 import { RectangularSelection } from '../modules/rectangularSelection.js';
 
+// Import background indexing
+import { startBackgroundIndexing } from '../modules/backgroundIndexLoader.js';
+
 // Import modular components
 import { state } from './stateManager.js';
 import { elements } from './domElements.js';
@@ -557,6 +560,10 @@ async function init() {
     // Load cell data - this is also shared across all planes
     console.log('Loading cell data...');
     await loadCellData(state.cellDataMap);
+    
+    // Start background cell boundary index building (non-blocking)
+    console.log('🚀 Starting background cell boundary indexing...');
+    window.cellBoundaryIndexPromise = startBackgroundIndexing(state);
     
     // CRITICAL FIX: Load polygon data for current plane + adjacent planes during initialization
     // This prevents flickering on the very first slider movement

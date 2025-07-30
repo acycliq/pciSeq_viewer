@@ -207,8 +207,8 @@ export class RectangularSelection {
         
         console.log('Selection bounding box:', bounds);
         
-        // TEST: Check if cell 7113 boundary is clipped on plane 50
-        this.testCell7113Intersection(bounds);
+        // TEST: Check if cell 7113 boundary is clipped across all planes
+        this.testCell7113IntersectionAllPlanes(bounds);
         
         // Extract spots within bounds
         const selectedSpots = this.extractSpotsInBounds(bounds);
@@ -393,6 +393,190 @@ export class RectangularSelection {
         }
         
         console.log('===================================');
+    }
+    
+    async testCell7113IntersectionAllPlanes(bounds) {
+        const targetCell = 7113;
+        
+        console.log(`=== TESTING CELL ${targetCell} ACROSS ALL PLANES ===`);
+        
+        // Wait for background index to complete
+        let cellBoundaryIndex;
+        try {
+            cellBoundaryIndex = await window.cellBoundaryIndexPromise;
+            console.log('✅ Using complete cell boundary index');
+        } catch (error) {
+            console.warn('⚠️ Background index failed, using fallback:', error);
+            return this.testCell7113Intersection(bounds);
+        }
+        
+        // Get all planes where cell 7113 has boundaries
+        const cellPlanes = cellBoundaryIndex.get(targetCell);
+        if (!cellPlanes || cellPlanes.length === 0) {
+            console.log(`❌ Cell ${targetCell} not found in index - falling back to current plane test`);
+            return this.testCell7113Intersection(bounds);
+        }
+        
+        console.log(`✅ Cell ${targetCell} found on ${cellPlanes.length} planes: [${cellPlanes.join(', ')}]`);
+        console.log(`🎯 Cell ${targetCell} range: planes ${Math.min(...cellPlanes)} to ${Math.max(...cellPlanes)}`);
+        
+        // Create selection rectangle once (reuse for all planes)
+        const selectionRectangle = turf.polygon([[
+            [bounds.left, bounds.top],
+            [bounds.right, bounds.top], 
+            [bounds.right, bounds.bottom],
+            [bounds.left, bounds.bottom],
+            [bounds.left, bounds.top] // Close the polygon
+        ]]);
+        
+        const results = [];
+        let totalIntersections = 0;
+        
+        // Test intersection on each plane where the cell exists
+        const testPlaneIntersection = async (planeId) => {
+            console.log(`--- Testing plane ${planeId} ---`);
+            
+            // Get polygon data for this plane (load if not cached)
+            let geojson = this.state.polygonCache.get(planeId);
+            if (!geojson || !geojson.features) {
+                console.log(`⚠️ No polygon data cached for plane ${planeId} - loading dynamically`);
+                try {
+                    // Import loadPolygonData function dynamically
+                    const { loadPolygonData } = await import('./dataLoaders.js');
+                    
+                    // Load polygon data for this plane
+                    geojson = await loadPolygonData(
+                        planeId, 
+                        this.state.polygonCache, 
+                        this.state.allCellClasses, 
+                        this.state.cellDataMap
+                    );
+                    
+                    console.log(`✅ Loaded polygon data for plane ${planeId}`);
+                } catch (error) {
+                    console.error(`❌ Failed to load polygon data for plane ${planeId}:`, error);
+                    results.push({
+                        intersects: false,
+                        cellId: targetCell,
+                        plane: planeId,
+                        error: 'Failed to load polygon data'
+                    });
+                    return;
+                }
+            }
+            
+            // Find cell 7113 boundary on this plane
+            const cellFeature = geojson.features.find(feature => 
+                feature.properties.label === targetCell
+            );
+            
+            if (!cellFeature) {
+                console.log(`⚠️ Cell ${targetCell} not found in polygon data for plane ${planeId}`);
+                results.push({
+                    intersects: false,
+                    cellId: targetCell,
+                    plane: planeId,
+                    error: 'Cell not found in polygon data'
+                });
+                return;
+            }
+            
+            // Get cell boundary coordinates
+            const cellCoords = cellFeature.geometry.coordinates[0];
+            console.log(`Cell ${targetCell} on plane ${planeId}: ${cellCoords.length} vertices`);
+            
+            try {
+                // Create cell boundary as a Turf polygon
+                const cellPolygon = turf.polygon([cellCoords]);
+                
+                // Check if polygons intersect
+                const intersects = turf.booleanIntersects(cellPolygon, selectionRectangle);
+                
+                if (intersects) {
+                    console.log(`🎯 INTERSECTION on plane ${planeId}!`);
+                    totalIntersections++;
+                    
+                    // Get the clipped polygon boundary
+                    const intersection = turf.intersect(cellPolygon, selectionRectangle);
+                    
+                    if (intersection) {
+                        console.log(`📐 Clipped boundary type: ${intersection.geometry.type}`);
+                        
+                        if (intersection.geometry.type === 'Polygon') {
+                            const clippedCoords = intersection.geometry.coordinates[0];
+                            console.log(`Plane ${planeId}: ${clippedCoords.length} clipped vertices`);
+                            
+                            results.push({
+                                intersects: true,
+                                clippedBoundary: clippedCoords,
+                                originalBoundary: cellCoords,
+                                cellId: targetCell,
+                                plane: planeId
+                            });
+                        } else if (intersection.geometry.type === 'MultiPolygon') {
+                            console.log(`Plane ${planeId}: MultiPolygon with ${intersection.geometry.coordinates.length} parts`);
+                            
+                            results.push({
+                                intersects: true,
+                                clippedBoundary: intersection.geometry.coordinates,
+                                originalBoundary: cellCoords,
+                                cellId: targetCell,
+                                plane: planeId,
+                                isMultiPolygon: true
+                            });
+                        }
+                    } else {
+                        console.log(`⚠️ Plane ${planeId}: Intersection detected but turf.intersect returned null`);
+                        results.push({
+                            intersects: true,
+                            cellId: targetCell,
+                            plane: planeId,
+                            error: 'Intersection failed'
+                        });
+                    }
+                } else {
+                    console.log(`❌ No intersection on plane ${planeId}`);
+                    results.push({
+                        intersects: false,
+                        cellId: targetCell,
+                        plane: planeId
+                    });
+                }
+            } catch (error) {
+                console.error(`Error during intersection on plane ${planeId}:`, error);
+                results.push({
+                    intersects: false,
+                    error: error.message,
+                    cellId: targetCell,
+                    plane: planeId
+                });
+            }
+        };
+        
+        // Execute tests for all planes and wait for completion
+        const testPromises = cellPlanes.map(planeId => testPlaneIntersection(planeId));
+        await Promise.all(testPromises);
+        
+        // Update total intersections after all tests complete
+        totalIntersections = results.filter(r => r.intersects).length;
+        
+        console.log(`🎯 SUMMARY: Cell ${targetCell} intersects on ${totalIntersections}/${cellPlanes.length} planes`);
+        
+        // Display summary of clipped boundaries
+        if (totalIntersections > 0) {
+            console.log(`📐 CLIPPED BOUNDARIES SUMMARY:`);
+            results.filter(r => r.intersects && r.clippedBoundary).forEach(result => {
+                if (result.isMultiPolygon) {
+                    console.log(`Plane ${result.plane}: MultiPolygon with ${result.clippedBoundary.length} parts`);
+                } else {
+                    console.log(`Plane ${result.plane}: ${result.clippedBoundary.length} vertices`);
+                }
+            });
+        }
+        
+        console.log('===========================================');
+        
+        return results;
     }
     
     outputResults(bounds, spots, cells) {
