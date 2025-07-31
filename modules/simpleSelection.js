@@ -1,0 +1,425 @@
+/**
+ * Simple Rectangular Selection - Just the essentials
+ */
+
+import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
+import { IMG_DIMENSIONS } from '../config/constants.js';
+
+export class SimpleSelection {
+    constructor(deckglInstance, state) {
+        this.deck = deckglInstance;
+        this.state = state;
+        this.isActive = false;
+        this.isSelecting = false;
+        this.startPos = null;
+        this.endPos = null;
+        
+        this.bindEvents();
+    }
+    
+    bindEvents() {
+        const container = document.getElementById('map');
+        container.addEventListener('mousedown', (e) => this.onMouseDown(e));
+        document.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        document.addEventListener('mouseup', (e) => this.onMouseUp(e));
+    }
+    
+    toggle() {
+        this.isActive = !this.isActive;
+        console.log('Selection mode:', this.isActive ? 'ON' : 'OFF');
+    }
+    
+    onMouseDown(e) {
+        if (!this.isActive || !e.ctrlKey) return;
+        
+        this.isSelecting = true;
+        const rect = e.target.getBoundingClientRect();
+        this.startPos = [e.clientX - rect.left, e.clientY - rect.top];
+        this.endPos = this.startPos;
+    }
+    
+    onMouseMove(e) {
+        if (!this.isSelecting) return;
+        
+        const rect = document.getElementById('map').getBoundingClientRect();
+        this.endPos = [e.clientX - rect.left, e.clientY - rect.top];
+        this.drawSelection();
+    }
+    
+    onMouseUp(e) {
+        if (!this.isSelecting) return;
+        
+        this.isSelecting = false;
+        this.processSelection();
+        this.clearSelection();
+    }
+    
+    drawSelection() {
+        let overlay = document.getElementById('selection-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'selection-overlay';
+            overlay.style.cssText = `
+                position: absolute;
+                border: 2px dashed white;
+                background: rgba(255,255,255,0.1);
+                pointer-events: none;
+                z-index: 1000;
+            `;
+            document.getElementById('map').appendChild(overlay);
+        }
+        
+        const left = Math.min(this.startPos[0], this.endPos[0]);
+        const top = Math.min(this.startPos[1], this.endPos[1]);
+        const width = Math.abs(this.endPos[0] - this.startPos[0]);
+        const height = Math.abs(this.endPos[1] - this.startPos[1]);
+        
+        overlay.style.left = left + 'px';
+        overlay.style.top = top + 'px';
+        overlay.style.width = width + 'px';
+        overlay.style.height = height + 'px';
+        overlay.style.display = 'block';
+    }
+    
+    async processSelection() {
+        const viewport = this.deck.getViewports()[0];
+        const bounds = this.getSelectionBounds(viewport);
+        
+        const spots = this.getSpotsInBounds(bounds);
+        const clippedCells = await this.getClippedCellsInBounds(bounds);
+        
+        console.log('Rectangular Selection Results:', {
+            bounds: {
+                left: bounds.left.toFixed(2),
+                right: bounds.right.toFixed(2),
+                top: bounds.top.toFixed(2),
+                bottom: bounds.bottom.toFixed(2),
+                note: 'Coordinates in tile space'
+            },
+            spots: {
+                count: spots.length,
+                data: spots
+            },
+            cells: {
+                count: clippedCells.length,
+                note: 'Clipped cell boundaries that intersect with selection',
+                data: clippedCells
+            }
+        });
+    }
+    
+    getSelectionBounds(viewport) {
+        const start = viewport.unproject(this.startPos);
+        const end = viewport.unproject(this.endPos);
+        
+        return {
+            left: Math.min(start[0], end[0]),
+            right: Math.max(start[0], end[0]),
+            top: Math.min(start[1], end[1]),
+            bottom: Math.max(start[1], end[1])
+        };
+    }
+    
+    getSpotsInBounds(bounds) {
+        const spots = [];
+        
+        if (!this.state.geneDataMap) return spots;
+        
+        this.state.geneDataMap.forEach((geneSpots, geneName) => {
+            geneSpots.forEach(spot => {
+                // Transform spot coordinates to tile coordinates to match bounds
+                const [tileX, tileY] = transformToTileCoordinates(spot.x, spot.y, IMG_DIMENSIONS);
+                
+                if (tileX >= bounds.left && tileX <= bounds.right &&
+                    tileY >= bounds.top && tileY <= bounds.bottom) {
+                    
+                    // Get parent cell information
+                    const parentCell = spot.neighbour ? this.state.cellDataMap.get(spot.neighbour) : null;
+                    
+                    spots.push({
+                        gene: geneName,
+                        x: spot.x, // Keep original coordinates
+                        y: spot.y,
+                        z: spot.z || 0,
+                        plane_id: spot.plane_id,
+                        spot_id: spot.spot_id,
+                        parent_cell_id: spot.neighbour || null,
+                        parent_cell_X: parentCell ? parentCell.position.x : null,
+                        parent_cell_Y: parentCell ? parentCell.position.y : null
+                    });
+                }
+            });
+        });
+        
+        return spots;
+    }
+    
+    getCellsInBounds(bounds) {
+        const currentPlane = this.state.currentPlane;
+        const geojson = this.state.polygonCache.get(currentPlane);
+        
+        if (!geojson?.features) return [];
+        
+        const cells = [];
+        
+        geojson.features.forEach(feature => {
+            const coords = feature.geometry.coordinates[0];
+            if (!coords || coords.length < 4) return;
+            
+            const cellBounds = this.getCellBounds(coords);
+            
+            if (this.boundsOverlap(bounds, cellBounds)) {
+                cells.push({
+                    cellId: feature.properties.label,
+                    plane: currentPlane,
+                    coordinates: coords
+                });
+            }
+        });
+        
+        return cells;
+    }
+    
+    getCellBounds(coords) {
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+        
+        coords.forEach(([x, y]) => {
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+        });
+        
+        return { left: minX, right: maxX, top: minY, bottom: maxY };
+    }
+    
+    boundsOverlap(bounds1, bounds2) {
+        return bounds1.left <= bounds2.right &&
+               bounds1.right >= bounds2.left &&
+               bounds1.top <= bounds2.bottom &&
+               bounds1.bottom >= bounds2.top;
+    }
+    
+    async getClippedCellsInBounds(bounds) {
+        // Try to use background index for multi-plane cell lookup
+        let indexData;
+        try {
+            indexData = await window.cellBoundaryIndexPromise;
+        } catch (error) {
+            console.log('Background index not available, using current plane only');
+            return this.getCurrentPlaneClippedCells(bounds);
+        }
+        
+        if (!indexData.spatialIndex) {
+            console.log('Spatial index not ready, using current plane only');
+            return this.getCurrentPlaneClippedCells(bounds);
+        }
+        
+        // Use spatial index to find candidate cells
+        const candidates = indexData.spatialIndex.search({
+            minX: bounds.left,
+            minY: bounds.top,
+            maxX: bounds.right,
+            maxY: bounds.bottom
+        });
+        
+        console.log(`Found ${candidates.length} candidate cells in selection area`);
+        
+        if (candidates.length === 0) return [];
+        
+        // Test each candidate cell across all its planes
+        const allResults = [];
+        
+        for (const candidate of candidates) {
+            const cellResults = await this.clipCellAcrossPlanes(
+                candidate.cellId, 
+                candidate.planes, 
+                bounds
+            );
+            allResults.push(...cellResults.filter(r => r.intersects));
+        }
+        
+        console.log(`Multi-plane clipping: ${allResults.length} intersecting cell boundaries found`);
+        return allResults;
+    }
+    
+    async clipCellAcrossPlanes(cellId, cellPlanes, bounds) {
+        const results = [];
+        
+        // Create selection rectangle once
+        const selectionRectangle = turf.polygon([[
+            [bounds.left, bounds.top],
+            [bounds.right, bounds.top], 
+            [bounds.right, bounds.bottom],
+            [bounds.left, bounds.bottom],
+            [bounds.left, bounds.top]
+        ]]);
+        
+        // Test intersection on each plane where the cell exists
+        for (const planeId of cellPlanes) {
+            // Get polygon data for this plane
+            let geojson = this.state.polygonCache.get(planeId);
+            if (!geojson || !geojson.features) {
+                try {
+                    // Load polygon data if not cached
+                    const { loadPolygonData } = await import('./dataLoaders.js');
+                    geojson = await loadPolygonData(
+                        planeId, 
+                        this.state.polygonCache, 
+                        this.state.allCellClasses, 
+                        this.state.cellDataMap
+                    );
+                } catch (error) {
+                    console.error(`Failed to load polygon data for plane ${planeId}`);
+                    results.push({
+                        intersects: false,
+                        cellId: cellId,
+                        plane: planeId,
+                        error: 'Failed to load polygon data'
+                    });
+                    continue;
+                }
+            }
+            
+            // Find cell boundary on this plane
+            const cellFeature = geojson.features.find(feature => 
+                parseInt(feature.properties.label) === cellId
+            );
+            
+            if (!cellFeature) {
+                results.push({
+                    intersects: false,
+                    cellId: cellId,
+                    plane: planeId,
+                    error: 'Cell not found in polygon data'
+                });
+                continue;
+            }
+            
+            // Get cell boundary coordinates
+            const cellCoords = cellFeature.geometry.coordinates[0];
+            
+            try {
+                // Check if cell has enough coordinates to form a valid polygon
+                if (cellCoords.length < 4) {
+                    results.push({
+                        intersects: false,
+                        cellId: cellId,
+                        plane: planeId,
+                        warning: 'Insufficient coordinates for polygon'
+                    });
+                    continue;
+                }
+                
+                // Create cell boundary as a Turf polygon
+                const cellPolygon = turf.polygon([cellCoords]);
+                
+                // Check if polygons intersect
+                const intersects = turf.booleanIntersects(cellPolygon, selectionRectangle);
+                
+                if (intersects) {
+                    // Get the clipped polygon boundary
+                    const intersection = turf.intersect(cellPolygon, selectionRectangle);
+                    
+                    if (intersection) {
+                        results.push({
+                            intersects: true,
+                            clippedBoundary: intersection.geometry.coordinates[0],
+                            originalBoundary: cellCoords,
+                            cellId: cellId,
+                            plane: planeId
+                        });
+                    } else {
+                        results.push({
+                            intersects: true,
+                            cellId: cellId,
+                            plane: planeId,
+                            error: 'Intersection failed'
+                        });
+                    }
+                } else {
+                    results.push({
+                        intersects: false,
+                        cellId: cellId,
+                        plane: planeId
+                    });
+                }
+            } catch (error) {
+                console.error(`Error during intersection on plane ${planeId} for cell ${cellId}:`, error);
+                results.push({
+                    intersects: false,
+                    error: error.message,
+                    cellId: cellId,
+                    plane: planeId
+                });
+            }
+        }
+        
+        return results;
+    }
+    
+    getCurrentPlaneClippedCells(bounds) {
+        console.log('Fallback: Testing cells on current plane only');
+        
+        const currentPlane = this.state.currentPlane;
+        const geojson = this.state.polygonCache.get(currentPlane);
+        
+        if (!geojson || !geojson.features) {
+            console.log(`No polygon data for current plane ${currentPlane}`);
+            return [];
+        }
+        
+        const results = [];
+        const selectionRectangle = turf.polygon([[
+            [bounds.left, bounds.top],
+            [bounds.right, bounds.top], 
+            [bounds.right, bounds.bottom],
+            [bounds.left, bounds.bottom],
+            [bounds.left, bounds.top]
+        ]]);
+        
+        // Test all cells on current plane
+        geojson.features.forEach(feature => {
+            const cellId = parseInt(feature.properties.label);
+            if (isNaN(cellId)) return;
+            
+            const cellCoords = feature.geometry.coordinates[0];
+            
+            if (cellCoords.length < 4) {
+                console.warn(`Cell ${cellId} has insufficient coordinates`);
+                return;
+            }
+            
+            const cellPolygon = turf.polygon([cellCoords]);
+            
+            try {
+                const intersects = turf.booleanIntersects(cellPolygon, selectionRectangle);
+                
+                if (intersects) {
+                    const intersection = turf.intersect(cellPolygon, selectionRectangle);
+                    
+                    if (intersection) {
+                        results.push({
+                            intersects: true,
+                            clippedBoundary: intersection.geometry.coordinates[0],
+                            originalBoundary: cellCoords,
+                            cellId: cellId,
+                            plane: currentPlane
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error(`Error testing cell ${cellId}:`, error);
+            }
+        });
+        
+        console.log(`Current plane fallback: ${results.length} intersecting cells found on plane ${currentPlane}`);
+        return results;
+    }
+    
+    clearSelection() {
+        const overlay = document.getElementById('selection-overlay');
+        if (overlay) overlay.style.display = 'none';
+    }
+}
