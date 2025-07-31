@@ -25,8 +25,6 @@ export class RectangularSelection {
         
         // Configuration
         this.config = {
-            maxSpotResults: options.maxSpotResults || 100,
-            maxCellResults: options.maxCellResults || 50,
             minSelectionSize: options.minSelectionSize || 10,
             clearDelay: options.clearDelay || 2000,
             containerId: options.containerId || 'map',
@@ -247,14 +245,11 @@ export class RectangularSelection {
     
     extractSpotsInBounds(bounds) {
         const spots = [];
-        const maxOutput = this.config.maxSpotResults;
         
         if (!this.state.geneDataMap) return spots;
         
         this.state.geneDataMap.forEach((geneSpots, geneName) => {
             for (const spot of geneSpots) {
-                if (spots.length >= maxOutput) break;
-                
                 // Transform spot coordinates from world/pixel space to tile coordinates
                 const [tileX, tileY] = transformToTileCoordinates(spot.x, spot.y, IMG_DIMENSIONS);
                 
@@ -277,7 +272,6 @@ export class RectangularSelection {
                     });
                 }
             }
-            if (spots.length >= maxOutput) return;
         });
         
         return spots;
@@ -709,9 +703,6 @@ export class RectangularSelection {
             }
         });
         
-        if (spots.length === this.config.maxSpotResults) {
-            console.log(`Spot output limited to ${this.config.maxSpotResults} for performance`);
-        }
     }
     
     showSelectionNotification() {

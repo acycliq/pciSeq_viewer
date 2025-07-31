@@ -562,9 +562,7 @@ async function init() {
             cellDataMap: state.cellDataMap
         },
         
-        // Configuration
-        maxSpotResults: 100,
-        maxCellResults: 50,
+        // Configuration (no limits)
         minSelectionSize: 10,
         clearDelay: 2000,
         containerId: 'map',
