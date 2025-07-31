@@ -4,6 +4,14 @@
  * A streamlined rectangular selection tool for the transcriptomics viewer.
  * Provides essential functionality for selecting spots and cell boundaries
  * within a rectangular area with consistent pixel coordinate output.
+ * 
+ * CRITICAL MULTI-PLANE REQUIREMENT:
+ * This tool MUST return ALL spots from ALL planes within the selection box,
+ * and ALL clipped cell boundaries from ALL cells across ALL planes where 
+ * the cell boundary intersects with the selection rectangle. This is a core
+ * requirement for the transcriptomics analysis workflow - DO NOT simplify 
+ * away the multi-plane functionality without sound justification.
+ * The 3D nature of the dataset requires cross-plane analysis capabilities.
  */
 
 import { transformToTileCoordinates, transformFromTileCoordinates } from '../utils/coordinateTransform.js';
