@@ -236,8 +236,8 @@ export class RectangularSelection {
         
         console.log('Selection bounding box (tile coordinates):', bounds);
         
-        // Test all cells that intersect with selection using spatial index
-        this.testAllCellsIntersection(bounds);
+        // Find all cells that intersect with selection using spatial index
+        this.findIntersectingCells(bounds);
         
         // Extract spots within bounds (spots will be transformed to tile coordinates)
         const selectedSpots = this.extractSpotsInBounds(bounds);
@@ -315,123 +315,104 @@ export class RectangularSelection {
         return cells;
     }
     
-    testCell7113Intersection(bounds) {
-        const targetPlane = 50;
-        const targetCell = 7113;
-        
-        console.log(`=== TESTING CELL ${targetCell} ON PLANE ${targetPlane} ===`);
+    clipCellBoundary(bounds, cellId, planeId) {
+        console.log(`=== Testing cell ${cellId} on plane ${planeId} ===`);
         
         // Check if we're on the right plane
-        if (this.state.currentPlane !== targetPlane) {
-            console.log(`❌ Not on target plane. Current plane: ${this.state.currentPlane}, Target plane: ${targetPlane}`);
-            return;
+        if (this.state.currentPlane !== planeId) {
+            console.log(`Not on target plane. Current: ${this.state.currentPlane}, Target: ${planeId}`);
+            return { intersects: false, cellId, plane: planeId, error: 'Wrong plane' };
         }
         
         // Get polygon data for current plane
-        const geojson = this.state.polygonCache.get(targetPlane);
-        if (!geojson || !geojson.features) {
-            console.log(`❌ No polygon data for plane ${targetPlane}`);
-            return;
+        const geojson = this.state.polygonCache.get(planeId);
+        if (!geojson?.features) {
+            console.log(`No polygon data for plane ${planeId}`);
+            return { intersects: false, cellId, plane: planeId, error: 'No polygon data' };
         }
         
-        // Find cell 7113 boundary
-        const cell7113 = geojson.features.find(feature => 
-            feature.properties.label === targetCell
+        // Find cell boundary
+        const cellFeature = geojson.features.find(feature => 
+            feature.properties.label === cellId
         );
         
-        if (!cell7113) {
-            console.log(`❌ Cell ${targetCell} not found on plane ${targetPlane}`);
-            return;
+        if (!cellFeature) {
+            console.log(`Cell ${cellId} not found on plane ${planeId}`);
+            return { intersects: false, cellId, plane: planeId, error: 'Cell not found' };
         }
         
-        console.log(`✅ Found cell ${targetCell} on plane ${targetPlane}`);
-        
-        // Get cell boundary coordinates
-        const cellCoords = cell7113.geometry.coordinates[0];
-        console.log(`Cell ${targetCell} boundary coordinates:`, cellCoords.slice(0, 3)); // Show first 3 points
-        
-        // Create selection rectangle as a Turf polygon
-        const selectionRectangle = turf.polygon([[
-            [bounds.left, bounds.top],
-            [bounds.right, bounds.top], 
-            [bounds.right, bounds.bottom],
-            [bounds.left, bounds.bottom],
-            [bounds.left, bounds.top] // Close the polygon
-        ]]);
-        
-        // Create cell boundary as a Turf polygon
-        const cellPolygon = turf.polygon([cellCoords]);
-        
-        console.log('Selection rectangle:', selectionRectangle.geometry.coordinates[0]);
-        console.log(`Cell ${targetCell} polygon has ${cellCoords.length} vertices`);
-        
+        return this._performCellIntersection(cellFeature.geometry.coordinates[0], bounds, cellId, planeId);
+    }
+    
+    /**
+     * Core polygon intersection logic - extracted for reuse
+     * @param {Array} cellCoords - Cell boundary coordinates
+     * @param {Object} bounds - Selection bounds
+     * @param {number} cellId - Cell ID
+     * @param {number} planeId - Plane ID
+     * @returns {Object} Intersection result
+     */
+    _performCellIntersection(cellCoords, bounds, cellId, planeId) {
         try {
+            // Create selection rectangle as a Turf polygon
+            const selectionRectangle = turf.polygon([[
+                [bounds.left, bounds.top],
+                [bounds.right, bounds.top], 
+                [bounds.right, bounds.bottom],
+                [bounds.left, bounds.bottom],
+                [bounds.left, bounds.top]
+            ]]);
+            
+            // Create cell boundary as a Turf polygon
+            const cellPolygon = turf.polygon([cellCoords]);
+            
             // Check if polygons intersect
             const intersects = turf.booleanIntersects(cellPolygon, selectionRectangle);
             
             if (intersects) {
-                console.log(`🎯 YES! Selection box CLIPS cell ${targetCell} boundary!`);
+                console.log(`Selection clips cell ${cellId} boundary on plane ${planeId}`);
                 
                 // Get the clipped polygon boundary
                 const intersection = turf.intersect(cellPolygon, selectionRectangle);
                 
                 if (intersection) {
-                    console.log(`📐 CLIPPED BOUNDARY COORDINATES:`);
-                    console.log('Intersection type:', intersection.geometry.type);
-                    
                     if (intersection.geometry.type === 'Polygon') {
-                        const clippedCoords = intersection.geometry.coordinates[0];
-                        console.log(`Clipped polygon has ${clippedCoords.length} vertices:`);
-                        console.log('Clipped coordinates:', clippedCoords);
-                        
-                        // Return the clipped coordinates for further use
                         return {
                             intersects: true,
-                            clippedBoundary: clippedCoords,
+                            clippedBoundary: intersection.geometry.coordinates[0],
                             originalBoundary: cellCoords,
-                            cellId: targetCell,
-                            plane: targetPlane
+                            cellId,
+                            plane: planeId
                         };
                     } else if (intersection.geometry.type === 'MultiPolygon') {
-                        console.log(`Clipped result is MultiPolygon with ${intersection.geometry.coordinates.length} parts:`);
-                        intersection.geometry.coordinates.forEach((poly, index) => {
-                            console.log(`Part ${index + 1}:`, poly[0]);
-                        });
-                        
                         return {
                             intersects: true,
                             clippedBoundary: intersection.geometry.coordinates,
                             originalBoundary: cellCoords,
-                            cellId: targetCell,
-                            plane: targetPlane,
+                            cellId,
+                            plane: planeId,
                             isMultiPolygon: true
                         };
                     }
                 } else {
-                    console.log(`⚠️ Polygons intersect but turf.intersect returned null`);
+                    console.log(`Polygons intersect but clipping failed for cell ${cellId}`);
                 }
-            } else {
-                console.log(`❌ NO intersection with cell ${targetCell} boundary`);
-                return {
-                    intersects: false,
-                    cellId: targetCell,
-                    plane: targetPlane
-                };
             }
+            
+            return { intersects: false, cellId, plane: planeId };
+            
         } catch (error) {
-            console.error('Error during polygon intersection:', error);
+            console.error(`Error during intersection for cell ${cellId}:`, error);
             return {
                 intersects: false,
                 error: error.message,
-                cellId: targetCell,
-                plane: targetPlane
+                cellId,
+                plane: planeId
             };
         }
-        
-        console.log('===================================');
     }
     
-    async testCellIntersectionAllPlanes(cellId, cellPlanes, bounds) {
+    async clipCellBoundaryAllPlanes(cellId, cellPlanes, bounds, isLegacyCall = false) {
         console.log(`=== TESTING CELL ${cellId} ACROSS ${cellPlanes.length} PLANES ===`);
         console.log(`🎯 Cell ${cellId} planes: [${cellPlanes.join(', ')}]`);
         console.log(`🎯 Cell ${cellId} range: planes ${Math.min(...cellPlanes)} to ${Math.max(...cellPlanes)}`);
@@ -581,52 +562,7 @@ export class RectangularSelection {
         return results;
     }
     
-    async testCell7113IntersectionAllPlanes(bounds) {
-        const targetCell = 7113;
-        
-        console.log(`=== TESTING CELL ${targetCell} ACROSS ALL PLANES ===`);
-        
-        // Wait for background index to complete
-        let indexData;
-        try {
-            indexData = await window.cellBoundaryIndexPromise;
-            console.log('✅ Using complete cell boundary index');
-        } catch (error) {
-            console.warn('⚠️ Background index failed, using fallback:', error);
-            return this.testCell7113Intersection(bounds);
-        }
-        
-        // Handle both old and new index data structures
-        const cellBoundaryIndex = indexData.cellBoundaryIndex || indexData;
-        const cellPlanes = cellBoundaryIndex.get(targetCell);
-        
-        if (!cellPlanes || cellPlanes.length === 0) {
-            console.log(`❌ Cell ${targetCell} not found in index - falling back to current plane test`);
-            return this.testCell7113Intersection(bounds);
-        }
-        
-        // Use the generic function
-        const results = await this.testCellIntersectionAllPlanes(targetCell, cellPlanes, bounds);
-        
-        // Display summary for cell 7113
-        const totalIntersections = results.filter(r => r.intersects).length;
-        if (totalIntersections > 0) {
-            console.log(`📐 CLIPPED BOUNDARIES SUMMARY:`);
-            results.filter(r => r.intersects && r.clippedBoundary).forEach(result => {
-                if (result.isMultiPolygon) {
-                    console.log(`Plane ${result.plane}: MultiPolygon with ${result.clippedBoundary.length} parts`);
-                } else {
-                    console.log(`Plane ${result.plane}: ${result.clippedBoundary.length} vertices`);
-                }
-            });
-        }
-        
-        console.log('===========================================');
-        
-        return results;
-    }
-    
-    async testAllCellsIntersection(bounds) {
+    async findIntersectingCells(bounds) {
         console.log(`=== TESTING ALL CELLS IN SELECTION AREA ===`);
         
         // Wait for background index to complete
@@ -642,7 +578,7 @@ export class RectangularSelection {
         // Check if spatial index is available
         if (!indexData.spatialIndex) {
             console.log('⚠️ Spatial index not ready, falling back to current plane only');
-            return this.testCurrentPlaneCellsOnly(bounds);
+            return this.clipCellBoundariesCurrentPlane(bounds);
         }
         
         const spatialIndex = indexData.spatialIndex;
@@ -670,7 +606,7 @@ export class RectangularSelection {
         for (const candidate of candidates) {
             console.log(`--- Testing cell ${candidate.cellId} (${candidate.planes.length} planes) ---`);
             
-            const cellResults = await this.testCellIntersectionAllPlanes(
+            const cellResults = await this.clipCellBoundaryAllPlanes(
                 candidate.cellId, 
                 candidate.planes, 
                 bounds
@@ -713,7 +649,7 @@ export class RectangularSelection {
         return allResults;
     }
     
-    async testCurrentPlaneCellsOnly(bounds) {
+    async clipCellBoundariesCurrentPlane(bounds) {
         console.log('🔄 Fallback: Testing cells on current plane only');
         
         const currentPlane = this.state.currentPlane;
