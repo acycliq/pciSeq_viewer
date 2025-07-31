@@ -2,7 +2,7 @@
  * Simple Rectangular Selection - Just the essentials
  */
 
-import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
+import { transformToTileCoordinates, transformFromTileCoordinates } from '../utils/coordinateTransform.js';
 import { IMG_DIMENSIONS } from '../config/constants.js';
 
 export class SimpleSelection {
@@ -88,22 +88,39 @@ export class SimpleSelection {
         const spots = this.getSpotsInBounds(bounds);
         const clippedCells = await this.getClippedCellsInBounds(bounds);
         
+        // Convert bounds from tile coordinates to pixel coordinates
+        const [pixelLeft, pixelTop] = transformFromTileCoordinates(bounds.left, bounds.top, IMG_DIMENSIONS);
+        const [pixelRight, pixelBottom] = transformFromTileCoordinates(bounds.right, bounds.bottom, IMG_DIMENSIONS);
+        
+        // Convert cell boundaries from tile coordinates to pixel coordinates
+        const clippedCellsInPixels = clippedCells.map(cell => ({
+            ...cell,
+            clippedBoundary: cell.clippedBoundary ? cell.clippedBoundary.map(([x, y]) => {
+                const [pixelX, pixelY] = transformFromTileCoordinates(x, y, IMG_DIMENSIONS);
+                return [pixelX, pixelY];
+            }) : null,
+            originalBoundary: cell.originalBoundary ? cell.originalBoundary.map(([x, y]) => {
+                const [pixelX, pixelY] = transformFromTileCoordinates(x, y, IMG_DIMENSIONS);
+                return [pixelX, pixelY];
+            }) : null
+        }));
+        
         console.log('Rectangular Selection Results:', {
             bounds: {
-                left: bounds.left.toFixed(2),
-                right: bounds.right.toFixed(2),
-                top: bounds.top.toFixed(2),
-                bottom: bounds.bottom.toFixed(2),
-                note: 'Coordinates in tile space'
+                left: pixelLeft,
+                right: pixelRight,
+                top: pixelTop,
+                bottom: pixelBottom,
+                note: 'Coordinates in pixel space'
             },
             spots: {
                 count: spots.length,
                 data: spots
             },
             cells: {
-                count: clippedCells.length,
+                count: clippedCellsInPixels.length,
                 note: 'Clipped cell boundaries that intersect with selection',
-                data: clippedCells
+                data: clippedCellsInPixels
             }
         });
     }
