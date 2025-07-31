@@ -215,7 +215,7 @@ export class RectangularSelection {
         this.ctx.strokeRect(left, top, width, height);
     }
     
-    processSelection() {
+    async processSelection() {
         if (!this.startPoint || !this.endPoint) return;
         
         console.log('Processing rectangular selection...');
@@ -236,14 +236,13 @@ export class RectangularSelection {
         
         console.log('Selection bounding box (tile coordinates):', bounds);
         
-        // Find all cells that intersect with selection using spatial index
-        this.findIntersectingCells(bounds);
-        
         // Extract spots within bounds (spots will be transformed to tile coordinates)
         const selectedSpots = this.extractSpotsInBounds(bounds);
-        const selectedCells = this.extractCellsInBounds(bounds);
         
-        this.outputResults(bounds, selectedSpots, selectedCells);
+        // Get clipped cell boundaries that intersect with selection
+        const clippedCells = await this.findIntersectingCells(bounds);
+        
+        this.outputResults(bounds, selectedSpots, clippedCells);
     }
     
     extractSpotsInBounds(bounds) {
@@ -284,36 +283,6 @@ export class RectangularSelection {
         return spots;
     }
     
-    extractCellsInBounds(bounds) {
-        const cells = [];
-        const maxOutput = this.config.maxCellResults;
-        
-        if (!this.state.cellDataMap) return cells;
-        
-        this.state.cellDataMap.forEach((cellData, cellId) => {
-            if (cells.length >= maxOutput) return;
-            
-            const pos = cellData.position;
-            
-            // Transform cell coordinates from world/pixel space to tile coordinates
-            const [tileX, tileY] = transformToTileCoordinates(pos.x, pos.y, IMG_DIMENSIONS);
-            
-            if (tileX >= bounds.left && tileX <= bounds.right &&
-                tileY >= bounds.top && tileY <= bounds.bottom) {
-                
-                cells.push({
-                    cell_id: cellId,
-                    x: pos.x, // Keep original coordinates in output
-                    y: pos.y,
-                    z: pos.z || 0,
-                    cell_class: cellData.cellClass,
-                    probability: cellData.probability
-                });
-            }
-        });
-        
-        return cells;
-    }
     
     clipCellBoundary(bounds, cellId, planeId) {
         console.log(`=== Testing cell ${cellId} on plane ${planeId} ===`);
@@ -720,7 +689,7 @@ export class RectangularSelection {
         return results;
     }
     
-    outputResults(bounds, spots, cells) {
+    outputResults(bounds, spots, clippedCells) {
         console.log('Rectangular Selection Results:', {
             bounds: {
                 left: bounds.left.toFixed(2),
@@ -734,16 +703,14 @@ export class RectangularSelection {
                 data: spots
             },
             cells: {
-                count: cells.length,
-                data: cells
+                count: clippedCells.length,
+                note: 'Clipped cell boundaries that intersect with selection',
+                data: clippedCells
             }
         });
         
         if (spots.length === this.config.maxSpotResults) {
             console.log(`Spot output limited to ${this.config.maxSpotResults} for performance`);
-        }
-        if (cells.length === this.config.maxCellResults) {
-            console.log(`Cell output limited to ${this.config.maxCellResults} for performance`);
         }
     }
     
