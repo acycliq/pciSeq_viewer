@@ -44,8 +44,8 @@ import {
 // Import polygon interactions
 import { PolygonBoundaryHighlighter } from '../modules/polygonInteractions.js';
 
-// Import rectangular selection
-import { RectangularSelection } from '../modules/rectangularSelection.js';
+// Import simple selection
+import { SimpleSelection } from '../modules/simpleSelection.js';
 
 // Import background indexing
 import { startBackgroundIndexing } from '../modules/backgroundIndexLoader.js';
@@ -544,45 +544,18 @@ async function init() {
     );
     state.polygonHighlighter.initialize();
     
-    // Initialize rectangular selection tool
-    state.rectangularSelection = new RectangularSelection({
-        // Required dependencies
-        deckglInstance: state.deckglInstance,
-        coordinateTransform: { transformToTileCoordinates },
-        imageDimensions: {
-            width: window.config().imageWidth,
-            height: window.config().imageHeight,
-            tileSize: 256
-        },
-        
-        // Data providers (inject application state)
-        dataProvider: {
-            state: state,
-            geneDataMap: state.geneDataMap,
-            cellDataMap: state.cellDataMap
-        },
-        
-        // Configuration (no limits)
-        minSelectionSize: 10,
-        clearDelay: 2000,
-        containerId: 'map',
-        requireCtrlKey: true,
-        
-        // Event handlers
-        onSelectionComplete: (results) => {
-            console.log('Selection completed:', results);
-        }
-    });
+    // Initialize simple selection tool
+    state.simpleSelection = new SimpleSelection(state.deckglInstance, state);
     
     // Setup selection tool button
     const selectionToolBtn = document.getElementById('selectionToolBtn');
     if (selectionToolBtn) {
         selectionToolBtn.addEventListener('click', () => {
-            state.rectangularSelection.toggleSelectionMode();
+            state.simpleSelection.toggle();
         });
     }
     
-    console.log('📐 Rectangular selection ready - Click selection tool icon to toggle');
+    console.log('Simple selection ready - Click selection tool icon to toggle');
     
     // Load cell data - this is also shared across all planes
     console.log('Loading cell data...');
