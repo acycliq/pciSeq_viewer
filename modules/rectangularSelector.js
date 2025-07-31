@@ -104,6 +104,11 @@ export class RectangularSelector {
         const [pixelLeft, pixelTop] = transformFromTileCoordinates(bounds.left, bounds.top, IMG_DIMENSIONS);
         const [pixelRight, pixelBottom] = transformFromTileCoordinates(bounds.right, bounds.bottom, IMG_DIMENSIONS);
         
+        // Calculate stack depth in pixel coordinates
+        const userConfig = window.config();
+        const [xVoxel, yVoxel, zVoxel] = userConfig.voxelSize;
+        const stackDepth = userConfig.totalPlanes * (zVoxel / xVoxel);
+        
         // Convert cell boundaries from tile coordinates to pixel coordinates
         const clippedCellsInPixels = clippedCells.map(cell => ({
             ...cell,
@@ -123,6 +128,7 @@ export class RectangularSelector {
                 right: pixelRight,
                 top: pixelTop,
                 bottom: pixelBottom,
+                depth: stackDepth,
                 note: 'Coordinates in pixel space'
             },
             spots: {
