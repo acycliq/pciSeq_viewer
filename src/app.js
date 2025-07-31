@@ -44,8 +44,8 @@ import {
 // Import polygon interactions
 import { PolygonBoundaryHighlighter } from '../modules/polygonInteractions.js';
 
-// Import simple selection
-import { SimpleSelection } from '../modules/simpleSelection.js';
+// Import rectangular selector
+import { RectangularSelector } from '../modules/rectangularSelector.js';
 
 // Import background indexing
 import { startBackgroundIndexing } from '../modules/backgroundIndexLoader.js';
@@ -544,18 +544,18 @@ async function init() {
     );
     state.polygonHighlighter.initialize();
     
-    // Initialize simple selection tool
-    state.simpleSelection = new SimpleSelection(state.deckglInstance, state);
+    // Initialize rectangular selector
+    state.rectangularSelector = new RectangularSelector(state.deckglInstance, state);
     
     // Setup selection tool button
     const selectionToolBtn = document.getElementById('selectionToolBtn');
     if (selectionToolBtn) {
         selectionToolBtn.addEventListener('click', () => {
-            state.simpleSelection.toggle();
+            state.rectangularSelector.toggle();
         });
     }
     
-    console.log('Simple selection ready - Click selection tool icon to toggle');
+    console.log('Rectangular selector ready - Click selection tool icon to toggle');
     
     // Load cell data - this is also shared across all planes
     console.log('Loading cell data...');

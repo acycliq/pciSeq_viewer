@@ -1,11 +1,15 @@
 /**
- * Simple Rectangular Selection - Just the essentials
+ * Rectangular Selector
+ * 
+ * A streamlined rectangular selection tool for the transcriptomics viewer.
+ * Provides essential functionality for selecting spots and cell boundaries
+ * within a rectangular area with consistent pixel coordinate output.
  */
 
 import { transformToTileCoordinates, transformFromTileCoordinates } from '../utils/coordinateTransform.js';
 import { IMG_DIMENSIONS } from '../config/constants.js';
 
-export class SimpleSelection {
+export class RectangularSelector {
     constructor(deckglInstance, state) {
         this.deck = deckglInstance;
         this.state = state;
