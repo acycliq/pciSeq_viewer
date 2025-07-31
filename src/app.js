@@ -545,7 +545,36 @@ async function init() {
     state.polygonHighlighter.initialize();
     
     // Initialize rectangular selection tool
-    state.rectangularSelection = new RectangularSelection(state.deckglInstance, state);
+    state.rectangularSelection = new RectangularSelection({
+        // Required dependencies
+        deckglInstance: state.deckglInstance,
+        coordinateTransform: { transformToTileCoordinates },
+        imageDimensions: {
+            width: window.config().imageWidth,
+            height: window.config().imageHeight,
+            tileSize: 256
+        },
+        
+        // Data providers (inject application state)
+        dataProvider: {
+            state: state,
+            geneDataMap: state.geneDataMap,
+            cellDataMap: state.cellDataMap
+        },
+        
+        // Configuration
+        maxSpotResults: 100,
+        maxCellResults: 50,
+        minSelectionSize: 10,
+        clearDelay: 2000,
+        containerId: 'map',
+        requireCtrlKey: true,
+        
+        // Event handlers
+        onSelectionComplete: (results) => {
+            console.log('Selection completed:', results);
+        }
+    });
     
     // Setup selection tool button
     const selectionToolBtn = document.getElementById('selectionToolBtn');

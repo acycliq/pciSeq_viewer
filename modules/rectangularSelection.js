@@ -1,16 +1,45 @@
 /**
- * Rectangular Selection Module with Marching Ants
+ * Rectangular Selection Plugin
  * 
- * Provides rectangular selection functionality with animated marching ants outline
+ * Independent rectangular selection tool with marching ants animation
+ * Can be plugged into any deck.gl-based application
  */
 
 import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
 import { IMG_DIMENSIONS } from '../config/constants.js';
 
 export class RectangularSelection {
-    constructor(deckglInstance, state) {
-        this.deckglInstance = deckglInstance;
-        this.state = state;
+    constructor(options = {}) {
+        // Required dependencies
+        this.deckglInstance = options.deckglInstance;
+        this.coordinateTransform = options.coordinateTransform;
+        this.imageDimensions = options.imageDimensions;
+        
+        // Data providers (injected dependencies)
+        this.dataProvider = options.dataProvider;
+        this.polygonProvider = options.polygonProvider;
+        this.indexProvider = options.indexProvider;
+        
+        // For backward compatibility, expose state directly
+        this.state = options.dataProvider?.state;
+        
+        // Configuration
+        this.config = {
+            maxSpotResults: options.maxSpotResults || 100,
+            maxCellResults: options.maxCellResults || 50,
+            minSelectionSize: options.minSelectionSize || 10,
+            clearDelay: options.clearDelay || 2000,
+            containerId: options.containerId || 'map',
+            requireCtrlKey: options.requireCtrlKey !== false,
+            ...options.config
+        };
+        
+        // Event handlers
+        this.onSelectionComplete = options.onSelectionComplete || (() => {});
+        this.onSelectionStart = options.onSelectionStart || (() => {});
+        this.onSelectionEnd = options.onSelectionEnd || (() => {});
+        
+        // Internal state
         this.isActive = false;
         this.isSelecting = false;
         this.startPoint = null;
@@ -35,7 +64,7 @@ export class RectangularSelection {
             display: none;
         `;
         
-        const mapContainer = document.getElementById('map');
+        const mapContainer = document.getElementById(this.config.containerId);
         mapContainer.appendChild(this.selectionOverlay);
         
         this.ctx = this.selectionOverlay.getContext('2d');
@@ -46,7 +75,7 @@ export class RectangularSelection {
     }
     
     resizeOverlay() {
-        const mapContainer = document.getElementById('map');
+        const mapContainer = document.getElementById(this.config.containerId);
         const rect = mapContainer.getBoundingClientRect();
         
         this.selectionOverlay.width = rect.width;
@@ -56,7 +85,7 @@ export class RectangularSelection {
     }
     
     bindEvents() {
-        const mapContainer = document.getElementById('map');
+        const mapContainer = document.getElementById(this.config.containerId);
         
         this.onMouseDown = this.onMouseDown.bind(this);
         this.onMouseMove = this.onMouseMove.bind(this);
@@ -76,10 +105,10 @@ export class RectangularSelection {
     
     toggleSelectionMode() {
         this.isActive = !this.isActive;
-        const mapContainer = document.getElementById('map');
+        const mapContainer = document.getElementById(this.config.containerId);
         
         if (this.isActive) {
-            console.log('Rectangular selection mode ON - Hold Ctrl + Left Mouse button and drag to selec');
+            console.log('Rectangular selection mode ON - Hold Ctrl + Left Mouse button and drag to select');
             this.showSelectionNotification();
         } else {
             this.clearSelection();
@@ -91,8 +120,8 @@ export class RectangularSelection {
     onMouseDown(event) {
         if (!this.isActive || event.button !== 0) return;
         
-        // Require Ctrl key to be pressed for selection
-        if (!event.ctrlKey) return;
+        // Require Ctrl key to be pressed for selection (if configured)
+        if (this.config.requireCtrlKey && !event.ctrlKey) return;
         
         event.preventDefault();
         event.stopPropagation();
@@ -111,7 +140,7 @@ export class RectangularSelection {
     onMouseMove(event) {
         if (!this.isSelecting) return;
         
-        const rect = document.getElementById('map').getBoundingClientRect();
+        const rect = document.getElementById(this.config.containerId).getBoundingClientRect();
         this.endPoint = {
             x: event.clientX - rect.left,
             y: event.clientY - rect.top
@@ -127,16 +156,15 @@ export class RectangularSelection {
         this.stopAnimation();
         
         // Process selection if rectangle is large enough
-        const minSize = 10;
         const width = Math.abs(this.endPoint.x - this.startPoint.x);
         const height = Math.abs(this.endPoint.y - this.startPoint.y);
         
-        if (width > minSize && height > minSize) {
+        if (width > this.config.minSelectionSize && height > this.config.minSelectionSize) {
             this.processSelection();
         }
         
-        // Clear selection after 2 seconds
-        setTimeout(() => this.clearSelection(), 2000);
+        // Clear selection after configured delay
+        setTimeout(() => this.clearSelection(), this.config.clearDelay);
     }
     
     startAnimation() {
@@ -220,7 +248,7 @@ export class RectangularSelection {
     
     extractSpotsInBounds(bounds) {
         const spots = [];
-        const maxOutput = 100;
+        const maxOutput = this.config.maxSpotResults;
         
         if (!this.state.geneDataMap) return spots;
         
@@ -258,7 +286,7 @@ export class RectangularSelection {
     
     extractCellsInBounds(bounds) {
         const cells = [];
-        const maxOutput = 50;
+        const maxOutput = this.config.maxCellResults;
         
         if (!this.state.cellDataMap) return cells;
         
@@ -775,11 +803,11 @@ export class RectangularSelection {
             }
         });
         
-        if (spots.length === 100) {
-            console.log('Spot output limited to 100 for performance');
+        if (spots.length === this.config.maxSpotResults) {
+            console.log(`Spot output limited to ${this.config.maxSpotResults} for performance`);
         }
-        if (cells.length === 50) {
-            console.log('Cell output limited to 50 for performance');
+        if (cells.length === this.config.maxCellResults) {
+            console.log(`Cell output limited to ${this.config.maxCellResults} for performance`);
         }
     }
     
@@ -815,7 +843,7 @@ export class RectangularSelection {
         this.clearSelection();
         this.hideSelectionNotification();
         
-        const mapContainer = document.getElementById('map');
+        const mapContainer = document.getElementById(this.config.containerId);
         mapContainer.removeEventListener('mousedown', this.onMouseDown);
         document.removeEventListener('mousemove', this.onMouseMove);
         document.removeEventListener('mouseup', this.onMouseUp);
