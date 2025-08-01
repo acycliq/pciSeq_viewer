@@ -57,6 +57,82 @@ function getDataset() {
     }
 }
 
+// Tooltip functions - matching main viewer's tooltip implementation
+function showChunkTooltip(info) {
+    let tooltipElement = document.getElementById('chunk-tooltip');
+    if (!tooltipElement) {
+        // Create tooltip element with same styling as main viewer
+        tooltipElement = document.createElement('div');
+        tooltipElement.id = 'chunk-tooltip';
+        tooltipElement.style.cssText = `
+            position: absolute;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: none;
+            white-space: nowrap;
+            z-index: 1000;
+            max-width: 300px;
+            border: none;
+            outline: none;
+            box-shadow: none;
+            margin: 0;
+            font-family: inherit;
+        `;
+        document.body.appendChild(tooltipElement);
+    }
+
+    if (info.picked && info.object && info.object.gene_name) {
+        // Build tooltip content matching main viewer format
+        const obj = info.object;
+        const coords = `(${obj.original_coords.x.toFixed(2)}, ${obj.original_coords.y.toFixed(2)}, ${obj.original_coords.z.toFixed(2)})`;
+        
+        // Build spot information
+        let spotInfo = '';
+        if (obj.spot_id !== undefined) {
+            spotInfo = `<strong>Spot ID:</strong> ${obj.spot_id}<br>`;
+        }
+        
+        // Build parent cell information
+        let parentInfo = '';
+        if (obj.parent_cell_id !== undefined && obj.parent_cell_id !== null) {
+            const parentLabel = obj.parent_cell_id === 0 ? 'Background' : obj.parent_cell_id;
+            parentInfo = `<strong>Parent Cell:</strong> ${parentLabel}<br>`;
+            
+            // Add parent coordinates if available
+            if (obj.parent_cell_X !== undefined && obj.parent_cell_Y !== undefined && 
+                obj.parent_cell_X !== null && obj.parent_cell_Y !== null) {
+                parentInfo += `<strong>Parent Coords:</strong> (${obj.parent_cell_X.toFixed(2)}, ${obj.parent_cell_Y.toFixed(2)})<br>`;
+            }
+        }
+        
+        // Note: Score, intensity, and parent probability are not available in chunk viewer data
+        // This matches the available data from the selection results
+        
+        const content = `${spotInfo}<strong>Gene:</strong> ${obj.gene_name}<br>
+                        <strong>Coords:</strong> ${coords}<br>
+                        <strong>Plane:</strong> ${obj.plane_id}<br>
+                        ${parentInfo}`;
+        
+        tooltipElement.innerHTML = content;
+        tooltipElement.style.display = 'block';
+        tooltipElement.style.left = info.x + 20 + 'px';
+        tooltipElement.style.top = info.y - 60 + 'px';
+    } else {
+        hideChunkTooltip();
+    }
+}
+
+function hideChunkTooltip() {
+    const tooltipElement = document.getElementById('chunk-tooltip');
+    if (tooltipElement) {
+        tooltipElement.style.display = 'none';
+    }
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     const {DeckGL, LightingEffect, AmbientLight, DirectionalLight, OrbitView} = deck;
@@ -187,6 +263,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 plane_id: spot.plane_id,
                 rgb: rgb,
                 parent_cell_id: spot.parent_cell_id,
+                parent_cell_X: spot.parent_cell_X,
+                parent_cell_Y: spot.parent_cell_Y,
                 original_coords: {x: spot.x, y: spot.y, z: spot.z}
             });
         });
@@ -373,6 +451,9 @@ document.addEventListener('DOMContentLoaded', function() {
         onHover: (info) => {
             if (info.object && info.object.gene_name) {
                 console.log('Gene:', info.object.gene_name, 'Spot ID:', info.object.spot_id, 'Plane:', info.object.plane_id);
+                showChunkTooltip(info);
+            } else {
+                hideChunkTooltip();
             }
         },
         onClick: (info) => {
