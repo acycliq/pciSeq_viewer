@@ -156,19 +156,29 @@ document.addEventListener('DOMContentLoaded', function() {
         const geneBlocks = [];
         const stoneBlocks = [];
         
-        // Convert coordinate system: subtract origin and scale to reasonable block coordinates
+        // Convert coordinate system: 1:1 pixel-to-block mapping with proper dimensions
         const originX = dataset.bounds.left;
         const originY = dataset.bounds.top;
-        const scaleX = 50 / (dataset.bounds.right - dataset.bounds.left); // Scale to ~50 blocks wide (X → X)
-        const scaleY = 30 / dataset.bounds.depth; // Scale original Z to ~30 blocks (Z → Y top-to-bottom)
-        const scaleZ = 40 / (dataset.bounds.bottom - dataset.bounds.top); // Scale original Y to ~40 blocks (Y → Z depth)
+        
+        // Calculate actual selection dimensions in pixels
+        const selectionWidth = dataset.bounds.right - dataset.bounds.left;   // X dimension (pixels)
+        const selectionHeight = dataset.bounds.bottom - dataset.bounds.top;  // Y dimension (pixels)
+        const selectionDepth = dataset.bounds.depth;                         // Z dimension (pixels)
+        
+        // 1:1 pixel-to-block mapping - round up to ensure no data loss
+        const maxX = Math.ceil(selectionWidth);   // Direct 1:1 mapping
+        const maxY = Math.ceil(selectionDepth);   // Direct 1:1 mapping (Z → Y top-to-bottom slicing)
+        const maxZ = Math.ceil(selectionHeight);  // Direct 1:1 mapping (Y → Z front-to-back depth)
+        
+        // Scaling factors are now 1:1 (1 block per pixel)
+        const scaleX = maxX / selectionWidth;   // Should be ~1.0
+        const scaleY = maxY / selectionDepth;   // Should be ~1.0
+        const scaleZ = maxZ / selectionHeight;  // Should be ~1.0
 
-        console.log('Coordinate transform (transposed Y↔Z):', {originX, originY, scaleX, scaleY, scaleZ});
+        console.log('Selection dimensions (pixels):', {width: selectionWidth, height: selectionHeight, depth: selectionDepth});
+        console.log('Block dimensions (1:1 mapping):', {maxX, maxY, maxZ});
+        console.log('Scale factors (should be ~1.0):', {scaleX, scaleY, scaleZ});
         console.log('Mapping: original[X,Y,Z] → viewer[X,Z,Y] so original Z becomes top-to-bottom');
-
-        const maxX = 50; // X dimension (width)
-        const maxY = 30; // Y dimension (original Z depth → top-to-bottom slicing) 
-        const maxZ = 40; // Z dimension (original Y height → front-to-back depth)
 
         // Helper function to check if a point is inside a polygon using ray casting algorithm
         function isPointInPolygon(x, y, polygon) {
@@ -312,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const INITIAL_VIEW_STATE = {
-        target: [25, 20, 15], // Center of our scaled coordinates [x, y, z]
+        target: [blockData.bounds.maxX/2, blockData.bounds.maxY/2, blockData.bounds.maxZ/2], // Center of actual chunk dimensions
         zoom: 3,
         orbitAxis: 'Y',
         rotationX: 45,
