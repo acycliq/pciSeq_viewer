@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biological Data 3D Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="container">
+        <div class="controls">
+            <h3>Biological Data Viewer</h3>
+            <p>Gene spots and cell boundaries in 3D space</p>
+            <p>Use mouse to orbit, scroll to zoom</p>
+            <p>Hover over spots to see gene names</p>
+            <div class="stats" id="stats">
+                Loading data...
+            </div>
+        </div>
+        <div class="slider-container">
+            <div class="slider-markings">
+                <div>Top (All visible)</div>
+                <div>Middle</div>
+                <div>Bottom (None visible)</div>
+            </div>
+            <input type="range" class="z-slicer" 
+                   min="0.01" max="1" step="0.01" value="1" 
+                   id="sliceZ" />
+            <div class="slider-value" id="sliderValue">
+                Plane: 40/40
+            </div>
+        </div>
+    </div>
+
+    <!-- Import deck.gl and luma.gl -->
+    <script src="https://unpkg.com/deck.gl@8.1.0/dist.min.js"></script>
+    <script src="https://unpkg.com/@luma.gl/core@8.1.0/dist.min.js"></script>
+    <script src="https://unpkg.com/@luma.gl/engine@8.1.0/dist.min.js"></script>
+
+    <!-- Import our test dataset -->
+    <script src="test-dataset.js"></script>
+    
+    <!-- Import our MinecraftLayer -->
+    <script src="minecraft-layer.js"></script>
+
+    <!-- Import glyph configuration for consistent gene colors -->
+    <script src="../modules/glyphConfig.js"></script>
+
+    <!-- Application Logic -->
+    <script src="bio-demo-app.js"></script>
+</body>
+</html>

@@ -122,7 +122,7 @@ export class RectangularSelector {
             }) : null
         }));
         
-        console.log('Rectangular Selection Results:', {
+        const selectionResults = {
             bounds: {
                 left: pixelLeft,
                 right: pixelRight,
@@ -140,7 +140,12 @@ export class RectangularSelector {
                 note: 'Clipped cell boundaries that intersect with selection',
                 data: clippedCellsInPixels
             }
-        });
+        };
+        
+        console.log('Rectangular Selection Results:', selectionResults);
+        
+        // 🚀 AUTOMATIC PIPELINE: Launch chunk viewer immediately
+        this.launchChunkViewer(selectionResults);
     }
     
     getSelectionBounds(viewport) {
@@ -456,5 +461,31 @@ export class RectangularSelector {
     clearSelection() {
         const overlay = document.getElementById('selection-overlay');
         if (overlay) overlay.style.display = 'none';
+    }
+    
+    launchChunkViewer(selectionData) {
+        // Store data for chunk viewer access
+        window.lastSelectionResults = selectionData;
+        
+        console.log('🚀 Launching chunk viewer with selection data');
+        console.log(`Data: ${selectionData.spots.count} spots, ${selectionData.cells.count} cells`);
+        
+        // Auto-launch chunk viewer in new window
+        const url = `chunk_viewer/bio-demo.html?source=selection&auto=true`;
+        const windowFeatures = 'width=1200,height=800,toolbar=no,menubar=no,scrollbars=no,resizable=yes';
+        
+        try {
+            const chunkWindow = window.open(url, 'chunkViewer', windowFeatures);
+            
+            if (chunkWindow) {
+                chunkWindow.focus();
+                console.log('✅ Chunk viewer window opened successfully');
+            } else {
+                console.warn('⚠️ Popup blocked - chunk viewer not opened');
+                console.log('💡 Please enable popups and try again');
+            }
+        } catch (error) {
+            console.error('❌ Failed to open chunk viewer:', error);
+        }
     }
 }
