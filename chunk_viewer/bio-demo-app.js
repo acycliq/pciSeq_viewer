@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('=== END ORIGINAL COORDINATES ===');
 
     // Transform biological data to minecraft-layer format
-    function transformBioDataToBlocks(dataset) {
+    async function transformBioDataToBlocks(dataset) {
         const geneBlocks = [];
         const stoneBlocks = [];
         
@@ -194,6 +194,20 @@ document.addEventListener('DOMContentLoaded', function() {
             return inside;
         }
 
+        // Get spatial index from selection data if available
+        let spatialIndex = null;
+        if (window.opener && window.opener.cellBoundaryIndexPromise) {
+            try {
+                const indexData = await window.opener.cellBoundaryIndexPromise;
+                spatialIndex = indexData.spatialIndex;
+                console.log('✅ Using spatial index for ray-casting optimization');
+                console.log('Sample spatial index entry:', spatialIndex.all()[0]);
+                console.log('Sample cell data entry:', dataset.cells.data[0]);
+            } catch (error) {
+                console.log('⚠️ Spatial index not available, using fallback ray-casting');
+            }
+        }
+
         // Helper function to check if a block position should be excluded (inside any cell boundary)
         function isBlockInsideCell(blockX, blockY, blockZ) {
             // Convert block coordinates back to original coordinate system (reverse transpose)
@@ -201,8 +215,42 @@ document.addEventListener('DOMContentLoaded', function() {
             const originalY = (blockZ / scaleZ) + originY;      // viewer Z → original Y 
             const originalZ = blockY / scaleY;                  // viewer Y → original Z
             
-            // Check each cell boundary
-            for (const cell of dataset.cells.data) {
+            let candidateCells;
+            
+            if (spatialIndex) {
+                // ✅ OPTIMIZED: Use spatial index to find nearby cells only
+                const searchRadius = Math.max(5, dataset.bounds.depth / 100); // Small search area
+                candidateCells = spatialIndex.search({
+                    minX: originalX - searchRadius,
+                    minY: originalY - searchRadius,
+                    maxX: originalX + searchRadius,
+                    maxY: originalY + searchRadius
+                });
+                
+                // Convert spatial index results back to cell format
+                candidateCells = candidateCells.map(candidate => {
+                    // Find the actual cell data for this candidate
+                    // The spatial index stores cellId, but dataset.cells.data uses different property names
+                    return dataset.cells.data.find(cell => 
+                        parseInt(cell.cellId) === parseInt(candidate.cellId) ||
+                        parseInt(cell.Cell_Num) === parseInt(candidate.cellId) ||
+                        parseInt(cell.id) === parseInt(candidate.cellId)
+                    );
+                }).filter(cell => cell !== undefined);
+                
+                if (candidateCells.length === 0 && spatialIndex) {
+                    // Debug: fallback to all cells if mapping failed
+                    console.warn('Spatial index mapping failed, using all cells as fallback');
+                    candidateCells = dataset.cells.data;
+                }
+                
+            } else {
+                // ❌ FALLBACK: Test against all cells (original slow method)
+                candidateCells = dataset.cells.data;
+            }
+            
+            // Check each candidate cell boundary
+            for (const cell of candidateCells) {
                 // Get the proper Z coordinate for this cell's plane using isotropic conversion
                 // plane_id (anisotropic) → Z coordinate (isotropic) using same conversion as cellLookup.js
                 let cellPlaneZ;
@@ -229,9 +277,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Create background stone grid with holes for cell boundaries
+        console.log('🏗️ Creating stone blocks with spatial-indexed ray-casting...');
+        const stoneStartTime = performance.now();
+        
+        let totalCandidates = 0;
+        let totalBlocks = 0;
+        
         for (let x = 0; x < maxX; x++) {
             for (let y = 0; y < maxY; y++) {
                 for (let z = 0; z < maxZ; z++) {
+                    totalBlocks++;
+                    
                     // Skip blocks that are inside cell boundaries
                     if (isBlockInsideCell(x, y, z)) {
                         continue; // Create hole by skipping this block
@@ -249,6 +305,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
             }
+        }
+        
+        const stoneEndTime = performance.now();
+        console.log(`✅ Stone creation completed in ${(stoneEndTime - stoneStartTime).toFixed(1)}ms`);
+        console.log(`📊 Performance: ${totalBlocks} blocks processed, ${stoneBlocks.length} stone blocks created`);
+        if (spatialIndex) {
+            console.log(`🚀 Spatial index optimization active - reduced cell testing significantly`);
+        } else {
+            console.log(`⚠️ Using fallback ray-casting - may be slower for large selections`);
         }
 
         // Transform gene spots to colored blocks (with coordinate transpose)
@@ -297,16 +362,15 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    // Transform the dataset
-    const blockData = transformBioDataToBlocks(dataset);
-    
-    // Update stats display
-    document.getElementById('stats').innerHTML = `
-        Spots: ${dataset.spots.count}<br>
-        Cells: ${dataset.cells.count}<br>
-        Planes: 6<br>
-        Bounds: ${dataset.bounds.right}×${dataset.bounds.bottom}×${dataset.bounds.depth}px
-    `;
+    // Transform the dataset (async)
+    transformBioDataToBlocks(dataset).then(blockData => {
+        // Update stats display
+        document.getElementById('stats').innerHTML = `
+            Spots: ${dataset.spots.count}<br>
+            Cells: ${dataset.cells.count}<br>
+            Planes: 6<br>
+            Bounds: ${dataset.bounds.right}×${dataset.bounds.bottom}×${dataset.bounds.depth}px
+        `;
 
     // Helper functions for the minecraft layer
     function getBlockTemperature(d) {
@@ -511,4 +575,9 @@ document.addEventListener('DOMContentLoaded', function() {
     updateSliderDisplay();
 
     console.log('Bio demo initialized with', blockData.geneData.length, 'gene spots and', blockData.stoneData.length, 'stone blocks');
+    
+    }).catch(error => {
+        console.error('❌ Failed to initialize chunk viewer:', error);
+        document.getElementById('stats').innerHTML = '<span style="color: red;">Error loading chunk viewer</span>';
+    });
 });
