@@ -142,7 +142,9 @@ void main(void) {
 
   float isGhosted = float(instancePositions.y > sliceY);
 
-  if (picking_uActive) {
+  // Allow ghosted blocks to be pickable for tooltips
+  // Only disable picking for very faint ghost blocks (stone background)
+  if (picking_uActive && ghostOpacity <= 0.01) {
     isVisible *= 1.0 - isGhosted;
   }
 

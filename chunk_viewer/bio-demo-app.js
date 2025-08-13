@@ -492,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 getIsBlockOpaque: isBlockOpaque,
                 sliceY: currentSliceY,
                 ghostOpacity: 0.1, // Use variable opacity value
-                pickable: false,
+                pickable: true,
                 autoHighlight: false,
                 parameters: {
                     depthMask: false,
