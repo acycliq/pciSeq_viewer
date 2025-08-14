@@ -96,6 +96,14 @@ function showChunkTooltip(info) {
             spotInfo = `<strong>Spot ID:</strong> ${obj.spot_id}<br>`;
         }
         
+        // Add color information
+        let colorInfo = '';
+        if (obj.rgb) {
+            const [r, g, b] = obj.rgb;
+            const hex = '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+            colorInfo = `<strong>Color:</strong> ${hex}<br>`;
+        }
+        
         // Build parent cell information
         let parentInfo = '';
         if (obj.parent_cell_id !== undefined && obj.parent_cell_id !== null) {
@@ -113,7 +121,7 @@ function showChunkTooltip(info) {
         // This matches the available data from the selection results
         
         const content = `${spotInfo}<strong>Gene:</strong> ${obj.gene_name}<br>
-                        <strong>Coords:</strong> ${coords}<br>
+                        ${colorInfo}<strong>Coords:</strong> ${coords}<br>
                         <strong>Plane:</strong> ${obj.plane_id}<br>
                         ${parentInfo}`;
         
