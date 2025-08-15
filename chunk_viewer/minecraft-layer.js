@@ -444,10 +444,19 @@ class MinecraftLayer extends deck.Layer {
     const {info} = params;
     const {data} = this.props;
     
-    // Adjust for the +1 offset in picking colors
-    const dataIndex = info.index - 1;
+    // Direct index mapping (no offset needed since deck.gl returns 0-based indices)
+    const dataIndex = info.index;
+    console.log('  Calculated dataIndex:', dataIndex);
+    
     if (dataIndex >= 0 && dataIndex < data.length) {
       info.object = data[dataIndex];
+      console.log('  Assigned object from data[' + dataIndex + ']:', {
+        gene_name: info.object.gene_name,
+        spot_id: info.object.spot_id,
+        gene_id: info.object.gene_id
+      });
+    } else {
+      console.log('  ❌ dataIndex out of bounds!');
     }
     
     return info;
