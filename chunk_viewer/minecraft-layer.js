@@ -101,7 +101,9 @@ void main(void) {
   vec4 transformX = getTransform(getBlockDefAt(6.0));
   vec4 transformY = getTransform(getBlockDefAt(7.0));
 
-  vec3 blockScale = vec3(transformX[0], transformY[0], 1.0);
+  // Apply anisotropic scaling: 2.5x taller in Y dimension to match voxel proportions
+  vec3 anisotropicScale = vec3(1.0, 2.5, 1.0); // X=1.0, Y=2.5, Z=1.0
+  vec3 blockScale = vec3(transformX[0], transformY[0], 1.0) * anisotropicScale;
   mat3 blockRotation = getXYRotationMatrix(transformX[1], transformY[1]);
   vec3 blockTranslation = vec3(transformX[2], transformY[2], 0.0);
   vec3 faceOffset = vec3(transformX[3], transformY[3], transformX[3]);
@@ -119,11 +121,11 @@ void main(void) {
   float faceIndex = getFaceIndex(normals);
   float faceIndex_modelspace = getFaceIndex(normal_modelspace);
 
-  // Use stone texture from the atlas (stone is at position 1,0 in the 16x16 grid)
+  // Use stone texture from the atlas (stone is at position 1,0 in the 16x32 grid)
   vec4 textureSettings = vec4(1.0, 0.0, 0.0, 1.0); // Use stone texture
   
-  // Stone texture coordinates (second block in first row: 16,0 to 32,16)
-  vec4 textureFrame = vec4(16.0, 0.0, 16.0, 16.0);
+  // Stone texture coordinates (first row, second column: 16,0 to 32,16)
+  vec4 textureFrame = vec4(48.0, 0.0, 16.0, 16.0);
   vTextureCoords = (textureFrame.xy + texCoords_modelspace * textureFrame.zw) / atlasTextureDim;
 
   // Force all blocks to be visible for debugging
@@ -333,7 +335,7 @@ class MinecraftLayer extends deck.Layer {
 
     Promise.all([
       loadTexture(gl, './data/blocks.png'),
-      loadTexture(gl, './data/textures.png'),
+      loadTexture(gl, './data/stone_atlas.png'),
       loadTexture(gl, './data/foliage.png')
     ]).then(([blockDefsTexture, atlasTexture, biomeTexture]) => {
       console.log('Textures loaded:', !!blockDefsTexture, !!atlasTexture, !!biomeTexture);
