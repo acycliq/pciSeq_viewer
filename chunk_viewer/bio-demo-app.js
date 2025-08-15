@@ -46,7 +46,7 @@ function getDataset() {
     const source = urlParams.get('source');
     
     if (source === 'selection' && window.opener?.lastSelectionResults) {
-        console.log('📊 Using selection data from main viewer');
+        console.log('Using selection data from main viewer');
         console.log('Selection bounds:', window.opener.lastSelectionResults.bounds);
         console.log('Selection spots:', window.opener.lastSelectionResults.spots.count);
         console.log('Selection cells:', window.opener.lastSelectionResults.cells.count);
