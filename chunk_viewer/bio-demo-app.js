@@ -398,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function() {
         zoom: 3,
         orbitAxis: 'Y',
         rotationX: 45,
-        rotationOrbit: 30,
+        rotationOrbit: -30,
         minZoom: 0,
         maxZoom: 20
     };
