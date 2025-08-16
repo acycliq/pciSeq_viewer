@@ -121,11 +121,11 @@ void main(void) {
   float faceIndex = getFaceIndex(normals);
   float faceIndex_modelspace = getFaceIndex(normal_modelspace);
 
-  // Use stone texture from the atlas (stone is at position 1,0 in the 16x32 grid)
+  // Use stone texture from the custom 16x256px vertical atlas
   vec4 textureSettings = vec4(1.0, 0.0, 0.0, 1.0); // Use stone texture
   
-  // Stone texture coordinates (first row, second column: 16,0 to 32,16)
-  vec4 textureFrame = vec4(48.0, 0.0, 16.0, 16.0);
+  // Stone texture coordinates (top of vertical strip: 0,0 to 16,16)
+  vec4 textureFrame = vec4(0.0, 0.0, 16.0, 16.0);
   vTextureCoords = (textureFrame.xy + texCoords_modelspace * textureFrame.zw) / atlasTextureDim;
 
   // Force all blocks to be visible for debugging
@@ -335,7 +335,7 @@ class MinecraftLayer extends deck.Layer {
 
     Promise.all([
       loadTexture(gl, './data/blocks.png'),
-      loadTexture(gl, './data/stone_atlas.png'),
+      loadTexture(gl, './data/stone_atlas_2.png'),
       loadTexture(gl, './data/foliage.png')
     ]).then(([blockDefsTexture, atlasTexture, biomeTexture]) => {
       console.log('Textures loaded:', !!blockDefsTexture, !!atlasTexture, !!biomeTexture);
