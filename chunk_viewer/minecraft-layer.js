@@ -19,6 +19,7 @@ attribute vec3 instancePickingColors;
 
 uniform float sliceY;
 uniform float ghostOpacity;
+uniform float anisotropicScale;
 
 uniform vec2 blockDefsTextureDim;
 uniform vec2 atlasTextureDim;
@@ -101,9 +102,9 @@ void main(void) {
   vec4 transformX = getTransform(getBlockDefAt(6.0));
   vec4 transformY = getTransform(getBlockDefAt(7.0));
 
-  // Apply anisotropic scaling: 2.5x taller in Y dimension to match voxel proportions
-  vec3 anisotropicScale = vec3(1.0, 2.5, 1.0); // X=1.0, Y=2.5, Z=1.0
-  vec3 blockScale = vec3(transformX[0], transformY[0], 1.0) * anisotropicScale;
+  // Apply anisotropic scaling: dynamic scaling in Y dimension to match voxel proportions
+  vec3 anisotropicScaleVec = vec3(1.0, anisotropicScale, 1.0); // X=1.0, Y=dynamic, Z=1.0
+  vec3 blockScale = vec3(transformX[0], transformY[0], 1.0) * anisotropicScaleVec;
   mat3 blockRotation = getXYRotationMatrix(transformX[1], transformY[1]);
   vec3 blockTranslation = vec3(transformX[2], transformY[2], 0.0);
   vec3 faceOffset = vec3(transformX[3], transformY[3], transformX[3]);
@@ -250,6 +251,7 @@ function loadTexture(gl, url) {
 
 const defaultProps = {
   sliceY: 256,
+  anisotropicScale: 2.5, // Default anisotropic scaling factor (zVoxel/xVoxel)
   getPosition: {type: 'accessor', value: d => d.position},
   getBlockId: {type: 'accessor', value: d => d.blockId},
   getBlockData: {type: 'accessor', value: d => d.blockData},
@@ -314,11 +316,12 @@ class MinecraftLayer extends deck.Layer {
   
   draw({uniforms}) {
     if (this.state.model) {
-      const {sliceY, ghostOpacity = 0.1} = this.props;
+      const {sliceY, ghostOpacity = 0.1, anisotropicScale = 2.5} = this.props;
       this.state.model.setUniforms({
         ...uniforms,
         sliceY,
-        ghostOpacity
+        ghostOpacity,
+        anisotropicScale
       }).draw();
     }
   }

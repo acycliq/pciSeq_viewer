@@ -422,6 +422,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const ghostOpacity = 0.005; // make sure this is greater than 0.001 which is set at Line 189 minecraft-layer.js
     let currentSliceY = blockData.bounds.maxY; // Start with all visible (Y-axis slicing)
+    let currentPlaneId = 0; // Current plane_id for slider display
+    
+    // Calculate anisotropic scale from config
+    let anisotropicScale = 2.5; // fallback default
+    if (window.opener && window.opener.window.config) {
+        const config = window.opener.window.config();
+        const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
+        anisotropicScale = zVoxel / xVoxel;
+        console.log(`🧊 Anisotropic scale calculated from config: zVoxel(${zVoxel}) / xVoxel(${xVoxel}) = ${anisotropicScale}`);
+    } else {
+        console.log(`⚠️ Config not available, using default anisotropic scale: ${anisotropicScale}`);
+    }
 
     function createLayers() {
         const layers = [];
@@ -437,6 +449,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 getGeneId: (d) => d.gene_id !== undefined ? d.gene_id : -1.0,
                 getIsBlockOpaque: isBlockOpaque,
                 sliceY: currentSliceY,
+                anisotropicScale: anisotropicScale,
                 pickable: false,
                 autoHighlight: false,
                 parameters: {
@@ -456,6 +469,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 getGeneId: (d) => d.gene_id !== undefined ? d.gene_id : -1.0,
                 getIsBlockOpaque: isBlockOpaque,
                 sliceY: currentSliceY,
+                anisotropicScale: anisotropicScale,
                 pickable: true,
                 autoHighlight: true,
                 highlightColor: [255, 255, 255, 200],
@@ -476,6 +490,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 getGeneId: (d) => d.gene_id !== undefined ? d.gene_id : -1.0,
                 getIsBlockOpaque: isBlockOpaque,
                 sliceY: currentSliceY,
+                anisotropicScale: anisotropicScale,
                 ghostOpacity: ghostOpacity, // Use variable opacity value
                 pickable: false,
                 autoHighlight: false,
@@ -499,6 +514,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 getGeneId: (d) => d.gene_id !== undefined ? d.gene_id : -1.0,
                 getIsBlockOpaque: isBlockOpaque,
                 sliceY: currentSliceY,
+                anisotropicScale: anisotropicScale,
                 ghostOpacity: 0.1, // Use variable opacity value
                 pickable: true,
                 autoHighlight: false,
@@ -554,21 +570,27 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update slider value display
     function updateSliderDisplay() {
         const sliderValueElement = document.getElementById('sliderValue');
-        sliderValueElement.textContent = `Plane: ${currentSliceY}/${blockData.bounds.maxY}`;
+        const maxPlaneId = parseInt(document.getElementById('sliceZ').max);
+        const currentDisplayPlaneId = parseInt(document.getElementById('sliceZ').value);
+        sliderValueElement.textContent = `Plane: ${currentDisplayPlaneId}/${maxPlaneId}`;
         
         // Also show how many blocks are visible
         const visibleStoneBlocks = blockData.stoneData.filter(block => block.position[1] <= currentSliceY).length;
         const visibleGeneBlocks = blockData.geneData.filter(block => block.position[1] <= currentSliceY).length;
         sliderValueElement.innerHTML = `
-            Plane: ${currentSliceY}/${blockData.bounds.maxY}<br>
-            <small>Stone: ${visibleStoneBlocks} | Genes: ${visibleGeneBlocks}</small>
+            Plane ID: ${currentDisplayPlaneId}/${maxPlaneId}<br>
+            <small>Stone: ${visibleStoneBlocks} | Genes: ${visibleGeneBlocks} | SliceY: ${currentSliceY}</small>
         `;
     }
 
     // Handle Z slice control
     document.getElementById('sliceZ').addEventListener('input', (e) => {
-        const sliceValue = parseFloat(e.target.value);
-        currentSliceY = Math.floor(sliceValue * blockData.bounds.maxY); // Maps slider 0.01-1.0 to Y range 0-maxY
+        const planeId = parseInt(e.target.value);
+        const maxPlaneId = parseInt(e.target.max);
+        currentPlaneId = Math.min(planeId, maxPlaneId); // Use plane_id directly, clamped to max plane_id
+        
+        // Convert plane_id to anisotropic Y coordinate for rendering
+        currentSliceY = planeIdToSliceY(currentPlaneId);
         
         updateSliderDisplay();
         
@@ -576,9 +598,42 @@ document.addEventListener('DOMContentLoaded', function() {
             layers: createLayers()
         });
         
-        console.log('Slice Y:', currentSliceY, '/', blockData.bounds.maxY);
+        console.log('Plane ID:', currentPlaneId, '/', maxPlaneId, '| Slice Y:', currentSliceY);
     });
 
+    // Configure slider range based on plane_id values from config
+    const sliceSlider = document.getElementById('sliceZ');
+    let maxPlaneId = blockData.bounds.maxY; // fallback
+    currentPlaneId = maxPlaneId; // start at max plane (all visible)
+    
+    // Use config values to get actual totalPlanes
+    if (window.opener && window.opener.window.config) {
+        const config = window.opener.window.config();
+        maxPlaneId = config.totalPlanes - 1; // plane_id ranges from 0 to totalPlanes-1
+        currentPlaneId = maxPlaneId; // start showing all planes
+        console.log(`🎛️ Slider range set from config: plane_id 0 to ${maxPlaneId} (totalPlanes: ${config.totalPlanes})`);
+    } else {
+        console.log(`⚠️ Config not available, using bounds maxY: ${maxPlaneId}`);
+    }
+    
+    sliceSlider.min = "0";
+    sliceSlider.max = maxPlaneId.toString();
+    sliceSlider.value = maxPlaneId.toString();
+    sliceSlider.step = "1";
+    
+    // Convert plane_id to anisotropic Y coordinate for rendering
+    function planeIdToSliceY(planeId) {
+        if (window.opener && window.opener.window.config) {
+            const config = window.opener.window.config();
+            const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
+            return Math.floor(planeId * (zVoxel / xVoxel));
+        }
+        return planeId; // fallback to direct mapping
+    }
+    
+    // Set initial slice position
+    currentSliceY = planeIdToSliceY(currentPlaneId);
+    
     // Initialize slider display
     updateSliderDisplay();
 
