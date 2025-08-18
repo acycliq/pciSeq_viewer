@@ -164,14 +164,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const geneBlocks = [];
         const stoneBlocks = [];
         
-        // Calculate anisotropic factor first - needed for both stone blocks and gene spots
-        let anisotropicFactor = 2.5; // Default fallback
-        if (window.opener && window.opener.window.config) {
-            const config = window.opener.window.config();
-            const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
-            anisotropicFactor = zVoxel / xVoxel;
-        }
-        
         // Convert coordinate system: 1:1 pixel-to-block mapping with proper dimensions
         const originX = dataset.bounds.left;
         const originY = dataset.bounds.top;
@@ -293,18 +285,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Create background stone grid with holes for cell boundaries
-        // Apply anisotropy - stone blocks should be spaced at biological plane intervals
-        console.log('🏗️ Creating anisotropic stone blocks with spatial-indexed ray-casting...');
-        console.log('Anisotropic factor:', anisotropicFactor);
+        console.log('🏗️ Creating stone blocks with spatial-indexed ray-casting...');
         const stoneStartTime = performance.now();
         
         let totalCandidates = 0;
         let totalBlocks = 0;
         
         for (let x = 0; x < maxX; x++) {
-            // Create stone blocks at anisotropic Y intervals to match biological planes
-            for (let planeId = 0; planeId * anisotropicFactor < maxY; planeId++) {
-                const y = planeId * anisotropicFactor; // Anisotropic spacing
+            for (let y = 0; y < maxY; y++) {
                 for (let z = 0; z < maxZ; z++) {
                     totalBlocks++;
                     
@@ -314,15 +302,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     stoneBlocks.push({
-                        position: [x, y, z], // x=width, y=anisotropic-spacing(slicing), z=front-to-back
+                        position: [x, y, z], // x=width, y=top-to-bottom(slicing), z=front-to-back
                         blockId: 1, // Stone
                         blockData: 0,
                         temperature: 0.5,
                         humidity: 0.5,
                         lighting: 15,
                         gene_id: -1, // -1 indicates stone block (not gene data)
-                        index: stoneBlocks.length,
-                        planeId: planeId // Store the biological plane ID for this stone layer
+                        index: stoneBlocks.length
                     });
                 }
             }
@@ -340,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Transform gene spots to colored blocks (with coordinate transpose)
         dataset.spots.data.forEach((spot, index) => {
             const x = Math.floor((spot.x - originX) * scaleX);   // original X → viewer X (width)
-            const y = spot.plane_id * anisotropicFactor;         // plane_id → anisotropic Y (top-to-bottom slicing)
+            const y = Math.floor(spot.z * scaleY);              // original Z → viewer Y (top-to-bottom slicing)
             const z = Math.floor((spot.y - originY) * scaleZ);   // original Y → viewer Z (front-to-back depth)
 
             // Get gene color from main viewer's glyph configuration
@@ -385,23 +372,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Transform the dataset (async)
     transformBioDataToBlocks(dataset).then(blockData => {
-        // Get actual plane range from config (plane IDs from 0 to totalPlanes-1)
-        let maxPlaneId = 101; // Default fallback (totalPlanes - 1)
-        if (window.opener && window.opener.window.config) {
-            const config = window.opener.window.config();
-            maxPlaneId = config.totalPlanes - 1;
-        }
-
-        // Update slider to use actual plane IDs
-        const sliderElement = document.getElementById('sliceZ');
-        sliderElement.max = maxPlaneId;
-        sliderElement.value = maxPlaneId;
-
         // Update stats display
         document.getElementById('stats').innerHTML = `
             Spots: ${dataset.spots.count}<br>
             Cells: ${dataset.cells.count}<br>
-            Planes: 0-${maxPlaneId} (${maxPlaneId + 1} total)<br>
+            Planes: 6<br>
             Bounds: ${dataset.bounds.right}×${dataset.bounds.bottom}×${dataset.bounds.depth}px
         `;
 
@@ -446,15 +421,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     const ghostOpacity = 0.005; // make sure this is greater than 0.001 which is set at Line 189 minecraft-layer.js
-    
-    // Initialize currentSliceY with anisotropic conversion
-    let anisotropicFactor = 2.5; // Default fallback
-    if (window.opener && window.opener.window.config) {
-        const config = window.opener.window.config();
-        const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
-        anisotropicFactor = zVoxel / xVoxel;
-    }
-    let currentSliceY = Math.min(maxPlaneId * anisotropicFactor, blockData.bounds.maxY); // Start with all visible (anisotropic Y-axis slicing)
+    let currentSliceY = blockData.bounds.maxY; // Start with all visible (Y-axis slicing)
 
     function createLayers() {
         const layers = [];
@@ -587,31 +554,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update slider value display
     function updateSliderDisplay() {
         const sliderValueElement = document.getElementById('sliderValue');
-        const currentPlaneId = document.getElementById('sliceZ').value; // Get actual plane ID from slider
-        sliderValueElement.textContent = `Plane: ${currentPlaneId}/${maxPlaneId}`;
+        sliderValueElement.textContent = `Plane: ${currentSliceY}/${blockData.bounds.maxY}`;
         
         // Also show how many blocks are visible
         const visibleStoneBlocks = blockData.stoneData.filter(block => block.position[1] <= currentSliceY).length;
         const visibleGeneBlocks = blockData.geneData.filter(block => block.position[1] <= currentSliceY).length;
         sliderValueElement.innerHTML = `
-            Plane: ${currentPlaneId}/${maxPlaneId}<br>
+            Plane: ${currentSliceY}/${blockData.bounds.maxY}<br>
             <small>Stone: ${visibleStoneBlocks} | Genes: ${visibleGeneBlocks}</small>
         `;
     }
 
     // Handle Z slice control
     document.getElementById('sliceZ').addEventListener('input', (e) => {
-        const currentPlaneId = parseInt(e.target.value); // This is the biological plane ID
-        
-        // Convert plane ID to isotropic Y coordinate using anisotropy factor
-        let anisotropicFactor = 2.5; // Default fallback  
-        if (window.opener && window.opener.window.config) {
-            const config = window.opener.window.config();
-            const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
-            anisotropicFactor = zVoxel / xVoxel;
-        }
-        
-        currentSliceY = currentPlaneId * anisotropicFactor; // Convert plane ID to isotropic Y coordinate
+        const sliceValue = parseFloat(e.target.value);
+        currentSliceY = Math.floor(sliceValue * blockData.bounds.maxY); // Maps slider 0.01-1.0 to Y range 0-maxY
         
         updateSliderDisplay();
         
