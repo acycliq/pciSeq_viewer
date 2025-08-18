@@ -159,6 +159,16 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log(`... and ${dataset.spots.data.length - 10} more spots`);
     console.log('=== END ORIGINAL COORDINATES ===');
 
+    // Convert plane_id to anisotropic Y coordinate for rendering
+    function planeIdToSliceY(planeId) {
+        if (window.opener && window.opener.window.config) {
+            const config = window.opener.window.config();
+            const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
+            return planeId * (zVoxel / xVoxel); // Removed Math.floor for proper fractional positioning
+        }
+        return planeId; // fallback to direct mapping
+    }
+
     // Transform biological data to minecraft-layer format
     async function transformBioDataToBlocks(dataset) {
         const geneBlocks = [];
@@ -188,128 +198,38 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Scale factors (should be ~1.0):', {scaleX, scaleY, scaleZ});
         console.log('Mapping: original[X,Y,Z] → viewer[X,Z,Y] so original Z becomes top-to-bottom');
 
-        // Helper function to check if a point is inside a polygon using ray casting algorithm
-        function isPointInPolygon(x, y, polygon) {
-            let inside = false;
-            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-                const [xi, yi] = polygon[i];
-                const [xj, yj] = polygon[j];
-                
-                if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
-                    inside = !inside;
-                }
-            }
-            return inside;
-        }
 
-        // Get spatial index from selection data if available
-        let spatialIndex = null;
-        if (window.opener && window.opener.cellBoundaryIndexPromise) {
-            try {
-                const indexData = await window.opener.cellBoundaryIndexPromise;
-                spatialIndex = indexData.spatialIndex;
-                console.log('✅ Using spatial index for ray-casting optimization');
-                console.log('Sample spatial index entry:', spatialIndex.all()[0]);
-                console.log('Sample cell data entry:', dataset.cells.data[0]);
-            } catch (error) {
-                console.log('⚠️ Spatial index not available, using fallback ray-casting');
-            }
-        }
 
-        // Helper function to check if a block position should be excluded (inside any cell boundary)
-        function isBlockInsideCell(blockX, blockY, blockZ) {
-            // Convert block coordinates back to original coordinate system (reverse transpose)
-            const originalX = (blockX / scaleX) + originX;      // viewer X → original X
-            const originalY = (blockZ / scaleZ) + originY;      // viewer Z → original Y 
-            const originalZ = blockY / scaleY;                  // viewer Y → original Z
-            
-            let candidateCells;
-            
-            if (spatialIndex) {
-                // ✅ OPTIMIZED: Use spatial index to find nearby cells only
-                const searchRadius = Math.max(5, dataset.bounds.depth / 100); // Small search area
-                candidateCells = spatialIndex.search({
-                    minX: originalX - searchRadius,
-                    minY: originalY - searchRadius,
-                    maxX: originalX + searchRadius,
-                    maxY: originalY + searchRadius
-                });
-                
-                // Convert spatial index results back to cell format
-                candidateCells = candidateCells.map(candidate => {
-                    // Find the actual cell data for this candidate
-                    // The spatial index stores cellId, but dataset.cells.data uses different property names
-                    return dataset.cells.data.find(cell => 
-                        parseInt(cell.cellId) === parseInt(candidate.cellId) ||
-                        parseInt(cell.Cell_Num) === parseInt(candidate.cellId) ||
-                        parseInt(cell.id) === parseInt(candidate.cellId)
-                    );
-                }).filter(cell => cell !== undefined);
-                
-                if (candidateCells.length === 0 && spatialIndex) {
-                    // Debug: fallback to all cells if mapping failed
-                    console.warn('Spatial index mapping failed, using all cells as fallback');
-                    candidateCells = dataset.cells.data;
-                }
-                
-            } else {
-                // ❌ FALLBACK: Test against all cells (original slow method)
-                candidateCells = dataset.cells.data;
-            }
-            
-            // Check each candidate cell boundary
-            for (const cell of candidateCells) {
-                // Get the proper Z coordinate for this cell's plane using isotropic conversion
-                // plane_id (anisotropic) → Z coordinate (isotropic) using same conversion as cellLookup.js
-                let cellPlaneZ;
-                if (window.opener && window.opener.window.config) {
-                    const config = window.opener.window.config();
-                    const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
-                    cellPlaneZ = cell.plane * (zVoxel / xVoxel); // Convert plane to isotropic Z
-                } else {
-                    // Fallback: estimate from bounds depth and assume reasonable plane count
-                    const estimatedPlanes = Math.max(6, Math.floor(dataset.bounds.depth / 2.5)); // Guess based on depth
-                    cellPlaneZ = cell.plane * (dataset.bounds.depth / estimatedPlanes);
-                }
-                
-                const zTolerance = dataset.bounds.depth / 50; // Smaller tolerance for accuracy
-                
-                if (Math.abs(originalZ - cellPlaneZ) <= zTolerance) {
-                    // Check if point is inside this cell's clipped boundary
-                    if (cell.clippedBoundary && isPointInPolygon(originalX, originalY, cell.clippedBoundary)) {
-                        return true; // Block is inside a cell, should be excluded
-                    }
-                }
-            }
-            return false; // Block is not inside any cell
-        }
-
-        // Create background stone grid with holes for cell boundaries
-        console.log('🏗️ Creating stone blocks with spatial-indexed ray-casting...');
+        // Create background stone grid using plane-based positioning
+        console.log('🏗️ Creating stone blocks at plane positions...');
         const stoneStartTime = performance.now();
         
-        let totalCandidates = 0;
         let totalBlocks = 0;
         
+        // Get plane count from config
+        let totalPlanes = Math.floor(maxY / 2.5); // fallback estimate
+        if (window.opener && window.opener.window.config) {
+            const config = window.opener.window.config();
+            totalPlanes = config.totalPlanes;
+        }
+        
         for (let x = 0; x < maxX; x++) {
-            for (let y = 0; y < maxY; y++) {
+            for (let planeId = 0; planeId < totalPlanes; planeId++) {
+                const y = planeIdToSliceY(planeId);  // Convert plane to Y coordinate
                 for (let z = 0; z < maxZ; z++) {
                     totalBlocks++;
                     
-                    // Skip blocks that are inside cell boundaries
-                    if (isBlockInsideCell(x, y, z)) {
-                        continue; // Create hole by skipping this block
-                    }
-                    
+                    // Generate stone blocks at plane positions
                     stoneBlocks.push({
-                        position: [x, y, z], // x=width, y=top-to-bottom(slicing), z=front-to-back
+                        position: [x, y, z], // x=width, y=plane-position, z=front-to-back
                         blockId: 1, // Stone
                         blockData: 0,
                         temperature: 0.5,
                         humidity: 0.5,
                         lighting: 15,
                         gene_id: -1, // -1 indicates stone block (not gene data)
-                        index: stoneBlocks.length
+                        index: stoneBlocks.length,
+                        planeId: planeId // Store which plane this stone belongs to
                     });
                 }
             }
@@ -317,18 +237,29 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const stoneEndTime = performance.now();
         console.log(`✅ Stone creation completed in ${(stoneEndTime - stoneStartTime).toFixed(1)}ms`);
-        console.log(`📊 Performance: ${totalBlocks} blocks processed, ${stoneBlocks.length} stone blocks created`);
-        if (spatialIndex) {
-            console.log(`🚀 Spatial index optimization active - reduced cell testing significantly`);
-        } else {
-            console.log(`⚠️ Using fallback ray-casting - may be slower for large selections`);
-        }
+        console.log(`📊 Performance: ${totalPlanes} planes, ${totalBlocks} blocks processed, ${stoneBlocks.length} stone blocks created`);
+        
+        // Debug: Show stone positions from different planes
+        console.log('🏗️ Sample stone positions across different planes:');
+        const planesToShow = [0, 1, 2, 3, 4, 5];
+        planesToShow.forEach(targetPlane => {
+            const stonesFromPlane = stoneBlocks.filter(stone => stone.planeId === targetPlane);
+            if (stonesFromPlane.length > 0) {
+                const stone = stonesFromPlane[0]; // Show first stone from this plane
+                console.log(`  Plane ${targetPlane}: Y=${stone.position[1]}, sample stone pos=[${stone.position[0]}, ${stone.position[1]}, ${stone.position[2]}] (${stonesFromPlane.length} total stones)`);
+            }
+        });
 
         // Transform gene spots to colored blocks (with coordinate transpose)
         dataset.spots.data.forEach((spot, index) => {
             const x = Math.floor((spot.x - originX) * scaleX);   // original X → viewer X (width)
-            const y = Math.floor(spot.z * scaleY);              // original Z → viewer Y (top-to-bottom slicing)
+            const y = planeIdToSliceY(spot.plane_id);           // plane_id → viewer Y (aligned with stone voxels)
             const z = Math.floor((spot.y - originY) * scaleZ);   // original Y → viewer Z (front-to-back depth)
+            
+            // Debug: Log transformation for first few spots
+            if (index < 5) {
+                console.log(`🎯 Spot ${index}: plane_id=${spot.plane_id} → Y=${y}, original(${spot.x.toFixed(1)}, ${spot.y.toFixed(1)}, ${spot.z.toFixed(1)}) → viewer(${x}, ${y}, ${z})`);
+            }
 
             // Get gene color from main viewer's glyph configuration
             const rgb = getGeneColor(spot.gene);
@@ -620,16 +551,6 @@ document.addEventListener('DOMContentLoaded', function() {
     sliceSlider.max = maxPlaneId.toString();
     sliceSlider.value = maxPlaneId.toString();
     sliceSlider.step = "1";
-    
-    // Convert plane_id to anisotropic Y coordinate for rendering
-    function planeIdToSliceY(planeId) {
-        if (window.opener && window.opener.window.config) {
-            const config = window.opener.window.config();
-            const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
-            return Math.floor(planeId * (zVoxel / xVoxel));
-        }
-        return planeId; // fallback to direct mapping
-    }
     
     // Set initial slice position
     currentSliceY = planeIdToSliceY(currentPlaneId);
