@@ -169,6 +169,39 @@ document.addEventListener('DOMContentLoaded', function() {
         return planeId; // fallback to direct mapping
     }
 
+    // Helper function to check if a point is inside a polygon using ray casting algorithm
+    function isPointInPolygon(x, y, polygon) {
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const [xi, yi] = polygon[i];
+            const [xj, yj] = polygon[j];
+            
+            if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+                inside = !inside;
+            }
+        }
+        return inside;
+    }
+
+    // Helper function to check if a stone voxel position is inside a cell boundary
+    function isInsideCellBoundary(blockX, blockZ, planeId, dataset, originX, originY, scaleX, scaleZ) {
+        // Convert block coordinates back to original coordinate system
+        const originalX = (blockX / scaleX) + originX;      // viewer X → original X
+        const originalY = (blockZ / scaleZ) + originY;      // viewer Z → original Y
+        
+        // Find cells that exist on this specific plane
+        const cellsOnPlane = dataset.cells.data.filter(cell => cell.plane === planeId);
+        
+        // Check each cell boundary on this plane
+        for (const cell of cellsOnPlane) {
+            // Check if point is inside this cell's clipped boundary
+            if (cell.clippedBoundary && isPointInPolygon(originalX, originalY, cell.clippedBoundary)) {
+                return true; // Block is inside a cell boundary, should be excluded
+            }
+        }
+        return false; // Block is not inside any cell boundary
+    }
+
     // Transform biological data to minecraft-layer format
     async function transformBioDataToBlocks(dataset) {
         const geneBlocks = [];
@@ -200,11 +233,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-        // Create background stone grid using plane-based positioning
-        console.log('🏗️ Creating stone blocks at plane positions...');
+        // Create background stone grid using plane-based positioning with cell boundary holes
+        console.log('🏗️ Creating stone blocks at plane positions with cell boundary holes...');
         const stoneStartTime = performance.now();
         
         let totalBlocks = 0;
+        let holesCreated = 0;
         
         // Get plane count from config
         let totalPlanes = Math.floor(maxY / 2.5); // fallback estimate
@@ -219,7 +253,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 for (let z = 0; z < maxZ; z++) {
                     totalBlocks++;
                     
-                    // Generate stone blocks at plane positions
+                    // Check if this position is inside a cell boundary on this plane
+                    if (isInsideCellBoundary(x, z, planeId, dataset, originX, originY, scaleX, scaleZ)) {
+                        holesCreated++;
+                        continue; // Skip creating stone block - create hole for cell
+                    }
+                    
+                    // Generate stone blocks at plane positions (outside cell boundaries)
                     stoneBlocks.push({
                         position: [x, y, z], // x=width, y=plane-position, z=front-to-back
                         blockId: 1, // Stone
@@ -238,6 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const stoneEndTime = performance.now();
         console.log(`✅ Stone creation completed in ${(stoneEndTime - stoneStartTime).toFixed(1)}ms`);
         console.log(`📊 Performance: ${totalPlanes} planes, ${totalBlocks} blocks processed, ${stoneBlocks.length} stone blocks created`);
+        console.log(`🕳️ Cell boundary holes: ${holesCreated} holes created (${((holesCreated/totalBlocks)*100).toFixed(1)}% of total blocks)`);
         
         // Debug: Show stone positions from different planes
         console.log('🏗️ Sample stone positions across different planes:');
