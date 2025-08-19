@@ -50,8 +50,8 @@ float round(float x) {
 }
 
 vec4 getBlockDefAt(float faceIndex) {
-  vec2 coords = vec2(instanceBlockData.x * 8.0 + faceIndex, instanceBlockIds);
-  coords += vec2(0.5);
+  vec2 coords = vec2(instanceBlockData.x * 8.0 + faceIndex, instanceBlockIds); // 8 faces per block
+  coords += vec2(0.5); // Pixel-perfect sampling offset
   coords /= blockDefsTextureDim;
 
   return texture2D(blockDefsTexture, coords);
@@ -69,7 +69,7 @@ vec4 getBiomeColor() {
   
   if (isGeneData) {
     // Gene data: use original biome calculation
-    vec2 coords = instanceBlockData.yz / 255.;
+    vec2 coords = instanceBlockData.yz / 255.; // Convert byte to normalized coords
     coords.x = 1.0 - coords.x;
     return mix(
       texture2D(biomeTexture, coords),
@@ -125,7 +125,7 @@ void main(void) {
   // Use stone texture from the custom 16x256px vertical atlas
   vec4 textureSettings = vec4(1.0, 0.0, 0.0, 1.0); // Use stone texture
   
-  // Stone texture coordinates (top of vertical strip: 0,0 to 16,16)
+  // Stone texture coordinates (top of vertical strip: 16x16 pixels)
   vec4 textureFrame = vec4(0.0, 0.0, 16.0, 16.0);
   vTextureCoords = (textureFrame.xy + texCoords_modelspace * textureFrame.zw) / atlasTextureDim;
 
@@ -201,7 +201,7 @@ void main(void) {
   // Apply color scale with proper alpha for ghosting effect
   gl_FragColor = vec4((color * vColorScale).rgb, vColorScale.a);
   
-  // Alpha test: discard fragments below threshold
+  // Alpha test: discard fragments below threshold (0.001 = minimum visible alpha)
   if (gl_FragColor.a < 0.001) {
     discard;
   }
@@ -251,7 +251,7 @@ function loadTexture(gl, url) {
 
 const defaultProps = {
   sliceY: 256,
-  anisotropicScale: 2.5, // Default anisotropic scaling factor (zVoxel/xVoxel)
+  anisotropicScale: 1.0, // Default to isotropic scaling (no distortion)
   getPosition: {type: 'accessor', value: d => d.position},
   getBlockId: {type: 'accessor', value: d => d.blockId},
   getBlockData: {type: 'accessor', value: d => d.blockData},
@@ -316,7 +316,7 @@ class MinecraftLayer extends deck.Layer {
   
   draw({uniforms}) {
     if (this.state.model) {
-      const {sliceY, ghostOpacity = 0.1, anisotropicScale = 2.5} = this.props;
+      const {sliceY, ghostOpacity = 0.1, anisotropicScale = 1.0} = this.props;
       this.state.model.setUniforms({
         ...uniforms,
         sliceY,
@@ -409,7 +409,7 @@ class MinecraftLayer extends deck.Layer {
     let i = 0;
     for (let objectIndex = 0; objectIndex < data.length; objectIndex++) {
       // Use deck.gl's built-in picking color encoding
-      // Start from index 1 (0 means no pick)
+      // Start from index 1 (0 means no pick in deck.gl)
       const pickingIndex = objectIndex + 1;
       const r = (pickingIndex & 0x0000FF);
       const g = (pickingIndex & 0x00FF00) >> 8;
@@ -451,17 +451,9 @@ class MinecraftLayer extends deck.Layer {
     
     // Direct index mapping (no offset needed since deck.gl returns 0-based indices)
     const dataIndex = info.index;
-    console.log('  Calculated dataIndex:', dataIndex);
     
     if (dataIndex >= 0 && dataIndex < data.length) {
       info.object = data[dataIndex];
-      console.log('  Assigned object from data[' + dataIndex + ']:', {
-        gene_name: info.object.gene_name,
-        spot_id: info.object.spot_id,
-        gene_id: info.object.gene_id
-      });
-    } else {
-      console.log('  ❌ dataIndex out of bounds!');
     }
     
     return info;
@@ -469,7 +461,6 @@ class MinecraftLayer extends deck.Layer {
 
   updateState({props, oldProps, changeFlags}) {
     super.updateState({props, oldProps, changeFlags});
-    console.log('updateState called, data length:', props.data?.length);
   }
 }
 

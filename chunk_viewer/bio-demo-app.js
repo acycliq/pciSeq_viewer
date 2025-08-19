@@ -164,9 +164,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.opener && window.opener.window.config) {
             const config = window.opener.window.config();
             const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
-            return planeId * (zVoxel / xVoxel); // Removed Math.floor for proper fractional positioning
+            return planeId * (zVoxel / xVoxel); // Anisotropic scaling for proper Z positioning
         }
-        return planeId; // fallback to direct mapping
+        return planeId; // Direct mapping fallback
     }
 
     // Helper function to check if a point is inside a polygon using ray casting algorithm
@@ -392,112 +392,67 @@ document.addEventListener('DOMContentLoaded', function() {
         })
     });
 
-    const ghostOpacity = 0.005; // make sure this is greater than 0.001 which is set at Line 189 minecraft-layer.js
+    const ghostOpacity = 0.005; // Stone ghost opacity (> 0.001 shader alpha threshold)
     let currentSliceY = blockData.bounds.maxY; // Start with all visible (Y-axis slicing)
     let currentPlaneId = 0; // Current plane_id for slider display
     
-    // Calculate anisotropic scale from config
-    let anisotropicScale = 2.5; // fallback default
+    // Calculate anisotropic scale from config or data
+    let anisotropicScale = 1.0; // Default to isotropic (1:1) if no other info available
     if (window.opener && window.opener.window.config) {
         const config = window.opener.window.config();
         const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
         anisotropicScale = zVoxel / xVoxel;
-        console.log(`🧊 Anisotropic scale calculated from config: zVoxel(${zVoxel}) / xVoxel(${xVoxel}) = ${anisotropicScale}`);
+        console.log(`🧊 Anisotropic scale from config: zVoxel(${zVoxel}) / xVoxel(${xVoxel}) = ${anisotropicScale}`);
     } else {
-        console.log(`⚠️ Config not available, using default anisotropic scale: ${anisotropicScale}`);
+        // Fallback: calculate from actual data Z-range vs plane count
+        const zRange = Math.max(...dataset.spots.data.map(s => s.z)) - Math.min(...dataset.spots.data.map(s => s.z));
+        const planeCount = Math.max(...dataset.spots.data.map(s => s.plane_id)) + 1;
+        if (planeCount > 1 && zRange > 0) {
+            anisotropicScale = zRange / planeCount; // Z units per plane
+            console.log(`🧊 Anisotropic scale from data: zRange(${zRange.toFixed(1)}) / planeCount(${planeCount}) = ${anisotropicScale.toFixed(2)}`);
+        } else {
+            console.log(`⚠️ Using isotropic scale (1.0) - no config or data to calculate anisotropy`);
+        }
+    }
+
+    // Helper to create a MinecraftLayer with common settings
+    function createMinecraftLayer(id, data, config) {
+        if (data.length === 0) return null;
+        
+        return new MinecraftLayer({
+            id: id,
+            data: data,
+            getTemperature: getBlockTemperature,
+            getHumidity: getBlockHumidity,
+            getGeneId: (d) => d.gene_id !== undefined ? d.gene_id : -1.0,
+            getIsBlockOpaque: isBlockOpaque,
+            sliceY: currentSliceY,
+            anisotropicScale: anisotropicScale,
+            ...config // Spread layer-specific config
+        });
     }
 
     function createLayers() {
         const layers = [];
         
-        // Background stone blocks - solid (below slice)
+        // Filter data once
         const solidStoneBlocks = blockData.stoneData.filter(block => block.position[1] <= currentSliceY);
-        if (solidStoneBlocks.length > 0) {
-            layers.push(new MinecraftLayer({
-                id: 'stone-background-solid',
-                data: solidStoneBlocks,
-                getTemperature: getBlockTemperature,
-                getHumidity: getBlockHumidity,
-                getGeneId: (d) => d.gene_id !== undefined ? d.gene_id : -1.0,
-                getIsBlockOpaque: isBlockOpaque,
-                sliceY: currentSliceY,
-                anisotropicScale: anisotropicScale,
-                pickable: false,
-                autoHighlight: false,
-                parameters: {
-                    depthMask: true
-                }
-            }));
-        }
-        
-        // Gene blocks - solid (below slice)
         const solidGeneBlocks = blockData.geneData.filter(block => block.position[1] <= currentSliceY);
-        if (solidGeneBlocks.length > 0) {
-            layers.push(new MinecraftLayer({
-                id: 'gene-spots-solid',
-                data: solidGeneBlocks,
-                getTemperature: getBlockTemperature,
-                getHumidity: getBlockHumidity,
-                getGeneId: (d) => d.gene_id !== undefined ? d.gene_id : -1.0,
-                getIsBlockOpaque: isBlockOpaque,
-                sliceY: currentSliceY,
-                anisotropicScale: anisotropicScale,
-                pickable: true,
-                autoHighlight: true,
-                highlightColor: [255, 255, 255, 200],
-                parameters: {
-                    depthMask: true
-                }
-            }));
-        }
-        
-        // Background stone blocks - transparent (above slice)
         const transparentStoneBlocks = blockData.stoneData.filter(block => block.position[1] > currentSliceY);
-        if (transparentStoneBlocks.length > 0) {
-            layers.push(new MinecraftLayer({
-                id: 'stone-background-transparent',
-                data: transparentStoneBlocks,
-                getTemperature: getBlockTemperature,
-                getHumidity: getBlockHumidity,
-                getGeneId: (d) => d.gene_id !== undefined ? d.gene_id : -1.0,
-                getIsBlockOpaque: isBlockOpaque,
-                sliceY: currentSliceY,
-                anisotropicScale: anisotropicScale,
-                ghostOpacity: ghostOpacity, // Use variable opacity value
-                pickable: false,
-                autoHighlight: false,
-                parameters: {
-                    depthMask: false,
-                    blend: true,
-                    blendFunc: [770, 771], // GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
-                    cull: false
-                }
-            }));
-        }
-        
-        // Gene blocks - transparent (above slice)
         const transparentGeneBlocks = blockData.geneData.filter(block => block.position[1] > currentSliceY);
-        if (transparentGeneBlocks.length > 0) {
-            layers.push(new MinecraftLayer({
-                id: 'gene-spots-transparent',
-                data: transparentGeneBlocks,
-                getTemperature: getBlockTemperature,
-                getHumidity: getBlockHumidity,
-                getGeneId: (d) => d.gene_id !== undefined ? d.gene_id : -1.0,
-                getIsBlockOpaque: isBlockOpaque,
-                sliceY: currentSliceY,
-                anisotropicScale: anisotropicScale,
-                ghostOpacity: 0.1, // Use variable opacity value
-                pickable: true,
-                autoHighlight: false,
-                parameters: {
-                    depthMask: false,
-                    blend: true,
-                    blendFunc: [770, 771], // GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
-                    cull: false
-                }
-            }));
-        }
+        
+        // Create layers with specific configurations
+        const layerConfigs = [
+            ['stone-background-solid', solidStoneBlocks, { pickable: false, autoHighlight: false, parameters: { depthMask: true } }],
+            ['gene-spots-solid', solidGeneBlocks, { pickable: true, autoHighlight: true, highlightColor: [255, 255, 255, 200], parameters: { depthMask: true } }],
+            ['stone-background-transparent', transparentStoneBlocks, { ghostOpacity: ghostOpacity, pickable: false, autoHighlight: false, parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } }],
+            ['gene-spots-transparent', transparentGeneBlocks, { ghostOpacity: 0.1, pickable: true, autoHighlight: false, parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } }]
+        ];
+        
+        layerConfigs.forEach(([id, data, config]) => {
+            const layer = createMinecraftLayer(id, data, config);
+            if (layer) layers.push(layer);
+        });
         
         return layers;
     }
@@ -520,7 +475,6 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         onHover: (info) => {
             if (info.object && info.object.gene_name) {
-                console.log('Gene:', info.object.gene_name, 'Spot ID:', info.object.spot_id, 'Plane:', info.object.plane_id);
                 showChunkTooltip(info);
             } else {
                 hideChunkTooltip();
