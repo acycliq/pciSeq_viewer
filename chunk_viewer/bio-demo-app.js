@@ -548,7 +548,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 getSourcePosition: d => d.sourcePosition,
                 getTargetPosition: d => d.targetPosition,
                 getColor: d => d.color,
-                getWidth: 5,
+                getWidth: 3,
                 pickable: false,
                 parameters: {
                     depthTest: true,
@@ -569,7 +569,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 getSourcePosition: d => d.sourcePosition,
                 getTargetPosition: d => d.targetPosition,
                 getColor: d => [d.color[0], d.color[1], d.color[2], 25], // Very transparent (10% of original alpha)
-                getWidth: 5,
+                getWidth: 3,
                 pickable: false,
                 parameters: {
                     depthTest: true,
