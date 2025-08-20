@@ -410,6 +410,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentSliceY = blockData.bounds.maxY; // Start with all visible (Y-axis slicing)
     let currentPlaneId = 0; // Current plane_id for slider display
     let showSpotLines = true; // Toggle for showing spot-to-parent lines
+    let showBackground = true; // Toggle for showing background stone voxels
     
     // Calculate anisotropic scale from config or data
     let anisotropicScale = 1.0; // Default to isotropic (1:1) if no other info available
@@ -529,10 +530,31 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Create layers with specific configurations
         const layerConfigs = [
-            ['stone-background-solid', solidStoneBlocks, { pickable: false, autoHighlight: false, parameters: { depthMask: true } }],
-            ['gene-spots-solid', solidGeneBlocks, { pickable: true, autoHighlight: true, highlightColor: [255, 255, 255, 200], parameters: { depthMask: true } }],
-            ['stone-background-transparent', transparentStoneBlocks, { ghostOpacity: ghostOpacity, pickable: false, autoHighlight: false, parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } }],
-            ['gene-spots-transparent', transparentGeneBlocks, { ghostOpacity: 0.1, pickable: true, autoHighlight: false, parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } }]
+            ['stone-background-solid', solidStoneBlocks, { 
+                visible: showBackground,  // ← Use visible property for background control
+                pickable: false, 
+                autoHighlight: false, 
+                parameters: { depthMask: true } 
+            }],
+            ['gene-spots-solid', solidGeneBlocks, { 
+                pickable: true, 
+                autoHighlight: true, 
+                highlightColor: [255, 255, 255, 200], 
+                parameters: { depthMask: true } 
+            }],
+            ['stone-background-transparent', transparentStoneBlocks, { 
+                visible: showBackground,  // ← Use visible property for background control
+                ghostOpacity: ghostOpacity, 
+                pickable: false, 
+                autoHighlight: false, 
+                parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } 
+            }],
+            ['gene-spots-transparent', transparentGeneBlocks, { 
+                ghostOpacity: 0.1, 
+                pickable: true, 
+                autoHighlight: false, 
+                parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } 
+            }]
         ];
         
         layerConfigs.forEach(([id, data, config]) => {
@@ -685,6 +707,16 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('showLinesToggle').addEventListener('change', (e) => {
         showSpotLines = e.target.checked;
         console.log('Show spot lines:', showSpotLines);
+        
+        deckgl.setProps({
+            layers: createLayers()
+        });
+    });
+
+    // Handle show background toggle
+    document.getElementById('showBackgroundToggle').addEventListener('change', (e) => {
+        showBackground = e.target.checked;
+        console.log('Show background:', showBackground);
         
         deckgl.setProps({
             layers: createLayers()
