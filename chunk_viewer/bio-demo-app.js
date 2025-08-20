@@ -409,6 +409,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const ghostOpacity = 0.005; // Stone ghost opacity (> 0.001 shader alpha threshold)
     let currentSliceY = blockData.bounds.maxY; // Start with all visible (Y-axis slicing)
     let currentPlaneId = 0; // Current plane_id for slider display
+    let showSpotLines = true; // Toggle for showing spot-to-parent lines
     
     // Calculate anisotropic scale from config or data
     let anisotropicScale = 1.0; // Default to isotropic (1:1) if no other info available
@@ -539,46 +540,49 @@ document.addEventListener('DOMContentLoaded', function() {
             if (layer) layers.push(layer);
         });
         
-        // Add solid lines for visible spots
-        const solidLinesData = createLinesData(true); // visible spots only
-        if (solidLinesData.length > 0) {
-            const solidLineLayer = new deck.LineLayer({
-                id: 'spot-to-parent-lines-solid',
-                data: solidLinesData,
-                getSourcePosition: d => d.sourcePosition,
-                getTargetPosition: d => d.targetPosition,
-                getColor: d => d.color,
-                getWidth: 3,
-                pickable: false,
-                parameters: {
-                    depthTest: true,
-                    depthMask: true,
-                    blend: true,
-                    blendFunc: [770, 771]
-                }
-            });
-            layers.push(solidLineLayer);
-        }
-        
-        // Add ghosted lines for spots above the slice
-        const ghostLinesData = createLinesData(false); // transparent spots only
-        if (ghostLinesData.length > 0) {
-            const ghostLineLayer = new deck.LineLayer({
-                id: 'spot-to-parent-lines-ghost',
-                data: ghostLinesData,
-                getSourcePosition: d => d.sourcePosition,
-                getTargetPosition: d => d.targetPosition,
-                getColor: d => [d.color[0], d.color[1], d.color[2], 25], // Very transparent (10% of original alpha)
-                getWidth: 3,
-                pickable: false,
-                parameters: {
-                    depthTest: true,
-                    depthMask: false,
-                    blend: true,
-                    blendFunc: [770, 771]
-                }
-            });
-            layers.push(ghostLineLayer);
+        // Add spot-to-parent lines only if toggle is enabled
+        if (showSpotLines) {
+            // Add solid lines for visible spots
+            const solidLinesData = createLinesData(true); // visible spots only
+            if (solidLinesData.length > 0) {
+                const solidLineLayer = new deck.LineLayer({
+                    id: 'spot-to-parent-lines-solid',
+                    data: solidLinesData,
+                    getSourcePosition: d => d.sourcePosition,
+                    getTargetPosition: d => d.targetPosition,
+                    getColor: d => d.color,
+                    getWidth: 3,
+                    pickable: false,
+                    parameters: {
+                        depthTest: true,
+                        depthMask: true,
+                        blend: true,
+                        blendFunc: [770, 771]
+                    }
+                });
+                layers.push(solidLineLayer);
+            }
+            
+            // Add ghosted lines for spots above the slice
+            const ghostLinesData = createLinesData(false); // transparent spots only
+            if (ghostLinesData.length > 0) {
+                const ghostLineLayer = new deck.LineLayer({
+                    id: 'spot-to-parent-lines-ghost',
+                    data: ghostLinesData,
+                    getSourcePosition: d => d.sourcePosition,
+                    getTargetPosition: d => d.targetPosition,
+                    getColor: d => [d.color[0], d.color[1], d.color[2], 25], // Very transparent (10% of original alpha)
+                    getWidth: 3,
+                    pickable: false,
+                    parameters: {
+                        depthTest: true,
+                        depthMask: false,
+                        blend: true,
+                        blendFunc: [770, 771]
+                    }
+                });
+                layers.push(ghostLineLayer);
+            }
         }
         
         return layers;
@@ -677,6 +681,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set initial slice position
     currentSliceY = planeIdToSliceY(currentPlaneId);
     
+    // Handle show lines toggle
+    document.getElementById('showLinesToggle').addEventListener('change', (e) => {
+        showSpotLines = e.target.checked;
+        console.log('Show spot lines:', showSpotLines);
+        
+        deckgl.setProps({
+            layers: createLayers()
+        });
+    });
+
     // Initialize slider display
     updateSliderDisplay();
 
