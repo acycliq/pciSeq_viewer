@@ -186,10 +186,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Helper function to check if a stone voxel position is inside a cell boundary
-    function isInsideCellBoundary(blockX, blockZ, planeId, dataset, originX, originY, scaleX, scaleZ) {
-        // Convert block coordinates back to original coordinate system
-        const originalX = (blockX / scaleX) + originX;      // viewer X → original X
-        const originalY = (blockZ / scaleZ) + originY;      // viewer Z → original Y
+    function isInsideCellBoundary(blockX, blockZ, planeId, dataset, bounds) {
+        // Convert block coordinates back to original coordinate system (simple integer arithmetic)
+        const originalX = blockX + bounds.left;        // viewer X → original X (add back origin)
+        const originalY = blockZ + bounds.top;         // viewer Z → original Y (add back origin)
         
         // Find cells that exist on this specific plane
         const cellsOnPlane = dataset.cells.data.filter(cell => cell.plane === planeId);
@@ -209,29 +209,35 @@ document.addEventListener('DOMContentLoaded', function() {
         const geneBlocks = [];
         const stoneBlocks = [];
         
-        // Convert coordinate system: 1:1 pixel-to-block mapping with proper dimensions
-        const originX = dataset.bounds.left;
-        const originY = dataset.bounds.top;
+        // Convert bounds to integers - floor all bounds consistently
+        const bounds = {
+            left: Math.floor(dataset.bounds.left),
+            right: Math.floor(dataset.bounds.right),
+            top: Math.floor(dataset.bounds.top),
+            bottom: Math.floor(dataset.bounds.bottom),
+            depth: Math.floor(dataset.bounds.depth)
+        };
         
-        // Calculate actual selection dimensions in pixels
-        const selectionWidth = dataset.bounds.right - dataset.bounds.left;   // X dimension (pixels)
-        const selectionHeight = dataset.bounds.bottom - dataset.bounds.top;  // Y dimension (pixels)
-        const selectionDepth = dataset.bounds.depth;                         // Z dimension (pixels)
+        // Calculate selection dimensions, then add 1 to include the boundary pixels
+        const selectionWidth = (bounds.right - bounds.left) + 1;   // +1 to include right boundary pixel
+        const selectionHeight = (bounds.bottom - bounds.top) + 1;  // +1 to include bottom boundary pixel
+        const selectionDepth = bounds.depth + 1;                   // +1 to include depth boundary
         
-        // 1:1 pixel-to-block mapping - round up to ensure no data loss
-        const maxX = Math.ceil(selectionWidth);   // Direct 1:1 mapping
-        const maxY = Math.ceil(selectionDepth);   // Direct 1:1 mapping (Z → Y top-to-bottom slicing)
-        const maxZ = Math.ceil(selectionHeight);  // Direct 1:1 mapping (Y → Z front-to-back depth)
+        console.log('Original bounds:', dataset.bounds);
+        console.log('Integer bounds:', bounds);
+        console.log('Selection dimensions with boundary pixels:', {width: selectionWidth, height: selectionHeight, depth: selectionDepth});
         
-        // Scaling factors are now 1:1 (1 block per pixel)
-        const scaleX = maxX / selectionWidth;   // Should be ~1.0
-        const scaleY = maxY / selectionDepth;   // Should be ~1.0
-        const scaleZ = maxZ / selectionHeight;  // Should be ~1.0
+        // Block dimensions = pixel dimensions (perfect 1:1 mapping)
+        const maxX = selectionWidth;   // No Math.ceil() needed!
+        const maxY = selectionDepth;   // No Math.ceil() needed!  
+        const maxZ = selectionHeight;  // No Math.ceil() needed!
+        
+        // Scale factors eliminated - direct 1:1 integer mapping
+        // scaleX, scaleY, scaleZ are now redundant and removed!
 
-        console.log('Selection dimensions (pixels):', {width: selectionWidth, height: selectionHeight, depth: selectionDepth});
-        console.log('Block dimensions (1:1 mapping):', {maxX, maxY, maxZ});
-        console.log('Scale factors (should be ~1.0):', {scaleX, scaleY, scaleZ});
-        console.log('Mapping: original[X,Y,Z] → viewer[X,Z,Y] so original Z becomes top-to-bottom');
+        console.log('Selection dimensions (integer pixels):', {width: selectionWidth, height: selectionHeight, depth: selectionDepth});
+        console.log('Block dimensions (1:1 integer mapping):', {maxX, maxY, maxZ});
+        console.log('Mapping: original[X,Y,Z] → viewer[X,Z,Y] with direct integer arithmetic');
 
 
 
@@ -256,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     totalBlocks++;
                     
                     // Check if this position is inside a cell boundary on this plane
-                    if (isInsideCellBoundary(x, z, planeId, dataset, originX, originY, scaleX, scaleZ)) {
+                    if (isInsideCellBoundary(x, z, planeId, dataset, bounds)) {
                         holesCreated++;
                         continue; // Skip creating stone block - create hole for cell
                     }
@@ -295,13 +301,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Transform gene spots to colored blocks (with coordinate transpose)
         dataset.spots.data.forEach((spot, index) => {
-            const x = Math.floor((spot.x - originX) * scaleX);   // original X → viewer X (width)
-            const y = planeIdToSliceY(spot.plane_id);           // plane_id → viewer Y (aligned with stone voxels)
-            const z = Math.floor((spot.y - originY) * scaleZ);   // original Y → viewer Z (front-to-back depth)
+            // Convert spot coordinates to integers by dropping decimals
+            const spotX = Math.floor(spot.x);  // Clean integer pixels
+            const spotY = Math.floor(spot.y);  // Clean integer pixels
+            const spotZ = Math.floor(spot.z);  // Clean integer depth
+            
+            const x = spotX - bounds.left;            // Global → Local X (simple integer subtraction)
+            const y = planeIdToSliceY(spot.plane_id); // plane_id → viewer Y (anisotropic scaling)  
+            const z = spotY - bounds.top;             // Global → Local Y→Z (simple integer subtraction)
             
             // Debug: Log transformation for first few spots
             if (index < 5) {
-                console.log(`🎯 Spot ${index}: plane_id=${spot.plane_id} → Y=${y}, original(${spot.x.toFixed(1)}, ${spot.y.toFixed(1)}, ${spot.z.toFixed(1)}) → viewer(${x}, ${y}, ${z})`);
+                console.log(`🎯 Spot ${index}: plane_id=${spot.plane_id} → Y=${y}, original(${spotX}, ${spotY}, ${spotZ}) → viewer(${x}, ${y}, ${z})`);
             }
 
             // Get gene color from main viewer's glyph configuration
@@ -438,15 +449,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create line data connecting spots to their parent cells
     function createLinesData(solidOnly = true) {
         const lines = [];
-        const originX = dataset.bounds.left;
-        const originY = dataset.bounds.top;
-        const originZ = 0; // Z coordinate origin (depth dimension)
-        const selectionWidth = dataset.bounds.right - dataset.bounds.left;
-        const selectionHeight = dataset.bounds.bottom - dataset.bounds.top;
-        const selectionDepth = dataset.bounds.depth;
-        const scaleX = blockData.bounds.maxX / selectionWidth;
-        const scaleY = blockData.bounds.maxY / selectionDepth;  // For Z → Y mapping
-        const scaleZ = blockData.bounds.maxZ / selectionHeight;
+        
+        // Use the same integer bounds as the transformation
+        const bounds = {
+            left: Math.floor(dataset.bounds.left),
+            right: Math.floor(dataset.bounds.right),
+            top: Math.floor(dataset.bounds.top),
+            bottom: Math.floor(dataset.bounds.bottom),
+            depth: Math.floor(dataset.bounds.depth)
+        };
+        
+        // Scale factors eliminated - direct 1:1 integer mapping
+        // No more scaleX, scaleY, scaleZ needed!
 
         // Filter spots based on solid/ghost mode
         const filteredGeneBlocks = solidOnly 
@@ -468,10 +482,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     spotBlock.position[2]  // viewer Z
                 ];
                 
-                // Target position: parent cell coordinates (need to transform to viewer coordinates)
-                const parentViewerX = Math.floor((spotBlock.parent_cell_X - originX) * scaleX);
-                const parentViewerY = Math.floor((spotBlock.parent_cell_Z - originZ) * scaleY); // Convert parent Z coordinate properly
-                const parentViewerZ = Math.floor((spotBlock.parent_cell_Y - originY) * scaleZ);
+                // Target position: parent cell coordinates (transform to viewer coordinates with simple integer arithmetic)
+                const parentCellX = Math.floor(spotBlock.parent_cell_X);  // Clean integer pixels
+                const parentCellY = Math.floor(spotBlock.parent_cell_Y);  // Clean integer pixels  
+                const parentCellZ = Math.floor(spotBlock.parent_cell_Z);  // Clean integer depth
+                
+                const parentViewerX = parentCellX - bounds.left;         // Global → Local X (simple subtraction)
+                const parentViewerY = parentCellZ;                       // Z coordinate becomes Y (depth → slicing axis)
+                const parentViewerZ = parentCellY - bounds.top;          // Global → Local Y→Z (simple subtraction)
                 
                 const targetPosition = [
                     parentViewerX,
