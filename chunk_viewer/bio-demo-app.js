@@ -151,6 +151,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const dataset = getDataset();
     console.log('Generated dataset:', dataset);
     
+    // Gene selection state (declare early so transformBioDataToBlocks can use them)
+    let availableGenes = new Set(); // All genes in the current dataset
+    let selectedGenes = new Set(); // Currently visible genes
+    let geneColors = new Map(); // Gene -> color mapping
+    
     // Print original spot coordinates
     console.log('=== ORIGINAL SPOT COORDINATES ===');
     dataset.spots.data.forEach((spot, i) => {
@@ -338,6 +343,27 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        // Extract unique genes from the dataset for gene controls
+        const uniqueGenes = [...new Set(dataset.spots.data.map(spot => spot.gene))];
+        console.log('🧬 Found unique genes in selection:', uniqueGenes.length, uniqueGenes);
+        
+        // Build gene sets and colors for controls
+        availableGenes.clear();
+        selectedGenes.clear();
+        geneColors.clear();
+        
+        uniqueGenes.forEach(gene => {
+            availableGenes.add(gene);
+            selectedGenes.add(gene); // Start with all genes visible
+            
+            // Get gene color and store as hex string
+            const rgb = getGeneColor(gene);
+            const hex = '#' + ((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1);
+            geneColors.set(gene, hex);
+        });
+        
+        console.log('🎨 Gene colors:', Object.fromEntries(geneColors));
+
         console.log('Transformed', geneBlocks.length, 'gene spots and', stoneBlocks.length, 'stone blocks');
         console.log('Sample gene block:', geneBlocks[0]);
         console.log('Sample stone block:', stoneBlocks[0]);
@@ -448,6 +474,121 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Create a filled square glyph (replacement for complex glyphs)
+    function createGeneGlyph(color) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 20;
+        canvas.height = 20;
+        canvas.className = 'gene-glyph';
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Fill with gene color
+        ctx.fillStyle = color;
+        ctx.fillRect(2, 2, 16, 16);
+        
+        // Add subtle border
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(2, 2, 16, 16);
+        
+        return canvas;
+    }
+
+    // Build dynamic gene controls widget - matches main UI exactly
+    function buildGeneControls() {
+        const geneList = document.getElementById('geneList');
+        geneList.innerHTML = ''; // Clear existing controls
+        
+        // Sort genes alphabetically for consistent display
+        const sortedGenes = [...availableGenes].sort();
+        
+        sortedGenes.forEach(gene => {
+            const geneItem = document.createElement('div');
+            geneItem.className = 'gene-item';
+            geneItem.dataset.gene = gene;
+            
+            // Checkbox
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'gene-checkbox';
+            checkbox.id = `gene-${gene}`;
+            checkbox.checked = selectedGenes.has(gene);
+            checkbox.addEventListener('change', () => toggleGene(gene, checkbox.checked));
+            
+            // Filled square glyph with gene color
+            const glyph = createGeneGlyph(geneColors.get(gene));
+            
+            // Gene name with spot count
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'gene-name';
+            
+            // Count spots for this gene
+            const geneSpotCount = blockData.geneData.filter(block => block.gene_name === gene).length;
+            nameSpan.textContent = `${gene} (${geneSpotCount.toLocaleString()})`;
+            
+            // Click handler for the entire item
+            geneItem.addEventListener('click', (e) => {
+                if (e.target !== checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    toggleGene(gene, checkbox.checked);
+                }
+            });
+            
+            geneItem.appendChild(checkbox);
+            geneItem.appendChild(glyph);
+            geneItem.appendChild(nameSpan);
+            
+            geneList.appendChild(geneItem);
+        });
+        
+        console.log(`🎛️ Built gene controls for ${sortedGenes.length} genes`);
+    }
+    
+    // Toggle individual gene visibility
+    function toggleGene(gene, isVisible) {
+        if (isVisible) {
+            selectedGenes.add(gene);
+        } else {
+            selectedGenes.delete(gene);
+        }
+        
+        console.log(`🧬 Gene ${gene}: ${isVisible ? 'shown' : 'hidden'}`);
+        updateToggleAllButton();
+        
+        // Update layers
+        deckgl.setProps({
+            layers: createLayers()
+        });
+    }
+    
+    // Update the "Toggle All" button text and style based on current selection
+    function updateToggleAllButton() {
+        const toggleAllBtn = document.getElementById('toggleAllGenes');
+        const totalGenes = availableGenes.size;
+        const selected = selectedGenes.size;
+        
+        if (selected === totalGenes) {
+            toggleAllBtn.textContent = 'Unselect All';
+            toggleAllBtn.className = 'toggle-all-btn unselect';
+        } else {
+            toggleAllBtn.textContent = 'Select All';
+            toggleAllBtn.className = 'toggle-all-btn';
+        }
+    }
+
+    // Search functionality for gene filtering
+    function filterGeneList(searchTerm) {
+        const geneItems = document.querySelectorAll('.gene-item');
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        
+        geneItems.forEach(item => {
+            const geneName = item.dataset.gene.toLowerCase();
+            const shouldShow = geneName.includes(lowerSearchTerm);
+            item.style.display = shouldShow ? 'flex' : 'none';
+        });
+    }
+
     // Create line data connecting spots to their parent cells
     function createLinesData(solidOnly = true) {
         const lines = [];
@@ -464,10 +605,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Scale factors eliminated - direct 1:1 integer mapping
         // No more scaleX, scaleY, scaleZ needed!
 
-        // Filter spots based on solid/ghost mode
+        // Filter spots based on solid/ghost mode and gene selection
         const filteredGeneBlocks = solidOnly 
-            ? blockData.geneData.filter(block => block.position[1] <= currentSliceY)  // solid spots
-            : blockData.geneData.filter(block => block.position[1] > currentSliceY);   // ghost spots
+            ? blockData.geneData.filter(block => 
+                block.position[1] <= currentSliceY && selectedGenes.has(block.gene_name))  // solid spots
+            : blockData.geneData.filter(block => 
+                block.position[1] > currentSliceY && selectedGenes.has(block.gene_name));   // ghost spots
         
         filteredGeneBlocks.forEach(spotBlock => {
             // Check if this spot has valid parent cell coordinates (not null, undefined, or background cell)
@@ -522,11 +665,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function createLayers() {
         const layers = [];
         
-        // Filter data once
+        // Filter data based on slice position and gene selection
         const solidStoneBlocks = blockData.stoneData.filter(block => block.position[1] <= currentSliceY);
-        const solidGeneBlocks = blockData.geneData.filter(block => block.position[1] <= currentSliceY);
+        const solidGeneBlocks = blockData.geneData.filter(block => 
+            block.position[1] <= currentSliceY && selectedGenes.has(block.gene_name));
         const transparentStoneBlocks = blockData.stoneData.filter(block => block.position[1] > currentSliceY);
-        const transparentGeneBlocks = blockData.geneData.filter(block => block.position[1] > currentSliceY);
+        const transparentGeneBlocks = blockData.geneData.filter(block => 
+            block.position[1] > currentSliceY && selectedGenes.has(block.gene_name));
         
         // Create layers with specific configurations
         const layerConfigs = [
@@ -722,6 +867,53 @@ document.addEventListener('DOMContentLoaded', function() {
             layers: createLayers()
         });
     });
+
+    // Handle gene widget close button
+    document.getElementById('geneWidgetClose').addEventListener('click', () => {
+        const widget = document.getElementById('chunkGeneWidget');
+        widget.classList.add('hidden');
+    });
+
+    // Handle gene search functionality
+    document.getElementById('geneSearch').addEventListener('input', (e) => {
+        filterGeneList(e.target.value);
+    });
+
+    // Handle toggle all genes
+    document.getElementById('toggleAllGenes').addEventListener('click', () => {
+        const totalGenes = availableGenes.size;
+        const selected = selectedGenes.size;
+        const shouldSelectAll = selected < totalGenes;
+        
+        if (shouldSelectAll) {
+            // Select all genes
+            availableGenes.forEach(gene => selectedGenes.add(gene));
+            console.log('🧬 Selecting all genes');
+        } else {
+            // Unselect all genes
+            selectedGenes.clear();
+            console.log('🧬 Unselecting all genes');
+        }
+        
+        // Update all checkboxes to match the new selection state
+        availableGenes.forEach(gene => {
+            const geneCheckbox = document.getElementById(`gene-${gene}`);
+            if (geneCheckbox) {
+                geneCheckbox.checked = selectedGenes.has(gene);
+            }
+        });
+        
+        updateToggleAllButton();
+        
+        // Update layers
+        deckgl.setProps({
+            layers: createLayers()
+        });
+    });
+
+    // Build gene controls after data is processed
+    buildGeneControls();
+    updateToggleAllButton();
 
     // Initialize slider display
     updateSliderDisplay();
