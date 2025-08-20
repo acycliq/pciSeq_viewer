@@ -113,7 +113,9 @@ function showChunkTooltip(info) {
             // Add parent coordinates if available
             if (obj.parent_cell_X !== undefined && obj.parent_cell_Y !== undefined && 
                 obj.parent_cell_X !== null && obj.parent_cell_Y !== null) {
-                parentInfo += `<strong>Parent Coords:</strong> (${obj.parent_cell_X.toFixed(2)}, ${obj.parent_cell_Y.toFixed(2)})<br>`;
+                const parentZInfo = obj.parent_cell_Z !== undefined && obj.parent_cell_Z !== null 
+                    ? `, ${obj.parent_cell_Z.toFixed(2)}` : '';
+                parentInfo += `<strong>Parent Coords:</strong> (${obj.parent_cell_X.toFixed(2)}, ${obj.parent_cell_Y.toFixed(2)}${parentZInfo})<br>`;
             }
         }
         
@@ -320,6 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 parent_cell_id: spot.parent_cell_id,
                 parent_cell_X: spot.parent_cell_X,
                 parent_cell_Y: spot.parent_cell_Y,
+                parent_cell_Z: spot.parent_cell_Z,
                 original_coords: {x: spot.x, y: spot.y, z: spot.z}
             });
         });
@@ -432,6 +435,70 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Create line data connecting spots to their parent cells
+    function createLinesData(solidOnly = true) {
+        const lines = [];
+        const originX = dataset.bounds.left;
+        const originY = dataset.bounds.top;
+        const originZ = 0; // Z coordinate origin (depth dimension)
+        const selectionWidth = dataset.bounds.right - dataset.bounds.left;
+        const selectionHeight = dataset.bounds.bottom - dataset.bounds.top;
+        const selectionDepth = dataset.bounds.depth;
+        const scaleX = blockData.bounds.maxX / selectionWidth;
+        const scaleY = blockData.bounds.maxY / selectionDepth;  // For Z → Y mapping
+        const scaleZ = blockData.bounds.maxZ / selectionHeight;
+
+        // Filter spots based on solid/ghost mode
+        const filteredGeneBlocks = solidOnly 
+            ? blockData.geneData.filter(block => block.position[1] <= currentSliceY)  // solid spots
+            : blockData.geneData.filter(block => block.position[1] > currentSliceY);   // ghost spots
+        
+        filteredGeneBlocks.forEach(spotBlock => {
+            // Check if this spot has valid parent cell coordinates (not null, undefined, or background cell)
+            if (spotBlock.parent_cell_X !== null && spotBlock.parent_cell_X !== undefined &&
+                spotBlock.parent_cell_Y !== null && spotBlock.parent_cell_Y !== undefined &&
+                spotBlock.parent_cell_Z !== null && spotBlock.parent_cell_Z !== undefined &&
+                spotBlock.parent_cell_id !== null && spotBlock.parent_cell_id !== undefined && 
+                spotBlock.parent_cell_id !== 0) {
+                
+                // Source position: spot position (already in viewer coordinates)
+                const sourcePosition = [
+                    spotBlock.position[0], // viewer X
+                    spotBlock.position[1], // viewer Y  
+                    spotBlock.position[2]  // viewer Z
+                ];
+                
+                // Target position: parent cell coordinates (need to transform to viewer coordinates)
+                const parentViewerX = Math.floor((spotBlock.parent_cell_X - originX) * scaleX);
+                const parentViewerY = Math.floor((spotBlock.parent_cell_Z - originZ) * scaleY); // Convert parent Z coordinate properly
+                const parentViewerZ = Math.floor((spotBlock.parent_cell_Y - originY) * scaleZ);
+                
+                const targetPosition = [
+                    parentViewerX,
+                    parentViewerY,
+                    parentViewerZ
+                ];
+                
+                // Use the gene color for the line, but make it semi-transparent
+                const geneColor = spotBlock.rgb || [255, 255, 255];
+                const lineColor = [geneColor[0], geneColor[1], geneColor[2], 128]; // 50% transparency
+                
+                lines.push({
+                    sourcePosition: sourcePosition,
+                    targetPosition: targetPosition,
+                    color: lineColor,
+                    gene: spotBlock.gene_name,
+                    spot_id: spotBlock.spot_id,
+                    parent_cell_id: spotBlock.parent_cell_id
+                });
+            }
+        });
+        
+        console.log(`Created ${lines.length} ${solidOnly ? 'solid' : 'ghost'} spot-to-parent lines from ${filteredGeneBlocks.length} spots`);
+        
+        return lines;
+    }
+
     function createLayers() {
         const layers = [];
         
@@ -453,6 +520,48 @@ document.addEventListener('DOMContentLoaded', function() {
             const layer = createMinecraftLayer(id, data, config);
             if (layer) layers.push(layer);
         });
+        
+        // Add solid lines for visible spots
+        const solidLinesData = createLinesData(true); // visible spots only
+        if (solidLinesData.length > 0) {
+            const solidLineLayer = new deck.LineLayer({
+                id: 'spot-to-parent-lines-solid',
+                data: solidLinesData,
+                getSourcePosition: d => d.sourcePosition,
+                getTargetPosition: d => d.targetPosition,
+                getColor: d => d.color,
+                getWidth: 5,
+                pickable: false,
+                parameters: {
+                    depthTest: true,
+                    depthMask: true,
+                    blend: true,
+                    blendFunc: [770, 771]
+                }
+            });
+            layers.push(solidLineLayer);
+        }
+        
+        // Add ghosted lines for spots above the slice
+        const ghostLinesData = createLinesData(false); // transparent spots only
+        if (ghostLinesData.length > 0) {
+            const ghostLineLayer = new deck.LineLayer({
+                id: 'spot-to-parent-lines-ghost',
+                data: ghostLinesData,
+                getSourcePosition: d => d.sourcePosition,
+                getTargetPosition: d => d.targetPosition,
+                getColor: d => [d.color[0], d.color[1], d.color[2], 25], // Very transparent (10% of original alpha)
+                getWidth: 5,
+                pickable: false,
+                parameters: {
+                    depthTest: true,
+                    depthMask: false,
+                    blend: true,
+                    blendFunc: [770, 771]
+                }
+            });
+            layers.push(ghostLineLayer);
+        }
         
         return layers;
     }

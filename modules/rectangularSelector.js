@@ -185,7 +185,8 @@ export class RectangularSelector {
                         spot_id: spot.spot_id,
                         parent_cell_id: spot.neighbour || null,
                         parent_cell_X: parentCell ? parentCell.position.x : null,
-                        parent_cell_Y: parentCell ? parentCell.position.y : null
+                        parent_cell_Y: parentCell ? parentCell.position.y : null,
+                        parent_cell_Z: parentCell ? parentCell.position.z : null
                     });
                 }
             });

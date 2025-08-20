@@ -37,6 +37,7 @@ function generateTestDataset() {
       const parent_cell_id = hasParentCell ? Math.floor(Math.random() * 50) + 1 : null;
       const parent_cell_X = hasParentCell ? x + (Math.random() - 0.5) * 20 : null;
       const parent_cell_Y = hasParentCell ? y + (Math.random() - 0.5) * 20 : null;
+      const parent_cell_Z = hasParentCell ? z + (Math.random() - 0.5) * 5 : null;
       
       spots.push({
         gene: gene,
@@ -47,7 +48,8 @@ function generateTestDataset() {
         spot_id: `plane${planeId}_spot_${i.toString().padStart(3, '0')}`,
         parent_cell_id: parent_cell_id,
         parent_cell_X: parent_cell_X,
-        parent_cell_Y: parent_cell_Y
+        parent_cell_Y: parent_cell_Y,
+        parent_cell_Z: parent_cell_Z
       });
     }
   }
