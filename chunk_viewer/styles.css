@@ -220,7 +220,7 @@ canvas:active {
     color: white;
     cursor: pointer;
     transition: background-color 0.15s ease;
-    gap: 12px;
+    gap: 8px;
 }
 
 .gene-item:hover {
@@ -237,6 +237,7 @@ canvas:active {
     height: 20px;
     border-radius: 2px;
     flex-shrink: 0;
+    margin-left: -4px;
 }
 
 .gene-name {

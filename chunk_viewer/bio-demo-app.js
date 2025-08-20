@@ -536,8 +536,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             geneItem.appendChild(checkbox);
-            geneItem.appendChild(glyph);
             geneItem.appendChild(nameSpan);
+            geneItem.appendChild(glyph);
             
             geneList.appendChild(geneItem);
         });
