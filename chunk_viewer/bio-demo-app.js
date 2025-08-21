@@ -407,9 +407,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const INITIAL_VIEW_STATE = {
         target: [blockData.bounds.maxX/2, blockData.bounds.maxY/2, blockData.bounds.maxZ/2], // Center of actual chunk dimensions
-        zoom: 3,
+        zoom: 2,
         orbitAxis: 'Y',
-        rotationX: 45,
+        rotationX: 0,
         rotationOrbit: -30,
         minZoom: 0,
         maxZoom: 20
