@@ -174,20 +174,30 @@ varying vec2 vTextureCoords;
 varying vec4 vInstanceBlockData;
 varying float vInstanceGeneId;
 
+const float TOLERANCE = 0.1;
+
 void main(void) {
   if (isVisible == 0.) {
     discard;
   }
 
-  // Check if this is gene data using gene_id (>= 0, since -1 indicates grey cube)
-  bool isGeneData = (vInstanceGeneId >= 0.0);
+  // Check voxel type using gene_id with precision-safe range checks
+  // Use TOLERANCE to allow for floating point rounding errors
+  bool isGeneData = (vInstanceGeneId >= 0.0 - TOLERANCE);
+  bool isCellVoxel = (vInstanceGeneId >= -2.0 - TOLERANCE &&
+                      vInstanceGeneId <= -2.0 + TOLERANCE);
   
   vec4 color;
   if (isGeneData) {
     // Gene spots: use RGB data directly
     color = vec4(vInstanceBlockData.rgb / 255.0, 1.0);
+  } else if (isCellVoxel) {
+    // Cell voxels: flat blue color (with some texture)
+    vec4 cell_rgb = vec4(0.3, 0.6, 1.0, 1.0);
+    vec4 textureColor = texture2D(atlasTexture, vTextureCoords);
+    color = mix(textureColor, cell_rgb, 0.5);
   } else {
-    // Grey cubes: use Minecraft stone texture, fallback to grey if texture fails
+    // Stone voxels: use Minecraft stone texture, fallback to grey if texture fails
     vec4 textureColor = texture2D(atlasTexture, vTextureCoords);
     if (textureColor.a > 0.0) {
       color = textureColor;
