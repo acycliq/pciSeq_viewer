@@ -456,6 +456,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let showSpotLines = true; // Toggle for showing spot-to-parent lines
     let showBackground = true; // Toggle for showing background stone voxels
     let showHoleVoxels = false; // Toggle for showing hole voxels (cell boundary shapes)
+    let showGhosting = true; // Toggle for showing ghosting effects
     
     // Calculate anisotropic scale from config or data
     let anisotropicScale = 1.0; // Default to isotropic (1:1) if no other info available
@@ -717,20 +718,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 parameters: { depthMask: true } 
             }],
             ['stone-background-transparent', transparentStoneVoxels, {
-                visible: showBackground,  // ← Use visible property for background control
+                visible: showBackground && showGhosting,  // Hide if ghosting disabled
                 ghostOpacity: ghostOpacity, 
                 pickable: false, 
                 autoHighlight: false, 
                 parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } 
             }],
             ['hole-stone-transparent', transparentCellVoxels, {
-                visible: showHoleVoxels,  // ← Use visible property for hole voxel control
+                visible: showHoleVoxels && showGhosting,  // Hide if ghosting disabled
                 ghostOpacity: ghostOpacity, 
                 pickable: false, 
                 autoHighlight: false, 
                 parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } 
             }],
             ['gene-spots-transparent', transparentGeneVoxels, {
+                visible: showGhosting,  // Hide if ghosting disabled
                 ghostOpacity: 0.1, 
                 pickable: true, 
                 autoHighlight: false, 
@@ -766,25 +768,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 layers.push(solidLineLayer);
             }
             
-            // Add ghosted lines for spots above the slice
-            const ghostLinesData = createLinesData(false); // transparent spots only
-            if (ghostLinesData.length > 0) {
-                const ghostLineLayer = new deck.LineLayer({
-                    id: 'spot-to-parent-lines-ghost',
-                    data: ghostLinesData,
-                    getSourcePosition: d => d.sourcePosition,
-                    getTargetPosition: d => d.targetPosition,
-                    getColor: d => [d.color[0], d.color[1], d.color[2], 25], // Very transparent (10% of original alpha)
-                    getWidth: 3,
-                    pickable: false,
-                    parameters: {
-                        depthTest: true,
-                        depthMask: false,
-                        blend: true,
-                        blendFunc: [770, 771]
-                    }
-                });
-                layers.push(ghostLineLayer);
+            // Add ghosted lines for spots above the slice (only if ghosting enabled)
+            if (showGhosting) {
+                const ghostLinesData = createLinesData(false); // transparent spots only
+                if (ghostLinesData.length > 0) {
+                    const ghostLineLayer = new deck.LineLayer({
+                        id: 'spot-to-parent-lines-ghost',
+                        data: ghostLinesData,
+                        getSourcePosition: d => d.sourcePosition,
+                        getTargetPosition: d => d.targetPosition,
+                        getColor: d => [d.color[0], d.color[1], d.color[2], 25], // Very transparent (10% of original alpha)
+                        getWidth: 3,
+                        pickable: false,
+                        parameters: {
+                            depthTest: true,
+                            depthMask: false,
+                            blend: true,
+                            blendFunc: [770, 771]
+                        }
+                    });
+                    layers.push(ghostLineLayer);
+                }
             }
         }
         
@@ -913,6 +917,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (showHoleVoxels) {
             console.log('💡 Tip: Consider hiding background for clearer cell boundary visualization');
         }
+        
+        deckgl.setProps({
+            layers: createLayers()
+        });
+    });
+
+    // Handle ghosting toggle
+    document.getElementById('showGhostingToggle').addEventListener('change', (e) => {
+        showGhosting = e.target.checked;
+        console.log('Show ghosting:', showGhosting);
         
         deckgl.setProps({
             layers: createLayers()
