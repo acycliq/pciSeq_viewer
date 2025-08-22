@@ -351,11 +351,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         boundaryVoxels.push({
                             position: [viewerX, viewerY, viewerZ],
                             blockId: 1, // Stone block
-                            blockData: 0,
+                            blockData: 0, // Not used for boundary voxels
                             temperature: 0.5,
                             humidity: 0.5,
                             lighting: 15,
-                            gene_id: -3, // -3 indicates boundary voxel (red rendering)
+                            gene_id: -1000000 - cell.cellId, // Encode cell ID as negative value for boundary voxels
                             index: boundaryVoxels.length,
                             planeId: cell.plane,
                             cellId: cell.cellId, // Track which cell this boundary belongs to
@@ -369,6 +369,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const boundaryEndTime = performance.now();
         console.log(`✅ Boundary tracing completed in ${(boundaryEndTime - boundaryStartTime).toFixed(1)}ms`);
         console.log(`🔴 Boundary voxels created: ${boundaryVoxels.length} voxels from ${dataset.cells.count} cells`);
+        
+        // Debug: Log cell IDs and their encoded gene_id values
+        const uniqueCellIds = [...new Set(boundaryVoxels.map(v => v.cellId))];
+        console.log('🔍 Debug: Cell IDs in boundary voxels:', uniqueCellIds);
+        uniqueCellIds.forEach(cellId => {
+            const encodedGeneId = -1000000 - cellId;
+            const voxelCount = boundaryVoxels.filter(v => v.cellId === cellId).length;
+            console.log(`  Cell ${cellId}: encoded as gene_id ${encodedGeneId}, ${voxelCount} voxels`);
+        });
 
         // Transform gene spots to colored blocks (with coordinate transpose)
         dataset.spots.data.forEach((spot, index) => {
