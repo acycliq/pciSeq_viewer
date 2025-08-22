@@ -213,6 +213,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function transformBioDataToBlocks(dataset) {
         const geneBlocks = [];
         const stoneBlocks = [];
+        const holeStoneBlocks = []; // New array for voxels inside cell boundaries
         
         // Convert bounds to integers - floor all bounds consistently
         const bounds = {
@@ -269,7 +270,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Check if this position is inside a cell boundary on this plane
                     if (isInsideCellBoundary(x, z, planeId, dataset, bounds)) {
                         holesCreated++;
-                        continue; // Skip creating stone block - create hole for cell
+                        
+                        // Create hole stone block (voxel inside cell boundary)
+                        holeStoneBlocks.push({
+                            position: [x, y, z], // x=width, y=plane-position, z=front-to-back
+                            blockId: 1, // Stone
+                            blockData: 0,
+                            temperature: 0.5,
+                            humidity: 0.5,
+                            lighting: 15,
+                            gene_id: -2, // -2 indicates hole stone block (inside cell)
+                            index: holeStoneBlocks.length,
+                            planeId: planeId // Store which plane this hole stone belongs to
+                        });
+                        
+                        continue; // Skip creating regular stone block - create hole for cell
                     }
                     
                     // Generate stone blocks at plane positions (outside cell boundaries)
@@ -292,6 +307,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(`✅ Stone creation completed in ${(stoneEndTime - stoneStartTime).toFixed(1)}ms`);
         console.log(`📊 Performance: ${totalPlanes} planes, ${totalBlocks} blocks processed, ${stoneBlocks.length} stone blocks created`);
         console.log(`🕳️ Cell boundary holes: ${holesCreated} holes created (${((holesCreated/totalBlocks)*100).toFixed(1)}% of total blocks)`);
+        console.log(`🧱 Hole stone blocks: ${holeStoneBlocks.length} voxels inside cell boundaries`);
         
         // Debug: Show stone positions from different planes
         console.log('🏗️ Sample stone positions across different planes:');
@@ -364,13 +380,15 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log('🎨 Gene colors:', Object.fromEntries(geneColors));
 
-        console.log('Transformed', geneBlocks.length, 'gene spots and', stoneBlocks.length, 'stone blocks');
+        console.log('Transformed', geneBlocks.length, 'gene spots,', stoneBlocks.length, 'stone blocks, and', holeStoneBlocks.length, 'hole stone blocks');
         console.log('Sample gene block:', geneBlocks[0]);
         console.log('Sample stone block:', stoneBlocks[0]);
+        console.log('Sample hole stone block:', holeStoneBlocks[0]);
         
         return {
             geneData: geneBlocks,
             stoneData: stoneBlocks,
+            holeStoneData: holeStoneBlocks, // Add hole stone data to return object
             bounds: {
                 minX: 0,
                 maxX: maxX,
@@ -437,6 +455,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentPlaneId = 0; // Current plane_id for slider display
     let showSpotLines = true; // Toggle for showing spot-to-parent lines
     let showBackground = true; // Toggle for showing background stone voxels
+    let showHoleVoxels = false; // Toggle for showing hole voxels (cell boundary shapes)
     
     // Calculate anisotropic scale from config or data
     let anisotropicScale = 1.0; // Default to isotropic (1:1) if no other info available
@@ -673,10 +692,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const transparentGeneBlocks = blockData.geneData.filter(block => 
             block.position[1] > currentSliceY && selectedGenes.has(block.gene_name));
         
+        // Filter hole stone blocks based on slice position
+        const solidHoleStoneBlocks = blockData.holeStoneData.filter(block => block.position[1] <= currentSliceY);
+        const transparentHoleStoneBlocks = blockData.holeStoneData.filter(block => block.position[1] > currentSliceY);
+        
         // Create layers with specific configurations
         const layerConfigs = [
             ['stone-background-solid', solidStoneBlocks, { 
                 visible: showBackground,  // ← Use visible property for background control
+                pickable: false, 
+                autoHighlight: false, 
+                parameters: { depthMask: true } 
+            }],
+            ['hole-stone-solid', solidHoleStoneBlocks, { 
+                visible: showHoleVoxels,  // ← Use visible property for hole voxel control
                 pickable: false, 
                 autoHighlight: false, 
                 parameters: { depthMask: true } 
@@ -689,6 +718,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }],
             ['stone-background-transparent', transparentStoneBlocks, { 
                 visible: showBackground,  // ← Use visible property for background control
+                ghostOpacity: ghostOpacity, 
+                pickable: false, 
+                autoHighlight: false, 
+                parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } 
+            }],
+            ['hole-stone-transparent', transparentHoleStoneBlocks, { 
+                visible: showHoleVoxels,  // ← Use visible property for hole voxel control
                 ghostOpacity: ghostOpacity, 
                 pickable: false, 
                 autoHighlight: false, 
@@ -862,6 +898,21 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('showBackgroundToggle').addEventListener('change', (e) => {
         showBackground = e.target.checked;
         console.log('Show background:', showBackground);
+        
+        deckgl.setProps({
+            layers: createLayers()
+        });
+    });
+
+    // Handle show hole voxels toggle
+    document.getElementById('showHoleVoxelsToggle').addEventListener('change', (e) => {
+        showHoleVoxels = e.target.checked;
+        console.log('Show hole voxels:', showHoleVoxels);
+        
+        // When showing hole voxels, optionally hide background for better visualization
+        if (showHoleVoxels) {
+            console.log('💡 Tip: Consider hiding background for clearer cell boundary visualization');
+        }
         
         deckgl.setProps({
             layers: createLayers()
