@@ -3,6 +3,9 @@
  * Main application logic extracted from bio-demo.html
  */
 
+// Import boundary tracing functionality
+import { traceBoundaryPixels } from '../modules/boundaryTracer.js';
+
 // Gene color mapping function using glyph configuration
 function getGeneColor(geneName) {
     // Use glyph configuration if available
@@ -214,6 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const geneVoxels = [];
         const stoneVoxels = []; // will represent the background
         const cellVoxels = []; // voxels inside cell boundaries
+        const boundaryVoxels = []; // voxels for traced cell boundary lines
         
         // Convert bounds to integers - floor all bounds consistently
         const bounds = {
@@ -320,6 +324,52 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
+        // Create boundary voxels by tracing lines between consecutive vertices
+        console.log('🔍 Creating boundary voxels from clipped boundaries...');
+        const boundaryStartTime = performance.now();
+        
+        // Process all cells and trace their boundaries
+        dataset.cells.data.forEach((cell, cellIndex) => {
+            if (cell.clippedBoundary && Array.isArray(cell.clippedBoundary) && cell.clippedBoundary.length > 1) {
+                // Trace boundary pixels using Bresenham's algorithm
+                const boundaryPixels = traceBoundaryPixels(cell.clippedBoundary);
+                
+                // Convert each boundary pixel to a voxel
+                boundaryPixels.forEach((pixel, pixelIndex) => {
+                    const [pixelX, pixelY] = pixel;
+                    
+                    // Convert from original coordinates to viewer coordinates
+                    const viewerX = pixelX - bounds.left;  // original X → viewer X
+                    const viewerZ = pixelY - bounds.top;   // original Y → viewer Z
+                    const viewerY = planeIdToSliceY(cell.plane); // plane → viewer Y
+                    
+                    // Bounds checking to ensure voxel is within selection area
+                    if (viewerX >= 0 && viewerX < maxX && 
+                        viewerZ >= 0 && viewerZ < maxZ && 
+                        viewerY >= 0 && viewerY < maxY) {
+                        
+                        boundaryVoxels.push({
+                            position: [viewerX, viewerY, viewerZ],
+                            blockId: 1, // Stone block
+                            blockData: 0,
+                            temperature: 0.5,
+                            humidity: 0.5,
+                            lighting: 15,
+                            gene_id: -3, // -3 indicates boundary voxel (red rendering)
+                            index: boundaryVoxels.length,
+                            planeId: cell.plane,
+                            cellId: cell.cellId, // Track which cell this boundary belongs to
+                            pixelIndex: pixelIndex // Track position within boundary
+                        });
+                    }
+                });
+            }
+        });
+        
+        const boundaryEndTime = performance.now();
+        console.log(`✅ Boundary tracing completed in ${(boundaryEndTime - boundaryStartTime).toFixed(1)}ms`);
+        console.log(`🔴 Boundary voxels created: ${boundaryVoxels.length} voxels from ${dataset.cells.count} cells`);
+
         // Transform gene spots to colored blocks (with coordinate transpose)
         dataset.spots.data.forEach((spot, index) => {
             // Convert spot coordinates to integers by dropping decimals
@@ -380,15 +430,17 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log('🎨 Gene colors:', Object.fromEntries(geneColors));
 
-        console.log('Transformed', geneVoxels.length, 'gene spots,', stoneVoxels.length, 'stone blocks, and', cellVoxels.length, 'hole stone blocks');
+        console.log('Transformed', geneVoxels.length, 'gene spots,', stoneVoxels.length, 'stone blocks,', cellVoxels.length, 'hole stone blocks, and', boundaryVoxels.length, 'boundary voxels');
         console.log('Sample gene block:', geneVoxels[0]);
         console.log('Sample stone block:', stoneVoxels[0]);
         console.log('Sample hole stone block:', cellVoxels[0]);
+        console.log('Sample boundary voxel:', boundaryVoxels[0]);
         
         return {
             geneData: geneVoxels,
             stoneData: stoneVoxels,
             holeStoneData: cellVoxels, // Add hole stone data to return object
+            boundaryData: boundaryVoxels, // Add boundary voxel data to return object
             bounds: {
                 minX: 0,
                 maxX: maxX,
@@ -456,6 +508,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let showSpotLines = true; // Toggle for showing spot-to-parent lines
     let showBackground = true; // Toggle for showing background stone voxels
     let showHoleVoxels = false; // Toggle for showing hole voxels (cell boundary shapes)
+    let showBoundaryVoxels = false; // Toggle for showing boundary voxels (red cell outlines)
     let showGhosting = true; // Toggle for showing ghosting effects
     
     // Calculate anisotropic scale from config or data
@@ -697,6 +750,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const solidCellVoxels = blockData.holeStoneData.filter(block => block.position[1] <= currentSliceY);
         const transparentCellVoxels = blockData.holeStoneData.filter(block => block.position[1] > currentSliceY);
         
+        // Filter boundary voxels based on slice position
+        const solidBoundaryVoxels = blockData.boundaryData.filter(block => block.position[1] <= currentSliceY);
+        const transparentBoundaryVoxels = blockData.boundaryData.filter(block => block.position[1] > currentSliceY);
+        
         // Create layers with specific configurations
         const layerConfigs = [
             ['stone-background-solid', solidStoneVoxels, {
@@ -707,6 +764,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }],
             ['hole-stone-solid', solidCellVoxels, {
                 visible: showHoleVoxels,  // ← Use visible property for hole voxel control
+                pickable: false, 
+                autoHighlight: false, 
+                parameters: { depthMask: true } 
+            }],
+            ['boundary-solid', solidBoundaryVoxels, {
+                visible: showBoundaryVoxels,  // ← Use visible property for boundary voxel control
                 pickable: false, 
                 autoHighlight: false, 
                 parameters: { depthMask: true } 
@@ -726,6 +789,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }],
             ['hole-stone-transparent', transparentCellVoxels, {
                 visible: showHoleVoxels && showGhosting,  // Hide if ghosting disabled
+                ghostOpacity: ghostOpacity, 
+                pickable: false, 
+                autoHighlight: false, 
+                parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } 
+            }],
+            ['boundary-transparent', transparentBoundaryVoxels, {
+                visible: showBoundaryVoxels && showGhosting,  // Hide if ghosting disabled
                 ghostOpacity: ghostOpacity, 
                 pickable: false, 
                 autoHighlight: false, 
@@ -916,6 +986,21 @@ document.addEventListener('DOMContentLoaded', function() {
         // When showing hole voxels, optionally hide background for better visualization
         if (showHoleVoxels) {
             console.log('💡 Tip: Consider hiding background for clearer cell boundary visualization');
+        }
+        
+        deckgl.setProps({
+            layers: createLayers()
+        });
+    });
+
+    // Handle show boundary voxels toggle
+    document.getElementById('showBoundaryVoxelsToggle').addEventListener('change', (e) => {
+        showBoundaryVoxels = e.target.checked;
+        console.log('Show boundary voxels:', showBoundaryVoxels);
+        
+        // When showing boundary voxels, optionally hide background for better visualization
+        if (showBoundaryVoxels) {
+            console.log('🔴 Showing traced cell boundary voxels in red');
         }
         
         deckgl.setProps({

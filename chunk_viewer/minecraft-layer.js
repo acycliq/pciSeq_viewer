@@ -186,6 +186,8 @@ void main(void) {
   bool isGeneData = (vInstanceGeneId >= 0.0 - TOLERANCE);
   bool isCellVoxel = (vInstanceGeneId >= -2.0 - TOLERANCE &&
                       vInstanceGeneId <= -2.0 + TOLERANCE);
+  bool isBoundaryVoxel = (vInstanceGeneId >= -3.0 - TOLERANCE &&
+                          vInstanceGeneId <= -3.0 + TOLERANCE);
   
   vec4 color;
   if (isGeneData) {
@@ -196,6 +198,11 @@ void main(void) {
     vec4 cell_rgb = vec4(0.3, 0.6, 1.0, 1.0);
     vec4 textureColor = texture2D(atlasTexture, vTextureCoords);
     color = mix(textureColor, cell_rgb, 0.5);
+  } else if (isBoundaryVoxel) {
+    // Boundary voxels: flat red color (with some texture)
+    vec4 boundary_rgb = vec4(1.0, 0.3, 0.3, 1.0);
+    vec4 textureColor = texture2D(atlasTexture, vTextureCoords);
+    color = mix(textureColor, boundary_rgb, 0.6);
   } else {
     // Stone voxels: use Minecraft stone texture, fallback to grey if texture fails
     vec4 textureColor = texture2D(atlasTexture, vTextureCoords);
