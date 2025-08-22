@@ -211,9 +211,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Transform biological data to minecraft-layer format
     async function transformBioDataToBlocks(dataset) {
-        const geneBlocks = [];
-        const stoneBlocks = [];
-        const holeStoneBlocks = []; // New array for voxels inside cell boundaries
+        const geneVoxels = [];
+        const stoneVoxels = []; // will represent the background
+        const cellVoxels = []; // voxels inside cell boundaries
         
         // Convert bounds to integers - floor all bounds consistently
         const bounds = {
@@ -272,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         holesCreated++;
                         
                         // Create hole stone block (voxel inside cell boundary)
-                        holeStoneBlocks.push({
+                        cellVoxels.push({
                             position: [x, y, z], // x=width, y=plane-position, z=front-to-back
                             blockId: 1, // Stone
                             blockData: 0,
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             humidity: 0.5,
                             lighting: 15,
                             gene_id: -2, // -2 indicates hole stone block (inside cell)
-                            index: holeStoneBlocks.length,
+                            index: cellVoxels.length,
                             planeId: planeId // Store which plane this hole stone belongs to
                         });
                         
@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     // Generate stone blocks at plane positions (outside cell boundaries)
-                    stoneBlocks.push({
+                    stoneVoxels.push({
                         position: [x, y, z], // x=width, y=plane-position, z=front-to-back
                         blockId: 1, // Stone
                         blockData: 0,
@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         humidity: 0.5,
                         lighting: 15,
                         gene_id: -1, // -1 indicates stone block (not gene data)
-                        index: stoneBlocks.length,
+                        index: stoneVoxels.length,
                         planeId: planeId // Store which plane this stone belongs to
                     });
                 }
@@ -305,15 +305,15 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const stoneEndTime = performance.now();
         console.log(`✅ Stone creation completed in ${(stoneEndTime - stoneStartTime).toFixed(1)}ms`);
-        console.log(`📊 Performance: ${totalPlanes} planes, ${totalBlocks} blocks processed, ${stoneBlocks.length} stone blocks created`);
+        console.log(`📊 Performance: ${totalPlanes} planes, ${totalBlocks} blocks processed, ${stoneVoxels.length} stone blocks created`);
         console.log(`🕳️ Cell boundary holes: ${holesCreated} holes created (${((holesCreated/totalBlocks)*100).toFixed(1)}% of total blocks)`);
-        console.log(`🧱 Hole stone blocks: ${holeStoneBlocks.length} voxels inside cell boundaries`);
+        console.log(`🧱 Hole stone blocks: ${cellVoxels.length} voxels inside cell boundaries`);
         
         // Debug: Show stone positions from different planes
         console.log('🏗️ Sample stone positions across different planes:');
         const planesToShow = [0, 1, 2, 3, 4, 5];
         planesToShow.forEach(targetPlane => {
-            const stonesFromPlane = stoneBlocks.filter(stone => stone.planeId === targetPlane);
+            const stonesFromPlane = stoneVoxels.filter(stone => stone.planeId === targetPlane);
             if (stonesFromPlane.length > 0) {
                 const stone = stonesFromPlane[0]; // Show first stone from this plane
                 console.log(`  Plane ${targetPlane}: Y=${stone.position[1]}, sample stone pos=[${stone.position[0]}, ${stone.position[1]}, ${stone.position[2]}] (${stonesFromPlane.length} total stones)`);
@@ -339,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Get gene color from main viewer's glyph configuration
             const rgb = getGeneColor(spot.gene);
 
-            geneBlocks.push({
+            geneVoxels.push({
                 position: [x, y, z], // x=width, y=top-to-bottom(slicing), z=front-to-back
                 blockId: 1,
                 blockData: 0,
@@ -380,15 +380,15 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log('🎨 Gene colors:', Object.fromEntries(geneColors));
 
-        console.log('Transformed', geneBlocks.length, 'gene spots,', stoneBlocks.length, 'stone blocks, and', holeStoneBlocks.length, 'hole stone blocks');
-        console.log('Sample gene block:', geneBlocks[0]);
-        console.log('Sample stone block:', stoneBlocks[0]);
-        console.log('Sample hole stone block:', holeStoneBlocks[0]);
+        console.log('Transformed', geneVoxels.length, 'gene spots,', stoneVoxels.length, 'stone blocks, and', cellVoxels.length, 'hole stone blocks');
+        console.log('Sample gene block:', geneVoxels[0]);
+        console.log('Sample stone block:', stoneVoxels[0]);
+        console.log('Sample hole stone block:', cellVoxels[0]);
         
         return {
-            geneData: geneBlocks,
-            stoneData: stoneBlocks,
-            holeStoneData: holeStoneBlocks, // Add hole stone data to return object
+            geneData: geneVoxels,
+            stoneData: stoneVoxels,
+            holeStoneData: cellVoxels, // Add hole stone data to return object
             bounds: {
                 minX: 0,
                 maxX: maxX,
@@ -625,13 +625,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // No more scaleX, scaleY, scaleZ needed!
 
         // Filter spots based on solid/ghost mode and gene selection
-        const filteredGeneBlocks = solidOnly 
+        const filteredGeneVoxels = solidOnly
             ? blockData.geneData.filter(block => 
                 block.position[1] <= currentSliceY && selectedGenes.has(block.gene_name))  // solid spots
             : blockData.geneData.filter(block => 
                 block.position[1] > currentSliceY && selectedGenes.has(block.gene_name));   // ghost spots
         
-        filteredGeneBlocks.forEach(spotBlock => {
+        filteredGeneVoxels.forEach(spotBlock => {
             // Check if this spot has valid parent cell coordinates (not null, undefined, or background cell)
             if (spotBlock.parent_cell_X !== null && spotBlock.parent_cell_X !== undefined &&
                 spotBlock.parent_cell_Y !== null && spotBlock.parent_cell_Y !== undefined &&
@@ -676,7 +676,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        console.log(`Created ${lines.length} ${solidOnly ? 'solid' : 'ghost'} spot-to-parent lines from ${filteredGeneBlocks.length} spots`);
+        console.log(`Created ${lines.length} ${solidOnly ? 'solid' : 'ghost'} spot-to-parent lines from ${filteredGeneVoxels.length} spots`);
         
         return lines;
     }
@@ -685,52 +685,52 @@ document.addEventListener('DOMContentLoaded', function() {
         const layers = [];
         
         // Filter data based on slice position and gene selection
-        const solidStoneBlocks = blockData.stoneData.filter(block => block.position[1] <= currentSliceY);
-        const solidGeneBlocks = blockData.geneData.filter(block => 
+        const solidStoneVoxels = blockData.stoneData.filter(block => block.position[1] <= currentSliceY);
+        const solidGeneVoxels = blockData.geneData.filter(block =>
             block.position[1] <= currentSliceY && selectedGenes.has(block.gene_name));
-        const transparentStoneBlocks = blockData.stoneData.filter(block => block.position[1] > currentSliceY);
-        const transparentGeneBlocks = blockData.geneData.filter(block => 
+        const transparentStoneVoxels = blockData.stoneData.filter(block => block.position[1] > currentSliceY);
+        const transparentGeneVoxels = blockData.geneData.filter(block =>
             block.position[1] > currentSliceY && selectedGenes.has(block.gene_name));
         
         // Filter hole stone blocks based on slice position
-        const solidHoleStoneBlocks = blockData.holeStoneData.filter(block => block.position[1] <= currentSliceY);
-        const transparentHoleStoneBlocks = blockData.holeStoneData.filter(block => block.position[1] > currentSliceY);
+        const solidCellVoxels = blockData.holeStoneData.filter(block => block.position[1] <= currentSliceY);
+        const transparentCellVoxels = blockData.holeStoneData.filter(block => block.position[1] > currentSliceY);
         
         // Create layers with specific configurations
         const layerConfigs = [
-            ['stone-background-solid', solidStoneBlocks, { 
+            ['stone-background-solid', solidStoneVoxels, {
                 visible: showBackground,  // ← Use visible property for background control
                 pickable: false, 
                 autoHighlight: false, 
                 parameters: { depthMask: true } 
             }],
-            ['hole-stone-solid', solidHoleStoneBlocks, { 
+            ['hole-stone-solid', solidCellVoxels, {
                 visible: showHoleVoxels,  // ← Use visible property for hole voxel control
                 pickable: false, 
                 autoHighlight: false, 
                 parameters: { depthMask: true } 
             }],
-            ['gene-spots-solid', solidGeneBlocks, { 
+            ['gene-spots-solid', solidGeneVoxels, {
                 pickable: true, 
                 autoHighlight: true, 
                 highlightColor: [255, 255, 255, 200], 
                 parameters: { depthMask: true } 
             }],
-            ['stone-background-transparent', transparentStoneBlocks, { 
+            ['stone-background-transparent', transparentStoneVoxels, {
                 visible: showBackground,  // ← Use visible property for background control
                 ghostOpacity: ghostOpacity, 
                 pickable: false, 
                 autoHighlight: false, 
                 parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } 
             }],
-            ['hole-stone-transparent', transparentHoleStoneBlocks, { 
+            ['hole-stone-transparent', transparentCellVoxels, {
                 visible: showHoleVoxels,  // ← Use visible property for hole voxel control
                 ghostOpacity: ghostOpacity, 
                 pickable: false, 
                 autoHighlight: false, 
                 parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } 
             }],
-            ['gene-spots-transparent', transparentGeneBlocks, { 
+            ['gene-spots-transparent', transparentGeneVoxels, {
                 ghostOpacity: 0.1, 
                 pickable: true, 
                 autoHighlight: false, 
@@ -835,11 +835,11 @@ document.addEventListener('DOMContentLoaded', function() {
         sliderValueElement.textContent = `Plane: ${currentDisplayPlaneId}/${maxPlaneId}`;
         
         // Also show how many blocks are visible
-        const visibleStoneBlocks = blockData.stoneData.filter(block => block.position[1] <= currentSliceY).length;
-        const visibleGeneBlocks = blockData.geneData.filter(block => block.position[1] <= currentSliceY).length;
+        const visibleStoneVoxels = blockData.stoneData.filter(block => block.position[1] <= currentSliceY).length;
+        const visibleGeneVoxels = blockData.geneData.filter(block => block.position[1] <= currentSliceY).length;
         sliderValueElement.innerHTML = `
             Plane ID: ${currentDisplayPlaneId}/${maxPlaneId}<br>
-            <small>Stone: ${visibleStoneBlocks} | Genes: ${visibleGeneBlocks} | SliceY: ${currentSliceY}</small>
+            <small>Stone: ${visibleStoneVoxels} | Genes: ${visibleGeneVoxels} | SliceY: ${currentSliceY}</small>
         `;
     }
 
