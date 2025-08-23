@@ -331,6 +331,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Process all cells and trace their boundaries
         dataset.cells.data.forEach((cell, cellIndex) => {
             if (cell.clippedBoundary && Array.isArray(cell.clippedBoundary) && cell.clippedBoundary.length > 1) {
+                
+                // Convert hex color to RGB if available
+                let cellRgb = [255, 51, 51]; // Default red color
+                if (cell.cellColor) {
+                    const hex = cell.cellColor.replace('#', '');
+                    cellRgb = [
+                        parseInt(hex.substr(0, 2), 16),
+                        parseInt(hex.substr(2, 2), 16),
+                        parseInt(hex.substr(4, 2), 16)
+                    ];
+                }
+                
                 // Trace boundary pixels using Bresenham's algorithm
                 const boundaryPixels = traceBoundaryPixels(cell.clippedBoundary);
                 
@@ -357,7 +369,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             lighting: 15,
                             gene_id: -1000000 - cell.cellId, // Encode cell ID as negative value for boundary voxels
                             index: boundaryVoxels.length,
-                            rgb: [0, 255, 0],
+                            rgb: cellRgb, // Use the actual cell color from selection data
                             planeId: cell.plane,
                             cellId: cell.cellId, // Track which cell this boundary belongs to
                             pixelIndex: pixelIndex // Track position within boundary
