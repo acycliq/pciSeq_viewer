@@ -357,6 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             lighting: 15,
                             gene_id: -1000000 - cell.cellId, // Encode cell ID as negative value for boundary voxels
                             index: boundaryVoxels.length,
+                            rgb: [0, 255, 0],
                             planeId: cell.plane,
                             cellId: cell.cellId, // Track which cell this boundary belongs to
                             pixelIndex: pixelIndex // Track position within boundary

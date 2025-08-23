@@ -198,21 +198,8 @@ void main(void) {
     vec4 textureColor = texture2D(atlasTexture, vTextureCoords);
     color = mix(textureColor, cell_rgb, 0.5);
   } else if (isBoundaryVoxel) {
-    // Boundary voxels: decode cell ID from gene_id and apply cell-specific colors
-    float cellId = -1000000.0 - vInstanceGeneId; // Decode cell ID from negative gene_id
-    vec4 boundary_rgb;
-    
-    // Cell-specific colors
-    if (abs(cellId - 15449.0) < 0.5) {
-      // Cell 15449: Green
-      boundary_rgb = vec4(0.2, 1.0, 0.2, 1.0);
-    } else if (abs(cellId - 11326.0) < 0.5) {
-      // Cell 11326: Bright Yellow
-      boundary_rgb = vec4(1.0, 1.0, 0.2, 1.0);
-    } else {
-      // Default: Red-ish color
-      boundary_rgb = vec4(1.0, 0.3, 0.3, 1.0);
-    }
+    // Boundary voxels: use RGB data from boundary voxel definition
+    vec4 boundary_rgb = vec4(vInstanceBlockData.rgb / 255.0, 1.0);
     
     vec4 textureColor = texture2D(atlasTexture, vTextureCoords);
     color = mix(textureColor, boundary_rgb, 0.6);
