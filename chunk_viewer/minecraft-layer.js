@@ -193,8 +193,8 @@ void main(void) {
     // Gene spots: use RGB data directly
     color = vec4(vInstanceBlockData.rgb / 255.0, 1.0);
   } else if (isCellVoxel) {
-    // Cell voxels: flat blue color (with some texture)
-    vec4 cell_rgb = vec4(0.3, 0.6, 1.0, 1.0);
+    // Cell voxels: use RGB data from cell voxel definition
+    vec4 cell_rgb = vec4(vInstanceBlockData.rgb / 255.0, 1.0);
     vec4 textureColor = texture2D(atlasTexture, vTextureCoords);
     color = mix(textureColor, cell_rgb, 0.5);
   } else if (isBoundaryVoxel) {

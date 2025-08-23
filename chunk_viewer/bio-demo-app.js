@@ -193,8 +193,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return inside;
     }
 
-    // Helper function to check if a stone voxel position is inside a cell boundary
-    function isInsideCellBoundary(blockX, blockZ, planeId, dataset, bounds) {
+    // Helper function to get the cell at a specific position (returns cell object or 0)
+    function getCellAtPosition(blockX, blockZ, planeId, dataset, bounds) {
         // Convert block coordinates back to original coordinate system (simple integer arithmetic)
         const originalX = blockX + bounds.left;        // viewer X → original X (add back origin)
         const originalY = blockZ + bounds.top;         // viewer Z → original Y (add back origin)
@@ -206,10 +206,10 @@ document.addEventListener('DOMContentLoaded', function() {
         for (const cell of cellsOnPlane) {
             // Check if point is inside this cell's clipped boundary
             if (cell.clippedBoundary && isPointInPolygon(originalX, originalY, cell.clippedBoundary)) {
-                return true; // Block is inside a cell boundary, should be excluded
+                return cell; // Return the cell object (contains cellColor!)
             }
         }
-        return false; // Block is not inside any cell boundary
+        return 0; // voxel is not inside any cell boundary, return 0 the Id of the background
     }
 
     // Transform biological data to minecraft-layer format
@@ -272,8 +272,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     totalBlocks++;
                     
                     // Check if this position is inside a cell boundary on this plane
-                    if (isInsideCellBoundary(x, z, planeId, dataset, bounds)) {
+                    const cell = getCellAtPosition(x, z, planeId, dataset, bounds);
+                    if (cell) {
                         holesCreated++;
+                        
+                        // Convert hex color to RGB if available
+                        let cellRgb = [255, 51, 51]; // Default red color
+                        if (cell.cellColor) {
+                            const hex = cell.cellColor.replace('#', '');
+                            cellRgb = [
+                                parseInt(hex.substr(0, 2), 16),
+                                parseInt(hex.substr(2, 2), 16),
+                                parseInt(hex.substr(4, 2), 16)
+                            ];
+                        }
                         
                         // Create hole stone block (voxel inside cell boundary)
                         cellVoxels.push({
@@ -282,10 +294,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             blockData: 0,
                             temperature: 0.5,
                             humidity: 0.5,
-                            lighting: 15,
+                            lighting: 5,
                             gene_id: -2, // -2 indicates hole stone block (inside cell)
                             index: cellVoxels.length,
-                            planeId: planeId // Store which plane this hole stone belongs to
+                            planeId: planeId, // Store which plane this hole stone belongs to
+                            rgb: cellRgb, // Use the actual cell color from selection data
+                            cellId: cell.cellId // Track which cell this belongs to
                         });
                         
                         continue; // Skip creating regular stone block - create hole for cell
@@ -366,7 +380,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             blockData: 0, // Not used for boundary voxels
                             temperature: 0.5,
                             humidity: 0.5,
-                            lighting: 15,
+                            lighting: 5,
                             gene_id: -1000000 - cell.cellId, // Encode cell ID as negative value for boundary voxels
                             index: boundaryVoxels.length,
                             rgb: cellRgb, // Use the actual cell color from selection data
