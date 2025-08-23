@@ -15,12 +15,8 @@ function getGeneColor(geneName) {
         
         if (geneSetting && geneSetting.color) {
             // Convert hex color to RGB array
-            const hex = geneSetting.color.replace('#', '');
-            return [
-                parseInt(hex.substr(0, 2), 16),
-                parseInt(hex.substr(2, 2), 16),
-                parseInt(hex.substr(4, 2), 16)
-            ];
+            const color = d3.rgb(geneSetting.color);
+            return [color.r, color.g, color.b];
         }
     }
     
@@ -30,12 +26,8 @@ function getGeneColor(geneName) {
         const geneSetting = settings.find(s => s.gene === geneName);
         
         if (geneSetting && geneSetting.color) {
-            const hex = geneSetting.color.replace('#', '');
-            return [
-                parseInt(hex.substr(0, 2), 16),
-                parseInt(hex.substr(2, 2), 16),
-                parseInt(hex.substr(4, 2), 16)
-            ];
+            const color = d3.rgb(geneSetting.color);
+            return [color.r, color.g, color.b];
         }
     }
     
@@ -103,8 +95,8 @@ function showChunkTooltip(info) {
         let colorInfo = '';
         if (obj.rgb) {
             const [r, g, b] = obj.rgb;
-            const hex = '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
-            colorInfo = `<strong>Color:</strong> ${hex}<br>`;
+            const color = d3.rgb(r, g, b);
+            colorInfo = `<strong>Color:</strong> ${color.formatHex().toUpperCase()}<br>`;
         }
         
         // Build parent cell information
@@ -279,12 +271,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Convert hex color to RGB if available
                         let cellRgb;
                         if (cell.cellColor) {
-                            const hex = cell.cellColor.replace('#', '');
-                            cellRgb = [
-                                parseInt(hex.substr(0, 2), 16),
-                                parseInt(hex.substr(2, 2), 16),
-                                parseInt(hex.substr(4, 2), 16)
-                            ];
+                            const color = d3.rgb(cell.cellColor);
+                            cellRgb = [color.r, color.g, color.b];
                         } else {
                             console.warn('Cell voxel missing cellColor, cell may not render with correct color:', cell.cellId);
                         }
@@ -351,12 +339,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Convert hex color to RGB if available
                 let cellRgb;
                 if (cell.cellColor) {
-                    const hex = cell.cellColor.replace('#', '');
-                    cellRgb = [
-                        parseInt(hex.substr(0, 2), 16),
-                        parseInt(hex.substr(2, 2), 16),
-                        parseInt(hex.substr(4, 2), 16)
-                    ];
+                    const color = d3.rgb(cell.cellColor);
+                    cellRgb = [color.r, color.g, color.b];
                 } else {
                     console.warn('Boundary voxel missing cellColor, cell may not render with correct color:', cell.cellId);
                 }
@@ -464,8 +448,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Get gene color and store as hex string
             const rgb = getGeneColor(gene);
-            const hex = '#' + ((1 << 24) + (rgb[0] << 16) + (rgb[1] << 8) + rgb[2]).toString(16).slice(1);
-            geneColors.set(gene, hex);
+            const color = d3.rgb(rgb[0], rgb[1], rgb[2]);
+            geneColors.set(gene, color.formatHex());
         });
         
         console.log('🎨 Gene colors:', Object.fromEntries(geneColors));
