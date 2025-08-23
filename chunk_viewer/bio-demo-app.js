@@ -277,7 +277,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         holesCreated++;
                         
                         // Convert hex color to RGB if available
-                        let cellRgb = [255, 51, 51]; // Default red color
+                        let cellRgb;
                         if (cell.cellColor) {
                             const hex = cell.cellColor.replace('#', '');
                             cellRgb = [
@@ -285,6 +285,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 parseInt(hex.substr(2, 2), 16),
                                 parseInt(hex.substr(4, 2), 16)
                             ];
+                        } else {
+                            console.warn('Cell voxel missing cellColor, cell may not render with correct color:', cell.cellId);
                         }
                         
                         // Create hole stone block (voxel inside cell boundary)
@@ -347,7 +349,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (cell.clippedBoundary && Array.isArray(cell.clippedBoundary) && cell.clippedBoundary.length > 1) {
                 
                 // Convert hex color to RGB if available
-                let cellRgb = [255, 51, 51]; // Default red color
+                let cellRgb;
                 if (cell.cellColor) {
                     const hex = cell.cellColor.replace('#', '');
                     cellRgb = [
@@ -355,6 +357,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         parseInt(hex.substr(2, 2), 16),
                         parseInt(hex.substr(4, 2), 16)
                     ];
+                } else {
+                    console.warn('Boundary voxel missing cellColor, cell may not render with correct color:', cell.cellId);
                 }
                 
                 // Trace boundary pixels using Bresenham's algorithm
