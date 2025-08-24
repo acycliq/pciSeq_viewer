@@ -285,7 +285,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             temperature: 0.5,
                             humidity: 0.5,
                             lighting: 5,
-                            gene_id: -2, // -2 indicates hole stone block (inside cell)
+                            voxelType: 2, // 2 = cell voxel
+                            voxelId: cell.cellId, // Cell ID for this voxel
                             index: cellVoxels.length,
                             planeId: planeId, // Store which plane this hole stone belongs to
                             rgb: cellRgb, // Use the actual cell color from selection data
@@ -303,7 +304,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         temperature: 0.5,
                         humidity: 0.5,
                         lighting: 15,
-                        gene_id: -1, // -1 indicates stone block (not gene data)
+                        voxelType: 0, // 0 = stone voxel
+                        voxelId: 0, // Generic stone ID (could be unique if needed)
                         index: stoneVoxels.length,
                         planeId: planeId // Store which plane this stone belongs to
                     });
@@ -369,7 +371,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             temperature: 0.5,
                             humidity: 0.5,
                             lighting: 5,
-                            gene_id: -1000000 - cell.cellId, // Encode cell ID as negative value for boundary voxels
+                            voxelType: 3, // 3 = boundary voxel
+                            voxelId: cell.cellId, // Cell ID for this boundary voxel
                             index: boundaryVoxels.length,
                             rgb: cellRgb, // Use the actual cell color from selection data
                             planeId: cell.plane,
@@ -385,13 +388,12 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(`✅ Boundary tracing completed in ${(boundaryEndTime - boundaryStartTime).toFixed(1)}ms`);
         console.log(`🔴 Boundary voxels created: ${boundaryVoxels.length} voxels from ${dataset.cells.count} cells`);
         
-        // Debug: Log cell IDs and their encoded gene_id values
+        // Debug: Log cell IDs and their voxel counts
         const uniqueCellIds = [...new Set(boundaryVoxels.map(v => v.cellId))];
         console.log('🔍 Debug: Cell IDs in boundary voxels:', uniqueCellIds);
         uniqueCellIds.forEach(cellId => {
-            const encodedGeneId = -1000000 - cellId;
             const voxelCount = boundaryVoxels.filter(v => v.cellId === cellId).length;
-            console.log(`  Cell ${cellId}: encoded as gene_id ${encodedGeneId}, ${voxelCount} voxels`);
+            console.log(`  Cell ${cellId}: voxelType=3, voxelId=${cellId}, ${voxelCount} voxels`);
         });
 
         // Transform gene spots to colored blocks (with coordinate transpose)
@@ -420,7 +422,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 temperature: 0.5,
                 humidity: 0.5,
                 lighting: 15,
-                gene_id: index,
+                voxelType: 1, // 1 = gene voxel
+                voxelId: index, // Use spot index as gene voxel ID
                 gene_name: spot.gene,
                 spot_id: spot.spot_id,
                 plane_id: spot.plane_id,
@@ -563,7 +566,8 @@ document.addEventListener('DOMContentLoaded', function() {
             data: data,
             getTemperature: getBlockTemperature,
             getHumidity: getBlockHumidity,
-            getGeneId: (d) => d.gene_id !== undefined ? d.gene_id : -1.0,
+            getVoxelType: (d) => d.voxelType !== undefined ? d.voxelType : 0,
+            getVoxelId: (d) => d.voxelId !== undefined ? d.voxelId : 0,
             getIsBlockOpaque: isBlockOpaque,
             sliceY: currentSliceY,
             anisotropicScale: anisotropicScale,

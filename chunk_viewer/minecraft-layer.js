@@ -13,7 +13,8 @@ attribute vec3 instancePositions;
 attribute vec3 instancePositions64Low;
 attribute float instanceBlockIds;
 attribute vec4 instanceBlockData;
-attribute float instanceGeneId;
+attribute float instanceVoxelType;
+attribute float instanceVoxelId;
 attribute float instanceVisibilities;
 attribute vec3 instancePickingColors;
 
@@ -30,7 +31,8 @@ varying float isVisible;
 varying vec4 vColorScale;
 varying vec2 vTextureCoords;
 varying vec4 vInstanceBlockData;
-varying float vInstanceGeneId;
+varying float vInstanceVoxelType;
+varying float vInstanceVoxelId;
 
 mat3 getXYRotationMatrix(float radX, float radY) {
   float cx = cos(radX);
@@ -64,8 +66,8 @@ float getFaceIndex(vec3 normal_modelspace) {
 }
 
 vec4 getBiomeColor() {
-  // Check if this is gene data using gene_id (>= 0, since -1 indicates grey cube)
-  bool isGeneData = (instanceGeneId >= 0.0);
+  // Check if this is gene data using voxelType (1 = gene data)
+  bool isGeneData = (instanceVoxelType == 1.0);
   
   if (isGeneData) {
     // Gene data: use original biome calculation
@@ -153,7 +155,8 @@ void main(void) {
 
   vColorScale = vec4(lightWeight, mix(1.0, ghostOpacity, isGhosted)) * biomeColor;
   vInstanceBlockData = instanceBlockData;
-  vInstanceGeneId = instanceGeneId;
+  vInstanceVoxelType = instanceVoxelType;
+  vInstanceVoxelId = instanceVoxelId;
 
   DECKGL_FILTER_COLOR(vColorScale, geometry);
 }
@@ -172,7 +175,8 @@ varying float isVisible;
 varying vec4 vColorScale;
 varying vec2 vTextureCoords;
 varying vec4 vInstanceBlockData;
-varying float vInstanceGeneId;
+varying float vInstanceVoxelType;
+varying float vInstanceVoxelId;
 
 const float TOLERANCE = 0.1;
 
@@ -181,12 +185,11 @@ void main(void) {
     discard;
   }
 
-  // Check voxel type using gene_id with precision-safe range checks
-  // Use TOLERANCE to allow for floating point rounding errors
-  bool isGeneData = (vInstanceGeneId >= 0.0 - TOLERANCE);
-  bool isCellVoxel = (vInstanceGeneId >= -2.0 - TOLERANCE &&
-                      vInstanceGeneId <= -2.0 + TOLERANCE);
-  bool isBoundaryVoxel = (vInstanceGeneId <= -1000000.0); // Boundary voxels have cell ID encoded as -1000000 - cellId
+  // Clean voxel type checking using integer values
+  bool isGeneData = (vInstanceVoxelType == 1.0);      // 1 = gene voxel
+  bool isCellVoxel = (vInstanceVoxelType == 2.0);     // 2 = cell voxel  
+  bool isBoundaryVoxel = (vInstanceVoxelType == 3.0); // 3 = boundary voxel
+  bool isStoneVoxel = (vInstanceVoxelType == 0.0);    // 0 = stone voxel
   
   vec4 color;
   if (isGeneData) {
@@ -203,15 +206,18 @@ void main(void) {
     
     vec4 textureColor = texture2D(atlasTexture, vTextureCoords);
     color = mix(textureColor, boundary_rgb, 0.6);
-  } else {
+  } else if (isStoneVoxel) {
     // Stone voxels: use Minecraft stone texture, fallback to grey if texture fails
     vec4 textureColor = texture2D(atlasTexture, vTextureCoords);
     if (textureColor.a > 0.0) {
       color = textureColor;
-    } else {
+      } else {
       // Fallback to grey color if texture fails
       color = vec4(0.5, 0.5, 0.5, 1.0);
     }
+  } else {
+    // Unknown voxel type: use red for debugging
+    color = vec4(1.0, 0.0, 0.0, 1.0);
   }
   
   geometry.uv = vTextureCoords;
@@ -275,7 +281,8 @@ const defaultProps = {
   getTemperature: {type: 'accessor', value: d => d.temperature},
   getHumidity: {type: 'accessor', value: d => d.humidity},
   getLighting: {type: 'accessor', value: d => d.lighting},
-  getGeneId: {type: 'accessor', value: d => d.gene_id !== undefined ? d.gene_id : -1.0},
+  getVoxelType: {type: 'accessor', value: d => d.voxelType !== undefined ? d.voxelType : 0},
+  getVoxelId: {type: 'accessor', value: d => d.voxelId !== undefined ? d.voxelId : 0},
   getIsBlockOpaque: {type: 'accessor', value: (x, y, z) => false},
   material: {}
 };
@@ -290,7 +297,8 @@ class MinecraftLayer extends deck.Layer {
       instancePositions: {size: 3, type: gl.DOUBLE, accessor: 'getPosition'},
       instanceBlockIds: {size: 1, accessor: 'getBlockId'},
       instanceBlockData: {size: 4, type: gl.UNSIGNED_BYTE, accessor: ['getBlockData', 'getTemperature', 'getHumidity', 'getLighting'], update: this.calculateInstanceBlockData},
-      instanceGeneId: {size: 1, type: gl.FLOAT, accessor: 'getGeneId', update: this.calculateInstanceGeneId},
+      instanceVoxelType: {size: 1, type: gl.FLOAT, accessor: 'getVoxelType', update: this.calculateInstanceVoxelType},
+      instanceVoxelId: {size: 1, type: gl.FLOAT, accessor: 'getVoxelId', update: this.calculateInstanceVoxelId},
       instanceVisibilities: {size: 1, type: gl.UNSIGNED_BYTE, accessor: ['getPosition', 'getIsBlockOpaque'], update: this.calculateInstanceVisibilities},
       instancePickingColors: {
         size: 3,
@@ -404,17 +412,30 @@ class MinecraftLayer extends deck.Layer {
     console.log('Block data calculated, first values:', value.slice(0, 16));
   }
 
-  calculateInstanceGeneId(attribute) {
-    const {data, getGeneId} = this.props;
+  calculateInstanceVoxelType(attribute) {
+    const {data, getVoxelType} = this.props;
     const {value} = attribute;
     
-    console.log('calculateInstanceGeneId called with', data.length, 'blocks');
+    console.log('calculateInstanceVoxelType called with', data.length, 'blocks');
 
     let i = 0;
     for (const object of data) {
-      value[i++] = getGeneId(object);
+      value[i++] = getVoxelType(object);
     }
-    console.log('Gene ID data calculated, first values:', value.slice(0, 16));
+    console.log('Voxel type data calculated, first values:', value.slice(0, 16));
+  }
+
+  calculateInstanceVoxelId(attribute) {
+    const {data, getVoxelId} = this.props;
+    const {value} = attribute;
+    
+    console.log('calculateInstanceVoxelId called with', data.length, 'blocks');
+
+    let i = 0;
+    for (const object of data) {
+      value[i++] = getVoxelId(object);
+    }
+    console.log('Voxel ID data calculated, first values:', value.slice(0, 16));
   }
 
   calculateInstancePickingColors(attribute) {
