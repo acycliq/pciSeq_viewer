@@ -11,7 +11,6 @@ attribute vec2 texCoords;
 
 attribute vec3 instancePositions;
 attribute vec3 instancePositions64Low;
-attribute float instanceBlockIds;
 attribute vec4 instanceBlockData;
 attribute float instanceVoxelType;
 attribute float instanceVoxelId;
@@ -22,9 +21,7 @@ uniform float sliceY;
 uniform float ghostOpacity;
 uniform float anisotropicScale;
 
-uniform vec2 blockDefsTextureDim;
 uniform vec2 atlasTextureDim;
-uniform sampler2D blockDefsTexture;
 uniform sampler2D biomeTexture;
 
 varying float isVisible;
@@ -34,30 +31,13 @@ varying vec4 vInstanceBlockData;
 varying float vInstanceVoxelType;
 varying float vInstanceVoxelId;
 
-mat3 getXYRotationMatrix(float radX, float radY) {
-  float cx = cos(radX);
-  float sx = sin(radX);
-  float cy = cos(radY);
-  float sy = sin(radY);
-
-  return mat3(
-    cy, 0.0, -sy,
-    sx * sy, cx, sx * cy,
-    cx * sy, -sx, cx * cy
-  );
-}
+// Removed: getXYRotationMatrix() - no longer needed for simple cube geometry
 
 float round(float x) {
   return floor(x + 0.5);
 }
 
-vec4 getBlockDefAt(float faceIndex) {
-  vec2 coords = vec2(instanceBlockData.x * 8.0 + faceIndex, instanceBlockIds); // 8 faces per block
-  coords += vec2(0.5); // Pixel-perfect sampling offset
-  coords /= blockDefsTextureDim;
-
-  return texture2D(blockDefsTexture, coords);
-}
+// Removed: getBlockDefAt() - no longer needed for simple cube geometry
 
 float getFaceIndex(vec3 normal_modelspace) {
   vec3 index = normal_modelspace * vec3(-1.0, 0.5, 1.0) +
@@ -89,37 +69,21 @@ bool getVisibility(float faceIndex) {
   return mod(instanceVisibilities, b * 2.) >= b;
 }
 
-vec4 getTransform(vec4 t) {
-  return vec4(
-    round(t.x * 255.0) / 16.0 - 4.0,
-    round(t.y * 255.0) / 6.0 * 3.14159,
-    round(t.z * 255.0) / 16.0 - 1.0,
-    round((1.0 - t.w) * 255.0) / 16.0
-  );
-}
+// Removed: getTransform() - no longer needed for simple cube geometry
 
 void main(void) {
   geometry.pickingColor = instancePickingColors;
 
-  vec4 transformX = getTransform(getBlockDefAt(6.0));
-  vec4 transformY = getTransform(getBlockDefAt(7.0));
+  // Simple cube geometry with anisotropic Y scaling only
+  vec3 anisotropicScale = vec3(1.0, anisotropicScale, 1.0); // X=1.0, Y=dynamic, Z=1.0
+  
+  // Simple position calculation: scale the unit cube positions
+  vec3 position_modelspace = positions * anisotropicScale;
 
-  // Apply anisotropic scaling: dynamic scaling in Y dimension to match voxel proportions
-  vec3 anisotropicScaleVec = vec3(1.0, anisotropicScale, 1.0); // X=1.0, Y=dynamic, Z=1.0
-  vec3 blockScale = vec3(transformX[0], transformY[0], 1.0) * anisotropicScaleVec;
-  mat3 blockRotation = getXYRotationMatrix(transformX[1], transformY[1]);
-  vec3 blockTranslation = vec3(transformX[2], transformY[2], 0.0);
-  vec3 faceOffset = vec3(transformX[3], transformY[3], transformX[3]);
-
-  vec3 position_modelspace =
-    blockRotation * (positions / 2. * blockScale - normals * faceOffset + blockTranslation);
-
-  vec3 normal_modelspace = blockRotation * normals;
-  vec2 texCoords_modelspace = texCoords * mix(
-    vec2(1.0),
-    blockScale.xy,
-    1.0 - abs(normals.xy)
-  );
+  // No rotation needed for simple cubes
+  vec3 normal_modelspace = normals;
+  // Simple texture coordinates - no complex scaling needed
+  vec2 texCoords_modelspace = texCoords;
 
   float faceIndex = getFaceIndex(normals);
   float faceIndex_modelspace = getFaceIndex(normal_modelspace);
@@ -276,7 +240,6 @@ const defaultProps = {
   sliceY: 256,
   anisotropicScale: 1.0, // Default to isotropic scaling (no distortion)
   getPosition: {type: 'accessor', value: d => d.position},
-  getBlockId: {type: 'accessor', value: d => d.blockId},
   getBlockData: {type: 'accessor', value: d => d.blockData},
   getTemperature: {type: 'accessor', value: d => d.temperature},
   getHumidity: {type: 'accessor', value: d => d.humidity},
@@ -295,7 +258,6 @@ class MinecraftLayer extends deck.Layer {
 
     this.getAttributeManager().addInstanced({
       instancePositions: {size: 3, type: gl.DOUBLE, accessor: 'getPosition'},
-      instanceBlockIds: {size: 1, accessor: 'getBlockId'},
       instanceBlockData: {size: 4, type: gl.UNSIGNED_BYTE, accessor: ['getBlockData', 'getTemperature', 'getHumidity', 'getLighting'], update: this.calculateInstanceBlockData},
       instanceVoxelType: {size: 1, type: gl.FLOAT, accessor: 'getVoxelType', update: this.calculateInstanceVoxelType},
       instanceVoxelId: {size: 1, type: gl.FLOAT, accessor: 'getVoxelId', update: this.calculateInstanceVoxelId},
@@ -362,16 +324,12 @@ class MinecraftLayer extends deck.Layer {
     }
 
     Promise.all([
-      loadTexture(gl, './data/blocks.png'),
       loadTexture(gl, './data/stone_atlas_2.png'),
       loadTexture(gl, './data/foliage.png')
-    ]).then(([blockDefsTexture, atlasTexture, biomeTexture]) => {
-      console.log('Textures loaded:', !!blockDefsTexture, !!atlasTexture, !!biomeTexture);
+    ]).then(([atlasTexture, biomeTexture]) => {
+      console.log('Textures loaded:', !!atlasTexture, !!biomeTexture);
       
       model.setUniforms({
-        blockDefsTexture,
-        blockDefsTextureDim: [blockDefsTexture.width || 1, blockDefsTexture.height || 1],
-
         atlasTexture,
         atlasTextureDim: [atlasTexture.width || 1, atlasTexture.height || 1],
 

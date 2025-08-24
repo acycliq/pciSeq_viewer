@@ -280,7 +280,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Create hole stone block (voxel inside cell boundary)
                         cellVoxels.push({
                             position: [x, y, z], // x=width, y=plane-position, z=front-to-back
-                            blockId: 1, // Stone
                             blockData: 0,
                             temperature: 0.5,
                             humidity: 0.5,
@@ -299,7 +298,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Generate stone blocks at plane positions (outside cell boundaries)
                     stoneVoxels.push({
                         position: [x, y, z], // x=width, y=plane-position, z=front-to-back
-                        blockId: 1, // Stone
                         blockData: 0,
                         temperature: 0.5,
                         humidity: 0.5,
@@ -366,7 +364,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         boundaryVoxels.push({
                             position: [viewerX, viewerY, viewerZ],
-                            blockId: 1, // Stone block
                             blockData: 0, // Not used for boundary voxels
                             temperature: 0.5,
                             humidity: 0.5,
@@ -417,7 +414,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             geneVoxels.push({
                 position: [x, y, z], // x=width, y=top-to-bottom(slicing), z=front-to-back
-                blockId: 1,
                 blockData: 0,
                 temperature: 0.5,
                 humidity: 0.5,
