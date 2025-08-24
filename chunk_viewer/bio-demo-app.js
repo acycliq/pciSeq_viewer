@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         blockData: 0,
                         temperature: 0.5,
                         humidity: 0.5,
-                        lighting: 15,
+                        lighting: 10,
                         voxelType: 0, // 0 = stone voxel
                         voxelId: 0, // Generic stone ID (could be unique if needed)
                         index: stoneVoxels.length,
@@ -525,7 +525,8 @@ document.addEventListener('DOMContentLoaded', function() {
         })
     });
 
-    const ghostOpacity = 0.005; // Stone ghost opacity (> 0.001 shader alpha threshold)
+    const stoneGhostOpacity = 0.005; // Stone ghost opacity (> 0.001 shader alpha threshold)
+    const geneGhostOpacity = 0.1;   // Gene ghost opacity (needs higher value due to biome color mixing)
     let currentSliceY = blockData.bounds.maxY; // Start with all visible (Y-axis slicing)
     let currentPlaneId = 0; // Current plane_id for slider display
     let showSpotLines = true; // Toggle for showing spot-to-parent lines
@@ -806,28 +807,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }],
             ['stone-background-transparent', transparentStoneVoxels, {
                 visible: showBackground && showGhosting,  // Hide if ghosting disabled
-                ghostOpacity: ghostOpacity, 
+                ghostOpacity: stoneGhostOpacity, 
                 pickable: false, 
                 autoHighlight: false, 
                 parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } 
             }],
             ['hole-stone-transparent', transparentCellVoxels, {
                 visible: showHoleVoxels && showGhosting,  // Hide if ghosting disabled
-                ghostOpacity: ghostOpacity, 
+                ghostOpacity: stoneGhostOpacity, 
                 pickable: false, 
                 autoHighlight: false, 
                 parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } 
             }],
             ['boundary-transparent', transparentBoundaryVoxels, {
                 visible: showBoundaryVoxels && showGhosting,  // Hide if ghosting disabled
-                ghostOpacity: ghostOpacity, 
+                ghostOpacity: stoneGhostOpacity, 
                 pickable: false, 
                 autoHighlight: false, 
                 parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } 
             }],
             ['gene-spots-transparent', transparentGeneVoxels, {
                 visible: showGhosting,  // Hide if ghosting disabled
-                ghostOpacity: 0.1, 
+                ghostOpacity: geneGhostOpacity, 
                 pickable: true, 
                 autoHighlight: false, 
                 parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false } 

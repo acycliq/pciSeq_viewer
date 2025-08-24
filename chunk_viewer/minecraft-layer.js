@@ -74,16 +74,34 @@ bool getVisibility(float faceIndex) {
 void main(void) {
   geometry.pickingColor = instancePickingColors;
 
-  // Simple cube geometry with anisotropic Y scaling only
-  vec3 anisotropicScale = vec3(1.0, anisotropicScale, 1.0); // X=1.0, Y=dynamic, Z=1.0
-  
-  // Simple position calculation: scale the unit cube positions
-  vec3 position_modelspace = positions * anisotropicScale;
+  // SIMPLIFIED GEOMETRY SYSTEM (replaced complex Minecraft transformation system)
+  // 
+  // Key fixes from debugging ghosting/texture issues between commits e9bdcdf2 -> d20e7ea2:
+  // 1. POSITION SCALING: Must divide positions by 2.0 (original Minecraft block size)
+  //    - Missing this made voxels 2x larger -> heavy ghosting from overlapping surfaces
+  // 2. TEXTURE SCALING: Must use anisotropicScale.xy for texture coordinates  
+  //    - Missing this broke yellow line consistency in stone_atlas_2.png texture
+  // 3. ANISOTROPIC Y-SCALING: Biological Z-stack data has elongated Y dimension (~2.5x)
+  //    - Both geometry and texture must scale together for visual consistency
 
-  // No rotation needed for simple cubes
+  // Simple cube geometry with anisotropic Y scaling only
+  vec3 scaleVec = vec3(1.0, anisotropicScale, 1.0); // X=1.0, Y=dynamic (~2.5 for bio data), Z=1.0
+  
+  // CRITICAL: Divide by 2.0 to match original Minecraft block size (unit cube -> half-size cube)
+  // Missing this division caused "heavy ghosting" due to 2x larger voxels overlapping
+  vec3 position_modelspace = (positions / 2.0) * scaleVec;
+
+  // No rotation needed for simple cubes (removed complex Minecraft transformation system)
   vec3 normal_modelspace = normals;
-  // Simple texture coordinates - no complex scaling needed
-  vec2 texCoords_modelspace = texCoords;
+  
+  // CRITICAL: Texture coordinates must match geometry scaling for consistent appearance
+  // anisotropicScale.xy = (1.0, ~2.5) stretches Y-axis texture to match elongated voxels
+  // This ensures yellow lines in stone_atlas_2.png appear consistently every 16 pixels
+  vec2 texCoords_modelspace = texCoords * mix(
+    vec2(1.0),                    // Base texture scale
+    scaleVec.xy,                  // Apply same anisotropic scaling as geometry (1.0, ~2.5)
+    1.0 - abs(normals.xy)         // Only scale X/Y faces, not Z faces
+  );
 
   float faceIndex = getFaceIndex(normals);
   float faceIndex_modelspace = getFaceIndex(normal_modelspace);
@@ -109,7 +127,9 @@ void main(void) {
   vec3 lightWeight = lighting_getLightColor(vec3(1.0), project_uCameraPosition, gl_Position.xyz, normal_modelspace);
   lightWeight += instanceBlockData.w / 15.0;
 
-  float isGhosted = float(instancePositions.y > sliceY);
+  // Add tolerance to ghosting comparison for floating point precision
+  const float GHOST_TOLERANCE = 0.01;
+  float isGhosted = float((instancePositions.y - sliceY) > GHOST_TOLERANCE);
 
   // Allow ghosted blocks to be pickable for tooltips
   // Only disable picking for very faint ghost blocks (stone background)
@@ -117,7 +137,11 @@ void main(void) {
     isVisible *= 1.0 - isGhosted;
   }
 
-  vColorScale = vec4(lightWeight, mix(1.0, ghostOpacity, isGhosted)) * biomeColor;
+  // Separate RGB and alpha calculation to ensure ghostOpacity works correctly
+  vec3 finalRGB = lightWeight * biomeColor.rgb;
+  // Force ghostOpacity to be used for all ghosted voxels (ignore biome alpha when ghosted)
+  float finalAlpha = mix(biomeColor.a, ghostOpacity, isGhosted);
+  vColorScale = vec4(finalRGB, finalAlpha);
   vInstanceBlockData = instanceBlockData;
   vInstanceVoxelType = instanceVoxelType;
   vInstanceVoxelId = instanceVoxelId;
@@ -149,15 +173,16 @@ void main(void) {
     discard;
   }
 
-  // Clean voxel type checking using integer values
-  bool isGeneData = (vInstanceVoxelType == 1.0);      // 1 = gene voxel
-  bool isCellVoxel = (vInstanceVoxelType == 2.0);     // 2 = cell voxel  
-  bool isBoundaryVoxel = (vInstanceVoxelType == 3.0); // 3 = boundary voxel
-  bool isStoneVoxel = (vInstanceVoxelType == 0.0);    // 0 = stone voxel
+  // Clean voxel type checking using tolerance for floating point precision
+  const float VOXEL_TOLERANCE = 0.01;
+  bool isGeneData = abs(vInstanceVoxelType - 1.0) < VOXEL_TOLERANCE;      // 1 = gene voxel
+  bool isCellVoxel = abs(vInstanceVoxelType - 2.0) < VOXEL_TOLERANCE;     // 2 = cell voxel  
+  bool isBoundaryVoxel = abs(vInstanceVoxelType - 3.0) < VOXEL_TOLERANCE; // 3 = boundary voxel
+  bool isStoneVoxel = abs(vInstanceVoxelType - 0.0) < VOXEL_TOLERANCE;    // 0 = stone voxel
   
   vec4 color;
   if (isGeneData) {
-    // Gene spots: use RGB data directly
+    // Gene spots: use RGB data directly (alpha will be controlled by vColorScale.a for ghosting)
     color = vec4(vInstanceBlockData.rgb / 255.0, 1.0);
   } else if (isCellVoxel) {
     // Cell voxels: use RGB data from cell voxel definition
