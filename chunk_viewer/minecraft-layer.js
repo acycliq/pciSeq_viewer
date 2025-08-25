@@ -349,7 +349,7 @@ class MinecraftLayer extends deck.Layer {
     }
 
     Promise.all([
-      loadTexture(gl, './data/stone_atlas_2.png'),
+      loadTexture(gl, './data/stone_atlas_1.png'),
       loadTexture(gl, './data/foliage.png')
     ]).then(([atlasTexture, biomeTexture]) => {
       console.log('Textures loaded:', !!atlasTexture, !!biomeTexture);
