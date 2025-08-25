@@ -187,12 +187,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Helper function to get the cell at a specific position (returns cell object or 0)
     function getCellAtPosition(blockX, blockZ, planeId, dataset, bounds) {
-        // Convert block coordinates back to original coordinate system (simple integer arithmetic)
-        const originalX = blockX + bounds.left;        // viewer X → original X (add back origin)
-        const originalY = blockZ + bounds.top;         // viewer Z → original Y (add back origin)
+        // Convert block coordinates back to original coordinate system at voxel CENTER.
+        // Why centers (+0.5)? If we sample corners (integers), many points land exactly on
+        // polygon edges or slightly outside due to flooring the float bounds. Most
+        // point-in-polygon tests treat "on-edge" as outside, which causes false stone
+        // voxels on faces even when the selection is fully inside a cell. Sampling the
+        // voxel center moves the test point strictly inside the intended pixel cell and
+        // away from edges, eliminating the ambiguity.
+        const originalX = blockX + bounds.left + 0.5;  // viewer X → original X (center of pixel)
+        const originalY = blockZ + bounds.top + 0.5;   // viewer Z → original Y (center of pixel)
         
         // Find cells that exist on this specific plane
         const cellsOnPlane = dataset.cells.data.filter(cell => cell.plane === planeId);
+        
         
         // Check each cell boundary on this plane
         for (const cell of cellsOnPlane) {
@@ -211,12 +218,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const cellVoxels = []; // voxels inside cell boundaries
         const boundaryVoxels = []; // voxels for traced cell boundary lines
         
-        // Convert bounds to integers - floor all bounds consistently
+        // Center-aligned integer bounds so voxel centers lie strictly inside float bounds.
+        // Derivation: We test at centers (i + 0.5). To ensure (i + 0.5) ≥ left_float, we need
+        // i ≥ left_float - 0.5 ⇒ i_min = ceil(left_float - 0.5). Similarly, to ensure
+        // (i + 0.5) ≤ right_float, we need i ≤ right_float - 0.5 ⇒ i_max = floor(right_float - 0.5).
+        // Doing this for both axes guarantees the very first sampled center is inside the
+        // true float rectangle. This avoids the classic bug where the "first" row/column of
+        // centers (e.g., 0.5) is actually outside a top/left edge at 0.65/0.60, which would
+        // wrongly create a solid stone face.
         const bounds = {
-            left: Math.floor(dataset.bounds.left),
-            right: Math.floor(dataset.bounds.right),
-            top: Math.floor(dataset.bounds.top),
-            bottom: Math.floor(dataset.bounds.bottom),
+            left: Math.ceil(dataset.bounds.left - 0.5),
+            right: Math.floor(dataset.bounds.right - 0.5),
+            top: Math.ceil(dataset.bounds.top - 0.5),
+            bottom: Math.floor(dataset.bounds.bottom - 0.5),
             depth: Math.floor(dataset.bounds.depth)
         };
         
@@ -224,9 +238,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectionWidth = (bounds.right - bounds.left) + 1;   // +1 to include right boundary pixel
         const selectionHeight = (bounds.bottom - bounds.top) + 1;  // +1 to include bottom boundary pixel
         const selectionDepth = bounds.depth + 1;                   // +1 to include depth boundary
-        
-        console.log('Original bounds:', dataset.bounds);
-        console.log('Integer bounds:', bounds);
         console.log('Selection dimensions with boundary pixels:', {width: selectionWidth, height: selectionHeight, depth: selectionDepth});
         
         // Block dimensions = pixel dimensions (perfect 1:1 mapping)
@@ -264,9 +275,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     totalBlocks++;
                     
                     // Check if this position is inside a cell boundary on this plane
-                    const cell = getCellAtPosition(x, z, planeId, dataset, bounds);
+                    const cell = getCellAtPosition(x, z, planeId, dataset, bounds); // REVERTED: Use integer bounds for now
                     if (cell) {
                         holesCreated++;
+                        
                         
                         // Convert hex color to RGB if available
                         let cellRgb;
@@ -296,6 +308,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     // Generate stone blocks at plane positions (outside cell boundaries)
+                    
+                    
                     stoneVoxels.push({
                         position: [x, y, z], // x=width, y=plane-position, z=front-to-back
                         blockData: 0,
@@ -768,6 +782,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Filter hole stone blocks based on slice position
         const solidCellVoxels = blockData.holeStoneData.filter(block => block.position[1] <= currentSliceY);
         const transparentCellVoxels = blockData.holeStoneData.filter(block => block.position[1] > currentSliceY);
+        
         
         // Filter boundary voxels based on slice position
         const solidBoundaryVoxels = blockData.boundaryData.filter(block => block.position[1] <= currentSliceY);
