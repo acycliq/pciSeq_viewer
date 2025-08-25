@@ -527,7 +527,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const stoneGhostOpacity = 0.005; // Stone ghost opacity (> 0.001 shader alpha threshold)
     const geneGhostOpacity = 0.1;   // Gene ghost opacity (needs higher value due to biome color mixing)
-    let currentSliceY = blockData.bounds.maxY; // Start with all visible (Y-axis slicing)
+    let currentSliceY = planeIdToSliceY(0); // SLICE_UPWARD: Start with only plane 0 visible (bottom position)
     let currentPlaneId = 0; // Current plane_id for slider display
     let showSpotLines = true; // Toggle for showing spot-to-parent lines
     let showBackground = true; // Toggle for showing background stone voxels
@@ -703,12 +703,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Scale factors eliminated - direct 1:1 integer mapping
         // No more scaleX, scaleY, scaleZ needed!
 
-        // Filter spots based on solid/ghost mode and gene selection
+        // SLICE_UPWARD: Filter spots based on solid/ghost mode and gene selection (REVERSED: solid above, ghost below)
         const filteredGeneVoxels = solidOnly
             ? blockData.geneData.filter(block => 
-                block.position[1] <= currentSliceY && selectedGenes.has(block.gene_name))  // solid spots
+                block.position[1] >= currentSliceY && selectedGenes.has(block.gene_name))  // solid spots
             : blockData.geneData.filter(block => 
-                block.position[1] > currentSliceY && selectedGenes.has(block.gene_name));   // ghost spots
+                block.position[1] < currentSliceY && selectedGenes.has(block.gene_name));   // ghost spots
         
         filteredGeneVoxels.forEach(spotBlock => {
             // Check if this spot has valid parent cell coordinates (not null, undefined, or background cell)
@@ -763,21 +763,21 @@ document.addEventListener('DOMContentLoaded', function() {
     function createLayers() {
         const layers = [];
         
-        // Filter data based on slice position and gene selection
-        const solidStoneVoxels = blockData.stoneData.filter(block => block.position[1] <= currentSliceY);
+        // SLICE_UPWARD: Filter data based on slice position and gene selection (REVERSED: solid above, ghost below)
+        const solidStoneVoxels = blockData.stoneData.filter(block => block.position[1] >= currentSliceY);
         const solidGeneVoxels = blockData.geneData.filter(block =>
-            block.position[1] <= currentSliceY && selectedGenes.has(block.gene_name));
-        const transparentStoneVoxels = blockData.stoneData.filter(block => block.position[1] > currentSliceY);
+            block.position[1] >= currentSliceY && selectedGenes.has(block.gene_name));
+        const transparentStoneVoxels = blockData.stoneData.filter(block => block.position[1] < currentSliceY);
         const transparentGeneVoxels = blockData.geneData.filter(block =>
-            block.position[1] > currentSliceY && selectedGenes.has(block.gene_name));
+            block.position[1] < currentSliceY && selectedGenes.has(block.gene_name));
         
-        // Filter hole stone blocks based on slice position
-        const solidCellVoxels = blockData.holeStoneData.filter(block => block.position[1] <= currentSliceY);
-        const transparentCellVoxels = blockData.holeStoneData.filter(block => block.position[1] > currentSliceY);
+        // SLICE_UPWARD: Filter hole stone blocks based on slice position (REVERSED: solid above, ghost below)
+        const solidCellVoxels = blockData.holeStoneData.filter(block => block.position[1] >= currentSliceY);
+        const transparentCellVoxels = blockData.holeStoneData.filter(block => block.position[1] < currentSliceY);
         
-        // Filter boundary voxels based on slice position
-        const solidBoundaryVoxels = blockData.boundaryData.filter(block => block.position[1] <= currentSliceY);
-        const transparentBoundaryVoxels = blockData.boundaryData.filter(block => block.position[1] > currentSliceY);
+        // SLICE_UPWARD: Filter boundary voxels based on slice position (REVERSED: solid above, ghost below)
+        const solidBoundaryVoxels = blockData.boundaryData.filter(block => block.position[1] >= currentSliceY);
+        const transparentBoundaryVoxels = blockData.boundaryData.filter(block => block.position[1] < currentSliceY);
         
         // Create layers with specific configurations
         const layerConfigs = [
@@ -933,9 +933,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentDisplayPlaneId = parseInt(document.getElementById('sliceZ').value);
         sliderValueElement.textContent = `Plane: ${currentDisplayPlaneId}/${maxPlaneId}`;
         
-        // Also show how many blocks are visible
-        const visibleStoneVoxels = blockData.stoneData.filter(block => block.position[1] <= currentSliceY).length;
-        const visibleGeneVoxels = blockData.geneData.filter(block => block.position[1] <= currentSliceY).length;
+        // SLICE_UPWARD: Also show how many blocks are visible (REVERSED: solid above, ghost below)
+        const visibleStoneVoxels = blockData.stoneData.filter(block => block.position[1] >= currentSliceY).length;
+        const visibleGeneVoxels = blockData.geneData.filter(block => block.position[1] >= currentSliceY).length;
         sliderValueElement.innerHTML = `
             Plane ID: ${currentDisplayPlaneId}/${maxPlaneId}<br>
             <small>Stone: ${visibleStoneVoxels} | Genes: ${visibleGeneVoxels} | SliceY: ${currentSliceY}</small>
@@ -963,13 +963,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Configure slider range based on plane_id values from config
     const sliceSlider = document.getElementById('sliceZ');
     let maxPlaneId = blockData.bounds.maxY; // fallback
-    currentPlaneId = maxPlaneId; // start at max plane (all visible)
+    currentPlaneId = 0; // SLICE_UPWARD: start at minimum plane (bottom position)
     
     // Use config values to get actual totalPlanes
     if (window.opener && window.opener.window.config) {
         const config = window.opener.window.config();
         maxPlaneId = config.totalPlanes - 1; // plane_id ranges from 0 to totalPlanes-1
-        currentPlaneId = maxPlaneId; // start showing all planes
+        currentPlaneId = 0; // SLICE_UPWARD: start at bottom plane
         console.log(`🎛️ Slider range set from config: plane_id 0 to ${maxPlaneId} (totalPlanes: ${config.totalPlanes})`);
     } else {
         console.log(`⚠️ Config not available, using bounds maxY: ${maxPlaneId}`);
@@ -977,7 +977,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     sliceSlider.min = "0";
     sliceSlider.max = maxPlaneId.toString();
-    sliceSlider.value = maxPlaneId.toString();
+    sliceSlider.value = "0"; // SLICE_UPWARD: start at bottom
     sliceSlider.step = "1";
     
     // Set initial slice position
