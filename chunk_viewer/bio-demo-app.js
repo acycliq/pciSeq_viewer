@@ -477,13 +477,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Transform the dataset (async)
     transformBioDataToBlocks(dataset).then(blockData => {
-        // Update stats display
-        document.getElementById('stats').innerHTML = `
-            Spots: ${dataset.spots.count}<br>
-            Cells: ${dataset.cells.count}<br>
-            Planes: 6<br>
-            Bounds: ${dataset.bounds.right}×${dataset.bounds.bottom}×${dataset.bounds.depth}px
-        `;
 
     // Helper functions for the minecraft layer
     function getBlockTemperature(d) {
@@ -928,20 +921,14 @@ document.addEventListener('DOMContentLoaded', function() {
         layers: createLayers()
     });
 
-    // Update slider value display
+    // Update slider value display (minimal: show current/max only)
     function updateSliderDisplay() {
         const sliderValueElement = document.getElementById('sliderValue');
         const maxPlaneId = parseInt(document.getElementById('sliceZ').max);
         const currentDisplayPlaneId = parseInt(document.getElementById('sliceZ').value);
-        sliderValueElement.textContent = `Plane: ${currentDisplayPlaneId}/${maxPlaneId}`;
-        
-        // Also show how many blocks are visible
-        const visibleStoneVoxels = blockData.stoneData.filter(block => block.position[1] <= currentSliceY).length;
-        const visibleGeneVoxels = blockData.geneData.filter(block => block.position[1] <= currentSliceY).length;
-        sliderValueElement.innerHTML = `
-            Plane ID: ${currentDisplayPlaneId}/${maxPlaneId}<br>
-            <small>Stone: ${visibleStoneVoxels} | Genes: ${visibleGeneVoxels} | SliceY: ${currentSliceY}</small>
-        `;
+        if (sliderValueElement) {
+            sliderValueElement.textContent = `${currentDisplayPlaneId}/${maxPlaneId}`;
+        }
     }
 
     // Handle Z slice control
@@ -984,6 +971,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Set initial slice position
     currentSliceY = planeIdToSliceY(currentPlaneId);
+
+    // Ensure slider value UI is visible and initialized
+    const sliderValueElement = document.getElementById('sliderValue');
+    if (sliderValueElement) {
+        sliderValueElement.style.display = 'block';
+        updateSliderDisplay();
+    }
     
     // Handle show lines toggle
     document.getElementById('showLinesToggle').addEventListener('change', (e) => {
@@ -1099,6 +1093,5 @@ document.addEventListener('DOMContentLoaded', function() {
     
     }).catch(error => {
         console.error('❌ Failed to initialize chunk viewer:', error);
-        document.getElementById('stats').innerHTML = '<span style="color: red;">Error loading chunk viewer</span>';
     });
 });

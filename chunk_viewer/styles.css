@@ -23,16 +23,6 @@ canvas:active {
     cursor: grabbing;
 }
 
-.controls {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    z-index: 100;
-    background: rgba(0,0,0,0.7);
-    padding: 15px;
-    border-radius: 5px;
-    max-width: 300px;
-}
 
 /* Toggle controls positioned at top-right */
 .toggle-controls-right {
@@ -73,49 +63,31 @@ canvas:active {
     display: flex;
     flex-direction: column;
     align-items: center;
-    height: 280px;
-    width: 120px;
+    height: 240px;
+    width: 80px;
 }
 
 .z-slicer {
     transform: rotate(-90deg);
-    width: 200px;
-    margin: 40px 0;
+    width: 150px;
+    /* Extra bottom spacing so the value never overlaps visually
+       with the rotated slider's footprint */
+    margin: 40px 0 74px 0;
     position: relative;
     z-index: 1;
 }
 
-.slider-markings {
-    position: absolute;
-    left: -45px;
-    height: 200px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    color: white;
-    font-size: 10px;
-    text-align: left;
-    white-space: nowrap;
-    top: -50px;
-}
 
 .slider-value {
-    background: rgba(0,0,0,0.8);
-    color: #00ff00;
-    padding: 45px 8px;
-    border-radius: 3px;
-    font-size: 12px;
-    font-weight: bold;
-    margin-top: 15px;
+    color: rgba(255, 255, 255, 0.9);
+    font-family: monospace;
+    font-size: 13px;
+    margin-top: 0;
+    position: relative;
+    z-index: 2;
     text-align: center;
-    min-width: 80px;
 }
 
-.stats {
-    margin-top: 10px;
-    font-size: 12px;
-    opacity: 0.8;
-}
 
 /* Gene widget styles - matches main UI */
 .gene-widget {
