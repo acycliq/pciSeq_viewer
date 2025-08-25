@@ -127,9 +127,9 @@ void main(void) {
   vec3 lightWeight = lighting_getLightColor(vec3(1.0), project_uCameraPosition, gl_Position.xyz, normal_modelspace);
   lightWeight += instanceBlockData.w / 15.0;
 
-  // SLICE_UPWARD: Reverse ghosting logic - voxels below slice are ghosted
+  // Add tolerance to ghosting comparison for floating point precision
   const float GHOST_TOLERANCE = 0.01;
-  float isGhosted = float((instancePositions.y - sliceY) < -GHOST_TOLERANCE);
+  float isGhosted = float((instancePositions.y - sliceY) > GHOST_TOLERANCE);
 
   // Allow ghosted blocks to be pickable for tooltips
   // Only disable picking for very faint ghost blocks (stone background)
