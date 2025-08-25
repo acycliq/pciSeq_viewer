@@ -526,7 +526,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     const stoneGhostOpacity = 0.005; // Stone ghost opacity (> 0.001 shader alpha threshold)
-    const geneGhostOpacity = 0.1;   // Gene ghost opacity (needs higher value due to biome color mixing)
+    const geneGhostOpacity = 0.01;   // Gene ghost opacity (with lighting attenuation in shader)
+    const lineGhostOpacity = 0.001;  // Line ghost opacity (separate control for visual matching)
     let currentSliceY = blockData.bounds.maxY; // Start with all visible (Y-axis slicing)
     let currentPlaneId = 0; // Current plane_id for slider display
     let showSpotLines = true; // Toggle for showing spot-to-parent lines
@@ -872,7 +873,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         data: ghostLinesData,
                         getSourcePosition: d => d.sourcePosition,
                         getTargetPosition: d => d.targetPosition,
-                        getColor: d => [d.color[0], d.color[1], d.color[2], 25], // Very transparent (10% of original alpha)
+                        getColor: d => [d.color[0], d.color[1], d.color[2]], // 3D RGB only - same as gene voxels
+                        opacity: lineGhostOpacity, // Separate opacity control for visual matching with genes
                         getWidth: 3,
                         pickable: false,
                         parameters: {
