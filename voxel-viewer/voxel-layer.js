@@ -1,4 +1,4 @@
-// MinecraftLayer - copied from original_code and adapted for vanilla JS
+// VoxelLayer - adapted for vanilla JS
 // Only minimal changes for import/export compatibility
 
 // Import the shaders
@@ -225,7 +225,10 @@ void main(void) {
 
 function loadTexture(gl, url) {
   return fetch(url)
-    .then(response => response.blob())
+    .then((response) => {
+      if (!response.ok) throw new Error(`Failed to load texture ${url}: ${response.status}`);
+      return response.blob();
+    })
     .then(blob => {
       return new Promise((resolve) => {
         const img = new Image();
@@ -234,15 +237,8 @@ function loadTexture(gl, url) {
       });
     })
     .then(data => {
-      // Try different ways to access Texture2D
       const Texture2D = deck.Texture2D || window.luma?.Texture2D || (window.luma && window.luma.core && window.luma.core.Texture2D);
-      
-      console.log('Looking for Texture2D...', !!Texture2D);
-      console.log('Available luma:', window.luma ? Object.keys(window.luma) : 'none');
-      
       if (!Texture2D) {
-        console.warn('Texture2D not found, using mock texture');
-        // Return a mock texture for now
         return {
           width: data.width || 1,
           height: data.height || 1
@@ -254,10 +250,9 @@ function loadTexture(gl, url) {
         parameters: {
           [gl.TEXTURE_WRAP_S]: gl.CLAMP_TO_EDGE,
           [gl.TEXTURE_WRAP_T]: gl.CLAMP_TO_EDGE,
-          [gl.TEXTURE_MIN_FILTER]: gl.NEAREST,
-          [gl.TEXTURE_MAG_FILTER]: gl.NEAREST
-        },
-        mipmaps: false
+          [gl.TEXTURE_MIN_FILTER]: gl.LINEAR,
+          [gl.TEXTURE_MAG_FILTER]: gl.LINEAR
+        }
       });
     });
 }
@@ -273,13 +268,13 @@ const defaultProps = {
   getVoxelType: {type: 'accessor', value: d => d.voxelType !== undefined ? d.voxelType : 0},
   getVoxelId: {type: 'accessor', value: d => d.voxelId !== undefined ? d.voxelId : 0},
   getIsBlockOpaque: {type: 'accessor', value: (x, y, z) => false},
-  material: {}
+  material: {},
+  assetBase: './data/'
 };
 
-class MinecraftLayer extends deck.Layer {
+class VoxelLayer extends deck.Layer {
 
   initializeState() {
-    console.log('MinecraftLayer initializeState called with', this.props.data?.length, 'blocks');
     const {gl} = this.context;
 
     this.getAttributeManager().addInstanced({
@@ -296,7 +291,6 @@ class MinecraftLayer extends deck.Layer {
     });
 
     const model = this.getModel(gl);
-    console.log('Model created:', !!model);
     this.setState({model});
 
     this.loadAssets();
@@ -307,17 +301,9 @@ class MinecraftLayer extends deck.Layer {
   }
 
   getModel(gl) {
-    // Access Model and CubeGeometry from the global context
     const Model = deck.Model || window.luma?.Model || (window.luma && window.luma.engine && window.luma.engine.Model);
     const CubeGeometry = deck.CubeGeometry || window.luma?.CubeGeometry || (window.luma && window.luma.engine && window.luma.engine.CubeGeometry);
-    
-    console.log('Looking for Model and CubeGeometry...', !!Model, !!CubeGeometry);
-    console.log('Available luma engine:', window.luma && window.luma.engine ? Object.keys(window.luma.engine) : 'none');
-    
-    if (!Model || !CubeGeometry) {
-      console.error('Model or CubeGeometry not available');
-      return null;
-    }
+    if (!Model || !CubeGeometry) { throw new Error('Model/CubeGeometry not available'); }
     
     return new Model(gl, {
       ...this.getShaders(),
@@ -349,20 +335,17 @@ class MinecraftLayer extends deck.Layer {
       return;
     }
 
+    const base = this.props.assetBase || './data/';
     Promise.all([
-      loadTexture(gl, './data/stone_atlas_1.png'),
-      loadTexture(gl, './data/foliage.png')
+      loadTexture(gl, base + 'stone_atlas_1.png'),
+      loadTexture(gl, base + 'foliage.png')
     ]).then(([atlasTexture, biomeTexture]) => {
-      console.log('Textures loaded:', !!atlasTexture, !!biomeTexture);
-      
       model.setUniforms({
         atlasTexture,
         atlasTextureDim: [atlasTexture.width || 1, atlasTexture.height || 1],
 
         biomeTexture
       });
-
-      console.log('Setting texturesLoaded to true');
       this.setState({texturesLoaded: true})
     }).catch(error => {
       console.error('Error loading textures:', error);
@@ -486,5 +469,5 @@ class MinecraftLayer extends deck.Layer {
   }
 }
 
-MinecraftLayer.layerName = 'MinecraftLayer';
-MinecraftLayer.defaultProps = defaultProps;
+VoxelLayer.layerName = 'VoxelLayer';
+VoxelLayer.defaultProps = defaultProps;

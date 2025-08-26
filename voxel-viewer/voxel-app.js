@@ -362,11 +362,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Helper to create a MinecraftLayer with common settings
-    function createMinecraftLayer(id, data, config) {
+    // Helper to create a VoxelLayer with common settings
+    function createVoxelLayer(id, data, config) {
         if (data.length === 0) return null;
         
-        return new MinecraftLayer({
+        return new VoxelLayer({
             id: id,
             data: data,
             getTemperature: getBlockTemperature,
@@ -581,7 +581,7 @@ document.addEventListener('DOMContentLoaded', function() {
             geneGhostOpacity,
             showSpotLines,
             lineGhostOpacity,
-            createMinecraftLayer,
+            createVoxelLayer,
             createLinesData,
             deck
         });

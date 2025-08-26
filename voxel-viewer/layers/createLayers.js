@@ -12,7 +12,7 @@ export function createLayers({
   geneGhostOpacity,
   showSpotLines,
   lineGhostOpacity,
-  createMinecraftLayer,
+  createVoxelLayer,
   createLinesData,
   deck
 }) {
@@ -44,7 +44,7 @@ export function createLayers({
   ];
 
   layerConfigs.forEach(([id, data, config]) => {
-    const layer = createMinecraftLayer(id, data, config);
+    const layer = createVoxelLayer(id, data, config);
     if (layer) layers.push(layer);
   });
 
@@ -82,4 +82,3 @@ export function createLayers({
 
   return layers;
 }
-
