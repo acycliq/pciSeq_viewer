@@ -129,6 +129,7 @@ void main(void) {
 
   // Add tolerance to ghosting comparison for floating point precision
   const float GHOST_TOLERANCE = 0.01;
+  // Top -> down: ghost anything above the current sliceY
   float isGhosted = float((instancePositions.y - sliceY) > GHOST_TOLERANCE);
 
   // Allow ghosted blocks to be pickable for tooltips
