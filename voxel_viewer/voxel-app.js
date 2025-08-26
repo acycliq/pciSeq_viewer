@@ -1,6 +1,6 @@
 /**
  * Biological Data 3D Viewer Application
- * Main application logic extracted from bio-demo.html
+ * Main application logic for voxel-viewer.html
  */
 import { buildPlaneLabelMask, buildMasksByPlane } from './core/masks.js';
 import { generateVoxelsFromMasks } from './core/voxelizer.js';
