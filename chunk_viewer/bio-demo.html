@@ -10,39 +10,36 @@
     <div id="container">
         
         <!-- Toggle Controls moved to top-right -->
-        <div class="toggle-controls-right">
+        <div class="mini-controls-right">
             <label>
-                <input type="checkbox" id="showLinesToggle" checked> 
+                <input type="checkbox" id="showLinesToggle" checked>
                 Spot to cell assignments
             </label>
-            <br>
             <label>
-                <input type="checkbox" id="showBackgroundToggle" checked> 
+                <input type="checkbox" id="showBackgroundToggle" checked>
                 Background voxels
             </label>
-            <br>
             <label>
-                <input type="checkbox" id="showHoleVoxelsToggle"> 
+                <input type="checkbox" id="showHoleVoxelsToggle">
                 Cell voxels
             </label>
-            <br>
             <label>
-                <input type="checkbox" id="showBoundaryVoxelsToggle"> 
+                <input type="checkbox" id="showBoundaryVoxelsToggle">
                 Boundary voxels
             </label>
-            <br>
             <label>
-                <input type="checkbox" id="showGhostingToggle" checked> 
+                <input type="checkbox" id="showGhostingToggle" checked>
                 Ghosting
             </label>
         </div>
         
         <!-- Gene Controls Widget - at top left -->
-        <div id="chunkGeneWidget" class="gene-widget" style="top: 20px; left: 20px;">
+        <div id="chunkGeneWidget" class="gene-widget hidden" style="top: 20px; left: 20px;">
             <div class="gene-widget-header">
                 <span class="gene-widget-title">🧬 Gene Panel</span>
                 <div class="widget-header-buttons">
-                    <button id="geneWidgetClose" class="widget-close-btn">×</button>
+                    <button id="geneWidgetCollapse" class="widget-collapse-btn" title="Collapse">−</button>
+                    <button id="geneWidgetClose" class="widget-close-btn" title="Close">×</button>
                 </div>
             </div>
             <div class="gene-widget-search">
@@ -52,6 +49,10 @@
             <div class="gene-widget-content" id="geneList">
                 <!-- Gene list will be populated here -->
             </div>
+        </div>
+        <!-- Minimal Genes button like main UI -->
+        <div class="minimal-controls" style="top: 15px; left: 15px; right: auto;">
+            <button id="genePanelBtn">🧬 Genes</button>
         </div>
         <div class="slider-container">
             <input type="range" class="z-slicer" 

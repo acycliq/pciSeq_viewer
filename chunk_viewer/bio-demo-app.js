@@ -1066,6 +1066,53 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('geneWidgetClose').addEventListener('click', () => {
         const widget = document.getElementById('chunkGeneWidget');
         widget.classList.add('hidden');
+        const geneBtn = document.getElementById('genePanelBtn');
+        if (geneBtn) geneBtn.style.display = '';
+    });
+
+    // Collapse/expand gene widget (minimal UI)
+    const collapseBtn = document.getElementById('geneWidgetCollapse');
+    if (collapseBtn) {
+        collapseBtn.addEventListener('click', () => {
+            const widget = document.getElementById('chunkGeneWidget');
+            const collapsed = widget.classList.toggle('collapsed');
+            // Toggle symbol to + when collapsed, − when expanded
+            collapseBtn.textContent = collapsed ? '+' : '−';
+            collapseBtn.title = collapsed ? 'Expand' : 'Collapse';
+        });
+    }
+
+    // Minimal Genes button toggles the widget (match main UI)
+    const genePanelBtn = document.getElementById('genePanelBtn');
+    if (genePanelBtn) {
+        genePanelBtn.addEventListener('click', () => {
+            const widget = document.getElementById('chunkGeneWidget');
+            const nowHidden = widget.classList.toggle('hidden');
+            const collapseBtn2 = document.getElementById('geneWidgetCollapse');
+            // If showing, ensure expanded and hide the Genes button for a clean corner
+            if (!nowHidden) {
+                if (collapseBtn2 && widget.classList.contains('collapsed')) {
+                    widget.classList.remove('collapsed');
+                    collapseBtn2.textContent = '−';
+                    collapseBtn2.title = 'Collapse';
+                }
+                genePanelBtn.style.display = 'none';
+            } else {
+                genePanelBtn.style.display = '';
+            }
+        });
+    }
+
+    // Hide gene widget on Escape for minimal UI
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const widget = document.getElementById('chunkGeneWidget');
+            if (widget && !widget.classList.contains('hidden')) {
+                widget.classList.add('hidden');
+                const geneBtn = document.getElementById('genePanelBtn');
+                if (geneBtn) geneBtn.style.display = '';
+            }
+        }
     });
 
     // Handle gene search functionality
