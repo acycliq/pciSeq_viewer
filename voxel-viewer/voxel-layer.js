@@ -92,7 +92,9 @@ void main(void) {
   vec3 position_modelspace = (positions / 2.0) * scaleVec;
 
   // No rotation needed for simple cubes (removed complex Minecraft transformation system)
-  vec3 normal_modelspace = normals;
+  vec3 normal_modelspace = normals; // NOTE: with non-uniform scaling (scaleVec), correct normals via inverse-transpose:
+                                    // vec3 normal_corr = normalize(normals / scaleVec);
+                                    // Use normal_corr for lighting to avoid flat/incorrect shading on stretched axes.
   
   // CRITICAL: Texture coordinates must match geometry scaling for consistent appearance
   // anisotropicScale.xy = (1.0, ~2.5) stretches Y-axis texture to match elongated voxels
