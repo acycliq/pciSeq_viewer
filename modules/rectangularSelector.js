@@ -501,7 +501,7 @@ export class RectangularSelector {
         console.log(`Data: ${selectionData.spots.count} spots, ${selectionData.cells.count} cells`);
         
         // Auto-launch chunk viewer in new window
-        const url = `voxel_viewer/voxel-viewer.html?source=selection&auto=true`;
+        const url = `voxel-viewer/voxel-viewer.html?source=selection&auto=true`;
         const windowFeatures = 'width=1200,height=800,toolbar=no,menubar=no,scrollbars=no,resizable=yes';
         
         try {
