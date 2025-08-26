@@ -2,6 +2,14 @@
  * Biological Data 3D Viewer Application
  * Main application logic extracted from bio-demo.html
  */
+import { buildPlaneLabelMask, buildMasksByPlane } from './core/masks.js';
+import { generateVoxelsFromMasks } from './core/voxelizer.js';
+import { buildSceneIndex } from './core/sceneIndex.js';
+import { initGenesPanel } from './ui/genesPanel.js';
+import { createLayers as buildLayers } from './layers/createLayers.js';
+import { initControls } from './ui/controls.js';
+import { initSliceSlider } from './ui/slider.js';
+import { showTooltip as showChunkTooltip, hideTooltip as hideChunkTooltip } from './ui/tooltip.js';
 
 // Boundary tracing no longer used; raster masks produce boundary voxels.
 
@@ -51,91 +59,7 @@ function getDataset() {
     }
 }
 
-// Tooltip functions - matching main viewer's tooltip implementation
-function showChunkTooltip(info) {
-    let tooltipElement = document.getElementById('chunk-tooltip');
-    if (!tooltipElement) {
-        // Create tooltip element with same styling as main viewer
-        tooltipElement = document.createElement('div');
-        tooltipElement.id = 'chunk-tooltip';
-        tooltipElement.style.cssText = `
-            position: absolute;
-            pointer-events: none;
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            display: none;
-            white-space: nowrap;
-            z-index: 1000;
-            max-width: 300px;
-            border: none;
-            outline: none;
-            box-shadow: none;
-            margin: 0;
-            font-family: inherit;
-        `;
-        document.body.appendChild(tooltipElement);
-    }
-
-    if (info.picked && info.object && info.object.gene_name) {
-        // Build tooltip content matching main viewer format
-        const obj = info.object;
-        const coords = `(${obj.original_coords.x.toFixed(2)}, ${obj.original_coords.y.toFixed(2)}, ${obj.original_coords.z.toFixed(2)})`;
-        
-        // Build spot information
-        let spotInfo = '';
-        if (obj.spot_id !== undefined) {
-            spotInfo = `<strong>Spot ID:</strong> ${obj.spot_id}<br>`;
-        }
-        
-        // Add color information
-        let colorInfo = '';
-        if (obj.rgb) {
-            const [r, g, b] = obj.rgb;
-            const color = d3.rgb(r, g, b);
-            colorInfo = `<strong>Color:</strong> ${color.formatHex().toUpperCase()}<br>`;
-        }
-        
-        // Build parent cell information
-        let parentInfo = '';
-        if (obj.parent_cell_id !== undefined && obj.parent_cell_id !== null) {
-            const parentLabel = obj.parent_cell_id === 0 ? 'Background' : obj.parent_cell_id;
-            parentInfo = `<strong>Parent Cell:</strong> ${parentLabel}<br>`;
-            
-            // Add parent coordinates if available
-            if (obj.parent_cell_X !== undefined && obj.parent_cell_Y !== undefined && 
-                obj.parent_cell_X !== null && obj.parent_cell_Y !== null) {
-                const parentZInfo = obj.parent_cell_Z !== undefined && obj.parent_cell_Z !== null 
-                    ? `, ${obj.parent_cell_Z.toFixed(2)}` : '';
-                parentInfo += `<strong>Parent Coords:</strong> (${obj.parent_cell_X.toFixed(2)}, ${obj.parent_cell_Y.toFixed(2)}${parentZInfo})<br>`;
-            }
-        }
-        
-        // Note: Score, intensity, and parent probability are not available in chunk viewer data
-        // This matches the available data from the selection results
-        
-        const content = `${spotInfo}<strong>Gene:</strong> ${obj.gene_name}<br>
-                        ${colorInfo}<strong>Coords:</strong> ${coords}<br>
-                        <strong>Plane:</strong> ${obj.plane_id}<br>
-                        ${parentInfo}`;
-        
-        tooltipElement.innerHTML = content;
-        tooltipElement.style.display = 'block';
-        tooltipElement.style.left = info.x + 20 + 'px';
-        tooltipElement.style.top = info.y - 60 + 'px';
-    } else {
-        hideChunkTooltip();
-    }
-}
-
-function hideChunkTooltip() {
-    const tooltipElement = document.getElementById('chunk-tooltip');
-    if (tooltipElement) {
-        tooltipElement.style.display = 'none';
-    }
-}
+// Tooltip now provided by ui/tooltip.js
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -170,48 +94,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return planeId; // Direct mapping fallback
     }
 
-    // Ray-cast has been removed. Any usage should throw to surface incorrect code paths.
+    // Ray-cast removed: any usage should throw to surface incorrect code paths.
     function isPointInPolygon() { throw new Error('Ray-cast removed: use raster mask'); }
     function getCellAtPosition() { throw new Error('Ray-cast removed: use raster mask'); }
 
-    // Build a per-plane label mask using 2D canvas. Robust approach: draw each cell
-    // separately and OR into a Uint32 labels array (id per pixel), avoiding RGB blending artifacts.
-    function buildPlaneLabelMask(planeCells, bounds) {
-        const W = (bounds.right - bounds.left) + 1;
-        const H = (bounds.bottom - bounds.top) + 1;
-        const canvas = document.createElement('canvas');
-        canvas.width = W;
-        canvas.height = H;
-        const ctx2d = canvas.getContext('2d', { willReadFrequently: true });
-
-        const labels = new Uint32Array(W * H); // 0 = background, otherwise cellId
-
-        // Draw each cell into a fresh alpha mask, then write id into labels where alpha > 0
-        for (const cell of planeCells) {
-            if (!cell.clippedBoundary || cell.clippedBoundary.length < 3) continue;
-
-            ctx2d.clearRect(0, 0, W, H);
-            ctx2d.beginPath();
-            for (let i = 0; i < cell.clippedBoundary.length; i++) {
-                const vx = cell.clippedBoundary[i][0] - bounds.left;
-                const vy = cell.clippedBoundary[i][1] - bounds.top;
-                if (i === 0) ctx2d.moveTo(vx, vy); else ctx2d.lineTo(vx, vy);
-            }
-            ctx2d.closePath();
-            ctx2d.fillStyle = 'rgba(255,255,255,1)';
-            ctx2d.fill('evenodd');
-
-            const img = ctx2d.getImageData(0, 0, W, H).data;
-            const id = cell.cellId || cell.cell_id || 0;
-            if (!id) continue;
-            for (let p = 0, i = 0; i < labels.length; i++, p += 4) {
-                // Treat any coverage as inside
-                if (img[p + 3] > 0) labels[i] = id;
-            }
-        }
-
-        return { width: W, height: H, labels };
-    }
 
     // Transform biological data to minecraft-layer format
     async function transformBioDataToBlocks(dataset) {
@@ -270,75 +156,23 @@ document.addEventListener('DOMContentLoaded', function() {
             totalPlanes = config.totalPlanes;
         }
         
-        // Group cells by plane and pre-build label masks per plane
-        const cellsByPlane = new Map();
-        dataset.cells.data.forEach(cell => {
-            if (!cellsByPlane.has(cell.plane)) cellsByPlane.set(cell.plane, []);
-            cellsByPlane.get(cell.plane).push(cell);
+        // Build scene indices (per-plane cells, id->color)
+        const { cellsByPlane, colorById } = buildSceneIndex(dataset);
+
+        // Build masks per plane and generate voxels disjointly (interior/boundary)
+        const maskByPlane = buildMasksByPlane(cellsByPlane, bounds, totalPlanes);
+        const vox = generateVoxelsFromMasks({
+            maskByPlane,
+            bounds,
+            maxX,
+            maxZ,
+            totalPlanes,
+            planeIdToSliceY,
+            colorById
         });
-
-        // Precompute color map id -> rgb
-        const colorById = new Map();
-        dataset.cells.data.forEach(cell => {
-            const id = cell.cellId || cell.cell_id;
-            if (!id) return;
-            if (!colorById.has(id)) {
-                let cellRgb = [200, 200, 200];
-                if (cell.cellColor) {
-                    const color = d3.rgb(cell.cellColor);
-                    cellRgb = [color.r, color.g, color.b];
-                }
-                colorById.set(id, cellRgb);
-            }
-        });
-
-        const maskByPlane = new Map();
-        for (let planeId = 0; planeId < totalPlanes; planeId++) {
-            const list = cellsByPlane.get(planeId) || [];
-            const mask = buildPlaneLabelMask(list, bounds);
-            maskByPlane.set(planeId, mask);
-        }
-
-        for (let x = 0; x < maxX; x++) {
-            for (let planeId = 0; planeId < totalPlanes; planeId++) {
-                const y = planeIdToSliceY(planeId);
-                const mask = maskByPlane.get(planeId);
-                for (let z = 0; z < maxZ; z++) {
-                    totalBlocks++;
-                    const idx = z * mask.width + x;
-                    const id = mask.labels[idx] || 0;
-                    if (id) {
-                        holesCreated++;
-                        const cellRgb = colorById.get(id) || [200, 200, 200];
-                        cellVoxels.push({
-                            position: [x, y, z],
-                            blockData: 0,
-                            temperature: 0.5,
-                            humidity: 0.5,
-                            lighting: 5,
-                            voxelType: 2,
-                            voxelId: id,
-                            index: cellVoxels.length,
-                            planeId: planeId,
-                            rgb: cellRgb,
-                            cellId: id
-                        });
-                        continue;
-                    }
-                    stoneVoxels.push({
-                        position: [x, y, z],
-                        blockData: 0,
-                        temperature: 0.5,
-                        humidity: 0.5,
-                        lighting: 10,
-                        voxelType: 0,
-                        voxelId: 0,
-                        index: stoneVoxels.length,
-                        planeId: planeId
-                    });
-                }
-            }
-        }
+        // Avoid spread on very large arrays to prevent call stack overflow
+        for (const v of vox.stoneVoxels) stoneVoxels.push(v);
+        for (const v of vox.cellVoxels) cellVoxels.push(v);
         
         const stoneEndTime = performance.now();
         console.log(`✅ Stone creation completed in ${(stoneEndTime - stoneStartTime).toFixed(1)}ms`);
@@ -357,43 +191,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Create boundary voxels by morphological edge extraction on masks (disjoint from interior)
-        console.log('🔍 Creating boundary voxels from raster masks...');
+        // Boundary voxels already created in generateVoxelsFromMasks
         const boundaryStartTime = performance.now();
-        for (let planeId = 0; planeId < totalPlanes; planeId++) {
-            const mask = maskByPlane.get(planeId);
-            const W = mask.width, H = mask.height;
-            const y = planeIdToSliceY(planeId);
-            for (let z = 0; z < H; z++) {
-                for (let x = 0; x < W; x++) {
-                    const idx = z * W + x;
-                    const id = mask.labels[idx];
-                    if (!id) continue;
-                    // 4-neighborhood boundary
-                    const leftId  = x > 0     ? mask.labels[idx - 1]     : 0;
-                    const rightId = x < W - 1 ? mask.labels[idx + 1]     : 0;
-                    const upId    = z > 0     ? mask.labels[idx - W]     : 0;
-                    const downId  = z < H - 1 ? mask.labels[idx + W]     : 0;
-                    const isBoundary = (leftId !== id) || (rightId !== id) || (upId !== id) || (downId !== id);
-                    if (isBoundary) {
-                        const cellRgb = colorById.get(id) || [200, 200, 200];
-                        boundaryVoxels.push({
-                            position: [x, y, z],
-                            blockData: 0,
-                            temperature: 0.5,
-                            humidity: 0.5,
-                            lighting: 5,
-                            voxelType: 3,
-                            voxelId: id,
-                            index: boundaryVoxels.length,
-                            rgb: cellRgb,
-                            planeId: planeId,
-                            cellId: id
-                        });
-                    }
-                }
-            }
-        }
+        for (const v of vox.boundaryVoxels) boundaryVoxels.push(v);
         
         const boundaryEndTime = performance.now();
         console.log(`✅ Boundary tracing completed in ${(boundaryEndTime - boundaryStartTime).toFixed(1)}ms`);
@@ -769,143 +569,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function createLayers() {
-        const layers = [];
-        
-        // Filter data based on slice position and gene selection
-        const solidStoneVoxels = blockData.stoneData.filter(block => block.position[1] <= currentSliceY);
-        const solidGeneVoxels = blockData.geneData.filter(block =>
-            block.position[1] <= currentSliceY && selectedGenes.has(block.gene_name));
-        const transparentStoneVoxels = blockData.stoneData.filter(block => block.position[1] > currentSliceY);
-        const transparentGeneVoxels = blockData.geneData.filter(block =>
-            block.position[1] > currentSliceY && selectedGenes.has(block.gene_name));
-        
-        // Filter hole stone blocks based on slice position
-        const solidCellVoxels = blockData.holeStoneData.filter(block => block.position[1] <= currentSliceY);
-        const transparentCellVoxels = blockData.holeStoneData.filter(block => block.position[1] > currentSliceY);
-        
-        
-        // Filter boundary voxels based on slice position
-        const solidBoundaryVoxels = blockData.boundaryData.filter(block => block.position[1] <= currentSliceY);
-        const transparentBoundaryVoxels = blockData.boundaryData.filter(block => block.position[1] > currentSliceY);
-        
-        // Create layers with specific configurations (top->down: ghost above sliceY on GPU)
-        const layerConfigs = [
-            ['stone-background-solid', solidStoneVoxels, {
-                visible: showBackground,  // ← Use visible property for background control
-                pickable: false, 
-                autoHighlight: false, 
-                parameters: { depthMask: true },
-                sliceY: currentSliceY
-            }],
-            ['hole-stone-solid', solidCellVoxels, {
-                visible: showHoleVoxels,  // ← Use visible property for hole voxel control
-                pickable: false, 
-                autoHighlight: false, 
-                parameters: { depthMask: true },
-                sliceY: currentSliceY
-            }],
-            ['boundary-solid', solidBoundaryVoxels, {
-                visible: showBoundaryVoxels,  // ← Use visible property for boundary voxel control
-                pickable: false, 
-                autoHighlight: false, 
-                parameters: { depthMask: true },
-                sliceY: currentSliceY
-            }],
-            ['gene-spots-solid', solidGeneVoxels, {
-                pickable: true, 
-                autoHighlight: true, 
-                highlightColor: [255, 255, 255, 200], 
-                parameters: { depthMask: true },
-                sliceY: currentSliceY
-            }],
-            ['stone-background-transparent', transparentStoneVoxels, {
-                visible: showBackground && showGhosting,  // Hide if ghosting disabled
-                ghostOpacity: stoneGhostOpacity, 
-                pickable: false, 
-                autoHighlight: false, 
-                parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false },
-                sliceY: currentSliceY
-            }],
-            ['hole-stone-transparent', transparentCellVoxels, {
-                visible: showHoleVoxels && showGhosting,  // Hide if ghosting disabled
-                ghostOpacity: stoneGhostOpacity, 
-                pickable: false, 
-                autoHighlight: false, 
-                parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false },
-                sliceY: currentSliceY
-            }],
-            ['boundary-transparent', transparentBoundaryVoxels, {
-                visible: showBoundaryVoxels && showGhosting,  // Hide if ghosting disabled
-                ghostOpacity: stoneGhostOpacity, 
-                pickable: false, 
-                autoHighlight: false, 
-                parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false },
-                sliceY: currentSliceY
-            }],
-            ['gene-spots-transparent', transparentGeneVoxels, {
-                visible: showGhosting,  // Hide if ghosting disabled
-                ghostOpacity: geneGhostOpacity, 
-                pickable: true, 
-                autoHighlight: false, 
-                parameters: { depthMask: false, blend: true, blendFunc: [770, 771], cull: false },
-                sliceY: currentSliceY
-            }]
-        ];
-        
-        layerConfigs.forEach(([id, data, config]) => {
-            const layer = createMinecraftLayer(id, data, config);
-            if (layer) layers.push(layer);
+        return buildLayers({
+            blockData,
+            selectedGenes,
+            currentSliceY,
+            showBackground,
+            showHoleVoxels,
+            showBoundaryVoxels,
+            showGhosting,
+            stoneGhostOpacity,
+            geneGhostOpacity,
+            showSpotLines,
+            lineGhostOpacity,
+            createMinecraftLayer,
+            createLinesData,
+            deck
         });
-        
-        // Add spot-to-parent lines only if toggle is enabled
-        if (showSpotLines) {
-            // Add solid lines for visible spots
-            const solidLinesData = createLinesData(true); // visible spots only
-            if (solidLinesData.length > 0) {
-                const solidLineLayer = new deck.LineLayer({
-                    id: 'spot-to-parent-lines-solid',
-                    data: solidLinesData,
-                    getSourcePosition: d => d.sourcePosition,
-                    getTargetPosition: d => d.targetPosition,
-                    getColor: d => d.color,
-                    getWidth: 3,
-                    pickable: false,
-                    parameters: {
-                        depthTest: true,
-                        depthMask: true,
-                        blend: true,
-                        blendFunc: [770, 771]
-                    }
-                });
-                layers.push(solidLineLayer);
-            }
-            
-            // Add ghosted lines for spots above the slice (only if ghosting enabled)
-            if (showGhosting) {
-                const ghostLinesData = createLinesData(false); // transparent spots only
-                if (ghostLinesData.length > 0) {
-                    const ghostLineLayer = new deck.LineLayer({
-                        id: 'spot-to-parent-lines-ghost',
-                        data: ghostLinesData,
-                        getSourcePosition: d => d.sourcePosition,
-                        getTargetPosition: d => d.targetPosition,
-                        getColor: d => [d.color[0], d.color[1], d.color[2]], // 3D RGB only - same as gene voxels
-                        opacity: lineGhostOpacity, // Separate opacity control for visual matching with genes
-                        getWidth: 3,
-                        pickable: false,
-                        parameters: {
-                            depthTest: true,
-                            depthMask: false,
-                            blend: true,
-                            blendFunc: [770, 771]
-                        }
-                    });
-                    layers.push(ghostLineLayer);
-                }
-            }
-        }
-        
-        return layers;
     }
 
     // Create the deck.gl instance
@@ -944,220 +623,42 @@ document.addEventListener('DOMContentLoaded', function() {
         layers: createLayers()
     });
 
-    // Update slider value display (minimal: show current/max only)
-    function updateSliderDisplay() {
-        const sliderValueElement = document.getElementById('sliderValue');
-        const maxPlaneId = parseInt(document.getElementById('sliceZ').max);
-        const currentDisplayPlaneId = parseInt(document.getElementById('sliceZ').value);
-        if (sliderValueElement) {
-            sliderValueElement.textContent = `${currentDisplayPlaneId}/${maxPlaneId}`;
-        }
-    }
-
-    // Handle Z slice control
-    document.getElementById('sliceZ').addEventListener('input', (e) => {
-        const planeId = parseInt(e.target.value);
-        const maxPlaneId = parseInt(e.target.max);
-        currentPlaneId = Math.min(planeId, maxPlaneId); // Use plane_id directly, clamped to max plane_id
-        
-        // Convert plane_id to anisotropic Y coordinate for rendering
-        currentSliceY = planeIdToSliceY(currentPlaneId);
-        
-        updateSliderDisplay();
-        
-        deckgl.setProps({
-            layers: createLayers()
-        });
-        
-        console.log('Plane ID:', currentPlaneId, '/', maxPlaneId, '| Slice Y:', currentSliceY);
-    });
-
-    // Configure slider range based on plane_id values from config
-    const sliceSlider = document.getElementById('sliceZ');
-    let maxPlaneId = blockData.bounds.maxY; // fallback
-    currentPlaneId = maxPlaneId; // start at max plane (all visible)
-    
-    // Use config values to get actual totalPlanes
-    if (window.opener && window.opener.window.config) {
-        const config = window.opener.window.config();
-        maxPlaneId = config.totalPlanes - 1; // plane_id ranges from 0 to totalPlanes-1
-        currentPlaneId = maxPlaneId; // start showing all planes
-        console.log(`🎛️ Slider range set from config: plane_id 0 to ${maxPlaneId} (totalPlanes: ${config.totalPlanes})`);
-    } else {
-        console.log(`⚠️ Config not available, using bounds maxY: ${maxPlaneId}`);
-    }
-    
-    sliceSlider.min = "0";
-    sliceSlider.max = maxPlaneId.toString();
-    sliceSlider.value = maxPlaneId.toString();
-    sliceSlider.step = "1";
-    
-    // Set initial slice position
-    currentSliceY = planeIdToSliceY(currentPlaneId);
-
-    // Ensure slider value UI is visible and initialized
-    const sliderValueElement = document.getElementById('sliderValue');
-    if (sliderValueElement) {
-        sliderValueElement.style.display = 'block';
-        updateSliderDisplay();
-    }
-    
-    // Handle show lines toggle
-    document.getElementById('showLinesToggle').addEventListener('change', (e) => {
-        showSpotLines = e.target.checked;
-        console.log('Show spot lines:', showSpotLines);
-        
-        deckgl.setProps({
-            layers: createLayers()
-        });
-    });
-
-    // Handle show background toggle
-    document.getElementById('showBackgroundToggle').addEventListener('change', (e) => {
-        showBackground = e.target.checked;
-        console.log('Show background:', showBackground);
-        
-        deckgl.setProps({
-            layers: createLayers()
-        });
-    });
-
-    // Handle show hole voxels toggle
-    document.getElementById('showHoleVoxelsToggle').addEventListener('change', (e) => {
-        showHoleVoxels = e.target.checked;
-        console.log('Show hole voxels:', showHoleVoxels);
-        
-        // When showing hole voxels, optionally hide background for better visualization
-        if (showHoleVoxels) {
-            console.log('💡 Tip: Consider hiding background for clearer cell boundary visualization');
-        }
-        
-        deckgl.setProps({
-            layers: createLayers()
-        });
-    });
-
-    // Handle show boundary voxels toggle
-    document.getElementById('showBoundaryVoxelsToggle').addEventListener('change', (e) => {
-        showBoundaryVoxels = e.target.checked;
-        console.log('Show boundary voxels:', showBoundaryVoxels);
-        
-        // When showing boundary voxels, optionally hide background for better visualization
-        if (showBoundaryVoxels) {
-            console.log('🔴 Showing traced cell boundary voxels in red');
-        }
-        
-        deckgl.setProps({
-            layers: createLayers()
-        });
-    });
-
-    // Handle ghosting toggle
-    document.getElementById('showGhostingToggle').addEventListener('change', (e) => {
-        showGhosting = e.target.checked;
-        console.log('Show ghosting:', showGhosting);
-        
-        deckgl.setProps({
-            layers: createLayers()
-        });
-    });
-
-    // Handle gene widget close button
-    document.getElementById('geneWidgetClose').addEventListener('click', () => {
-        const widget = document.getElementById('chunkGeneWidget');
-        widget.classList.add('hidden');
-        const geneBtn = document.getElementById('genePanelBtn');
-        if (geneBtn) geneBtn.style.display = '';
-    });
-
-    // Collapse/expand gene widget (minimal UI)
-    const collapseBtn = document.getElementById('geneWidgetCollapse');
-    if (collapseBtn) {
-        collapseBtn.addEventListener('click', () => {
-            const widget = document.getElementById('chunkGeneWidget');
-            const collapsed = widget.classList.toggle('collapsed');
-            // Toggle symbol to + when collapsed, − when expanded
-            collapseBtn.textContent = collapsed ? '+' : '−';
-            collapseBtn.title = collapsed ? 'Expand' : 'Collapse';
-        });
-    }
-
-    // Minimal Genes button toggles the widget (match main UI)
-    const genePanelBtn = document.getElementById('genePanelBtn');
-    if (genePanelBtn) {
-        genePanelBtn.addEventListener('click', () => {
-            const widget = document.getElementById('chunkGeneWidget');
-            const nowHidden = widget.classList.toggle('hidden');
-            const collapseBtn2 = document.getElementById('geneWidgetCollapse');
-            // If showing, ensure expanded and hide the Genes button for a clean corner
-            if (!nowHidden) {
-                if (collapseBtn2 && widget.classList.contains('collapsed')) {
-                    widget.classList.remove('collapsed');
-                    collapseBtn2.textContent = '−';
-                    collapseBtn2.title = 'Collapse';
-                }
-                genePanelBtn.style.display = 'none';
-            } else {
-                genePanelBtn.style.display = '';
+    // Initialize Z-slice slider via UI module
+    initSliceSlider({
+        deckgl,
+        createLayers,
+        planeIdToSliceY,
+        getTotalPlanes: () => {
+            if (window.opener && window.opener.window.config) {
+                return window.opener.window.config().totalPlanes;
             }
-        });
-    }
-
-    // Hide gene widget on Escape for minimal UI
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            const widget = document.getElementById('chunkGeneWidget');
-            if (widget && !widget.classList.contains('hidden')) {
-                widget.classList.add('hidden');
-                const geneBtn = document.getElementById('genePanelBtn');
-                if (geneBtn) geneBtn.style.display = '';
-            }
-        }
+            // Fallback to bounds-based estimate if config is unavailable
+            return blockData.bounds.maxY + 1;
+        },
+        getCurrentPlaneId: () => currentPlaneId,
+        setCurrentPlaneId: (v) => { currentPlaneId = v; },
+        setCurrentSliceY: (v) => { currentSliceY = v; }
+    });
+    
+    // Initialize minimal top-right controls via UI module
+    initControls({
+        deckgl,
+        createLayers,
+        setShowSpotLines: (v) => { showSpotLines = v; },
+        setShowBackground: (v) => { showBackground = v; },
+        setShowHoleVoxels: (v) => { showHoleVoxels = v; },
+        setShowBoundaryVoxels: (v) => { showBoundaryVoxels = v; },
+        setShowGhosting: (v) => { showGhosting = v; }
     });
 
-    // Handle gene search functionality
-    document.getElementById('geneSearch').addEventListener('input', (e) => {
-        filterGeneList(e.target.value);
+    // Initialize genes panel UI module (build list, toggle, search, open/close)
+    initGenesPanel({
+        availableGenes,
+        selectedGenes,
+        blockData,
+        createLayers,
+        deckgl
     });
-
-    // Handle toggle all genes
-    document.getElementById('toggleAllGenes').addEventListener('click', () => {
-        const totalGenes = availableGenes.size;
-        const selected = selectedGenes.size;
-        const shouldSelectAll = selected < totalGenes;
-        
-        if (shouldSelectAll) {
-            // Select all genes
-            availableGenes.forEach(gene => selectedGenes.add(gene));
-            console.log('🧬 Selecting all genes');
-        } else {
-            // Unselect all genes
-            selectedGenes.clear();
-            console.log('🧬 Unselecting all genes');
-        }
-        
-        // Update all checkboxes to match the new selection state
-        availableGenes.forEach(gene => {
-            const geneCheckbox = document.getElementById(`gene-${gene}`);
-            if (geneCheckbox) {
-                geneCheckbox.checked = selectedGenes.has(gene);
-            }
-        });
-        
-        updateToggleAllButton();
-        
-        // Update layers
-        deckgl.setProps({
-            layers: createLayers()
-        });
-    });
-
-    // Build gene controls after data is processed
-    buildGeneControls();
-    updateToggleAllButton();
-
-    // Initialize slider display
-    updateSliderDisplay();
 
     console.log('Bio demo initialized with', blockData.geneData.length, 'gene spots and', blockData.stoneData.length, 'stone blocks');
     
