@@ -3,8 +3,7 @@
  * Main application logic extracted from bio-demo.html
  */
 
-// Import boundary tracing functionality
-import { traceBoundaryPixels } from '../modules/boundaryTracer.js';
+// Boundary tracing no longer used; raster masks produce boundary voxels.
 
 // Gene color mapping function using glyph configuration
 function getGeneColor(geneName) {
@@ -171,44 +170,47 @@ document.addEventListener('DOMContentLoaded', function() {
         return planeId; // Direct mapping fallback
     }
 
-    // Helper function to check if a point is inside a polygon using ray casting algorithm
-    function isPointInPolygon(x, y, polygon) {
-        let inside = false;
-        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-            const [xi, yi] = polygon[i];
-            const [xj, yj] = polygon[j];
-            
-            if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
-                inside = !inside;
-            }
-        }
-        return inside;
-    }
+    // Ray-cast has been removed. Any usage should throw to surface incorrect code paths.
+    function isPointInPolygon() { throw new Error('Ray-cast removed: use raster mask'); }
+    function getCellAtPosition() { throw new Error('Ray-cast removed: use raster mask'); }
 
-    // Helper function to get the cell at a specific position (returns cell object or 0)
-    function getCellAtPosition(blockX, blockZ, planeId, dataset, bounds) {
-        // Convert block coordinates back to original coordinate system at voxel CENTER.
-        // Why centers (+0.5)? If we sample corners (integers), many points land exactly on
-        // polygon edges or slightly outside due to flooring the float bounds. Most
-        // point-in-polygon tests treat "on-edge" as outside, which causes false stone
-        // voxels on faces even when the selection is fully inside a cell. Sampling the
-        // voxel center moves the test point strictly inside the intended pixel cell and
-        // away from edges, eliminating the ambiguity.
-        const originalX = blockX + bounds.left + 0.5;  // viewer X → original X (center of pixel)
-        const originalY = blockZ + bounds.top + 0.5;   // viewer Z → original Y (center of pixel)
-        
-        // Find cells that exist on this specific plane
-        const cellsOnPlane = dataset.cells.data.filter(cell => cell.plane === planeId);
-        
-        
-        // Check each cell boundary on this plane
-        for (const cell of cellsOnPlane) {
-            // Check if point is inside this cell's clipped boundary
-            if (cell.clippedBoundary && isPointInPolygon(originalX, originalY, cell.clippedBoundary)) {
-                return cell; // Return the cell object (contains cellColor!)
+    // Build a per-plane label mask using 2D canvas. Robust approach: draw each cell
+    // separately and OR into a Uint32 labels array (id per pixel), avoiding RGB blending artifacts.
+    function buildPlaneLabelMask(planeCells, bounds) {
+        const W = (bounds.right - bounds.left) + 1;
+        const H = (bounds.bottom - bounds.top) + 1;
+        const canvas = document.createElement('canvas');
+        canvas.width = W;
+        canvas.height = H;
+        const ctx2d = canvas.getContext('2d', { willReadFrequently: true });
+
+        const labels = new Uint32Array(W * H); // 0 = background, otherwise cellId
+
+        // Draw each cell into a fresh alpha mask, then write id into labels where alpha > 0
+        for (const cell of planeCells) {
+            if (!cell.clippedBoundary || cell.clippedBoundary.length < 3) continue;
+
+            ctx2d.clearRect(0, 0, W, H);
+            ctx2d.beginPath();
+            for (let i = 0; i < cell.clippedBoundary.length; i++) {
+                const vx = cell.clippedBoundary[i][0] - bounds.left;
+                const vy = cell.clippedBoundary[i][1] - bounds.top;
+                if (i === 0) ctx2d.moveTo(vx, vy); else ctx2d.lineTo(vx, vy);
+            }
+            ctx2d.closePath();
+            ctx2d.fillStyle = 'rgba(255,255,255,1)';
+            ctx2d.fill('evenodd');
+
+            const img = ctx2d.getImageData(0, 0, W, H).data;
+            const id = cell.cellId || cell.cell_id || 0;
+            if (!id) continue;
+            for (let p = 0, i = 0; i < labels.length; i++, p += 4) {
+                // Treat any coverage as inside
+                if (img[p + 3] > 0) labels[i] = id;
             }
         }
-        return 0; // voxel is not inside any cell boundary, return 0 the Id of the background
+
+        return { width: W, height: H, labels };
     }
 
     // Transform biological data to minecraft-layer format
@@ -254,8 +256,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-        // Create background stone grid using plane-based positioning with cell boundary holes
-        console.log('🏗️ Creating stone blocks at plane positions with cell boundary holes...');
+        // Create background stone grid using plane-based positioning with cell boundary holes (via raster mask)
+        console.log('🏗️ Creating stone blocks at plane positions with cell boundary holes (raster mask)...');
         const stoneStartTime = performance.now();
         
         let totalBlocks = 0;
@@ -268,58 +270,71 @@ document.addEventListener('DOMContentLoaded', function() {
             totalPlanes = config.totalPlanes;
         }
         
+        // Group cells by plane and pre-build label masks per plane
+        const cellsByPlane = new Map();
+        dataset.cells.data.forEach(cell => {
+            if (!cellsByPlane.has(cell.plane)) cellsByPlane.set(cell.plane, []);
+            cellsByPlane.get(cell.plane).push(cell);
+        });
+
+        // Precompute color map id -> rgb
+        const colorById = new Map();
+        dataset.cells.data.forEach(cell => {
+            const id = cell.cellId || cell.cell_id;
+            if (!id) return;
+            if (!colorById.has(id)) {
+                let cellRgb = [200, 200, 200];
+                if (cell.cellColor) {
+                    const color = d3.rgb(cell.cellColor);
+                    cellRgb = [color.r, color.g, color.b];
+                }
+                colorById.set(id, cellRgb);
+            }
+        });
+
+        const maskByPlane = new Map();
+        for (let planeId = 0; planeId < totalPlanes; planeId++) {
+            const list = cellsByPlane.get(planeId) || [];
+            const mask = buildPlaneLabelMask(list, bounds);
+            maskByPlane.set(planeId, mask);
+        }
+
         for (let x = 0; x < maxX; x++) {
             for (let planeId = 0; planeId < totalPlanes; planeId++) {
-                const y = planeIdToSliceY(planeId);  // Convert plane to Y coordinate
+                const y = planeIdToSliceY(planeId);
+                const mask = maskByPlane.get(planeId);
                 for (let z = 0; z < maxZ; z++) {
                     totalBlocks++;
-                    
-                    // Check if this position is inside a cell boundary on this plane
-                    const cell = getCellAtPosition(x, z, planeId, dataset, bounds); // REVERTED: Use integer bounds for now
-                    if (cell) {
+                    const idx = z * mask.width + x;
+                    const id = mask.labels[idx] || 0;
+                    if (id) {
                         holesCreated++;
-                        
-                        
-                        // Convert hex color to RGB if available
-                        let cellRgb;
-                        if (cell.cellColor) {
-                            const color = d3.rgb(cell.cellColor);
-                            cellRgb = [color.r, color.g, color.b];
-                        } else {
-                            console.warn('Cell voxel missing cellColor, cell may not render with correct color:', cell.cellId);
-                        }
-                        
-                        // Create hole stone block (voxel inside cell boundary)
+                        const cellRgb = colorById.get(id) || [200, 200, 200];
                         cellVoxels.push({
-                            position: [x, y, z], // x=width, y=plane-position, z=front-to-back
+                            position: [x, y, z],
                             blockData: 0,
                             temperature: 0.5,
                             humidity: 0.5,
                             lighting: 5,
-                            voxelType: 2, // 2 = cell voxel
-                            voxelId: cell.cellId, // Cell ID for this voxel
+                            voxelType: 2,
+                            voxelId: id,
                             index: cellVoxels.length,
-                            planeId: planeId, // Store which plane this hole stone belongs to
-                            rgb: cellRgb, // Use the actual cell color from selection data
-                            cellId: cell.cellId // Track which cell this belongs to
+                            planeId: planeId,
+                            rgb: cellRgb,
+                            cellId: id
                         });
-                        
-                        continue; // Skip creating regular stone block - create hole for cell
+                        continue;
                     }
-                    
-                    // Generate stone blocks at plane positions (outside cell boundaries)
-                    
-                    
                     stoneVoxels.push({
-                        position: [x, y, z], // x=width, y=plane-position, z=front-to-back
+                        position: [x, y, z],
                         blockData: 0,
                         temperature: 0.5,
                         humidity: 0.5,
                         lighting: 10,
-                        voxelType: 0, // 0 = stone voxel
-                        voxelId: 0, // Generic stone ID (could be unique if needed)
+                        voxelType: 0,
+                        voxelId: 0,
                         index: stoneVoxels.length,
-                        planeId: planeId // Store which plane this stone belongs to
+                        planeId: planeId
                     });
                 }
             }
@@ -342,58 +357,43 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Create boundary voxels by tracing lines between consecutive vertices
-        console.log('🔍 Creating boundary voxels from clipped boundaries...');
+        // Create boundary voxels by morphological edge extraction on masks (disjoint from interior)
+        console.log('🔍 Creating boundary voxels from raster masks...');
         const boundaryStartTime = performance.now();
-        
-        // Process all cells and trace their boundaries
-        dataset.cells.data.forEach((cell, cellIndex) => {
-            if (cell.clippedBoundary && Array.isArray(cell.clippedBoundary) && cell.clippedBoundary.length > 1) {
-                
-                // Convert hex color to RGB if available
-                let cellRgb;
-                if (cell.cellColor) {
-                    const color = d3.rgb(cell.cellColor);
-                    cellRgb = [color.r, color.g, color.b];
-                } else {
-                    console.warn('Boundary voxel missing cellColor, cell may not render with correct color:', cell.cellId);
-                }
-                
-                // Trace boundary pixels using Bresenham's algorithm
-                const boundaryPixels = traceBoundaryPixels(cell.clippedBoundary);
-                
-                // Convert each boundary pixel to a voxel
-                boundaryPixels.forEach((pixel, pixelIndex) => {
-                    const [pixelX, pixelY] = pixel;
-                    
-                    // Convert from original coordinates to viewer coordinates
-                    const viewerX = pixelX - bounds.left;  // original X → viewer X
-                    const viewerZ = pixelY - bounds.top;   // original Y → viewer Z
-                    const viewerY = planeIdToSliceY(cell.plane); // plane → viewer Y
-                    
-                    // Bounds checking to ensure voxel is within selection area
-                    if (viewerX >= 0 && viewerX < maxX && 
-                        viewerZ >= 0 && viewerZ < maxZ && 
-                        viewerY >= 0 && viewerY < maxY) {
-                        
+        for (let planeId = 0; planeId < totalPlanes; planeId++) {
+            const mask = maskByPlane.get(planeId);
+            const W = mask.width, H = mask.height;
+            const y = planeIdToSliceY(planeId);
+            for (let z = 0; z < H; z++) {
+                for (let x = 0; x < W; x++) {
+                    const idx = z * W + x;
+                    const id = mask.labels[idx];
+                    if (!id) continue;
+                    // 4-neighborhood boundary
+                    const leftId  = x > 0     ? mask.labels[idx - 1]     : 0;
+                    const rightId = x < W - 1 ? mask.labels[idx + 1]     : 0;
+                    const upId    = z > 0     ? mask.labels[idx - W]     : 0;
+                    const downId  = z < H - 1 ? mask.labels[idx + W]     : 0;
+                    const isBoundary = (leftId !== id) || (rightId !== id) || (upId !== id) || (downId !== id);
+                    if (isBoundary) {
+                        const cellRgb = colorById.get(id) || [200, 200, 200];
                         boundaryVoxels.push({
-                            position: [viewerX, viewerY, viewerZ],
-                            blockData: 0, // Not used for boundary voxels
+                            position: [x, y, z],
+                            blockData: 0,
                             temperature: 0.5,
                             humidity: 0.5,
                             lighting: 5,
-                            voxelType: 3, // 3 = boundary voxel
-                            voxelId: cell.cellId, // Cell ID for this boundary voxel
+                            voxelType: 3,
+                            voxelId: id,
                             index: boundaryVoxels.length,
-                            rgb: cellRgb, // Use the actual cell color from selection data
-                            planeId: cell.plane,
-                            cellId: cell.cellId, // Track which cell this boundary belongs to
-                            pixelIndex: pixelIndex // Track position within boundary
+                            rgb: cellRgb,
+                            planeId: planeId,
+                            cellId: id
                         });
                     }
-                });
+                }
             }
-        });
+        }
         
         const boundaryEndTime = performance.now();
         console.log(`✅ Boundary tracing completed in ${(boundaryEndTime - boundaryStartTime).toFixed(1)}ms`);
