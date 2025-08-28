@@ -7,6 +7,17 @@
 
 import { loadPolygonData } from './dataLoaders.js';
 
+// Yield back to the browser to keep UI responsive
+function idleYield() {
+    return new Promise(resolve => {
+        if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+            window.requestIdleCallback(() => resolve(), { timeout: 50 });
+        } else {
+            setTimeout(resolve, 0);
+        }
+    });
+}
+
 /**
  * Build complete cell boundary index from all plane files
  * @param {Object} appState - Application state object
@@ -20,14 +31,18 @@ async function buildCellBoundaryIndex(appState) {
     console.log(`🔄 Building cell boundary index from ${totalPlanes} planes...`);
     const startTime = performance.now();
     
-    // Create promises for all planes
-    const promises = [];
-    for (let planeId = 0; planeId < totalPlanes; planeId++) {
-        promises.push(loadPlaneForIndex(planeId, cellBoundaryIndex, appState));
+    // Process planes with limited concurrency to avoid blocking UI/network
+    const CONCURRENCY = 3;
+    let nextPlane = 0;
+    async function worker() {
+        while (nextPlane < totalPlanes) {
+            const planeId = nextPlane++;
+            await loadPlaneForIndex(planeId, cellBoundaryIndex, appState);
+            await idleYield();
+        }
     }
-    
-    // Wait for all planes to load
-    await Promise.all(promises);
+    const workers = Array.from({ length: Math.min(CONCURRENCY, totalPlanes) }, () => worker());
+    await Promise.all(workers);
     
     // Sort plane arrays for each cell
     cellBoundaryIndex.forEach(planes => planes.sort((a, b) => a - b));
@@ -73,17 +88,18 @@ async function loadPlaneForIndex(planeId, cellBoundaryIndex, appState) {
         
         if (geojson?.features && geojson.features.length > 0) {
             let cellCount = 0;
-            geojson.features.forEach(feature => {
+            for (let i = 0; i < geojson.features.length; i++) {
+                const feature = geojson.features[i];
                 const cellId = parseInt(feature.properties.label);
                 if (!isNaN(cellId)) {
-                    // Add plane to this cell's plane list
                     if (!cellBoundaryIndex.has(cellId)) {
                         cellBoundaryIndex.set(cellId, []);
                     }
                     cellBoundaryIndex.get(cellId).push(planeId);
                     cellCount++;
                 }
-            });
+                if (i % 1000 === 0) await idleYield();
+            }
             
             // Log progress every 20 planes
             if (planeId % 20 === 0) {
@@ -115,9 +131,10 @@ async function buildSpatialIndex(cellBoundaryIndex, appState) {
     const spatialIndex = new RBush();
     let processedCells = 0;
     const totalCells = cellBoundaryIndex.size;
-    
-    // Calculate bounding boxes for each cell
-    for (const [cellId, planes] of cellBoundaryIndex.entries()) {
+    const entries = Array.from(cellBoundaryIndex.entries());
+    // Calculate bounding boxes for each cell in small batches
+    for (let i = 0; i < entries.length; i++) {
+        const [cellId, planes] = entries[i];
         const bounds = calculateCellBounds(cellId, planes, appState.polygonCache);
         
         if (bounds) {
@@ -133,11 +150,8 @@ async function buildSpatialIndex(cellBoundaryIndex, appState) {
         }
         
         processedCells++;
-        
-        // Log progress every 5000 cells
-        if (processedCells % 5000 === 0) {
-            console.log(`🗺️ Spatial index progress: ${processedCells}/${totalCells} cells processed`);
-        }
+        if (processedCells % 250 === 0) await idleYield();
+        if (processedCells % 1000 === 0) console.log(`🗺️ Spatial index progress: ${processedCells}/${totalCells} cells processed`);
     }
     
     console.log(`✅ Spatial index built: ${spatialIndex.all().length} cells indexed`);

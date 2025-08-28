@@ -3,8 +3,10 @@ import {
     INITIAL_VIEW_STATE,
     MAX_PRELOAD,
     DEFAULT_STATE,
-    UI_ELEMENTS
+    UI_ELEMENTS,
+    USE_ARROW
 } from '../config/constants.js';
+import RBush from 'https://cdn.jsdelivr.net/npm/rbush@3.0.1/+esm';
 
 // Import coordinate transformation utilities
 import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
@@ -49,6 +51,7 @@ import { RectangularSelector } from '../modules/rectangularSelector.js';
 
 // Import background indexing
 import { startBackgroundIndexing } from '../modules/backgroundIndexLoader.js';
+import Perf from '../utils/runtimePerf.js';
 
 // Import modular components
 import { state } from './stateManager.js';
@@ -259,17 +262,16 @@ function updateAllLayers() {
         layers.push(tileLayer);
     }
 
-    // Add polygon layers for current plane ONLY if cached
-    if (state.polygonCache.has(state.currentPlane)) {
-        layers.push(...createPolygonLayers(
-            state.currentPlane, 
-            state.polygonCache, 
-            state.showPolygons, 
-            state.cellClassColors, 
-            state.polygonOpacity,
-            state.selectedCellClasses
-        ));
-    }
+    // Add polygon layers (TSV uses cache; Arrow builds per-plane GeoJSON)
+    layers.push(...createPolygonLayers(
+        state.currentPlane, 
+        state.polygonCache, 
+        state.showPolygons, 
+        state.cellClassColors, 
+        state.polygonOpacity,
+        state.selectedCellClasses,
+        state.cellDataMap
+    ));
 
     // Add gene layers
     layers.push(...createGeneLayers(state.geneDataMap, state.showGenes, state.selectedGenes, state.geneIconAtlas, state.geneIconMapping, state.currentPlane, state.geneSizeScale, (info) => showTooltip(info, elements.tooltip)));
@@ -403,6 +405,7 @@ function cleanupPolygonCache() {
 
 // Smart preloading of adjacent planes
 function preloadAdjacentPlanes(currentPlane) {
+    if (USE_ARROW) return; // Do not preload TSV polygons in Arrow mode
     const userConfig = window.config();
     const planesToPreload = [];
     
@@ -437,20 +440,20 @@ function updatePlane(newPlane) {
     // Step 1: Immediate visual update (5-20ms)
     updatePlaneImmediate(newPlane);
     
-    // Step 2: Load polygon data for current plane + adjacent planes immediately
-    const userConfig = window.config();
-    const planesToLoad = [
-        Math.max(0, state.currentPlane - 1),           // Previous plane
-        state.currentPlane,                            // Current plane
-        Math.min(userConfig.totalPlanes - 1, state.currentPlane + 1)  // Next plane
-    ];
-    
-    // Start loading all planes in parallel
-    planesToLoad.forEach(plane => {
-        if (!state.polygonCache.has(plane)) {
-            updatePlanePolygonsAsync(plane);
-        }
-    });
+    // Step 2: Load TSV polygons only when Arrow is disabled
+    if (!USE_ARROW) {
+        const userConfig = window.config();
+        const planesToLoad = [
+            Math.max(0, state.currentPlane - 1),           // Previous plane
+            state.currentPlane,                            // Current plane
+            Math.min(userConfig.totalPlanes - 1, state.currentPlane + 1)  // Next plane
+        ];
+        planesToLoad.forEach(plane => {
+            if (!state.polygonCache.has(plane)) {
+                updatePlanePolygonsAsync(plane);
+            }
+        });
+    }
 }
 
 // Expose updatePlane globally for cell lookup module
@@ -561,21 +564,42 @@ async function init() {
     console.log('Loading cell data...');
     await loadCellData(state.cellDataMap);
     
-    // Start background cell boundary index building (non-blocking)
-    console.log('🚀 Starting background cell boundary indexing...');
-    window.cellBoundaryIndexPromise = startBackgroundIndexing(state);
+    // If Arrow path is enabled, initialize class colors and default selection from cell data
+    if (USE_ARROW) {
+        state.allCellClasses.clear();
+        state.cellDataMap.forEach(cell => {
+            const names = cell?.classification?.className;
+            if (Array.isArray(names) && names.length > 0) {
+                state.allCellClasses.add(names[0]);
+            }
+        });
+        assignColorsToCellClasses(state.allCellClasses, state.cellClassColors);
+        if (state.selectedCellClasses.size === 0) {
+            state.allCellClasses.forEach(c => state.selectedCellClasses.add(c));
+        }
+    }
     
-    // CRITICAL FIX: Load polygon data for current plane + adjacent planes during initialization
-    // This prevents flickering on the very first slider movement
-    console.log(`Init: Loading polygon data for plane ${state.currentPlane} + adjacent planes`);
+    // Defer background boundary indexing until after READY (scheduled below)
     
-    // Load current plane first (blocking)
-    const polygonResult = await loadPolygonData(state.currentPlane, state.polygonCache, state.allCellClasses, state.cellDataMap);
-    console.log(`Init: Current plane polygon data loaded:`, polygonResult);
-    
-    // Assign colors to cell classes after loading polygon data
-    assignColorsToCellClasses(state.allCellClasses, state.cellClassColors);
-    
+    // If Arrow is OFF, preload TSV polygons for current + adjacent planes to prevent flicker
+    if (!USE_ARROW) {
+        console.log(`Init: Loading polygon data for plane ${state.currentPlane} + adjacent planes`);
+        const polygonResult = await loadPolygonData(state.currentPlane, state.polygonCache, state.allCellClasses, state.cellDataMap);
+        console.log(`Init: Current plane polygon data loaded:`, polygonResult);
+        assignColorsToCellClasses(state.allCellClasses, state.cellClassColors);
+        try { Perf.markInteractive('tsv', { plane: state.currentPlane }); } catch {}
+        // Defer boundary indexing (TSV) to after READY
+        const startIndexing = () => {
+            console.log('🚀 Starting background cell boundary indexing (deferred)...');
+            window.cellBoundaryIndexPromise = startBackgroundIndexing(state);
+        };
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(startIndexing, { timeout: 2000 });
+        } else {
+            setTimeout(startIndexing, 0);
+        }
+    }
+
     // Initialize cell class widget with all classes selected by default
     if (state.selectedCellClasses.size === 0) {
         state.allCellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
@@ -606,6 +630,54 @@ async function init() {
     // Now safely update all layers - all required data (genes, polygons) is loaded
     // This will render: background tiles + gene markers + cell boundary polygons
     updateAllLayers();
+
+    // If Arrow boundaries are enabled, refresh layers when buffers for a plane are ready
+    try {
+        let markedReady = false;
+        window.addEventListener('arrow-boundaries-ready', () => {
+            updateAllLayers();
+            if (!markedReady) {
+                markedReady = true;
+                // End-to-end ready mark (Arrow path)
+                try { Perf.markInteractive('arrow', { plane: state.currentPlane }); } catch {}
+                // Start spatial index worker (Arrow only) after READY
+                try {
+                    const btn = document.getElementById('selectionToolBtn');
+                    if (btn) { btn.disabled = true; btn.textContent = 'Selection (Indexing…)'; }
+                    const cfg = window.config();
+                    const adv = window.advancedConfig ? window.advancedConfig() : null;
+                    const manifest = new URL(
+                        cfg.arrowBoundariesManifest || './data/arrow_boundaries/manifest.json',
+                        window.location.href
+                    ).href;
+                    const { imageWidth: width, imageHeight: height } = cfg;
+                    const tileSize = (adv && adv.visualization && adv.visualization.tileSize) ? adv.visualization.tileSize : 256;
+                    const workerUrl = new URL('../modules/workers/spatial-index-worker.js', window.location.href);
+                    const w = new Worker(workerUrl, { type: 'module' });
+                    w.onmessage = (ev) => {
+                        const { type, rtree, error } = ev.data || {};
+                        if (type === 'indexReady' && rtree) {
+                            try {
+                                const tree = new RBush();
+                                tree.fromJSON(rtree);
+                                window.cellBoundaryIndexPromise = Promise.resolve({ spatialIndex: tree });
+                                if (btn) { btn.disabled = false; btn.textContent = 'Selection Tool'; }
+                                console.log('✅ Spatial index ready (worker)');
+                            } catch (e) {
+                                console.error('Failed to rehydrate spatial index:', e);
+                            }
+                        } else if (type === 'error') {
+                            console.error('Index worker error:', error);
+                            if (btn) { btn.disabled = false; btn.textContent = 'Selection Tool'; }
+                        }
+                    };
+                    w.postMessage({ type: 'build', payload: { manifestUrl: manifest, img: { width, height, tileSize } } });
+                } catch (e) {
+                    console.error('Failed to start spatial index worker:', e);
+                }
+            }
+        });
+    } catch {}
     
     hideLoading(state, elements.loadingIndicator);
     
@@ -618,7 +690,9 @@ async function init() {
 window.transformToTileCoordinates = transformToTileCoordinates;
 
 // Initialize cell lookup UI immediately when page loads (before data loading)
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+    // Start end-to-end timing
+    try { Perf.start('viewer'); } catch {}
     // Initialize cell lookup UI first - this sets up the Ctrl+F event listener
     if (window.cellLookup) {
         window.cellLookup.setupUI();

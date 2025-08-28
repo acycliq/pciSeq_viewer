@@ -26,7 +26,14 @@ function config() {
         cellBoundaryFiles: "./data/cellBoundaries/new_segmentation/plane_{plane}.tsv",
 
         // Background image: use {plane}, {z}, {y}, {x} as placeholders
-        backgroundTiles: "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg"
+        backgroundTiles: "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg",
+
+        // Optional: Arrow manifests (used when advanced performance.useArrow=true)
+        arrowSpotsManifest: "./data/arrow_spots/manifest.json",
+        arrowCellsManifest: "./data/arrow_cells/manifest.json",
+        arrowBoundariesManifest: "./data/arrow_boundaries/manifest.json",
+        arrowCellsClassDict: "./data/arrow_cells/class_dict.json",
+        arrowSpotsGeneDict: "./data/arrow_spots/gene_dict.json"
     };
 }
 

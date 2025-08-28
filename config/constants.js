@@ -47,6 +47,18 @@ export const DEFAULT_STATE = {
     polygonOpacity: advancedUserConfig.display.polygonOpacity
 };
 
+// Feature flags
+export const USE_ARROW = Boolean(advancedUserConfig?.performance?.useArrow);
+
+// Arrow manifests and related paths (optional)
+export const ARROW_MANIFESTS = {
+    spotsManifest: userConfig.arrowSpotsManifest || './data/arrow_spots/manifest.json',
+    cellsManifest: userConfig.arrowCellsManifest || './data/arrow_cells/manifest.json',
+    boundariesManifest: userConfig.arrowBoundariesManifest || './data/arrow_boundaries/manifest.json',
+    cellsClassDict: userConfig.arrowCellsClassDict || './data/arrow_cells/class_dict.json',
+    spotsGeneDict: userConfig.arrowSpotsGeneDict || './data/arrow_spots/gene_dict.json'
+};
+
 // Color palette for different polygon aliases
 export const POLYGON_COLOR_PALETTE = [
     [255, 99, 132],   // Red
@@ -111,4 +123,3 @@ export function getPolygonFileUrl(planeNumber) {
 export function getTileUrlPattern() {
     return userConfig.backgroundTiles;
 }
-

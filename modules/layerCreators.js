@@ -9,7 +9,9 @@ import {
     IMG_DIMENSIONS, 
     MAX_TILE_CACHE, 
     GENE_SIZE_CONFIG,
-    getTileUrlPattern 
+    getTileUrlPattern,
+    USE_ARROW,
+    ARROW_MANIFESTS
 } from '../config/constants.js';
 import { 
     clamp, 
@@ -18,7 +20,23 @@ import {
 import { loadImage } from './dataLoaders.js';
 
 // Extract deck.gl components for layer creation
-const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer, IconLayer, DataFilterExtension} = deck;
+const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer, IconLayer, DataFilterExtension, PolygonLayer} = deck;
+
+// Arrow boundary buffers cache (per plane) and lazy init for worker facade
+let arrowBoundaryCache = new Map();
+let arrowGeojsonCache = new Map();
+let arrowInitialized = false;
+async function ensureArrowInitialized() {
+    if (!USE_ARROW || arrowInitialized) return;
+    const { initArrow } = await import('../arrow-loader/lib/arrow-loaders.js');
+    initArrow({
+        spotsManifest: ARROW_MANIFESTS.spotsManifest,
+        cellsManifest: ARROW_MANIFESTS.cellsManifest,
+        boundariesManifest: ARROW_MANIFESTS.boundariesManifest,
+        cellsClassDict: ARROW_MANIFESTS.cellsClassDict
+    });
+    arrowInitialized = true;
+}
 
 /**
  * Create a tile layer for background image display
@@ -133,7 +151,7 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
  * @param {Set} selectedCellClasses - Set of selected cell classes for filtering
  * @returns {GeoJsonLayer[]} Array of polygon layers
  */
-export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null) {
+export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null) {
     const layers = [];
     console.log(`createPolygonLayers called for plane ${planeNum}, showPolygons: ${showPolygons}`);
     
@@ -142,42 +160,183 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
         return layers;
     }
 
+    // Arrow fast-path: use binary PathLayer with buffers from worker
+    if (USE_ARROW) {
+        // Lazy async loader: we cannot await inside layer factory; kick off fetch and return existing cached layer if any
+        (async () => {
+            try {
+                await ensureArrowInitialized();
+                if (!arrowBoundaryCache.has(planeNum)) {
+                    const { loadBoundariesPlane } = await import('../arrow-loader/lib/arrow-loaders.js');
+                    const { buffers, timings } = await loadBoundariesPlane(planeNum);
+                    arrowBoundaryCache.set(planeNum, buffers);
+                    try {
+                        const adv = window.advancedConfig ? window.advancedConfig() : null;
+                        if (adv?.performance?.showPerformanceStats) {
+                            const polys = buffers?.length || 0;
+                            const pts = Math.floor((buffers?.positions?.length || 0) / 2);
+                            console.log(`Arrow: plane ${planeNum} buffers loaded — polys=${polys}, points=${pts}`);
+                            if (timings) {
+                                const kb = Math.round((timings.fetchedBytes || 0) / 1024);
+                                console.log(`Arrow timings (plane ${planeNum}): manifest=${timings.fetchManifestMs.toFixed(1)}ms, fetch=${timings.fetchShardsMs.toFixed(1)}ms, decode=${timings.decodeShardsMs.toFixed(1)}ms, assemble=${timings.assembleBuffersMs.toFixed(1)}ms, bytes=${kb}KB`);
+                            }
+                        }
+                    } catch {}
+                    // Notify main app to re-render layers now that buffers are ready
+                    if (typeof window !== 'undefined' && window.dispatchEvent) {
+                        try { window.dispatchEvent(new CustomEvent('arrow-boundaries-ready', { detail: { plane: planeNum } })); } catch {}
+                    }
+                }
+            } catch (e) {
+                console.error('Arrow boundary load error:', e);
+            }
+        })();
+
+        const buffers = arrowBoundaryCache.get(planeNum);
+        if (!buffers) {
+            if (window?.advancedConfig?.().performance?.showPerformanceStats) {
+                console.log(`Arrow buffers not ready yet for plane ${planeNum}`);
+            }
+            return layers; // empty for now; event will re-render when ready
+        }
+        // Ensure coordinates are transformed to tile space once per plane
+        if (!buffers._tileTransformed) {
+            const src = buffers.positions;
+            const dst = new Float32Array(src.length);
+            for (let i = 0; i < src.length; i += 2) {
+                const x = src[i];
+                const y = src[i + 1];
+                const [tx, ty] = transformToTileCoordinates(x, y, IMG_DIMENSIONS);
+                dst[i] = tx;
+                dst[i + 1] = ty;
+            }
+            buffers.positions = dst;
+            buffers._tileTransformed = true;
+            try {
+                const adv = window.advancedConfig ? window.advancedConfig() : null;
+                if (adv?.performance?.showPerformanceStats) {
+                    const polys = buffers?.length || 0;
+                    const pts = Math.floor((buffers?.positions?.length || 0) / 2);
+                    console.log(`Arrow: plane ${planeNum} transformed to tile space — polys=${polys}, points=${pts}`);
+                }
+            } catch {}
+        }
+        // Build and cache GeoJSON once per plane for full parity (fills, hover, colors)
+        if (!arrowGeojsonCache.has(planeNum)) {
+            const t0 = performance.now();
+            const { positions, startIndices, length, labels } = buffers;
+            const features = [];
+            for (let pi = 0; pi < length; pi++) {
+                const start = startIndices[pi];
+                const end = startIndices[pi + 1];
+                if (end - start < 3) continue;
+                const ring = [];
+                for (let i = start; i < end; i++) {
+                    const x = positions[2 * i];
+                    const y = positions[2 * i + 1];
+                    ring.push([x, y]);
+                }
+                const label = labels ? labels[pi] : -1;
+                const cellClass = computeMostProbableClass(label, cellDataMap);
+                features.push({
+                    type: 'Feature',
+                    geometry: { type: 'Polygon', coordinates: [ring] },
+                    properties: { plane_id: planeNum, label, cellClass }
+                });
+            }
+            arrowGeojsonCache.set(planeNum, { type: 'FeatureCollection', features });
+            const t1 = performance.now();
+            if (window?.advancedConfig?.().performance?.showPerformanceStats) {
+                console.log(`Arrow: plane ${planeNum} GeoJSON build: ${(t1 - t0).toFixed(1)}ms, features=${features.length}`);
+            }
+        }
+        const geojsonFromArrow = arrowGeojsonCache.get(planeNum);
+        // Reuse standard filtering + GeoJsonLayer creation
+        return [createFilledGeoJsonLayer(planeNum, geojsonFromArrow, cellClassColors, polygonOpacity, selectedCellClasses)];
+    }
+
     const geojson = polygonCache.get(planeNum);
     if (!geojson) {
         console.log(`No polygon data for plane ${planeNum}`);
         return layers;
     }
-    
+    const layer = createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpacity, selectedCellClasses);
+    layers.push(layer);
+    return layers;
+}
+
+function computeMostProbableClass(label, cellDataMap) {
+    if (!cellDataMap) return 'Generic';
+    const cell = cellDataMap.get(Number(label));
+    if (!cell || !cell.classification) return 'Generic';
+    let names = cell.classification.className;
+    let probs = cell.classification.probability;
+    // Normalize if className came in as a stringified list
+    if (!Array.isArray(names) && typeof names === 'string') {
+        try {
+            const parsed = JSON.parse(names.replace(/'/g, '"'));
+            if (Array.isArray(parsed)) names = parsed;
+        } catch {}
+    }
+    if (!Array.isArray(names)) {
+        console.error('computeMostProbableClass: className is not array', { label, names, cell });
+        return 'Unknown';
+    }
+    if (!Array.isArray(probs) || probs.length !== names.length) {
+        console.error('computeMostProbableClass: probabilities invalid/mismatch', { label, names, probs });
+        return 'Unknown';
+    }
+    let best = -Infinity, idx = -1;
+    for (let i = 0; i < probs.length; i++) { if (typeof probs[i] === 'number' && probs[i] > best) { best = probs[i]; idx = i; } }
+    if (idx < 0 || idx >= names.length) {
+        console.error('computeMostProbableClass: no valid index', { label, names, probs });
+        return 'Unknown';
+    }
+    const raw = names[idx];
+    const cls = (typeof raw === 'string') ? raw.trim() : String(raw || 'Unknown');
+    try {
+        const adv = window.advancedConfig ? window.advancedConfig() : null;
+        // Targeted debug: verify a specific cell mapping during Arrow path
+        if (adv?.performance?.showPerformanceStats && Number(label) === 7113) {
+            console.log(`Class resolution for cell ${label}:`, { names, probs, chosen: cls });
+        }
+    } catch {}
+    return cls;
+}
+
+function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpacity, selectedCellClasses) {
     console.log(`Creating polygon layer for plane ${planeNum}, features: ${geojson.features.length}`);
-    
     // Filter data based on selected cell classes
     let filteredData = geojson;
-    if (selectedCellClasses) {
-        if (selectedCellClasses.size === 0) {
-            // No cell classes selected - hide all polygons
-            console.log(`Hiding all polygons - no cell classes selected`);
-            filteredData = {
-                ...geojson,
-                features: []
-            };
-        } else {
-            // Filter to show only selected cell classes
-            console.log(`Filtering with selectedCellClasses:`, Array.from(selectedCellClasses));
-            filteredData = {
-                ...geojson,
-                features: geojson.features.filter(feature => {
-                    const cellClass = feature.properties.cellClass;
-                    const shouldInclude = cellClass && selectedCellClasses.has(cellClass);
-                    return shouldInclude;
-                })
-            };
-        }
-        console.log(`Filtered from ${geojson.features.length} to ${filteredData.features.length} features`);
-    } else {
-        console.log(`No filtering applied - selectedCellClasses is null`);
+    if (selectedCellClasses && selectedCellClasses.size > 0) {
+        filteredData = {
+            ...geojson,
+            features: geojson.features.filter(feature => {
+                const cellClass = feature.properties.cellClass;
+                return cellClass && selectedCellClasses.has(cellClass);
+            })
+        };
     }
-    
-    // Create single layer with filtered polygons colored by cell class
+    // Ensure colors exist for all classes present (Arrow path may not have prefilled map)
+    try {
+        const seen = new Set();
+        const colorFn = (typeof window.classColorsCodes === 'function') ? window.classColorsCodes : null;
+        const scheme = colorFn ? colorFn() : [];
+        const toRgb = (hex) => {
+            const h = String(hex || '').replace('#','');
+            if (h.length !== 6) return [192,192,192];
+            return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+        };
+        for (const f of filteredData.features) {
+            const cls = f?.properties?.cellClass;
+            if (!cls || seen.has(cls) || cellClassColors.has(cls)) continue;
+            seen.add(cls);
+            const entry = scheme.find(e => e.className === cls);
+            if (entry && entry.color) {
+                cellClassColors.set(cls, toRgb(entry.color));
+            }
+        }
+    } catch {}
     const layer = new GeoJsonLayer({
         id: `polygons-${planeNum}`,
         data: filteredData,
@@ -185,31 +344,19 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
         stroked: false,
         filled: true,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-        
-        // Color cells by their cell class
         getFillColor: d => {
             const cellClass = d.properties.cellClass;
-            const alpha = Math.round(polygonOpacity * 255); // Convert 0-1 to 0-255
+            const alpha = Math.round(polygonOpacity * 255);
             if (cellClass && cellClassColors && cellClassColors.has(cellClass)) {
                 const color = cellClassColors.get(cellClass);
-                return [...color, alpha]; // Use dynamic alpha
+                return [...color, alpha];
             }
-            return [192, 192, 192, alpha]; // Fallback gray with dynamic alpha
+            return [192, 192, 192, alpha];
         },
-        
-        // Update when colors, opacity, or selected classes change
-        updateTriggers: {
-            getFillColor: [cellClassColors, polygonOpacity],
-            data: [selectedCellClasses]
-        }
+        updateTriggers: { getFillColor: [cellClassColors, polygonOpacity], data: [selectedCellClasses] }
     });
-    
     console.log(`Created polygon layer: ${layer.id}`);
-    layers.push(layer);
-    
-    console.log(`Total polygon layers created: ${layers.length}`);
-
-    return layers;
+    return layer;
 }
 
 /**

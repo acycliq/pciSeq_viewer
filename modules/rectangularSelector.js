@@ -117,6 +117,11 @@ export class RectangularSelector {
     }
     
     async processSelection() {
+        // Pre-open a window synchronously to avoid popup blockers; set URL after data is ready
+        const windowFeatures = 'width=1200,height=800,toolbar=no,menubar=no,scrollbars=no,resizable=yes';
+        let preOpenedWin = null;
+        try { preOpenedWin = window.open('about:blank', 'chunkViewer', windowFeatures); } catch {}
+
         const viewport = this.deck.getViewports()[0];
         const bounds = this.getSelectionBounds(viewport);
         
@@ -167,8 +172,19 @@ export class RectangularSelector {
         
         console.log('Rectangular Selection Results:', selectionResults);
         
-        // 🚀 AUTOMATIC PIPELINE: Launch chunk viewer immediately
-        this.launchChunkViewer(selectionResults);
+        // 🚀 AUTOMATIC PIPELINE: Launch chunk viewer (ensure opener data is set before navigating)
+        try {
+            window.lastSelectionResults = selectionResults;
+            const url = `voxel-viewer/voxel-viewer.html?source=selection&auto=true`;
+            if (preOpenedWin) {
+                preOpenedWin.location.href = url;
+                preOpenedWin.focus();
+            } else {
+                this.launchChunkViewer(selectionResults);
+            }
+        } catch (e) {
+            console.error('Failed to launch chunk viewer:', e);
+        }
     }
     
     getSelectionBounds(viewport) {
@@ -274,8 +290,8 @@ export class RectangularSelector {
             console.log('Background index not available, using current plane only');
             return this.getCurrentPlaneClippedCells(bounds);
         }
-        
-        if (!indexData.spatialIndex) {
+        // If Arrow mode disabled indexing, or index not ready, fallback gracefully
+        if (!indexData || !indexData.spatialIndex) {
             console.log('Spatial index not ready, using current plane only');
             return this.getCurrentPlaneClippedCells(bounds);
         }
@@ -470,12 +486,15 @@ export class RectangularSelector {
                     const intersection = turf.intersect(cellPolygon, selectionRectangle);
                     
                     if (intersection) {
+                        const cellClassName = feature.properties.cellClass;
+                        const cellColor = getCellClassColor(cellClassName || 'Generic');
                         results.push({
                             intersects: true,
                             clippedBoundary: intersection.geometry.coordinates[0],
                             originalBoundary: cellCoords,
                             cellId: cellId,
-                            plane: currentPlane
+                            plane: currentPlane,
+                            cellColor: cellColor
                         });
                     }
                 }

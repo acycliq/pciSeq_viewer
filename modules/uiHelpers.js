@@ -42,12 +42,22 @@ export function showTooltip(info, tooltipElement) {
             // Polygon tooltip - show enhanced cell information
             if (info.object.properties) {
                 const cellLabel = info.object.properties.label;
-                const cellClass = info.object.properties.cellClass || 'Unknown';
+                let cellClass = info.object.properties.cellClass || 'Unknown';
+                if (Array.isArray(cellClass)) cellClass = cellClass[0] || 'Unknown';
+                // If class came as a stringified list, parse and pick first
+                if (typeof cellClass === 'string' && cellClass.trim().startsWith('[')) {
+                    try {
+                        const parsed = JSON.parse(cellClass.replace(/'/g, '"'));
+                        if (Array.isArray(parsed) && parsed.length > 0) cellClass = parsed[0];
+                    } catch {}
+                }
+                cellClass = String(cellClass).trim();
                 const planeId = info.object.properties.plane_id;
                 
                 // Get cell coordinates and probability from cellData
                 let cellCoords = '';
                 let classProb = '';
+                let colorHex = '';
                 if (window.debugData && window.debugData.getCell) {
                     const cellData = window.debugData.getCell(parseInt(cellLabel));
                     if (cellData && cellData.position) {
@@ -64,11 +74,22 @@ export function showTooltip(info, tooltipElement) {
                         }
                     }
                 }
+                // Color hex (from class color schemes if available)
+                try {
+                    if (typeof classColorsCodes === 'function') {
+                        const scheme = classColorsCodes();
+                        const entry = scheme.find(e => e.className === cellClass);
+                        if (entry && entry.color) {
+                            colorHex = `<strong>Color:</strong> ${entry.color}<br>`;
+                        }
+                    }
+                } catch {}
                 
                 content =  `<strong>Cell Label:</strong> ${cellLabel}<br>
                             ${cellCoords}
                             <strong>Plane:</strong>${planeId}<br>
                             <strong>Cell Class:</strong> ${cellClass}<br>
+                            ${colorHex}
                             ${classProb}`;
             }
         } else if (info.object.gene) {

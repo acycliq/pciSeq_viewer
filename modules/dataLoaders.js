@@ -11,7 +11,9 @@ import {
     IMG_DIMENSIONS, 
     POLYGON_ALIAS_THRESHOLDS,
     POLYGON_COLOR_PALETTE,
-    getPolygonFileUrl 
+    getPolygonFileUrl,
+    USE_ARROW,
+    ARROW_MANIFESTS
 } from '../config/constants.js';
 import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
 // Note: classColorsCodes is loaded globally from color scheme files
@@ -47,19 +49,65 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
     if (geneDataMap.size > 0) return { atlas: null, mapping: null };
 
     try {
-        // Use Web Worker for non-blocking data loading
-        const geneData = await loadGeneDataWithWorker();
+        if (USE_ARROW) {
+            const { initArrow, loadSpots } = await import('../arrow-loader/lib/arrow-loaders.js');
+            initArrow({
+                spotsManifest: ARROW_MANIFESTS.spotsManifest,
+                cellsManifest: ARROW_MANIFESTS.cellsManifest,
+                boundariesManifest: ARROW_MANIFESTS.boundariesManifest,
+                cellsClassDict: ARROW_MANIFESTS.cellsClassDict,
+                spotsGeneDict: ARROW_MANIFESTS.spotsGeneDict
+            });
+            const { shards, geneDict } = await loadSpots();
+            // Build gene map: gene name -> array of spot objects
+            geneDataMap.clear();
+            selectedGenes.clear();
+            const idToName = geneDict || {};
+            let spotTotal = 0;
+            let globalSpotIndex = 0;
+            for (const sh of shards) {
+                const { x, y, z, plane_id, gene_id, neighbour_array, neighbour_prob, omp_score, omp_intensity } = sh;
+                const n = x?.length || 0;
+                for (let i = 0; i < n; i++) {
+                    const gid = gene_id ? gene_id[i] : -1;
+                    const name = idToName[gid] || String(gid);
+                    if (!geneDataMap.has(name)) { geneDataMap.set(name, []); selectedGenes.add(name); }
+                    // Neighbour info (optional)
+                    const nArr = Array.isArray(neighbour_array) ? neighbour_array[i] : null;
+                    const pArr = Array.isArray(neighbour_prob) ? neighbour_prob[i] : null;
+                    const primaryNeighbour = (nArr && nArr.length > 0) ? nArr[0] : null;
+                    const primaryProb = (pArr && pArr.length > 0) ? Number(pArr[0]) : null;
+                    geneDataMap.get(name).push({
+                        spot_id: globalSpotIndex++,
+                        x: x[i],
+                        y: y ? y[i] : 0,
+                        z: z ? z[i] : 0,
+                        plane_id: plane_id ? plane_id[i] : 0,
+                        gene: name,
+                        neighbour: primaryNeighbour,
+                        neighbour_array: nArr || null,
+                        prob: primaryProb,
+                        prob_array: pArr || null,
+                        score: omp_score ? Number(omp_score[i]) : null,
+                        intensity: omp_intensity ? Number(omp_intensity[i]) : null
+                    });
+                    spotTotal++;
+                }
+            }
+            if (window?.advancedConfig?.().performance?.showPerformanceStats) {
+                console.log(`Arrow spots: genes=${geneDataMap.size}, spots=${spotTotal}`);
+            }
+        } else {
+            // Use Web Worker for non-blocking data loading (TSV)
+            const geneData = await loadGeneDataWithWorker();
+            geneDataMap.clear();
+            selectedGenes.clear();
+            geneData.forEach(({ gene, spots }) => {
+                geneDataMap.set(gene, spots);
+                selectedGenes.add(gene);
+            });
+        }
         
-        // Clear existing data
-        geneDataMap.clear();
-        selectedGenes.clear();
-        
-        // Populate gene data map (same format as before)
-        geneData.forEach(({ gene, spots }) => {
-            geneDataMap.set(gene, spots);
-            selectedGenes.add(gene);
-        });
-
         // Build icon atlas for gene visualization
         const genes = Array.from(geneDataMap.keys());
         const {atlas, mapping} = buildGeneIconAtlas(genes);
@@ -85,19 +133,70 @@ export async function loadCellData(cellDataMap) {
     }
 
     try {
-        // Use Web Worker for non-blocking data loading
-        const cellData = await loadCellDataWithWorker();
-        
-        // Clear existing data
-        cellDataMap.clear();
-        
-        // Populate cell data map
-        cellData.forEach(cell => {
-            cellDataMap.set(cell.cellNum, cell);
-        });
-        
-        console.log(`✅ Cell data loaded: ${cellDataMap.size} cells`);
-        return true;
+        if (USE_ARROW) {
+            const { initArrow, loadCells } = await import('../arrow-loader/lib/arrow-loaders.js');
+            initArrow({
+                spotsManifest: ARROW_MANIFESTS.spotsManifest,
+                cellsManifest: ARROW_MANIFESTS.cellsManifest,
+                boundariesManifest: ARROW_MANIFESTS.boundariesManifest,
+                cellsClassDict: ARROW_MANIFESTS.cellsClassDict,
+                spotsGeneDict: ARROW_MANIFESTS.spotsGeneDict
+            });
+            const { columns, classDict } = await loadCells();
+            const X = columns.X, Y = columns.Y, Z = columns.Z, class_id = columns.class_id, cell_id = columns.cell_id;
+            const classNameStr = columns.class_name_str || [];
+            const probStr = columns.prob_str || [];
+            const n = cell_id?.length || 0;
+            cellDataMap.clear();
+            const parseList = (s) => {
+                if (Array.isArray(s)) return s;
+                if (typeof s !== 'string') return null;
+                try { const p = JSON.parse(s.replace(/'/g, '"')); return Array.isArray(p) ? p : null; } catch { return null; }
+            };
+            for (let i = 0; i < n; i++) {
+                const cid = cell_id[i];
+                // Prefer explicit class list if present; else map from class_id
+                let classNames = parseList(classNameStr[i]);
+                let probs = parseList(probStr[i]);
+                if (Array.isArray(probs)) probs = probs.map(v => Number(v));
+                let cname = null;
+                if (classNames && probs && probs.length === classNames.length) {
+                    let best = -Infinity, idx = -1;
+                    for (let k = 0; k < probs.length; k++) {
+                        const v = probs[k];
+                        if (!Number.isNaN(v) && v > best) { best = v; idx = k; }
+                    }
+                    if (idx >= 0) cname = String(classNames[idx]).trim();
+                }
+                if (!cname && classDict) {
+                    const id = class_id ? class_id[i] : -1;
+                    if (id != null && classDict[id] != null) cname = classDict[id];
+                }
+                if (!cname) cname = 'Unknown';
+                const cell = {
+                    cellNum: cid,
+                    position: { x: X ? X[i] : 0, y: Y ? Y[i] : 0, z: Z ? Z[i] : 0 },
+                    geneExpression: { geneNames: [], geneCounts: [] },
+                    classification: {
+                        className: classNames && classNames.length ? classNames.map(s => String(s).trim()) : [cname],
+                        probability: Array.isArray(probs) && probs.length ? probs : [1]
+                    },
+                    totalGeneCount: 0,
+                    uniqueGenes: 0,
+                    primaryClass: cname,
+                    primaryProb: (Array.isArray(probs) && probs.length) ? Math.max(...probs) : 1
+                };
+                cellDataMap.set(cid, cell);
+            }
+            console.log(`✅ Cell data (Arrow) loaded: ${cellDataMap.size} cells`);
+            return true;
+        } else {
+            const cellData = await loadCellDataWithWorker();
+            cellDataMap.clear();
+            cellData.forEach(cell => { cellDataMap.set(cell.cellNum, cell); });
+            console.log(`✅ Cell data loaded: ${cellDataMap.size} cells`);
+            return true;
+        }
 
     } catch (err) {
         console.error('Failed to load cell data:', err);
@@ -280,34 +379,35 @@ export function buildGeneSpotIndexes(geneDataMap, cellToSpotsIndex, spotToParent
  */
 function getMostProbableCellClass(cellNum, cellDataMap) {
     const cellData = cellDataMap.get(parseInt(cellNum));
-    
     if (!cellData) {
-        console.log(`No cell data found for cell ${cellNum}`);
-        return 'Generic';
+        console.error(`No cell data found for cell ${cellNum}`);
+        return 'Unknown';
     }
-    
-    if (!cellData.classification || !cellData.classification.className || !cellData.classification.probability) {
-        console.log(`Cell ${cellNum} missing classification data:`, cellData);
-        return 'Generic'; // Fallback class
+    let names = cellData?.classification?.className;
+    let probs = cellData?.classification?.probability;
+    if (!names) {
+        console.error(`Cell ${cellNum} missing classification.className`, cellData);
+        return 'Unknown';
     }
-    
-    // Find the class with highest probability
-    let maxProbIndex = 0;
-    let maxProb = 0;
-    
-    cellData.classification.probability.forEach((prob, index) => {
-        if (prob > maxProb) {
-            maxProb = prob;
-            maxProbIndex = index;
-        }
-    });
-    
-    const result = cellData.classification.className[maxProbIndex] || 'Generic';
-    if (parseInt(cellNum) <= 3) {
-        console.log(`Cell ${cellNum}: classes=${cellData.classification.className}, probs=${cellData.classification.probability}, result=${result}`);
+    if (!Array.isArray(names) && typeof names === 'string') {
+        try { const parsed = JSON.parse(names.replace(/'/g, '"')); if (Array.isArray(parsed)) names = parsed; } catch {}
     }
-    
-    return result;
+    if (!Array.isArray(names)) {
+        console.error(`Cell ${cellNum} className is not an array`, names);
+        return 'Unknown';
+    }
+    if (!Array.isArray(probs) || probs.length !== names.length) {
+        console.error(`Cell ${cellNum} probabilities invalid or length mismatch`, { names, probs });
+        return 'Unknown';
+    }
+    let maxProbIndex = -1; let maxProb = -Infinity;
+    for (let i = 0; i < probs.length; i++) { if (typeof probs[i] === 'number' && probs[i] > maxProb) { maxProb = probs[i]; maxProbIndex = i; } }
+    if (maxProbIndex < 0 || maxProbIndex >= names.length) {
+        console.error(`Cell ${cellNum} could not select a class from`, { names, probs });
+        return 'Unknown';
+    }
+    const result = String(names[maxProbIndex]).trim();
+    return result || 'Unknown';
 }
 
 /**
@@ -316,27 +416,29 @@ function getMostProbableCellClass(cellNum, cellDataMap) {
  * @returns {Array} RGB color array
  */
 function getCellClassColor(className) {
+    if (Array.isArray(className)) {
+        console.error('getCellClassColor expected string, received array', className);
+        return [192,192,192];
+    }
+    const key = String(className || '').trim();
     // Use the global classColorsCodes function
     if (typeof classColorsCodes === 'function') {
         const colorConfig = classColorsCodes();
-        // console.log(`Looking up color for ${className}, available classes:`, colorConfig.map(c => c.className));
-        const classEntry = colorConfig.find(entry => entry.className === className);
+        const classEntry = colorConfig.find(entry => entry.className === key);
         if (classEntry && classEntry.color) {
             // Convert hex color to RGB array
             const hex = classEntry.color.replace('#', '');
             const r = parseInt(hex.substr(0, 2), 16);
             const g = parseInt(hex.substr(2, 2), 16);
             const b = parseInt(hex.substr(4, 2), 16);
-            // console.log(`Found color for ${className}: ${classEntry.color} -> [${r}, ${g}, ${b}]`);
             return [r, g, b];
         } else {
-            console.log(`No color found for ${className}, using fallback gray`);
+            console.log(`No color found for ${key}, using fallback gray`);
         }
     } else {
         console.log('classColorsCodes function not available, using fallback gray');
     }
-    
-    // Fallback to generic gray color
+    // Fallback to generic gray color (do not invent colors; exposes mapping errors)
     return [192, 192, 192]; // #C0C0C0
 }
 
@@ -398,6 +500,54 @@ function tsvToGeoJSON(tsvData, planeId, allCellClasses, cellDataMap) {
  * @returns {Promise<Object>} GeoJSON FeatureCollection
  */
 export async function loadPolygonData(planeNum, polygonCache, allCellClasses, cellDataMap = null, cellBoundaryIndex = null) {
+    // Arrow path: build per-plane GeoJSON from Arrow buffers and cache it
+    if (USE_ARROW) {
+        if (polygonCache.has(planeNum)) {
+            const cached = polygonCache.get(planeNum);
+            console.log(`Using cached polygon data (Arrow) for plane ${planeNum}, features: ${cached?.features?.length || 0}`);
+            return cached;
+        }
+        try {
+            const { initArrow, loadBoundariesPlane } = await import('../arrow-loader/lib/arrow-loaders.js');
+            initArrow({
+                spotsManifest: ARROW_MANIFESTS.spotsManifest,
+                cellsManifest: ARROW_MANIFESTS.cellsManifest,
+                boundariesManifest: ARROW_MANIFESTS.boundariesManifest,
+                cellsClassDict: ARROW_MANIFESTS.cellsClassDict,
+                spotsGeneDict: ARROW_MANIFESTS.spotsGeneDict
+            });
+            const { buffers } = await loadBoundariesPlane(planeNum);
+            // Transform to tile coords and build GeoJSON
+            const { positions, startIndices, length, labels } = buffers;
+            const features = [];
+            for (let pi = 0; pi < length; pi++) {
+                const start = startIndices[pi];
+                const end = startIndices[pi + 1];
+                if (end - start < 3) continue;
+                const ring = [];
+                for (let i = start; i < end; i++) {
+                    const [tx, ty] = transformToTileCoordinates(positions[2*i], positions[2*i+1], IMG_DIMENSIONS);
+                    ring.push([tx, ty]);
+                }
+                const label = labels ? labels[pi] : -1;
+                const cellClass = getMostProbableCellClass(label, cellDataMap || window.appState?.cellDataMap || new Map());
+                if (cellClass && allCellClasses) allCellClasses.add(cellClass);
+                features.push({
+                    type: 'Feature',
+                    geometry: { type: 'Polygon', coordinates: [ring] },
+                    properties: { plane_id: planeNum, label, cellClass }
+                });
+            }
+            const geojson = { type: 'FeatureCollection', features };
+            polygonCache.set(planeNum, geojson);
+            console.log(`Loaded ${features.length} polygons for plane ${planeNum} (Arrow)`);
+            if (cellBoundaryIndex) updateCellBoundaryIndex(planeNum, geojson, cellBoundaryIndex);
+            return geojson;
+        } catch (err) {
+            console.error(`Failed to load Arrow polygon data for plane ${planeNum}:`, err);
+            return { type: 'FeatureCollection', features: [] };
+        }
+    }
     // Return cached data if available
     if (polygonCache.has(planeNum)) {
         const cachedData = polygonCache.get(planeNum);
@@ -464,7 +614,7 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
             console.log('Using fallback cell classes:', Array.from(allCellClasses));
         }
         
-        console.log(`Loaded ${geojson.features.length} polygons for plane ${planeNum}`);
+        // console.log(`Loaded ${geojson.features.length} polygons for plane ${planeNum}`);
         
         // Cache the result for future use
         polygonCache.set(planeNum, geojson);
