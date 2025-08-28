@@ -64,3 +64,11 @@ export async function loadBoundariesPlane(planeId) {
   if (!manifestUrl) throw new Error('boundariesManifest not configured');
   return call('loadBoundariesPlane', { manifestUrl, planeId });
 }
+
+// Build pre-transformed scatter (binary) cache for spots inside the worker and transfer typed arrays
+// payload: { manifestUrl, img: { width, height, tileSize }, geneIdColors: { [id]: [r,g,b] } }
+export async function buildSpotsScatterCache({ manifestUrl, img, geneIdColors }) {
+  if (!manifestUrl) throw new Error('spots manifestUrl is required');
+  const { positions, colors, planes, geneIds } = await call('buildSpotsScatterCache', { manifestUrl, img, geneIdColors });
+  return { positions, colors, planes, geneIds };
+}

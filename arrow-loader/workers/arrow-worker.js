@@ -238,6 +238,59 @@ self.onmessage = async (e) => {
     } else if (type === 'loadBoundariesPlane') {
       const { planeId, buffers, transfers } = await handleLoadBoundariesPlane(payload);
       self.postMessage({ id, ok: true, type, planeId, buffers }, transfers);
+    } else if (type === 'buildSpotsScatterCache') {
+      // Build binary scatter cache for spots: positions (tile coords), colors (RGBA), geneIds, planes
+      const { manifestUrl, img, geneIdColors } = payload || {};
+      const manifest = await loadManifest(manifestUrl);
+      const shardUrls = resolveShardUrls(manifestUrl, manifest);
+      let total = 0;
+      const shards = [];
+      for (const url of shardUrls) {
+        const buf = await fetchArrayBuffer(url);
+        const table = decodeFeather(buf);
+        const x = getTypedColumn(table, 'x');
+        const y = getTypedColumn(table, 'y');
+        const plane_id = getTypedColumn(table, 'plane_id');
+        const gene_id = getTypedColumn(table, 'gene_id');
+        const n = x ? x.length : 0;
+        if (!n) continue;
+        shards.push({ x, y, plane_id, gene_id, n });
+        total += n;
+      }
+      const positions = new Float32Array(total * 3);
+      const colors = new Uint8Array(total * 4);
+      const geneIds = new Int32Array(total);
+      const planes = new Int32Array(total);
+      const width = img && img.width || 256;
+      const height = img && img.height || 256;
+      const tileSize = img && img.tileSize || 256;
+      const maxDim = Math.max(width, height);
+      const xAdj = width / maxDim;
+      const yAdj = height / maxDim;
+      let off = 0;
+      for (const sh of shards) {
+        const n = sh.n || 0;
+        for (let i = 0; i < n; i++) {
+          const X = sh.x[i];
+          const Y = sh.y ? sh.y[i] : 0;
+          const tx = X * (tileSize / width) * xAdj;
+          const ty = Y * (tileSize / height) * yAdj;
+          positions[3*off + 0] = tx;
+          positions[3*off + 1] = ty;
+          positions[3*off + 2] = 0;
+          const gid = sh.gene_id ? sh.gene_id[i] : -1;
+          geneIds[off] = gid | 0;
+          planes[off] = sh.plane_id ? sh.plane_id[i] : 0;
+          const col = (geneIdColors && geneIdColors[gid] && geneIdColors[gid].length === 3) ? geneIdColors[gid] : [255,255,255];
+          colors[4*off + 0] = col[0] | 0;
+          colors[4*off + 1] = col[1] | 0;
+          colors[4*off + 2] = col[2] | 0;
+          colors[4*off + 3] = 255;
+          off++;
+        }
+      }
+      const transfers = [positions.buffer, colors.buffer, geneIds.buffer, planes.buffer];
+      self.postMessage({ id, ok: true, type, positions, colors, geneIds, planes }, transfers);
     } else {
       throw new Error(`Unknown message type: ${type}`);
     }

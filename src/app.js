@@ -285,56 +285,10 @@ function updateAllLayers() {
         try { console.log(`[layers] Using binary Scatterplot for spots at zoom ${zoom.toFixed(1)} (showGenes=${state.showGenes})`); } catch {}
         const pc = createArrowPointCloudLayer(state.currentPlane, state.geneSizeScale, state.selectedGenes);
         if (pc && state.showGenes) layers.push(pc);
-        // Keep previous IconLayers hidden for one frame to avoid blocking destruction during interaction
-        if (state.lastIconLayers && state.lastIconLayers.length) {
-            // Initialize chunked cleanup if not started
-            if (!state.iconCleanupPending) {
-                state.iconCleanupRemaining = state.lastIconLayers.length;
-                state.deferredCleanupStart = performance.now();
-            }
-            // Push only a slice of hidden clones to keep deck from destroying all at once
-            const keepCount = Math.max(0, state.iconCleanupRemaining);
-            for (let i = 0; i < keepCount; i++) {
-                const lyr = state.lastIconLayers[i];
-                if (!lyr) continue;
-                try { layers.push(lyr.clone({ visible: false, pickable: false, opacity: 0 })); } catch {}
-            }
-            // Schedule deferred cleanup outside of the critical zoom change
-            if (!state.iconCleanupPending) {
-                state.iconCleanupPending = true;
-                const chunkSize = 60; // remove ~60 layers per idle tick (tuneable)
-                const step = () => {
-                    const adv = window.advancedConfig ? window.advancedConfig() : { performance: { showPerformanceStats: false } };
-                    // Reduce remaining by chunkSize and redraw without those clones
-                    state.iconCleanupRemaining = Math.max(0, state.iconCleanupRemaining - chunkSize);
-                    if (state.iconCleanupRemaining > 0) {
-                        try { updateAllLayers(); } catch {}
-                        // Schedule next chunk
-                        if ('requestIdleCallback' in window) {
-                            window.requestIdleCallback(step, { timeout: 200 });
-                        } else {
-                            setTimeout(step, 32);
-                        }
-                    } else {
-                        // Finalize cleanup
-                        state.lastIconLayers = [];
-                        state.iconCleanupPending = false;
-                        try { updateAllLayers(); } catch {}
-                        if (adv.performance.showPerformanceStats && state.deferredCleanupStart) {
-                            const dt = performance.now() - state.deferredCleanupStart;
-                            console.log(`🧹 Deferred IconLayers cleanup completed in ${dt.toFixed(1)}ms (chunked)`);
-                            state.deferredCleanupStart = 0;
-                        }
-                    }
-                };
-                // Kick off first chunk in idle time
-                if ('requestIdleCallback' in window) {
-                    window.requestIdleCallback(step, { timeout: 200 });
-                } else {
-                    setTimeout(step, 32);
-                }
-            }
-        }
+        // Simplified: no deferred cleanup needed with single IconLayer approach
+        state.lastIconLayers = [];
+        state.iconCleanupPending = false;
+        state.iconCleanupRemaining = 0;
     } else {
         try { console.log(`[layers] Using IconLayers for spots at zoom ${zoom.toFixed(1)} (showGenes=${state.showGenes})`); } catch {}
         const bounds = getCurrentViewportTileBounds();
@@ -611,7 +565,12 @@ function initializeDeckGL() {
             return viewState;
         },
         onHover: (info) => {
-            console.log('Main deck.gl onHover called:', info.layer?.id, info.picked);
+            try {
+                const adv = window.advancedConfig ? window.advancedConfig() : null;
+                if (adv && adv.performance && adv.performance.showPerformanceStats) {
+                    console.log('Main deck.gl onHover called:', info.layer?.id, info.picked);
+                }
+            } catch {}
             updateCoordinateDisplay(info);
             showTooltip(info, elements.tooltip);
         },

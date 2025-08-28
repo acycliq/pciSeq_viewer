@@ -15,7 +15,8 @@ import {
 } from '../config/constants.js';
 import { 
     clamp, 
-    transformToTileCoordinates 
+    transformToTileCoordinates, 
+    transformFromTileCoordinates 
 } from '../utils/coordinateTransform.js';
 import { loadImage } from './dataLoaders.js';
 
@@ -39,72 +40,19 @@ async function ensureArrowInitialized() {
 }
 
 // === Arrow Spots → Binary PointCloud cache ===
-let arrowSpotBinaryCache = null; // { positions, colors, planes, geneIds, length }
-
-function hexToRgb(hex) {
-    const h = String(hex || '').replace('#','');
-    if (h.length !== 6) return [192,192,192];
-    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
-}
-
-function buildArrowSpotBinaryCacheIfNeeded() {
-    if (arrowSpotBinaryCache) return arrowSpotBinaryCache;
-    const app = (typeof window !== 'undefined') ? window.appState : null;
-    const shards = app && app.arrowSpotShards;
-    const geneDict = (app && app.arrowGeneDict) || {};
-    if (!shards || !Array.isArray(shards) || shards.length === 0) {
-        try { console.warn('Arrow binary cache: no shards available yet'); } catch {}
+// Use prebuilt scatter cache from worker (populated during Arrow load)
+function getArrowSpotBinaryCache() {
+    const cache = (typeof window !== 'undefined') ? window.appState?.arrowScatterCache : null;
+    if (!cache || !cache.positions) {
+        try { console.warn('Arrow scatter cache not available yet'); } catch {}
         return null;
     }
-
-    // Resolve gene name → color mapping via glyphSettings when available
-    let geneColorById = new Map();
-    try {
-        const settings = (typeof glyphSettings === 'function') ? glyphSettings() : [];
-        const colorByGene = new Map(settings.map(s => [s.gene, s.color]));
-        geneColorById = new Map(Object.entries(geneDict).map(([id, name]) => {
-            const col = colorByGene.get(name) || '#ffffff';
-            return [Number(id), hexToRgb(col)];
-        }));
-    } catch {
-        geneColorById = new Map();
-    }
-
-    // Count total points
-    let total = 0;
-    for (const sh of shards) total += (sh.x?.length || 0);
-    const positions = new Float32Array(total * 3);
-    const colors = new Uint8Array(total * 4); // RGBA
-    const planes = new Int32Array(total);
-    const geneIds = new Int32Array(total);
-
-    let off = 0;
-    for (const sh of shards) {
-        const n = sh.x?.length || 0;
-        for (let i = 0; i < n; i++) {
-            // Transform to tile coords (256 space)
-            const xy = transformToTileCoordinates(sh.x[i], sh.y ? sh.y[i] : 0, IMG_DIMENSIONS);
-            positions[3*off + 0] = xy[0];
-            positions[3*off + 1] = xy[1];
-            positions[3*off + 2] = 0;
-            planes[off] = sh.plane_id ? sh.plane_id[i] : 0;
-            const gid = sh.gene_id ? sh.gene_id[i] : -1;
-            geneIds[off] = gid;
-            const rgb = geneColorById.get(gid) || [255,255,255];
-            colors[4*off + 0] = rgb[0];
-            colors[4*off + 1] = rgb[1];
-            colors[4*off + 2] = rgb[2];
-            colors[4*off + 3] = 255;
-            off++;
-        }
-    }
-    arrowSpotBinaryCache = { positions, colors, planes, geneIds, length: total };
-    return arrowSpotBinaryCache;
+    return cache;
 }
 
-export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null) {
+export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0) {
     if (!USE_ARROW) return null;
-    const cache = buildArrowSpotBinaryCacheIfNeeded();
+    const cache = getArrowSpotBinaryCache();
     if (!cache || cache.length === 0) return null;
 
     const { positions, colors, planes, geneIds, length } = cache;
@@ -155,7 +103,7 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         }
     };
 
-    try { console.log(`Arrow binary scatter: points=${length}, baseRadius=${base}`); } catch {}
+    try { const adv = window.advancedConfig ? window.advancedConfig() : null; if (adv?.performance?.showPerformanceStats) console.log(`Arrow binary scatter: points=${length}, baseRadius=${base}`); } catch {}
 
     return new ScatterplotLayer({
         id: 'spots-scatter-binary',
@@ -167,7 +115,7 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         stroked: false,
         radiusUnits: 'pixels',
         radiusMinPixels: 0.5,
-        opacity: 1.0
+        opacity: layerOpacity
     });
 }
 
@@ -438,7 +386,7 @@ function computeMostProbableClass(label, cellDataMap) {
 }
 
 function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpacity, selectedCellClasses) {
-    console.log(`Creating polygon layer for plane ${planeNum}, features: ${geojson.features.length}`);
+    try { const adv = window.advancedConfig ? window.advancedConfig() : null; if (adv?.performance?.showPerformanceStats) console.log(`Creating polygon layer for plane ${planeNum}, features: ${geojson.features.length}`); } catch {}
     // Filter data based on selected cell classes
     let filteredData = geojson;
     if (selectedCellClasses && selectedCellClasses.size > 0) {
@@ -488,7 +436,7 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
         },
         updateTriggers: { getFillColor: [cellClassColors, polygonOpacity], data: [selectedCellClasses] }
     });
-    console.log(`Created polygon layer: ${layer.id}`);
+    try { const adv = window.advancedConfig ? window.advancedConfig() : null; if (adv?.performance?.showPerformanceStats) console.log(`Created polygon layer: ${layer.id}`); } catch {}
     return layer;
 }
 
@@ -511,9 +459,19 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
 
     // Fast path: combine all visible genes into a single IconLayer to reduce layer churn
     if (combineIntoSingleLayer) {
+        if (!viewportBounds) {
+            // Hard fail as requested: missing viewport bounds indicates a logic error we must fix
+            throw new Error('Viewport bounds are null during combined IconLayer build (deep zoom).');
+        }
         const combined = [];
-        const hasBounds = Boolean(viewportBounds);
-        const { minX, minY, maxX, maxY } = viewportBounds || {};
+        const { minX, minY, maxX, maxY } = viewportBounds;
+        // Convert viewport bounds from tile space back to image pixel space once
+        const minImg = transformFromTileCoordinates(minX, minY, IMG_DIMENSIONS);
+        const maxImg = transformFromTileCoordinates(maxX, maxY, IMG_DIMENSIONS);
+        const ix0 = Math.min(minImg[0], maxImg[0]);
+        const iy0 = Math.min(minImg[1], maxImg[1]);
+        const ix1 = Math.max(minImg[0], maxImg[0]);
+        const iy1 = Math.max(minImg[1], maxImg[1]);
         // Respect selection strictly: if empty set, show nothing. If null, show all genes.
         const genes = selectedGenes ? Array.from(selectedGenes) : Array.from(geneDataMap.keys());
         let count = 0;
@@ -522,10 +480,8 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             if (!arr || !arr.length) continue;
             for (let i = 0; i < arr.length; i++) {
                 const d = arr[i];
-                if (hasBounds) {
-                    const xy = transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS);
-                    if (xy[0] < minX || xy[0] > maxX || xy[1] < minY || xy[1] > maxY) continue;
-                }
+                // Cull in image space to avoid per-point coordinate transforms
+                if (d.x < ix0 || d.x > ix1 || d.y < iy0 || d.y > iy1) continue;
                 combined.push(d);
                 count++;
             }

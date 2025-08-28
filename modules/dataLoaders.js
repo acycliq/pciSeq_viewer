@@ -104,6 +104,32 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
             if (window?.advancedConfig?.().performance?.showPerformanceStats) {
                 console.log(`Arrow spots: genes=${geneDataMap.size}, spots=${spotTotal}`);
             }
+            // Prebuild scatter (binary) cache in worker to eliminate main-thread freeze on first render
+            try {
+                const { buildSpotsScatterCache } = await import('../arrow-loader/lib/arrow-loaders.js');
+                const cfg = window.config();
+                const settings = glyphSettings();
+                const colorByGene = new Map(settings.map(s => [s.gene, s.color]));
+                const hexToRgb = (hex) => {
+                    const h = String(hex || '').replace('#','');
+                    if (h.length !== 6) return [255,255,255];
+                    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+                };
+                const geneIdColors = {};
+                for (const [gidStr, name] of Object.entries(idToName)) {
+                    const col = colorByGene.get(name) || '#ffffff';
+                    geneIdColors[gidStr] = hexToRgb(col);
+                }
+                const manifestUrl = new URL(ARROW_MANIFESTS.spotsManifest, window.location.href).href;
+                const img = { width: cfg.imageWidth, height: cfg.imageHeight, tileSize: 256 };
+                const { positions, colors, planes, geneIds } = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
+                window.appState.arrowScatterCache = { positions, colors, planes, geneIds, length: (positions?.length||0)/3 };
+                if (window?.advancedConfig?.().performance?.showPerformanceStats) {
+                    console.log(`✅ Prebuilt scatter cache in worker: points=${window.appState.arrowScatterCache.length}`);
+                }
+            } catch (e) {
+                console.warn('Failed to prebuild scatter cache in worker:', e);
+            }
         } else {
             // Use Web Worker for non-blocking data loading (TSV)
             const geneData = await loadGeneDataWithWorker();
