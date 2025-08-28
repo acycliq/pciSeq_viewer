@@ -82,6 +82,7 @@ const {DeckGL, OrthographicView, COORDINATE_SYSTEM} = deck;
 
 // Track zoom mode switches to toggle spot layer type without spamming updates
 let __lastZoomMode = null; // 'pc' or 'icon'
+let __lastDragging = false; // track pan-drag state
 
 // Expose gene widget functions globally for event handlers
 window.showGeneWidget = showGeneWidget;
@@ -575,21 +576,33 @@ function initializeDeckGL() {
             touchZoom: true,
             keyboard: false  // Disable deck.gl keyboard to prevent conflicts
         },
-        onViewStateChange: ({viewState}) => {
+        onViewStateChange: ({viewState, interactionState}) => {
             // Update scale bar when view changes
             updateScaleBar(viewState);
             try { state.currentZoom = viewState.zoom; } catch {}
-            // Switch spot layer mode only when crossing threshold
+            // Update layers: threshold switches; rebuild IconLayers only on pan end
             try {
                 const adv = window.advancedConfig ? window.advancedConfig() : { performance: { showPerformanceStats: false } };
                 const mode = (USE_ARROW && viewState.zoom < 7) ? 'pc' : 'icon';
+                const dragging = Boolean(interactionState && interactionState.isDragging);
+
                 if (mode !== __lastZoomMode) {
                     if (adv.performance.showPerformanceStats) {
                         state.zoomTransition = { inProgress: true, from: __lastZoomMode, to: mode, start: performance.now() };
                         console.log(`⏱️ Zoom transition start: ${state.zoomTransition.from || 'none'} -> ${mode} at zoom ${viewState.zoom.toFixed(2)}`);
                     }
                     __lastZoomMode = mode;
+                    __lastDragging = dragging;
                     updateAllLayers();
+                } else if (mode === 'icon') {
+                    // Only rebuild IconLayers for new viewport when pan ends (dragging -> not dragging)
+                    if (__lastDragging && !dragging) {
+                        updateAllLayers();
+                    }
+                    __lastDragging = dragging;
+                } else {
+                    // In pointcloud mode track dragging state but no special work
+                    __lastDragging = dragging;
                 }
             } catch {}
             return viewState;
