@@ -44,6 +44,12 @@ import {
 // Import polygon interactions
 import { PolygonBoundaryHighlighter } from '../modules/polygonInteractions.js';
 
+// Import rectangular selector
+import { RectangularSelector } from '../modules/rectangularSelector.js';
+
+// Import background indexing
+import { startBackgroundIndexing } from '../modules/backgroundIndexLoader.js';
+
 // Import modular components
 import { state } from './stateManager.js';
 import { elements } from './domElements.js';
@@ -538,9 +544,26 @@ async function init() {
     );
     state.polygonHighlighter.initialize();
     
+    // Initialize rectangular selector
+    state.rectangularSelector = new RectangularSelector(state.deckglInstance, state);
+    
+    // Setup selection tool button
+    const selectionToolBtn = document.getElementById('selectionToolBtn');
+    if (selectionToolBtn) {
+        selectionToolBtn.addEventListener('click', () => {
+            state.rectangularSelector.toggle();
+        });
+    }
+    
+    console.log('Rectangular selector ready - Click selection tool icon to toggle');
+    
     // Load cell data - this is also shared across all planes
     console.log('Loading cell data...');
     await loadCellData(state.cellDataMap);
+    
+    // Start background cell boundary index building (non-blocking)
+    console.log('🚀 Starting background cell boundary indexing...');
+    window.cellBoundaryIndexPromise = startBackgroundIndexing(state);
     
     // CRITICAL FIX: Load polygon data for current plane + adjacent planes during initialization
     // This prevents flickering on the very first slider movement

@@ -83,6 +83,16 @@ export function showTooltip(info, tooltipElement) {
                 spotInfo = `<strong>Spot ID:</strong> ${info.object.spot_id}<br>`;
             }
             
+            // Get color information
+            let colorInfo = '';
+            if (typeof glyphSettings === 'function') {
+                const settings = glyphSettings();
+                const geneSetting = settings.find(s => s.gene === gene);
+                if (geneSetting && geneSetting.color) {
+                    colorInfo = `<strong>Color:</strong> ${geneSetting.color}<br>`;
+                }
+            }
+            
             // Get parent cell information
             let parentInfo = '';
             let label = info.object.neighbour;
@@ -103,7 +113,7 @@ export function showTooltip(info, tooltipElement) {
             }
             
             content = `${spotInfo}<strong>Gene:</strong> ${gene}<br>
-                      <strong>Coords:</strong> ${coords}<br>
+                      ${colorInfo}<strong>Coords:</strong> ${coords}<br>
                       <strong>Plane:</strong> ${planeId}<br>
                       ${parentInfo}${qualityInfo}`;
         }

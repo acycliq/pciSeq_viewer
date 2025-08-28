@@ -102,7 +102,9 @@ export const GENE_SIZE_CONFIG = {
 
 // Helper function to get polygon file URL for a specific plane
 export function getPolygonFileUrl(planeNumber) {
-    return userConfig.cellBoundaryFiles.replace('{plane}', planeNumber);
+    // Zero-pad plane number to match file naming convention (plane_00.tsv, plane_01.tsv, etc.)
+    const paddedPlaneNumber = planeNumber.toString().padStart(2, '0');
+    return userConfig.cellBoundaryFiles.replace('{plane}', paddedPlaneNumber);
 }
 
 // Helper function to get tile URL pattern

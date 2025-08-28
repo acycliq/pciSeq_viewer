@@ -12,8 +12,11 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/d3-dsv@3"></script>
     <script src="https://unpkg.com/d3-array@3"></script>
-    <!-- Import polygon interactions -->
-    <script type="module" src="modules/polygonInteractions.js"></script>
+    <!-- Turf.js for geometric operations -->
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <!-- RBush for spatial indexing -->
+    <script src="https://unpkg.com/rbush@3.0.1/rbush.min.js"></script>
+
     <!-- Import glyph helpers -->
     <script src="modules/glyphPaths.js"></script>
     <script src="modules/glyphConfig.js"></script>
@@ -51,6 +54,11 @@
             <input type="range" id="geneSizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
             <span id="geneSizeValue">1.0</span>
         </div>
+    </div>
+
+    <!-- Selection Tool Button -->
+    <div class="minimal-controls" style="top: 50px; left: 15px; right: auto;">
+        <button id="selectionToolBtn" style="background: transparent; border: none; padding: 0; margin: 0;"><img src="selection_tool.png" alt="Rectangular Selection Tool" style="width: 16px; height: 16px; background: transparent; padding: 0; margin: 0; display: block; border: none;"></button>
     </div>
 
     <!-- Cell Class Panel Button -->

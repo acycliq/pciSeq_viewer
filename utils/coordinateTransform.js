@@ -73,8 +73,8 @@ export function transformFromTileCoordinates(x, y, imageDimensions) {
     const yAdjustment = height / maxDimension;
     
     return [
-        x / (tileSize / width) / xAdjustment,
-        y / (tileSize / height) / yAdjustment
+        x / ((tileSize / width) * xAdjustment),
+        y / ((tileSize / height) * yAdjustment)
     ];
 }
 

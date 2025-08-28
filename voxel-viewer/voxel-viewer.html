@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voxel Viewer</title>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div id="container">
+        
+        <!-- Toggle Controls moved to top-right -->
+        <div class="mini-controls-right">
+            <label>
+                <input type="checkbox" id="showLinesToggle" checked>
+                Spot to cell assignments
+            </label>
+            <label>
+                <input type="checkbox" id="showBackgroundToggle" checked>
+                Background voxels
+            </label>
+            <label>
+                <input type="checkbox" id="showHoleVoxelsToggle">
+                Cell voxels
+            </label>
+            <label>
+                <input type="checkbox" id="showBoundaryVoxelsToggle">
+                Boundary voxels
+            </label>
+            <label>
+                <input type="checkbox" id="showGhostingToggle" checked>
+                Ghosting
+            </label>
+        </div>
+        
+        <!-- Gene Controls Widget - at top left -->
+        <div id="chunkGeneWidget" class="gene-widget hidden" style="top: 20px; left: 20px;">
+            <div class="gene-widget-header">
+                <span class="gene-widget-title">🧬 Gene Panel</span>
+                <div class="widget-header-buttons">
+                    <button id="geneWidgetCollapse" class="widget-collapse-btn" title="Collapse">−</button>
+                    <button id="geneWidgetClose" class="widget-close-btn" title="Close">×</button>
+                </div>
+            </div>
+            <div class="gene-widget-search">
+                <input type="text" id="geneSearch" placeholder="Search genes..." />
+                <button id="toggleAllGenes" class="toggle-all-btn">Unselect All</button>
+            </div>
+            <div class="gene-widget-content" id="geneList">
+                <!-- Gene list will be populated here -->
+            </div>
+        </div>
+        <!-- Minimal Genes button like main UI -->
+        <div class="minimal-controls" style="top: 15px; left: 15px; right: auto;">
+            <button id="genePanelBtn">🧬 Genes</button>
+        </div>
+        <div class="slider-container">
+            <input type="range" class="z-slicer" 
+                   id="sliceZ" />
+            <div class="slider-value" id="sliderValue"></div>
+        </div>
+    </div>
+
+    <!-- Import d3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Import deck.gl and luma.gl -->
+    <script src="https://unpkg.com/deck.gl@8.1.0/dist.min.js"></script>
+    <script src="https://unpkg.com/@luma.gl/core@8.1.0/dist.min.js"></script>
+    <script src="https://unpkg.com/@luma.gl/engine@8.1.0/dist.min.js"></script>
+
+    <!-- Import dataset (using existing name for stability) -->
+    <script src="sample-data.js"></script>
+    
+    <!-- Configure asset base for textures relative to this viewer -->
+    <!-- Import voxel layer -->
+    <script src="./voxel-layer.js"></script>
+
+    <!-- Import glyph configuration for consistent gene colors -->
+    <script src="../modules/glyphConfig.js"></script>
+
+    <!-- Application Logic (using existing name for stability) -->
+    <script type="module" src="voxel-app.js"></script>
+</body>
+</html>
