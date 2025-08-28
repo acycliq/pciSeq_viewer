@@ -59,6 +59,13 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                 spotsGeneDict: ARROW_MANIFESTS.spotsGeneDict
             });
             const { shards, geneDict } = await loadSpots();
+            // Expose raw Arrow shards and gene dictionary for binary PointCloud rendering
+            try {
+                if (window && window.appState) {
+                    window.appState.arrowSpotShards = shards;
+                    window.appState.arrowGeneDict = geneDict || {};
+                }
+            } catch {}
             // Build gene map: gene name -> array of spot objects
             geneDataMap.clear();
             selectedGenes.clear();

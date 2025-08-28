@@ -20,7 +20,7 @@ import {
 import { loadImage } from './dataLoaders.js';
 
 // Extract deck.gl components for layer creation
-const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer, IconLayer, DataFilterExtension, PolygonLayer} = deck;
+const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer, IconLayer, DataFilterExtension, PolygonLayer, PointCloudLayer, ScatterplotLayer} = deck;
 
 // Arrow boundary buffers cache (per plane) and lazy init for worker facade
 let arrowBoundaryCache = new Map();
@@ -36,6 +36,139 @@ async function ensureArrowInitialized() {
         cellsClassDict: ARROW_MANIFESTS.cellsClassDict
     });
     arrowInitialized = true;
+}
+
+// === Arrow Spots → Binary PointCloud cache ===
+let arrowSpotBinaryCache = null; // { positions, colors, planes, geneIds, length }
+
+function hexToRgb(hex) {
+    const h = String(hex || '').replace('#','');
+    if (h.length !== 6) return [192,192,192];
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+
+function buildArrowSpotBinaryCacheIfNeeded() {
+    if (arrowSpotBinaryCache) return arrowSpotBinaryCache;
+    const app = (typeof window !== 'undefined') ? window.appState : null;
+    const shards = app && app.arrowSpotShards;
+    const geneDict = (app && app.arrowGeneDict) || {};
+    if (!shards || !Array.isArray(shards) || shards.length === 0) {
+        try { console.warn('Arrow binary cache: no shards available yet'); } catch {}
+        return null;
+    }
+
+    // Resolve gene name → color mapping via glyphSettings when available
+    let geneColorById = new Map();
+    try {
+        const settings = (typeof glyphSettings === 'function') ? glyphSettings() : [];
+        const colorByGene = new Map(settings.map(s => [s.gene, s.color]));
+        geneColorById = new Map(Object.entries(geneDict).map(([id, name]) => {
+            const col = colorByGene.get(name) || '#ffffff';
+            return [Number(id), hexToRgb(col)];
+        }));
+    } catch {
+        geneColorById = new Map();
+    }
+
+    // Count total points
+    let total = 0;
+    for (const sh of shards) total += (sh.x?.length || 0);
+    const positions = new Float32Array(total * 3);
+    const colors = new Uint8Array(total * 4); // RGBA
+    const planes = new Int32Array(total);
+    const geneIds = new Int32Array(total);
+
+    let off = 0;
+    for (const sh of shards) {
+        const n = sh.x?.length || 0;
+        for (let i = 0; i < n; i++) {
+            // Transform to tile coords (256 space)
+            const xy = transformToTileCoordinates(sh.x[i], sh.y ? sh.y[i] : 0, IMG_DIMENSIONS);
+            positions[3*off + 0] = xy[0];
+            positions[3*off + 1] = xy[1];
+            positions[3*off + 2] = 0;
+            planes[off] = sh.plane_id ? sh.plane_id[i] : 0;
+            const gid = sh.gene_id ? sh.gene_id[i] : -1;
+            geneIds[off] = gid;
+            const rgb = geneColorById.get(gid) || [255,255,255];
+            colors[4*off + 0] = rgb[0];
+            colors[4*off + 1] = rgb[1];
+            colors[4*off + 2] = rgb[2];
+            colors[4*off + 3] = 255;
+            off++;
+        }
+    }
+    arrowSpotBinaryCache = { positions, colors, planes, geneIds, length: total };
+    return arrowSpotBinaryCache;
+}
+
+export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null) {
+    if (!USE_ARROW) return null;
+    const cache = buildArrowSpotBinaryCacheIfNeeded();
+    if (!cache || cache.length === 0) return null;
+
+    const { positions, colors, planes, geneIds, length } = cache;
+    // Compute per-point radius based on |plane - currentPlane| (simple falloff)
+    // Match IconLayer visual size: Icon uses size in pixels (diameter),
+    // ScatterplotLayer uses radius in pixels. So use half the icon size.
+    const base = ((GENE_SIZE_CONFIG && GENE_SIZE_CONFIG.BASE_SIZE ? GENE_SIZE_CONFIG.BASE_SIZE : 12) * geneSizeScale) / 10;
+    const radii = new Float32Array(length);
+    for (let i = 0; i < length; i++) {
+        const dz = Math.abs((planes[i] || 0) - (currentPlane || 0));
+        const scale = 1 / Math.sqrt(1 + dz);
+        radii[i] = base * scale;
+    }
+
+    // Apply gene visibility mask via alpha channel (fast, avoids realloc)
+    try {
+        if (selectedGenes && selectedGenes.size > 0) {
+            // If all selected (common case), skip loop
+            const app = (typeof window !== 'undefined') ? window.appState : null;
+            const geneDict = (app && app.arrowGeneDict) || {};
+            const totalGenes = Object.keys(geneDict).length;
+            const allSelected = selectedGenes.size >= totalGenes;
+            if (!allSelected) {
+                // Create a masked copy so deck.gl detects change (new buffer)
+                var maskedColors = new Uint8Array(colors); // copy
+                for (let i = 0; i < length; i++) {
+                    const name = geneDict[geneIds[i]];
+                    const visible = name ? selectedGenes.has(name) : false;
+                    maskedColors[4*i + 3] = visible ? 255 : 0;
+                }
+            } else {
+                var maskedColors = new Uint8Array(colors); // ensure new reference
+                for (let i = 0; i < length; i++) maskedColors[4*i + 3] = 255;
+            }
+        } else if (selectedGenes && selectedGenes.size === 0) {
+            // Show none
+            var maskedColors = new Uint8Array(colors);
+            for (let i = 0; i < length; i++) maskedColors[4*i + 3] = 0;
+        }
+    } catch {}
+
+    const data = {
+        length,
+        attributes: {
+            getPosition: { value: positions, size: 3 },
+            getFillColor: { value: (typeof maskedColors !== 'undefined') ? maskedColors : colors, size: 4 },
+            getRadius: { value: radii, size: 1 }
+        }
+    };
+
+    try { console.log(`Arrow binary scatter: points=${length}, baseRadius=${base}`); } catch {}
+
+    return new ScatterplotLayer({
+        id: 'spots-scatter-binary',
+        data,
+        coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+        pickable: false,
+        // Accessors provided via data.attributes
+        filled: true,
+        stroked: false,
+        radiusUnits: 'pixels',
+        radiusMinPixels: 0.5,
+        opacity: 1.0
+    });
 }
 
 /**
@@ -372,15 +505,79 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
  * @param {Function} showTooltip - Tooltip callback function
  * @returns {IconLayer[]} Array of gene icon layers
  */
-export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip) {
+export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false) {
     const layers = [];
     if (!showGenes || !geneIconAtlas) return layers;
 
+    // Fast path: combine all visible genes into a single IconLayer to reduce layer churn
+    if (combineIntoSingleLayer) {
+        const combined = [];
+        const hasBounds = Boolean(viewportBounds);
+        const { minX, minY, maxX, maxY } = viewportBounds || {};
+        // Respect selection strictly: if empty set, show nothing. If null, show all genes.
+        const genes = selectedGenes ? Array.from(selectedGenes) : Array.from(geneDataMap.keys());
+        let count = 0;
+        for (const gene of genes) {
+            const arr = geneDataMap.get(gene);
+            if (!arr || !arr.length) continue;
+            for (let i = 0; i < arr.length; i++) {
+                const d = arr[i];
+                if (hasBounds) {
+                    const xy = transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS);
+                    if (xy[0] < minX || xy[0] > maxX || xy[1] < minY || xy[1] > maxY) continue;
+                }
+                combined.push(d);
+                count++;
+                if (count > 200000) break; // hard cap to avoid spikes
+            }
+            if (count > 200000) break;
+        }
+        if (combined.length) {
+            layers.push(new IconLayer({
+                id: `genes-combined`,
+                data: combined,
+                visible: true,
+                pickable: true,
+                onHover: showTooltip,
+                coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+                iconAtlas: geneIconAtlas,
+                iconMapping: geneIconMapping,
+                getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
+                getSize: d => GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane)),
+                getIcon: d => d.gene,
+                getColor: [255, 255, 255],
+                sizeUnits: 'pixels',
+                sizeScale: geneSizeScale,
+                updateTriggers: { getSize: [currentPlane] }
+            }));
+        }
+        return layers;
+    }
+
     // Create a separate layer for each gene for individual visibility control
     for (const gene of geneDataMap.keys()) {
+        let data = geneDataMap.get(gene);
+        if (viewportBounds) {
+            // Filter to current viewport to avoid heavy loads on threshold switch
+            const { minX, minY, maxX, maxY } = viewportBounds;
+            let count = 0;
+            const filtered = [];
+            for (let i = 0; i < data.length; i++) {
+                const d = data[i];
+                const xy = transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS);
+                if (xy[0] >= minX && xy[0] <= maxX && xy[1] >= minY && xy[1] <= maxY) {
+                    filtered.push(d);
+                    count++;
+                    // Soft cap to avoid massive layers on first switch; break early if too many
+                    if (count > 50000) break;
+                }
+            }
+            data = filtered;
+            if (data.length === 0) continue; // Skip empty layers
+        }
         const layer = new IconLayer({
             id: `genes-${gene}`,
-            data: geneDataMap.get(gene),
+            data,
             visible: selectedGenes.has(gene),
             pickable: true, // Enable gene picking
             onHover: showTooltip, // Gene hover handler

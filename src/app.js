@@ -27,7 +27,8 @@ import {
 import {
     createTileLayer,
     createPolygonLayers,
-    createGeneLayers
+    createGeneLayers,
+    createArrowPointCloudLayer
 } from '../modules/layerCreators.js';
 
 // Import UI helper functions
@@ -78,6 +79,9 @@ import {
 
 // Extract deck.gl components
 const {DeckGL, OrthographicView, COORDINATE_SYSTEM} = deck;
+
+// Track zoom mode switches to toggle spot layer type without spamming updates
+let __lastZoomMode = null; // 'pc' or 'icon'
 
 // Expose gene widget functions globally for event handlers
 window.showGeneWidget = showGeneWidget;
@@ -155,7 +159,7 @@ function updateScaleBar(viewState) {
     scaleLabel.textContent = formatDistance(distance);
     
     // Add some debug info
-    console.log(`Scale bar: ${formatDistance(distance)} = ${pixels.toFixed(1)}px at zoom ${viewState.zoom.toFixed(1)}`);
+    // console.log(`Scale bar: ${formatDistance(distance)} = ${pixels.toFixed(1)}px at zoom ${viewState.zoom.toFixed(1)}`);
 }
 
 // === COORDINATE DISPLAY FUNCTIONS ===
@@ -230,6 +234,7 @@ function createDebugDots() {
 function updateAllLayers() {
     if (!state.deckglInstance) return;
 
+    const t0 = performance.now();
     const layers = [];
 
     // Add tile layers - keep same instances, only change opacity
@@ -273,8 +278,82 @@ function updateAllLayers() {
         state.cellDataMap
     ));
 
-    // Add gene layers
-    layers.push(...createGeneLayers(state.geneDataMap, state.showGenes, state.selectedGenes, state.geneIconAtlas, state.geneIconMapping, state.currentPlane, state.geneSizeScale, (info) => showTooltip(info, elements.tooltip)));
+    // Add gene/spot layers: binary PointCloud at low zoom (Arrow), IconLayers at high zoom
+    const zoom = (typeof state.currentZoom === 'number') ? state.currentZoom : INITIAL_VIEW_STATE.zoom;
+    if (USE_ARROW && zoom < 7) {
+        try { console.log(`[layers] Using binary Scatterplot for spots at zoom ${zoom.toFixed(1)} (showGenes=${state.showGenes})`); } catch {}
+        const pc = createArrowPointCloudLayer(state.currentPlane, state.geneSizeScale, state.selectedGenes);
+        if (pc && state.showGenes) layers.push(pc);
+        // Keep previous IconLayers hidden for one frame to avoid blocking destruction during interaction
+        if (state.lastIconLayers && state.lastIconLayers.length) {
+            // Initialize chunked cleanup if not started
+            if (!state.iconCleanupPending) {
+                state.iconCleanupRemaining = state.lastIconLayers.length;
+                state.deferredCleanupStart = performance.now();
+            }
+            // Push only a slice of hidden clones to keep deck from destroying all at once
+            const keepCount = Math.max(0, state.iconCleanupRemaining);
+            for (let i = 0; i < keepCount; i++) {
+                const lyr = state.lastIconLayers[i];
+                if (!lyr) continue;
+                try { layers.push(lyr.clone({ visible: false, pickable: false, opacity: 0 })); } catch {}
+            }
+            // Schedule deferred cleanup outside of the critical zoom change
+            if (!state.iconCleanupPending) {
+                state.iconCleanupPending = true;
+                const chunkSize = 60; // remove ~60 layers per idle tick (tuneable)
+                const step = () => {
+                    const adv = window.advancedConfig ? window.advancedConfig() : { performance: { showPerformanceStats: false } };
+                    // Reduce remaining by chunkSize and redraw without those clones
+                    state.iconCleanupRemaining = Math.max(0, state.iconCleanupRemaining - chunkSize);
+                    if (state.iconCleanupRemaining > 0) {
+                        try { updateAllLayers(); } catch {}
+                        // Schedule next chunk
+                        if ('requestIdleCallback' in window) {
+                            window.requestIdleCallback(step, { timeout: 200 });
+                        } else {
+                            setTimeout(step, 32);
+                        }
+                    } else {
+                        // Finalize cleanup
+                        state.lastIconLayers = [];
+                        state.iconCleanupPending = false;
+                        try { updateAllLayers(); } catch {}
+                        if (adv.performance.showPerformanceStats && state.deferredCleanupStart) {
+                            const dt = performance.now() - state.deferredCleanupStart;
+                            console.log(`🧹 Deferred IconLayers cleanup completed in ${dt.toFixed(1)}ms (chunked)`);
+                            state.deferredCleanupStart = 0;
+                        }
+                    }
+                };
+                // Kick off first chunk in idle time
+                if ('requestIdleCallback' in window) {
+                    window.requestIdleCallback(step, { timeout: 200 });
+                } else {
+                    setTimeout(step, 32);
+                }
+            }
+        }
+    } else {
+        try { console.log(`[layers] Using IconLayers for spots at zoom ${zoom.toFixed(1)} (showGenes=${state.showGenes})`); } catch {}
+        const bounds = getCurrentViewportTileBounds();
+        const iconLayers = createGeneLayers(
+            state.geneDataMap,
+            state.showGenes,
+            state.selectedGenes,
+            state.geneIconAtlas,
+            state.geneIconMapping,
+            state.currentPlane,
+            state.geneSizeScale,
+            (info) => showTooltip(info, elements.tooltip),
+            bounds,
+            true // combine into a single IconLayer at deep zoom to minimize churn
+        );
+        layers.push(...iconLayers);
+        state.lastIconLayers = iconLayers;
+        state.iconCleanupPending = false;
+        state.iconCleanupRemaining = 0;
+    }
 
     // Preserve pinned line layers before updating
     if (state.polygonHighlighter && state.polygonHighlighter.pinnedLineLayer) {
@@ -285,6 +364,26 @@ function updateAllLayers() {
     // layers.push(createDebugDots());
 
     state.deckglInstance.setProps({ layers: layers });
+
+    // Transition timing end
+    try {
+        const adv = window.advancedConfig ? window.advancedConfig() : { performance: { showPerformanceStats: false } };
+        if (adv.performance.showPerformanceStats && state.zoomTransition && state.zoomTransition.inProgress) {
+            const elapsed = performance.now() - state.zoomTransition.start;
+            const totalLayers = layers.length;
+            let iconLayers = 0, iconPoints = 0, hasBinary = false;
+            for (const lyr of layers) {
+                if (!lyr) continue;
+                if (String(lyr.id || '').startsWith('genes-')) {
+                    iconLayers++;
+                    try { const n = Array.isArray(lyr.props.data) ? lyr.props.data.length : (lyr.props.data?.length || 0); iconPoints += n; } catch {}
+                }
+                if (lyr.id === 'spots-scatter-binary') hasBinary = true;
+            }
+            console.log(`⏱️ Zoom transition end: ${state.zoomTransition.from || 'none'} -> ${state.zoomTransition.to} in ${elapsed.toFixed(1)}ms | layers=${totalLayers}, iconLayers=${iconLayers}, iconPoints≈${iconPoints}, binary=${hasBinary}`);
+            state.zoomTransition.inProgress = false;
+        }
+    } catch {}
 }
 
 // Expose updateAllLayers globally for widget modules
@@ -479,6 +578,20 @@ function initializeDeckGL() {
         onViewStateChange: ({viewState}) => {
             // Update scale bar when view changes
             updateScaleBar(viewState);
+            try { state.currentZoom = viewState.zoom; } catch {}
+            // Switch spot layer mode only when crossing threshold
+            try {
+                const adv = window.advancedConfig ? window.advancedConfig() : { performance: { showPerformanceStats: false } };
+                const mode = (USE_ARROW && viewState.zoom < 7) ? 'pc' : 'icon';
+                if (mode !== __lastZoomMode) {
+                    if (adv.performance.showPerformanceStats) {
+                        state.zoomTransition = { inProgress: true, from: __lastZoomMode, to: mode, start: performance.now() };
+                        console.log(`⏱️ Zoom transition start: ${state.zoomTransition.from || 'none'} -> ${mode} at zoom ${viewState.zoom.toFixed(2)}`);
+                    }
+                    __lastZoomMode = mode;
+                    updateAllLayers();
+                }
+            } catch {}
             return viewState;
         },
         onHover: (info) => {
@@ -694,6 +807,26 @@ async function init() {
 
 // Export coordinate transformation function for child windows
 window.transformToTileCoordinates = transformToTileCoordinates;
+
+// Compute current viewport bounds in tile (deck) coordinates
+function getCurrentViewportTileBounds() {
+    try {
+        const vps = state.deckglInstance && state.deckglInstance.getViewports && state.deckglInstance.getViewports();
+        const vp = vps && vps[0];
+        if (!vp) return null;
+        const w = vp.width || 0, h = vp.height || 0;
+        const p0 = vp.unproject([0, h]);     // bottom-left screen → world
+        const p1 = vp.unproject([w, 0]);     // top-right screen → world
+        const minX = Math.min(p0[0], p1[0]);
+        const maxX = Math.max(p0[0], p1[0]);
+        const minY = Math.min(p0[1], p1[1]);
+        const maxY = Math.max(p0[1], p1[1]);
+        return { minX, minY, maxX, maxY };
+    } catch (e) {
+        console.warn('Failed to compute viewport bounds:', e);
+        return null;
+    }
+}
 
 // Initialize cell lookup UI immediately when page loads (before data loading)
 window.addEventListener('load', async () => {
