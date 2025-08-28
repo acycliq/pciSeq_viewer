@@ -120,24 +120,40 @@ body {
     color: #007bff;
 }
 
-/* Cell Class Panel Button */
-#cellClassPanelBtn {
-    background: url('./cluster_3.png') no-repeat center;
-    /*background-size: 20px 20px;*/
-    width: 22px;
-    height: 22px;
-    border: none;
+/* Top-right action buttons (Cell Classes & Christina) */
+#cellClassPanelBtn,
+#cellClassViewerBtn {
+    position: absolute;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #1f2937; /* match Selection tool */
+    color: #e8e8f0;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 6px 10px;
     cursor: pointer;
-    user-select: none;
-    opacity: 0.9;
-    transition: all 0.2s ease;
-    font-size: 0; /* Hide text */
-    filter: brightness(1.2);
+    font-size: 13px; /* ensure text is visible */
+    line-height: 1;
+    width: 100px; /* make both buttons same length */
 }
 
-#cellClassPanelBtn:hover {
-    opacity: 1;
-    filter: brightness(1.4);
+#cellClassPanelBtn {
+    top: 12px;
+    right: 12px;
+}
+
+#cellClassViewerBtn {
+    top: 45px; /* add extra space below Cell Classes */
+    right: 12px;
+}
+
+#cellClassPanelBtn:hover,
+#cellClassViewerBtn:hover {
+    background: #111827;
+    border-color: #475569;
+    color: #ffffff;
 }
 
 /* Aggregated Classes Button */
