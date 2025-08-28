@@ -528,9 +528,8 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
                 }
                 combined.push(d);
                 count++;
-                if (count > 200000) break; // hard cap to avoid spikes
             }
-            if (count > 200000) break;
+            // no cap
         }
         if (combined.length) {
             layers.push(new IconLayer({
