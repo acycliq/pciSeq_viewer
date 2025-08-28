@@ -343,23 +343,15 @@ document.addEventListener('DOMContentLoaded', function() {
     let showBoundaryVoxels = false; // Toggle for showing boundary voxels (red cell outlines)
     let showGhosting = true; // Toggle for showing ghosting effects
     
-    // Calculate anisotropic scale from config or data
-    let anisotropicScale = 1.0; // Default to isotropic (1:1) if no other info available
+    // Calculate anisotropic scale from config
+    let anisotropicScale;
     if (window.opener && window.opener.window.config) {
         const config = window.opener.window.config();
         const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
         anisotropicScale = zVoxel / xVoxel;
-        console.log(`🧊 Anisotropic scale from config: zVoxel(${zVoxel}) / xVoxel(${xVoxel}) = ${anisotropicScale}`);
+        console.log(`Anisotropic scale from config: zVoxel(${zVoxel}) / xVoxel(${xVoxel}) = ${anisotropicScale}`);
     } else {
-        // Fallback: calculate from actual data Z-range vs plane count
-        const zRange = Math.max(...dataset.spots.data.map(s => s.z)) - Math.min(...dataset.spots.data.map(s => s.z));
-        const planeCount = Math.max(...dataset.spots.data.map(s => s.plane_id)) + 1;
-        if (planeCount > 1 && zRange > 0) {
-            anisotropicScale = zRange / planeCount; // Z units per plane
-            console.log(`🧊 Anisotropic scale from data: zRange(${zRange.toFixed(1)}) / planeCount(${planeCount}) = ${anisotropicScale.toFixed(2)}`);
-        } else {
-            console.log(`⚠️ Using isotropic scale (1.0) - no config or data to calculate anisotropy`);
-        }
+        throw new Error('Anisotropic scale must be configured via config.js voxelSize property');
     }
 
     // Helper to create a VoxelLayer with common settings
