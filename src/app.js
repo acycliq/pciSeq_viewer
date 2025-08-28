@@ -595,7 +595,10 @@ function initializeDeckGL() {
                     __lastDragging = dragging;
                     updateAllLayers();
                 } else if (mode === 'icon') {
-                    // Only rebuild IconLayers for new viewport when pan ends (dragging -> not dragging)
+                    // NOTE (perf-critical): At deep zoom (≥7) we rebuild the combined IconLayer
+                    // only when panning ends (dragging -> not dragging). Rebuilding on every
+                    // pan frame caused jank/GC spikes with dense data. This "pan-end refresh"
+                    // keeps interactions smooth and then repopulates instantly on release.
                     if (__lastDragging && !dragging) {
                         updateAllLayers();
                     }
