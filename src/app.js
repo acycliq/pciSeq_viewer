@@ -486,7 +486,13 @@ function initializeDeckGL() {
             updateCoordinateDisplay(info);
             showTooltip(info, elements.tooltip);
         },
-        getCursor: ({isHovering}) => (isHovering ? 'pointer' : 'default'),
+        getCursor: ({isHovering}) => {
+            try {
+                const active = window.appState?.rectangularSelector?.isActive;
+                if (active) return 'crosshair';
+            } catch {}
+            return isHovering ? 'pointer' : 'default';
+        },
         layers: []
     });
 

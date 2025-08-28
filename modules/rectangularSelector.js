@@ -62,6 +62,12 @@ export class RectangularSelector {
     toggle() {
         this.isActive = !this.isActive;
         console.log('Selection mode:', this.isActive ? 'ON' : 'OFF');
+        try {
+            const container = document.getElementById('map');
+            if (container) {
+                container.style.cursor = this.isActive ? 'crosshair' : 'default';
+            }
+        } catch {}
     }
     
     onMouseDown(e) {
