@@ -67,6 +67,20 @@ export class RectangularSelector {
             if (container) {
                 container.style.cursor = this.isActive ? 'crosshair' : 'default';
             }
+            
+            // Update button appearance
+            const button = document.getElementById('selectionToolBtn');
+            if (button) {
+                if (this.isActive) {
+                    // Active state: blue background
+                    button.style.background = '#3b82f6';
+                    button.style.borderColor = '#60a5fa';
+                } else {
+                    // Inactive state: restore original dark background
+                    button.style.background = '#1f2937';
+                    button.style.borderColor = '#334155';
+                }
+            }
         } catch {}
     }
     
