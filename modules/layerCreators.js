@@ -457,10 +457,12 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
     const layers = [];
     if (!showGenes || !geneIconAtlas) return layers;
 
-    // Fast path: combine all visible genes into a single IconLayer to reduce layer churn
+    // combine all visible genes into a single IconLayer to reduce layer churn
+    // I think also it reduces all the pickable gene layers down to just 1 pickable layer,
+    // staying well under the 255 limit while maintaining picking functionality.
     if (combineIntoSingleLayer) {
         if (!viewportBounds) {
-            // Hard fail as requested: missing viewport bounds indicates a logic error we must fix
+            // Drop an error if missing viewport bounds (I shouldnt be here anyway)
             throw new Error('Viewport bounds are null during combined IconLayer build (deep zoom).');
         }
         const combined = [];
