@@ -208,7 +208,7 @@ export async function loadCellData(cellDataMap) {
                 if (!cname) cname = 'Unknown';
                 const cell = {
                     cellNum: cid,
-                    position: { x: X ? X[i] : 0, y: Y ? Y[i] : 0, z: Z ? Z[i] : 0 },
+                    position: {x: X[i],y: Y[i],z: Z[i]},
                     geneExpression: { geneNames: [], geneCounts: [] },
                     classification: {
                         className: classNames && classNames.length ? classNames.map(s => String(s).trim()) : [cname],
@@ -217,7 +217,7 @@ export async function loadCellData(cellDataMap) {
                     totalGeneCount: 0,
                     uniqueGenes: 0,
                     primaryClass: cname,
-                    primaryProb: (Array.isArray(probs) && probs.length) ? Math.max(...probs) : 1
+                    primaryProb: (Array.isArray(probs) && probs.length) ? Math.max(...probs) : undefined
                 };
                 cellDataMap.set(cid, cell);
             }
