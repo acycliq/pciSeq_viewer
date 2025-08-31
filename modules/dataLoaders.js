@@ -70,13 +70,12 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
             selectedGenes.clear();
             const idToName = geneDict || {};
             let spotTotal = 0;
-            let globalSpotIndex = 0;
             for (const sh of shards) {
-                const { x, y, z, plane_id, gene_id, neighbour_array, neighbour_prob, omp_score, omp_intensity } = sh;
-                const n = x?.length || 0;
+                const { x, y, z, plane_id, gene_id, spot_id, neighbour_array, neighbour_prob, omp_score, omp_intensity } = sh;
+                const n = x.length;
                 for (let i = 0; i < n; i++) {
-                    const gid = gene_id ? gene_id[i] : -1;
-                    const name = idToName[gid] || String(gid);
+                    const gid = gene_id[i];
+                    const name = idToName[gid];
                     if (!geneDataMap.has(name)) { geneDataMap.set(name, []); selectedGenes.add(name); }
                     // Neighbour info (optional)
                     const nArr = Array.isArray(neighbour_array) ? neighbour_array[i] : null;
@@ -84,18 +83,18 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                     const primaryNeighbour = (nArr && nArr.length > 0) ? nArr[0] : null;
                     const primaryProb = (pArr && pArr.length > 0) ? Number(pArr[0]) : null;
                     geneDataMap.get(name).push({
-                        spot_id: globalSpotIndex++,
+                        spot_id: spot_id[i], // Use actual spot_id from Arrow files
                         x: x[i],
-                        y: y ? y[i] : 0,
-                        z: z ? z[i] : 0,
-                        plane_id: plane_id ? plane_id[i] : 0,
+                        y: y[i],
+                        z: z[i],
+                        plane_id: plane_id[i],
                         gene: name,
                         neighbour: primaryNeighbour,
                         neighbour_array: nArr || null,
                         prob: primaryProb,
                         prob_array: pArr || null,
-                        score: omp_score ? Number(omp_score[i]) : null,
-                        intensity: omp_intensity ? Number(omp_intensity[i]) : null
+                        score: omp_score[i],
+                        intensity: omp_intensity[i]
                     });
                     spotTotal++;
                 }

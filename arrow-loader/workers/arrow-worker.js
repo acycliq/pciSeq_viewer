@@ -79,17 +79,14 @@ async function handleLoadSpots(cfg) {
     const z = getTypedColumn(table, 'z');
     const plane_id = getTypedColumn(table, 'plane_id');
     const gene_id = getTypedColumn(table, 'gene_id');
-    const parent_cell_id = getTypedColumn(table, 'parent_cell_id');
-    const spot_id_col = table.getChild('spot_id'); // keep in table for now
+    const spot_id = getTypedColumn(table, 'spot_id'); // Use actual spot_id from Arrow files
     const omp_score = getTypedColumn(table, 'omp_score');
     const omp_intensity = getTypedColumn(table, 'omp_intensity');
-    const payload = { x, y, z, plane_id, gene_id, parent_cell_id, omp_score, omp_intensity };
-    if (includeLists) {
-      payload.neighbour_array = getListColumnAsArrays(table, 'neighbour_array');
-      payload.neighbour_prob = getListColumnAsArrays(table, 'neighbour_prob');
-    }
+    const neighbour_array = getListColumnAsArrays(table, 'neighbour_array');
+    const neighbour_prob = getListColumnAsArrays(table, 'neighbour_prob');
+    const payload = { x, y, z, plane_id, gene_id, spot_id, neighbour_array, neighbour_prob, omp_score, omp_intensity };
     // collect transfers
-    [x,y,z,plane_id,gene_id,parent_cell_id,omp_score,omp_intensity].forEach(a => a && transfers.push(a.buffer));
+    [x,y,z,plane_id,gene_id,spot_id,omp_score,omp_intensity].forEach(a => a && transfers.push(a.buffer));
     shards.push(payload);
   }
   return { shards, transfers: uniqueTransferList(transfers) };
