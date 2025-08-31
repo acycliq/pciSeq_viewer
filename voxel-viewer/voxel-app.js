@@ -344,15 +344,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let showGhosting = true; // Toggle for showing ghosting effects
     
     // Calculate anisotropic scale from config
-    let anisotropicScale;
-    if (window.opener && window.opener.window.config) {
-        const config = window.opener.window.config();
-        const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
-        anisotropicScale = zVoxel / xVoxel;
-        console.log(`Anisotropic scale from config: zVoxel(${zVoxel}) / xVoxel(${xVoxel}) = ${anisotropicScale}`);
-    } else {
-        throw new Error('Anisotropic scale must be configured via config.js voxelSize property');
-    }
+    const config = window.opener.window.config();
+    const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
+    const anisotropicScale = zVoxel / xVoxel;
+    console.log(`Anisotropic scale from config: zVoxel(${zVoxel}) / xVoxel(${xVoxel}) = ${anisotropicScale}`);
 
     // Helper to create a VoxelLayer with common settings
     function createVoxelLayer(id, data, config) {
