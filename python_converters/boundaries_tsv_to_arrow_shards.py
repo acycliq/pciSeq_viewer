@@ -21,6 +21,7 @@ for Arrow JS compatibility.
 """
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import List, Tuple
 
@@ -34,8 +35,6 @@ def build_argparser():
     p.add_argument("--indir", default="./data/cellBoundaries/new_segmentation", help="Directory with plane_*.tsv files")
     p.add_argument("--pattern", default="plane_*.tsv", help="Glob pattern for input files inside indir")
     p.add_argument("--outdir", default="./data/arrow_boundaries", help="Output directory for Arrow shards")
-    # deprecated: kept for CLI compatibility, no effect when writing per-plane files
-    p.add_argument("--polys-per-shard", type=int, default=50_000, help="[deprecated] ignored; one file per plane")
     p.add_argument(
         "--compression",
         default="uncompressed",
@@ -67,30 +66,6 @@ def parse_coords(cell: str) -> List[Tuple[float, float]]:
         return []
 
 
-def write_shard(outdir: Path,
-                shard_index: int,
-                x_lists: List[List[float]],
-                y_lists: List[List[float]],
-                plane_ids: List[int],
-                labels: List[int],
-                compression):
-    arrays = {
-        "x_list": pa.array(x_lists, type=pa.list_(pa.float32())),
-        "y_list": pa.array(y_lists, type=pa.list_(pa.float32())),
-        "plane_id": pa.array(pd.Series(plane_ids, dtype="uint16")),
-        "label": pa.array(pd.Series(labels, dtype="int32")),
-    }
-    table = pa.table(arrays)
-    shard_name = f"boundaries_shard_{shard_index:03d}.feather"
-    feather.write_feather(table, (outdir / shard_name).as_posix(), compression=compression)
-    # Count total points for logging
-    n_polys = len(x_lists)
-    n_points = sum(len(xs) for xs in x_lists)
-    print(f"Wrote {shard_name}: polys={n_polys}, points={n_points}")
-    return shard_name, n_polys, n_points
-
-
-
 def main():
     args = build_argparser().parse_args()
     indir = Path(args.indir)
@@ -101,7 +76,6 @@ def main():
     if comp == "none":
         comp = None
 
-    # Collect and sort input files by plane index if possible
     files = sorted(indir.glob(args.pattern))
     if not files:
         raise SystemExit(f"No files matched {indir}/{args.pattern}")
@@ -111,51 +85,56 @@ def main():
     total_points = 0
 
     for path in files:
-        # Read the plane TSV; small enough to read in one go
-        df = pd.read_csv(path, sep="\t", dtype={"plane_id": "Int64", "label": "Int64", "coords": "string"})
+        # Extract plane_id from filename, e.g., plane_42.tsv -> 42
+        match = re.search(r"(\d+)", path.name)
+        if not match:
+            print(f"Warning: could not parse plane ID from filename, skipping: {path.name}")
+            continue
         
-        x_lists: List[List[float]] = []
-        y_lists: List[List[float]] = []
-        plane_ids: List[int] = []
-        labels: List[int] = []
+        current_plane_id = int(match.group(1))
 
-        for _, row in df.iterrows():
-            pid = int(pd.to_numeric(row["plane_id"], errors="coerce"))
-            lab = int(pd.to_numeric(row["label"], errors="coerce")) 
-            coords = parse_coords(row["coords"])
-            if not coords:
-                continue
-            xs = [float(x) for x, _ in coords]
-            ys = [float(y) for _, y in coords]
-            if not xs:
-                continue
-            x_lists.append(xs)
-            y_lists.append(ys)
-            plane_ids.append(pid)
-            labels.append(lab)
+        df = pd.read_csv(path, sep="\t", dtype={"label": "Int64", "coords": "string"})
+        
+        # Use .apply for efficient parsing, drop rows where parsing fails
+        df["parsed_coords"] = df["coords"].apply(parse_coords)
+        df = df[df["parsed_coords"].str.len() > 0]
 
-        # Write one feather per plane file
-        plane_suffix = f"{plane_ids[0]:02d}" if plane_ids else "00"
+        if df.empty:
+            # If file is empty or has no valid polygons, record it in manifest and skip file writing
+            shards.append({"url": None, "rows": 0, "plane": current_plane_id})
+            print(f"Processed {path.name}: No valid polygons found.")
+            continue
+
+        # Prepare data for Arrow
+        x_lists = df["parsed_coords"].apply(lambda coords: [float(x) for x, _ in coords])
+        y_lists = df["parsed_coords"].apply(lambda coords: [float(y) for _, y in coords])
+        labels = pd.to_numeric(df["label"], errors="coerce").fillna(-1).astype("int32")
+        
+        # Create the Arrow table
         arrays = {
             "x_list": pa.array(x_lists, type=pa.list_(pa.float32())),
             "y_list": pa.array(y_lists, type=pa.list_(pa.float32())),
-            "plane_id": pa.array(pd.Series(plane_ids, dtype="uint16")),
-            "label": pa.array(pd.Series(labels, dtype="int32")),
+            "plane_id": pa.array([current_plane_id] * len(df), type=pa.uint16()),
+            "label": pa.array(labels, type=pa.int32()),
         }
         table = pa.table(arrays)
-        shard_name = f"boundaries_plane_{plane_suffix}.feather"
+        
+        # Write the Feather file with the correct plane ID in the name
+        shard_name = f"boundaries_plane_{current_plane_id:02d}.feather"
         feather.write_feather(table, (outdir / shard_name).as_posix(), compression=comp)
-        polys = len(x_lists)
-        pts = sum(len(xs) for xs in x_lists)
+        
+        polys = len(df)
+        pts = sum(x_lists.str.len())
         total_polys += polys
         total_points += pts
-        shards.append({"url": shard_name, "rows": int(polys), "plane": int(plane_ids[0] if plane_ids else -1)})
+        
+        shards.append({"url": shard_name, "rows": int(polys), "plane": current_plane_id})
         print(f"Wrote {shard_name}: polys={polys}, points={pts}")
 
     # Manifest
     manifest = {
         "format": "arrow-feather",
-        "total_rows": int(total_polys),  # polygons count
+        "total_rows": int(total_polys),
         "total_points": int(total_points),
         "shards": shards,
     }
