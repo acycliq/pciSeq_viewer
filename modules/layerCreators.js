@@ -33,8 +33,7 @@ async function ensureArrowInitialized() {
     initArrow({
         spotsManifest: ARROW_MANIFESTS.spotsManifest,
         cellsManifest: ARROW_MANIFESTS.cellsManifest,
-        boundariesManifest: ARROW_MANIFESTS.boundariesManifest,
-        cellsClassDict: ARROW_MANIFESTS.cellsClassDict
+        boundariesManifest: ARROW_MANIFESTS.boundariesManifest
     });
     arrowInitialized = true;
 }

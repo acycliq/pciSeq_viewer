@@ -55,7 +55,6 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                 spotsManifest: ARROW_MANIFESTS.spotsManifest,
                 cellsManifest: ARROW_MANIFESTS.cellsManifest,
                 boundariesManifest: ARROW_MANIFESTS.boundariesManifest,
-                cellsClassDict: ARROW_MANIFESTS.cellsClassDict,
                 spotsGeneDict: ARROW_MANIFESTS.spotsGeneDict
             });
             const { shards, geneDict } = await loadSpots();
@@ -111,14 +110,18 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                 const settings = glyphSettings();
                 const colorByGene = new Map(settings.map(s => [s.gene, s.color]));
                 const hexToRgb = (hex) => {
-                    const h = String(hex || '').replace('#','');
-                    if (h.length !== 6) return [255,255,255];
-                    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+                    const color = d3.rgb(hex);
+                    return [color.r, color.g, color.b];
                 };
                 const geneIdColors = {};
                 for (const [gidStr, name] of Object.entries(idToName)) {
-                    const col = colorByGene.get(name) || '#ffffff';
-                    geneIdColors[gidStr] = hexToRgb(col);
+                    const col = colorByGene.get(name);
+                    if (!col) {
+                        console.warn(`Gene '${name}' missing color config, using white fallback`);
+                        geneIdColors[gidStr] = hexToRgb('#ffffff');
+                    } else {
+                        geneIdColors[gidStr] = hexToRgb(col);
+                    }
                 }
                 const manifestUrl = new URL(ARROW_MANIFESTS.spotsManifest, window.location.href).href;
                 const img = { width: cfg.imageWidth, height: cfg.imageHeight, tileSize: 256 };
@@ -172,26 +175,20 @@ export async function loadCellData(cellDataMap) {
                 spotsManifest: ARROW_MANIFESTS.spotsManifest,
                 cellsManifest: ARROW_MANIFESTS.cellsManifest,
                 boundariesManifest: ARROW_MANIFESTS.boundariesManifest,
-                cellsClassDict: ARROW_MANIFESTS.cellsClassDict,
                 spotsGeneDict: ARROW_MANIFESTS.spotsGeneDict
             });
-            const { columns, classDict } = await loadCells();
-            const X = columns.X, Y = columns.Y, Z = columns.Z, class_id = columns.class_id, cell_id = columns.cell_id;
-            const classNameStr = columns.class_name_str || [];
-            const probStr = columns.prob_str || [];
+            const { columns } = await loadCells(); // No classDict needed anymore
+            const X = columns.X, Y = columns.Y, Z = columns.Z, cell_id = columns.cell_id;
+            const className = columns.class_name || [];
+            const prob = columns.prob || [];
             const n = cell_id?.length || 0;
             cellDataMap.clear();
-            const parseList = (s) => {
-                if (Array.isArray(s)) return s;
-                if (typeof s !== 'string') return null;
-                try { const p = JSON.parse(s.replace(/'/g, '"')); return Array.isArray(p) ? p : null; } catch { return null; }
-            };
+            
             for (let i = 0; i < n; i++) {
                 const cid = cell_id[i];
-                // Prefer explicit class list if present; else map from class_id
-                let classNames = parseList(classNameStr[i]);
-                let probs = parseList(probStr[i]);
-                if (Array.isArray(probs)) probs = probs.map(v => Number(v));
+                // class_name and prob are now native arrays from Arrow
+                let classNames = className[i]; // Already an array
+                let probs = prob[i]; // Already an array
                 let cname = null;
                 if (classNames && probs && probs.length === classNames.length) {
                     let best = -Infinity, idx = -1;
@@ -201,10 +198,7 @@ export async function loadCellData(cellDataMap) {
                     }
                     if (idx >= 0) cname = String(classNames[idx]).trim();
                 }
-                if (!cname && classDict) {
-                    const id = class_id ? class_id[i] : -1;
-                    if (id != null && classDict[id] != null) cname = classDict[id];
-                }
+                // No fallback needed - class names are directly in the data
                 if (!cname) cname = 'Unknown';
                 const cell = {
                     cellNum: cid,
@@ -221,7 +215,19 @@ export async function loadCellData(cellDataMap) {
                 };
                 cellDataMap.set(cid, cell);
             }
-            console.log(`✅ Cell data (Arrow) loaded: ${cellDataMap.size} cells`);
+            console.log(`Cell data (Arrow) loaded: ${cellDataMap.size} cells`);
+            if (cellDataMap.size === 0) {
+                console.error('DEBUG: Cell data loading failed - no cells in cellDataMap');
+                console.log('DEBUG: columns.cell_id length:', cell_id?.length);
+                console.log('DEBUG: className length:', className?.length);
+                console.log('DEBUG: prob length:', prob?.length);
+            } else {
+                const firstFewKeys = Array.from(cellDataMap.keys()).slice(0, 5);
+                console.log('DEBUG: First few cell IDs in cellDataMap:', firstFewKeys);
+                const sampleCellId = 15357;
+                console.log(`DEBUG: cellDataMap.has(${sampleCellId}):`, cellDataMap.has(sampleCellId));
+                console.log(`DEBUG: cellDataMap.get(${sampleCellId}):`, cellDataMap.get(sampleCellId));
+            }
             return true;
         } else {
             const cellData = await loadCellDataWithWorker();
@@ -313,7 +319,7 @@ async function loadGeneDataWithWorker() {
 function buildGeneIconAtlas(genes) {
     const settings = glyphSettings();
     const configMap = new Map(settings.map(s => [s.gene, {glyphName: s.glyphName, color: s.color}]));
-    const defaultConfig = configMap.get('Generic') || {glyphName: 'circle', color: '#ffffff'};
+    const defaultConfig = {glyphName: 'circle', color: '#ffffff'};
 
     const size = 64;
     const canvas = document.createElement('canvas');
@@ -323,14 +329,18 @@ function buildGeneIconAtlas(genes) {
     const mapping = {};
 
     genes.forEach((gene, i) => {
-        const cfg = configMap.get(gene) || defaultConfig;
+        const cfg = configMap.get(gene);
+        if (!cfg) {
+            console.warn(`Gene '${gene}' missing glyph config, using circle fallback`);
+        }
+        const finalConfig = cfg || defaultConfig;
         const p = {x: i * size + size/2, y: size/2};
         const r = size * 0.4;
         
         ctx.save();
-        ctx.strokeStyle = cfg.color;
+        ctx.strokeStyle = finalConfig.color;
         ctx.lineWidth = 4;
-        ctxPath(cfg.glyphName, ctx, p, r);
+        ctxPath(finalConfig.glyphName, ctx, p, r);
         ctx.stroke();
         ctx.restore();
         
@@ -546,7 +556,6 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
                 spotsManifest: ARROW_MANIFESTS.spotsManifest,
                 cellsManifest: ARROW_MANIFESTS.cellsManifest,
                 boundariesManifest: ARROW_MANIFESTS.boundariesManifest,
-                cellsClassDict: ARROW_MANIFESTS.cellsClassDict,
                 spotsGeneDict: ARROW_MANIFESTS.spotsGeneDict
             });
             const { buffers } = await loadBoundariesPlane(planeNum);

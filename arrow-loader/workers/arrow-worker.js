@@ -96,36 +96,47 @@ async function handleLoadSpots(cfg) {
 }
 
 async function handleLoadCells(cfg) {
-  const { manifestUrl, classDictUrl } = cfg;
+  const { manifestUrl } = cfg; // No more classDictUrl needed
   const manifest = await loadManifest(manifestUrl);
   const shardUrls = resolveShardUrls(manifestUrl, manifest);
   // Concatenate across shards (small columns)
-  let Xs=[], Ys=[], Zs=[], classIds=[], cellIds=[];
-  let classNameStrs=[]; let probStrs=[];
+  let Xs=[], Ys=[], Zs=[], cellIds=[];
+  let classNameLists=[], probLists=[];
+  
   for (const url of shardUrls) {
     const buf = await fetchArrayBuffer(url);
     const table = decodeFeather(buf);
     const X = getTypedColumn(table, 'X');
     const Y = getTypedColumn(table, 'Y');
     const Z = getTypedColumn(table, 'Z');
-    const class_id = getTypedColumn(table, 'class_id');
     const cell_id = getTypedColumn(table, 'cell_id');
-    const class_name_col = table.getChild('ClassName');
-    const prob_col = table.getChild('Prob');
-    Xs.push(X); Ys.push(Y); Zs.push(Z); classIds.push(class_id); cellIds.push(cell_id);
+    
+    // Handle list columns
+    const class_name_col = table.getChild('class_name');
+    const prob_col = table.getChild('prob');
+    
+    Xs.push(X); Ys.push(Y); Zs.push(Z); cellIds.push(cell_id);
+    
+    // Extract list data from Arrow list columns
     if (class_name_col) {
       for (let i = 0; i < class_name_col.length; i++) {
-        const v = class_name_col.get(i);
-        classNameStrs.push(typeof v === 'string' ? v : (v ? String(v) : ''));
+        const listValue = class_name_col.get(i);
+        // Convert Arrow List to JavaScript array
+        const jsArray = listValue ? Array.from(listValue) : [];
+        classNameLists.push(jsArray);
       }
     }
+    
     if (prob_col) {
       for (let i = 0; i < prob_col.length; i++) {
-        const v = prob_col.get(i);
-        probStrs.push(typeof v === 'string' ? v : (v != null ? String(v) : ''));
+        const listValue = prob_col.get(i);
+        // Convert Arrow List to JavaScript array
+        const jsArray = listValue ? Array.from(listValue) : [];
+        probLists.push(jsArray);
       }
     }
   }
+  
   // Flatten typed chunks
   function concatTyped(chunks) {
     if (chunks.length === 1) return chunks[0];
@@ -135,14 +146,12 @@ async function handleLoadCells(cfg) {
     for (const a of chunks) { if (!a) continue; out.set(a, off); off += a.length; }
     return out;
   }
+  
   const X = concatTyped(Xs), Y = concatTyped(Ys), Z = concatTyped(Zs);
-  const class_id = concatTyped(classIds), cell_id = concatTyped(cellIds);
-  const transfers = uniqueTransferList([X,Y,Z,class_id,cell_id].map(a=>a && a.buffer));
-  let classDict = null;
-  if (classDictUrl) {
-    const res = await fetch(classDictUrl); if (res.ok) classDict = await res.json();
-  }
-  return { columns: { X, Y, Z, class_id, cell_id, class_name_str: classNameStrs, prob_str: probStrs }, classDict, transfers };
+  const cell_id = concatTyped(cellIds);
+  const transfers = uniqueTransferList([X,Y,Z,cell_id].map(a=>a && a.buffer));
+  
+  return { columns: { X, Y, Z, cell_id, class_name: classNameLists, prob: probLists }, transfers };
 }
 
 async function handleLoadBoundariesPlane(cfg) {
@@ -233,8 +242,8 @@ self.onmessage = async (e) => {
       const { shards, transfers } = await handleLoadSpots(payload);
       self.postMessage({ id, ok: true, type, shards }, transfers);
     } else if (type === 'loadCells') {
-      const { columns, classDict, transfers } = await handleLoadCells(payload);
-      self.postMessage({ id, ok: true, type, columns, classDict }, transfers);
+      const { columns, transfers } = await handleLoadCells(payload);
+      self.postMessage({ id, ok: true, type, columns }, transfers);
     } else if (type === 'loadBoundariesPlane') {
       const { planeId, buffers, transfers } = await handleLoadBoundariesPlane(payload);
       self.postMessage({ id, ok: true, type, planeId, buffers }, transfers);

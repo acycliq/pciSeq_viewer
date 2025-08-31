@@ -55,8 +55,7 @@ export async function loadSpots() {
 export async function loadCells() {
   const manifestUrl = config?.cellsManifest ? new URL(config.cellsManifest, window.location.href).href : null;
   if (!manifestUrl) throw new Error('cellsManifest not configured');
-  const classDictUrl = config?.cellsClassDict ? new URL(config.cellsClassDict, window.location.href).href : null;
-  return call('loadCells', { manifestUrl, classDictUrl });
+  return call('loadCells', { manifestUrl });
 }
 
 export async function loadBoundariesPlane(planeId) {
