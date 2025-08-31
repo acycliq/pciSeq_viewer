@@ -95,8 +95,7 @@ def infer_and_cast(df: pd.DataFrame) -> pd.DataFrame:
     if "z" in df.columns: cols["z"] = df["z"].astype("float32")
     if "plane_id" in df.columns: cols["plane_id"] = df["plane_id"].astype("uint16", errors="ignore")
     if "spot_id" in df.columns:
-        # spot_id could be string; keep as string
-        cols["spot_id"] = df["spot_id"].astype("string")
+        cols["spot_id"] = pd.to_numeric(df["spot_id"], errors="coerce").astype("uint32")
     if "parent_cell_id" in df.columns:
         cols["parent_cell_id"] = pd.to_numeric(df["parent_cell_id"], errors="coerce").fillna(-1).astype("int32")
     if "gene_id" in df.columns:
