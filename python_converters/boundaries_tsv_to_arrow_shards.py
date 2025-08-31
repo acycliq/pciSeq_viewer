@@ -90,6 +90,30 @@ def write_shard(outdir: Path,
     return shard_name, n_polys, n_points
 
 
+def validate_tsv_structure(file_path: Path):
+    """Validate that TSV has required columns: plane_id, label, coords"""
+    required_columns = {"plane_id", "label", "coords"}
+    
+    try:
+        # Read just the header to check columns
+        df_header = pd.read_csv(file_path, sep="\t", nrows=0)
+        actual_columns = set(df_header.columns)
+        
+        missing_columns = required_columns - actual_columns
+        if missing_columns:
+            raise ValueError(f"TSV file {file_path} missing required columns: {missing_columns}")
+        
+        # Check if file has any data rows
+        df_sample = pd.read_csv(file_path, sep="\t", nrows=1)
+        if df_sample.empty:
+            raise ValueError(f"TSV file {file_path} has no data rows")
+            
+        return True
+        
+    except Exception as e:
+        raise SystemExit(f"TSV validation failed for {file_path}: {e}")
+
+
 def main():
     args = build_argparser().parse_args()
     indir = Path(args.indir)
@@ -105,6 +129,12 @@ def main():
     if not files:
         raise SystemExit(f"No files matched {indir}/{args.pattern}")
 
+    # Validate all TSV files first
+    print(f"Validating {len(files)} TSV files...")
+    for file_path in files:
+        validate_tsv_structure(file_path)
+    print("✅ All TSV files passed validation")
+
     shards = []
     total_polys = 0
     total_points = 0
@@ -112,26 +142,16 @@ def main():
     for path in files:
         # Read the plane TSV; small enough to read in one go
         df = pd.read_csv(path, sep="\t", dtype={"plane_id": "Int64", "label": "Int64", "coords": "string"})
-        cols = {c.lower(): c for c in df.columns}
-        plane_col = cols.get("plane_id", "plane_id")
-        label_col = cols.get("label", "label")
-        coords_col = cols.get("coords", "coords")
-
+        
         x_lists: List[List[float]] = []
         y_lists: List[List[float]] = []
         plane_ids: List[int] = []
         labels: List[int] = []
 
-        # Derive plane id from filename if needed
-        try:
-            plane_from_name = int(''.join([ch for ch in path.stem if ch.isdigit()]))
-        except Exception:
-            plane_from_name = None
-
         for _, row in df.iterrows():
-            pid = int(pd.to_numeric(row.get(plane_col), errors="coerce")) if plane_col in df.columns else (plane_from_name or 0)
-            lab = int(pd.to_numeric(row.get(label_col), errors="coerce")) if label_col in df.columns else -1
-            coords = parse_coords(row.get(coords_col))
+            pid = int(pd.to_numeric(row["plane_id"], errors="coerce"))
+            lab = int(pd.to_numeric(row["label"], errors="coerce")) 
+            coords = parse_coords(row["coords"])
             if not coords:
                 continue
             xs = [float(x) for x, _ in coords]
@@ -144,7 +164,7 @@ def main():
             labels.append(lab)
 
         # Write one feather per plane file
-        plane_suffix = f"{plane_ids[0]:02d}" if plane_ids else path.stem.split('_')[-1]
+        plane_suffix = f"{plane_ids[0]:02d}" if plane_ids else "00"
         arrays = {
             "x_list": pa.array(x_lists, type=pa.list_(pa.float32())),
             "y_list": pa.array(y_lists, type=pa.list_(pa.float32())),
