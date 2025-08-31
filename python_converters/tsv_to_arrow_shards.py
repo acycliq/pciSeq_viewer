@@ -99,8 +99,9 @@ def infer_and_cast(df: pd.DataFrame) -> pd.DataFrame:
         cols["spot_id"] = df["spot_id"].astype("string")
     if "parent_cell_id" in df.columns:
         cols["parent_cell_id"] = pd.to_numeric(df["parent_cell_id"], errors="coerce").fillna(-1).astype("int32")
-    if "gene_name" in df.columns:
-        cols["gene_name"] = df["gene_name"].astype("string")
+    if "gene_id" in df.columns:
+        cols["gene_id"] = pd.to_numeric(df["gene_id"], errors="coerce").astype("uint32")
+    # Note: gene_name removed from Arrow output - use gene_dict.json lookup with gene_id instead
 
     # Optional neighbour/omp fields
     if "neighbour_array" in df.columns:
@@ -121,13 +122,10 @@ def main():
     outdir = Path(args.outdir)
     ensure_outdir(outdir)
 
-    # Build gene dictionary incrementally
-    gene_to_id = {}
-    next_gene_id = 0
-
     shards = []
     total_rows = 0
     shard_index = 0
+    gene_dict_data = None  # Will store gene_id -> gene_name mapping
 
     # Read TSV in chunks to avoid high memory usage
     reader = pd.read_csv(inp, sep="\t", dtype="string", chunksize=args.rows_per_shard)
@@ -138,17 +136,17 @@ def main():
         comp = None
 
     for chunk in reader:
-        df = infer_and_cast(chunk)
+        # Accumulate gene dictionary from all chunks
+        if "gene_id" in chunk.columns and "gene_name" in chunk.columns:
+            if gene_dict_data is None:
+                gene_dict_data = {}
+            
+            # Add genes from this chunk
+            chunk_gene_dict = dict(zip(pd.to_numeric(chunk["gene_id"], errors="coerce").fillna(0).astype(int), 
+                                     chunk["gene_name"].fillna("")))
+            gene_dict_data.update(chunk_gene_dict)
 
-        # Map gene_name -> gene_id dictionary
-        if "gene_name" in df.columns:
-            # Fill mapping for new genes
-            for g in df["gene_name"].dropna().unique():
-                if g not in gene_to_id:
-                    gene_to_id[g] = next_gene_id
-                    next_gene_id += 1
-            # Create numeric gene_id column
-            df["gene_id"] = df["gene_name"].map(gene_to_id).astype("uint32")
+        df = infer_and_cast(chunk)
 
         # Arrow schema with explicit types
         arrays = {}
@@ -196,10 +194,12 @@ def main():
     }
     (outdir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
-    # Write gene dictionary (id -> name)
-    if gene_to_id:
-        id_to_gene = {int(v): k for k, v in gene_to_id.items()}
-        (outdir / "gene_dict.json").write_text(json.dumps(id_to_gene, indent=2))
+    # Write gene dictionary (id -> name) - sort by key and deduplicate
+    if gene_dict_data:
+        # Sort by gene_id and ensure unique mappings
+        sorted_gene_dict = dict(sorted(gene_dict_data.items()))
+        (outdir / "gene_dict.json").write_text(json.dumps(sorted_gene_dict, indent=2))
+        print(f"Gene dictionary: {len(sorted_gene_dict)} unique genes")
 
     print(f"Done. Total rows: {total_rows}. Shards: {len(shards)}. Output dir: {outdir}")
 
