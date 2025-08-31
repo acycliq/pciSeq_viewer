@@ -90,29 +90,6 @@ def write_shard(outdir: Path,
     return shard_name, n_polys, n_points
 
 
-def validate_tsv_structure(file_path: Path):
-    """Validate that TSV has required columns: plane_id, label, coords"""
-    required_columns = {"plane_id", "label", "coords"}
-    
-    try:
-        # Read just the header to check columns
-        df_header = pd.read_csv(file_path, sep="\t", nrows=0)
-        actual_columns = set(df_header.columns)
-        
-        missing_columns = required_columns - actual_columns
-        if missing_columns:
-            raise ValueError(f"TSV file {file_path} missing required columns: {missing_columns}")
-        
-        # Check if file has any data rows
-        df_sample = pd.read_csv(file_path, sep="\t", nrows=1)
-        if df_sample.empty:
-            raise ValueError(f"TSV file {file_path} has no data rows")
-            
-        return True
-        
-    except Exception as e:
-        raise SystemExit(f"TSV validation failed for {file_path}: {e}")
-
 
 def main():
     args = build_argparser().parse_args()
@@ -128,12 +105,6 @@ def main():
     files = sorted(indir.glob(args.pattern))
     if not files:
         raise SystemExit(f"No files matched {indir}/{args.pattern}")
-
-    # Validate all TSV files first
-    print(f"Validating {len(files)} TSV files...")
-    for file_path in files:
-        validate_tsv_structure(file_path)
-    print("✅ All TSV files passed validation")
 
     shards = []
     total_polys = 0
