@@ -84,6 +84,14 @@ def main():
     total_polys = 0
     total_points = 0
 
+    # Define the schema once, to be used for all files
+    schema = pa.schema([
+        pa.field('x_list', pa.list_(pa.float32())),
+        pa.field('y_list', pa.list_(pa.float32())),
+        pa.field('plane_id', pa.uint16()),
+        pa.field('label', pa.int32())
+    ])
+
     for path in files:
         # Extract plane_id from filename, e.g., plane_42.tsv -> 42
         match = re.search(r"(\d+)", path.name)
@@ -92,6 +100,7 @@ def main():
             continue
         
         current_plane_id = int(match.group(1))
+        shard_name = f"boundaries_plane_{current_plane_id:02d}.feather"
 
         df = pd.read_csv(path, sep="\t", dtype={"label": "Int64", "coords": "string"})
         
@@ -100,9 +109,12 @@ def main():
         df = df[df["parsed_coords"].str.len() > 0]
 
         if df.empty:
-            # If file is empty or has no valid polygons, record it in manifest and skip file writing
-            shards.append({"url": None, "rows": 0, "plane": current_plane_id})
-            print(f"Processed {path.name}: No valid polygons found.")
+            # If file is empty or has no valid polygons, write an empty Feather file
+            # with the correct schema.
+            empty_table = schema.empty_table()
+            feather.write_feather(empty_table, (outdir / shard_name).as_posix(), compression=comp)
+            shards.append({"url": shard_name, "rows": 0, "plane": current_plane_id})
+            print(f"Wrote empty shard {shard_name} for plane {current_plane_id}")
             continue
 
         # Prepare data for Arrow
@@ -117,10 +129,9 @@ def main():
             "plane_id": pa.array([current_plane_id] * len(df), type=pa.uint16()),
             "label": pa.array(labels, type=pa.int32()),
         }
-        table = pa.table(arrays)
+        table = pa.table(arrays, schema=schema)
         
-        # Write the Feather file with the correct plane ID in the name
-        shard_name = f"boundaries_plane_{current_plane_id:02d}.feather"
+        # Write the Feather file
         feather.write_feather(table, (outdir / shard_name).as_posix(), compression=comp)
         
         polys = len(df)
