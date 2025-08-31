@@ -38,6 +38,39 @@ def ensure_outdir(path: Path):
     path.mkdir(parents=True, exist_ok=True)
 
 
+def parse_list_column(series, parse_as='string'):
+    """Parse string representations of lists or native lists into actual Python lists"""
+    def parse_cell(cell_value):
+        if pd.isna(cell_value):
+            return []
+        
+        # Handle case where it's already a list or tuple
+        if isinstance(cell_value, (list, tuple)):
+            if parse_as == 'float':
+                return [float(x) for x in cell_value]
+            else:
+                return [str(x) for x in cell_value]
+        
+        # Handle string representation of lists
+        if isinstance(cell_value, str):
+            try:
+                # Handle both single quotes and double quotes in list strings
+                parsed = json.loads(cell_value.replace("'", '"'))
+                if isinstance(parsed, list):
+                    if parse_as == 'float':
+                        return [float(x) for x in parsed]
+                    else:
+                        return [str(x) for x in parsed]
+                else:
+                    return []
+            except (json.JSONDecodeError, ValueError, TypeError):
+                return []
+        
+        return []
+    
+    return series.apply(parse_cell)
+
+
 def select_cast_columns(df: pd.DataFrame) -> pd.DataFrame:
     cols = {}
     # Required / common
@@ -46,14 +79,15 @@ def select_cast_columns(df: pd.DataFrame) -> pd.DataFrame:
     if "X" in df.columns: cols["X"] = pd.to_numeric(df["X"], errors="coerce").astype("float32")
     if "Y" in df.columns: cols["Y"] = pd.to_numeric(df["Y"], errors="coerce").astype("float32")
     if "Z" in df.columns: cols["Z"] = pd.to_numeric(df["Z"], errors="coerce").astype("float32")
-    if "ClassName" in df.columns: cols["ClassName"] = df["ClassName"].astype("string")
+    
+    # Parse ClassName as list of strings  
+    if "ClassName" in df.columns: 
+        cols["class_name"] = parse_list_column(df["ClassName"], parse_as='string')
+    
+    # Parse Prob as list of floats
     if "Prob" in df.columns:
-        # Could be scalar or array; keep as string if parsing fails
-        prob = pd.to_numeric(df["Prob"], errors="coerce")
-        if prob.notna().any():
-            cols["Prob"] = prob.fillna(0).astype("float32")
-        else:
-            cols["Prob"] = df["Prob"].astype("string")
+        cols["prob"] = parse_list_column(df["Prob"], parse_as='float')
+    
     if "gaussian_contour" in df.columns:
         cols["gaussian_contour"] = df["gaussian_contour"].astype("string")
     # Optional passthroughs (keep as string)
@@ -73,10 +107,6 @@ def main():
     if comp == "none":
         comp = None
 
-    # Class dictionary
-    class_to_id = {}
-    next_class_id = 0
-
     shards = []
     total_rows = 0
     shard_index = 0
@@ -85,31 +115,27 @@ def main():
 
     for chunk in reader:
         df = select_cast_columns(chunk)
-        # ClassName -> class_id
-        if "ClassName" in df.columns:
-            for cname in df["ClassName"].dropna().unique():
-                if cname not in class_to_id:
-                    class_to_id[cname] = next_class_id
-                    next_class_id += 1
-            df["class_id"] = df["ClassName"].map(class_to_id).astype("uint16")
 
         arrays = {}
         for col in df.columns:
-            s = df[col]
-            if pd.api.types.is_string_dtype(s):
-                arrays[col] = pa.array(s.astype("string"))
-            elif pd.api.types.is_float_dtype(s):
-                arrays[col] = pa.array(s.astype("float32"))
-            elif pd.api.types.is_integer_dtype(s):
+            if col in ('class_name', 'prob'):
+                # Handle list columns properly
+                if col == 'class_name':
+                    arrays[col] = pa.array(df[col].tolist(), type=pa.list_(pa.string()))
+                else:  # prob
+                    arrays[col] = pa.array(df[col].tolist(), type=pa.list_(pa.float32()))
+            elif pd.api.types.is_string_dtype(df[col]):
+                arrays[col] = pa.array(df[col].astype("string"))
+            elif pd.api.types.is_float_dtype(df[col]):
+                arrays[col] = pa.array(df[col].astype("float32"))
+            elif pd.api.types.is_integer_dtype(df[col]):
                 # choose smallest reasonable integer type
-                if str(s.dtype).startswith("uint16"):
-                    arrays[col] = pa.array(s.astype("uint16"))
-                elif str(s.dtype).startswith("int32"):
-                    arrays[col] = pa.array(s.astype("int32"))
+                if str(df[col].dtype).startswith("int32"):
+                    arrays[col] = pa.array(df[col].astype("int32"))
                 else:
-                    arrays[col] = pa.array(s.astype("int64"))
+                    arrays[col] = pa.array(df[col].astype("int64"))
             else:
-                arrays[col] = pa.array(s)
+                arrays[col] = pa.array(df[col])
 
         table = pa.table(arrays)
         shard_name = f"cells_shard_{shard_index:03d}.feather"
@@ -120,12 +146,9 @@ def main():
         shard_index += 1
         print(f"Wrote {shard_name} with {n} rows")
 
-    # Manifest and class dict
+    # Manifest only - no class dict needed since class names are in the Arrow files
     manifest = {"format": "arrow-feather", "total_rows": int(total_rows), "shards": shards}
     (outdir / "manifest.json").write_text(json.dumps(manifest, indent=2))
-    if class_to_id:
-        id_to_class = {int(v): k for k, v in class_to_id.items()}
-        (outdir / "class_dict.json").write_text(json.dumps(id_to_class, indent=2))
 
     print(f"Done. Total rows: {total_rows}. Shards: {len(shards)}. Output dir: {outdir}")
 
