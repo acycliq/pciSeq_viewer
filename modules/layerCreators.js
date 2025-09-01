@@ -374,6 +374,9 @@ function computeMostProbableClass(label, cellDataMap) {
     }
     const raw = names[idx];
     const cls = (typeof raw === 'string') ? raw.trim() : String(raw || 'Unknown');
+    if (!raw) {
+        console.warn(`computeMostProbableClass: Cell ${label} selected class is empty/null, using 'Unknown' fallback. Raw value:`, raw);
+    }
     try {
         const adv = window.advancedConfig ? window.advancedConfig() : null;
         // Targeted debug: verify a specific cell mapping during Arrow path

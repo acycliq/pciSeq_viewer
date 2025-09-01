@@ -661,10 +661,14 @@ async function init() {
     // If Arrow path is enabled, initialize class colors and default selection from cell data
     if (USE_ARROW) {
         state.allCellClasses.clear();
-        state.cellDataMap.forEach(cell => {
+        state.cellDataMap.forEach((cell, cellId) => {
             const names = cell?.classification?.className;
             if (Array.isArray(names) && names.length > 0) {
-                state.allCellClasses.add(names[0]);
+                const className = names[0];
+                if (className === 'Unknown') {
+                    console.warn(`Found cell ${cellId} with 'Unknown' class name in source data. Full classification:`, names);
+                }
+                state.allCellClasses.add(className);
             }
         });
         assignColorsToCellClasses(state.allCellClasses, state.cellClassColors);
@@ -695,9 +699,8 @@ async function init() {
     }
 
     // Initialize cell class widget with all classes selected by default
-    if (state.selectedCellClasses.size === 0) {
-        state.allCellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
-    }
+    // Always ensure selectedCellClasses contains all available classes (in case new ones were discovered)
+    state.allCellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
     
     // Preload adjacent planes (non-blocking)
     const adjacentPlanes = [

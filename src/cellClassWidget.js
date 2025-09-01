@@ -63,7 +63,7 @@ function populateCellClassWidget() {
 }
 
 function updateToggleAllCellClassesButton() {
-    // Add safety check to prevent race condition when allCellClasses hasn't been populated yet
+    // Safety check: if allCellClasses hasn't been populated yet, show default state
     if (!state.allCellClasses || state.allCellClasses.size === 0) {
         elements.toggleAllCellClasses.textContent = 'Select All';
         elements.toggleAllCellClasses.className = 'toggle-all-btn';

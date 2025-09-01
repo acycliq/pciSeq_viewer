@@ -198,7 +198,10 @@ export async function loadCellData(cellDataMap) {
                     if (idx >= 0) cname = String(classNames[idx]).trim();
                 }
                 // No fallback needed - class names are directly in the data
-                if (!cname) cname = 'Unknown';
+                if (!cname) {
+                    console.warn(`Cell ${cid} has no valid classification, using 'Unknown' fallback. ClassNames:`, classNames, 'Probs:', probs);
+                    cname = 'Unknown';
+                }
                 const cell = {
                     cellNum: cid,
                     position: {x: X[i],y: Y[i],z: Z[i]},
@@ -449,7 +452,11 @@ function getMostProbableCellClass(cellNum, cellDataMap) {
         return 'Unknown';
     }
     const result = String(names[maxProbIndex]).trim();
-    return result || 'Unknown';
+    if (!result) {
+        console.warn(`Cell ${cellNum} selected class name is empty, using 'Unknown' fallback. Selected:`, names[maxProbIndex]);
+        return 'Unknown';
+    }
+    return result;
 }
 
 /**
@@ -572,6 +579,9 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
                 }
                 const label = labels ? labels[pi] : -1;
                 const cellClass = getMostProbableCellClass(label, cellDataMap || window.appState?.cellDataMap || new Map());
+                if (cellClass === 'Unknown') {
+                    console.warn(`Polygon processing: Cell ${label} not found in cellDataMap, adding 'Unknown' to allCellClasses`);
+                }
                 if (cellClass && allCellClasses) allCellClasses.add(cellClass);
                 features.push({
                     type: 'Feature',
