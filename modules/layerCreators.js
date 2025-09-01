@@ -388,14 +388,23 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
     try { const adv = window.advancedConfig ? window.advancedConfig() : null; if (adv?.performance?.showPerformanceStats) console.log(`Creating polygon layer for plane ${planeNum}, features: ${geojson.features.length}`); } catch {}
     // Filter data based on selected cell classes
     let filteredData = geojson;
-    if (selectedCellClasses && selectedCellClasses.size > 0) {
-        filteredData = {
-            ...geojson,
-            features: geojson.features.filter(feature => {
-                const cellClass = feature.properties.cellClass;
-                return cellClass && selectedCellClasses.has(cellClass);
-            })
-        };
+    if (selectedCellClasses) {
+        if (selectedCellClasses.size === 0) {
+            // If no cell classes are selected, show no polygons
+            filteredData = {
+                ...geojson,
+                features: []
+            };
+        } else {
+            // If some cell classes are selected, show only those
+            filteredData = {
+                ...geojson,
+                features: geojson.features.filter(feature => {
+                    const cellClass = feature.properties.cellClass;
+                    return cellClass && selectedCellClasses.has(cellClass);
+                })
+            };
+        }
     }
     // Ensure colors exist for all classes present (Arrow path may not have prefilled map)
     try {
