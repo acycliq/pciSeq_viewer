@@ -7,6 +7,7 @@ import {
     USE_ARROW
 } from '../config/constants.js';
 import RBush from 'https://cdn.jsdelivr.net/npm/rbush@3.0.1/+esm';
+import { buildGlobalZProjection, createZProjectionLayer, isZProjectionReady } from '../modules/zProjectionOverlay.js';
 
 // Import coordinate transformation utilities
 import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
@@ -317,6 +318,23 @@ function updateAllLayers() {
 
     // Add debug dots for coordinate sanity checking
     // layers.push(createDebugDots());
+
+    // Add Z-projection overlay layer if ready and enabled
+    console.log('Checking Z-projection overlay:', { 
+        showZProjectionOverlay: state.showZProjectionOverlay, 
+        isReady: isZProjectionReady(),
+        opacity: state.zProjectionOpacity 
+    });
+    
+    const zProjectionLayer = createZProjectionLayer(
+        state.showZProjectionOverlay && isZProjectionReady(),
+        state.zProjectionOpacity || 0.8  // Higher opacity for testing
+    );
+    if (zProjectionLayer) {
+        console.log('Adding Z-projection layer to layers array');
+        // Add overlay on TOP of all other layers
+        layers.push(zProjectionLayer);
+    }
 
     state.deckglInstance.setProps({ layers: layers });
 
@@ -781,10 +799,41 @@ async function init() {
     if (advancedConfig.performance.showPerformanceStats) {
         console.log('✅ Initialization complete. Slider should now be very responsive!');
     }
+    
+    // Start building global Z-projection overlay (background task)
+    setTimeout(() => {
+        buildGlobalZProjectionBackground();
+    }, 2000); // Wait 2 seconds after app ready
 }
 
 // Export coordinate transformation function for child windows
 window.transformToTileCoordinates = transformToTileCoordinates;
+
+/**
+ * Build global Z-projection overlay in background
+ */
+async function buildGlobalZProjectionBackground() {
+    try {
+        console.log('🌟 Starting background Z-projection build...');
+        
+        await buildGlobalZProjection(state, (progress) => {
+            // Progress callback
+            if (progress.planesProcessed % 10 === 0) {
+                console.log(`Z-projection: ${progress.planesProcessed}/${progress.totalPlanes} planes, ${progress.cellsProcessed} cells`);
+            }
+        });
+        
+        console.log('✅ Z-projection overlay ready! Check viewer controls to enable.');
+        
+        // If overlay is already enabled, update layers
+        if (state.showZProjectionOverlay) {
+            updateAllLayers();
+        }
+        
+    } catch (error) {
+        console.error('Failed to build Z-projection overlay:', error);
+    }
+}
 
 // Compute current viewport bounds in tile (deck) coordinates
 function getCurrentViewportTileBounds() {

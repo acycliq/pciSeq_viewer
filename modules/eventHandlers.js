@@ -165,6 +165,41 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         window.openCellClassViewer();
     });
     
+    // Z-Projection overlay toggle
+    const zProjectionToggle = document.getElementById('zProjectionToggle');
+    const zProjectionControls = document.getElementById('zProjectionControls');
+    const zProjectionOpacity = document.getElementById('zProjectionOpacity');
+    const zProjectionOpacityValue = document.getElementById('zProjectionOpacityValue');
+    
+    if (zProjectionToggle) {
+        zProjectionToggle.addEventListener('change', async () => {
+            if (zProjectionToggle.checked) {
+                const { isZProjectionReady } = await import('../modules/zProjectionOverlay.js');
+                
+                if (!isZProjectionReady()) {
+                    alert('Z-projection overlay is still building. Please wait...');
+                    zProjectionToggle.checked = false;
+                    return;
+                }
+            }
+            
+            state.showZProjectionOverlay = zProjectionToggle.checked;
+            zProjectionControls.style.display = zProjectionToggle.checked ? 'block' : 'none';
+            updateLayersCallback();
+        });
+    }
+    
+    if (zProjectionOpacity) {
+        zProjectionOpacity.addEventListener('input', () => {
+            const opacity = parseFloat(zProjectionOpacity.value);
+            state.zProjectionOpacity = opacity;
+            zProjectionOpacityValue.textContent = Math.round(opacity * 100) + '%';
+            if (state.showZProjectionOverlay) {
+                updateLayersCallback();
+            }
+        });
+    }
+    
     
     // Escape key to close widgets
     document.addEventListener('keydown', (e) => {

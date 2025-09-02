@@ -11,6 +11,8 @@ const state = {
     showTiles: DEFAULT_STATE.showTiles,
     showPolygons: DEFAULT_STATE.showPolygons,
     showGenes: DEFAULT_STATE.showGenes,
+    showZProjectionOverlay: false,
+    zProjectionOpacity: 0.3,
     
     // Data caches
     tileCache: new Map(),
