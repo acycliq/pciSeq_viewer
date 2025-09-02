@@ -13,7 +13,8 @@
 
 // Import BitmapLayer from global deck object (since deck.gl is loaded via CDN)
 const { BitmapLayer } = window.deck;
-import { USE_ARROW } from '../config/constants.js';
+import { USE_ARROW, IMG_DIMENSIONS, getPolygonFileUrl } from '../config/constants.js';
+import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
 
 // Global state - reset cache to force rebuild with new coordinate system
 let globalZProjectionTexture = null;
@@ -70,7 +71,7 @@ export async function buildGlobalZProjection(appState, progressCallback = null) 
  * Internal function to build the Z-projection texture
  */
 async function _buildZProjectionTexture(appState, progressCallback) {
-    const { imageWidth, imageHeight } = window.config();
+    const { width: imageWidth, height: imageHeight, tileSize } = IMG_DIMENSIONS;
     
     /*
      * COORDINATE SYSTEM SCALING LOGIC - CRITICAL FOR ALIGNMENT
@@ -111,35 +112,33 @@ async function _buildZProjectionTexture(appState, progressCallback) {
      * CRITICAL: This logic must match utils/coordinateTransform.js exactly!
      * Any deviation will cause misalignment between the overlay and existing layers.
      */
-    const tileSize = 256;
     const maxDimension = Math.max(imageWidth, imageHeight);
     
     // Calculate aspect ratio adjustments (same logic as transformToTileCoordinates)
     const xAdjustment = imageWidth / maxDimension;
     const yAdjustment = imageHeight / maxDimension;
     
-    // Canvas dimensions in tile coordinate space
-    const canvasWidth = tileSize * xAdjustment;
-    const canvasHeight = tileSize * yAdjustment;
-    
-    const canvas = new OffscreenCanvas(canvasWidth, canvasHeight);
+    // Create canvas at FULL image resolution for crisp rendering
+    // We'll handle coordinate transformation in the BitmapLayer bounds instead
+    const canvas = new OffscreenCanvas(imageWidth, imageHeight);
     const ctx = canvas.getContext('2d');
     
-    console.log(`Creating Z-projection canvas using coordinate system logic:`);
-    console.log(`- Image: ${imageWidth}x${imageHeight}, Max: ${maxDimension}, Tile: ${tileSize}`);
-    console.log(`- Adjustments: x=${xAdjustment.toFixed(3)}, y=${yAdjustment.toFixed(3)}`);
-    console.log(`- Canvas: ${canvasWidth.toFixed(1)}x${canvasHeight.toFixed(1)}`);
+    console.log(`Creating Z-projection canvas at full image resolution:`);
+    console.log(`- Image: ${imageWidth}x${imageHeight}`);
+    console.log(`- Canvas: ${imageWidth}x${imageHeight} (full resolution for crisp rendering)`);
     
-    // Set up canvas for PLANE-ONLY overlay (no background DAPI image)
-    // This overlay shows ONLY cell boundaries from all planes - it's independent of background tiles
+    // Set up canvas for CLEAR STROKE-ONLY rendering
+    // Canvas starts transparent, we only add stroke outlines
     
-    // DO NOT fill the canvas - keep it fully transparent
-    // ctx.fillRect would create a background rectangle which we don't want
+    // Ensure canvas is completely transparent
+    ctx.clearRect(0, 0, imageWidth, imageHeight);
     
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';  // Semi-transparent white cell boundaries  
-    ctx.lineWidth = 0.2;  // Very thin lines for cell boundaries
+    // Configure for thin boundary outlines only  
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';  // Semi-transparent white for visibility
+    ctx.lineWidth = 1.0;  // Thin but visible lines
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    ctx.fillStyle = 'transparent';  // NO FILL - outlines only!
     
     const totalPlanes = window.config().totalPlanes;
     const currentPlane = appState.currentPlane || 0;
@@ -147,10 +146,10 @@ async function _buildZProjectionTexture(appState, progressCallback) {
     let processedPlanes = 0;
     let totalCells = 0;
     
-    // Render boundaries from multiple planes around current plane for testing
-    const testPlanes = [currentPlane - 1, currentPlane, currentPlane + 1];
+    // Render boundaries from all planes for comprehensive overlay
+    const planesToProcess = Array.from({length: totalPlanes}, (_, i) => i);
     
-    for (const planeNum of testPlanes) {
+    for (const planeNum of planesToProcess) {
         if (planeNum < 0 || planeNum >= totalPlanes) continue;
         
         try {
@@ -163,14 +162,23 @@ async function _buildZProjectionTexture(appState, progressCallback) {
             const boundaries = await getBoundariesForPlane(planeNum, appState);
             
             if (boundaries && boundaries.features) {
-                // Render first 20 boundaries per plane for testing
-                boundaries.features.slice(0, 20).forEach(feature => {
+                // Render ALL boundaries from each plane
+                boundaries.features.forEach(feature => {
                     if (feature.geometry && feature.geometry.coordinates) {
                         renderFeatureToCanvas(ctx, feature);
                         totalCells++;
                     }
                 });
                 processedPlanes++;
+                
+                // Progress callback every 10 planes
+                if (progressCallback && processedPlanes % 10 === 0) {
+                    progressCallback({
+                        planesProcessed: processedPlanes,
+                        totalPlanes: totalPlanes,
+                        cellsProcessed: totalCells
+                    });
+                }
             }
             
         } catch (error) {
@@ -178,21 +186,9 @@ async function _buildZProjectionTexture(appState, progressCallback) {
         }
     }
     
-    // Test basic canvas rendering with hardcoded polygon
-    console.log('🔍 Drawing hardcoded test polygon...');
-    ctx.strokeStyle = 'rgba(255, 0, 255, 1.0)'; // Bright magenta
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(50, 50);
-    ctx.lineTo(150, 50);
-    ctx.lineTo(150, 100);
-    ctx.lineTo(50, 100);
-    ctx.closePath();
-    ctx.stroke();
-    console.log('Hardcoded polygon drawn at 50,50 -> 150,100');
     
     console.log(`✅ Z-projection plane overlay completed: ${totalCells} cells from ${processedPlanes} planes`);
-    console.log(`📐 Canvas: ${canvasWidth.toFixed(1)}×${canvasHeight.toFixed(1)} pixels (aspect ratio preserved)`);
+    console.log(`📐 Canvas: ${imageWidth}×${imageHeight} pixels (full resolution)`);
     
     // Convert to ImageBitmap for GPU upload
     try {
@@ -249,7 +245,7 @@ async function loadArrowBoundaries(planeNum) {
  */
 async function loadTSVBoundaries(planeNum) {
     try {
-        const url = `plane${planeNum.toString().padStart(2, '0')}.tsv`;
+        const url = getPolygonFileUrl(planeNum);
         const response = await fetch(url);
         
         if (!response.ok) {
@@ -300,8 +296,8 @@ function convertArrowToGeoJSON(buffers, planeNum) {
                 const x = positions[2 * i];
                 const y = positions[2 * i + 1];
                 
-                // Transform to tile coordinates
-                const [tx, ty] = transformToTileCoordinates(x, y);
+                // Transform to tile coordinates to match other CARTESIAN layers
+                const [tx, ty] = transformToTileCoordinates(x, y, IMG_DIMENSIONS);
                 coordinates.push([tx, ty]);
             }
             
@@ -365,14 +361,7 @@ function parseTSVToGeoJSON(text, planeNum) {
     };
 }
 
-/**
- * Transform coordinates to tile coordinate system
- */
-function transformToTileCoordinates(x, y) {
-    // Don't transform coordinates - GeoJsonLayer uses CARTESIAN coordinate system
-    // which uses raw image coordinates directly
-    return [x, y];
-}
+// Note: transformToTileCoordinates is now imported from utils/coordinateTransform.js
 
 /**
  * Render a GeoJSON feature to canvas
@@ -384,30 +373,29 @@ function renderFeatureToCanvas(ctx, feature) {
     
     if (coordinates.length < 3) return;
     
-    // Debug coordinate transformation
-    const { imageWidth, imageHeight } = window.config();
-    const tileSize = 256;
+    // Canvas is at full image resolution, but coordinates are in tile space
+    // Need to scale coordinates back up to full canvas resolution
+    
+    const { width: imageWidth, height: imageHeight, tileSize } = IMG_DIMENSIONS;
     const maxDimension = Math.max(imageWidth, imageHeight);
     
-    const scaleX = (tileSize * imageWidth / maxDimension) / imageWidth;
-    const scaleY = (tileSize * imageHeight / maxDimension) / imageHeight;
-    
-    // Canvas dimensions for Y-flip
-    const canvasHeight = tileSize * (imageHeight / maxDimension);
+    // Scale factor to convert from tile coordinates back to full canvas coordinates
+    const scaleX = imageWidth / (tileSize * imageWidth / maxDimension);
+    const scaleY = imageHeight / (tileSize * imageHeight / maxDimension);
     
     ctx.beginPath();
     const firstX = coordinates[0][0] * scaleX;
-    const firstY = canvasHeight - (coordinates[0][1] * scaleY); // Y-flip for canvas coords
+    const firstY = imageHeight - (coordinates[0][1] * scaleY); // Y-flip for canvas coords
     ctx.moveTo(firstX, firstY);
     
     for (let i = 1; i < coordinates.length; i++) {
         const x = coordinates[i][0] * scaleX;
-        const y = canvasHeight - (coordinates[i][1] * scaleY); // Y-flip for canvas coords
+        const y = imageHeight - (coordinates[i][1] * scaleY); // Y-flip for canvas coords
         ctx.lineTo(x, y);
     }
     
     ctx.closePath();
-    ctx.stroke();
+    ctx.stroke(); // STROKE ONLY - no fill!
 }
 
 /**
@@ -424,29 +412,24 @@ export function createZProjectionLayer(visible = false, opacity = 0.3) {
         return null;
     }
     
-    const { imageWidth, imageHeight } = window.config();
+    const { width: imageWidth, height: imageHeight, tileSize } = IMG_DIMENSIONS;
     
-    // Calculate bounds using the same coordinate system logic as existing layers
-    const tileSize = 256;
+    // Calculate tile coordinate bounds for proper alignment with CARTESIAN layers
     const maxDimension = Math.max(imageWidth, imageHeight);
-    const xAdjustment = imageWidth / maxDimension;
-    const yAdjustment = imageHeight / maxDimension;
+    const tileWidth = tileSize * (imageWidth / maxDimension);
+    const tileHeight = tileSize * (imageHeight / maxDimension);
     
-    // Canvas dimensions match the tile coordinate space
-    const canvasWidth = tileSize * xAdjustment;
-    const canvasHeight = tileSize * yAdjustment;
+    // Use tile coordinate bounds to align with existing CARTESIAN layers  
+    const bounds = [0, 0, tileWidth, tileHeight];
     
-    // BitmapLayer bounds: [left, bottom, right, top] format (with Y-flip)
-    const boundsFlipped = [0, canvasHeight, canvasWidth, 0];
-    
-    console.log('Z-projection bounds (coordinate system logic):');
-    console.log(`- Canvas: ${canvasWidth.toFixed(1)}x${canvasHeight.toFixed(1)}`);
-    console.log(`- Bounds: [0, ${canvasHeight.toFixed(1)}, ${canvasWidth.toFixed(1)}, 0]`);
+    console.log('Z-projection bounds (tile coordinate alignment):');
+    console.log(`- Canvas: ${imageWidth}x${imageHeight} (full resolution)`);
+    console.log(`- Bounds: [0, 0, ${tileWidth.toFixed(1)}, ${tileHeight.toFixed(1)}] (tile coordinates)`);
     
     const layer = new BitmapLayer({
         id: 'z-projection-overlay',
         image: globalZProjectionTexture,
-        bounds: boundsFlipped, // Try flipped bounds
+        bounds: bounds,
         opacity: opacity,
         visible: visible,
         coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN,
