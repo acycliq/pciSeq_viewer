@@ -145,9 +145,9 @@ async function _buildZProjectionTexture(appState, progressCallback) {
     let processedPlanes = 0;
     let totalCells = 0;
     
-    // Configure uniform stroke style for all boundaries (no distance-based brightness)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';  // Uniform semi-transparent white
-    ctx.lineWidth = 0.5;
+    // Configure uniform stroke style for all boundaries
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';  // Change this value to increase visibility
+    ctx.lineWidth = 0.5;  // Change this value to make the lines thicker
     
     // Render boundaries from all planes for comprehensive overlay
     const planesToProcess = Array.from({length: totalPlanes}, (_, i) => i);
