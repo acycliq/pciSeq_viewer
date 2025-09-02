@@ -141,10 +141,13 @@ async function _buildZProjectionTexture(appState, progressCallback) {
     ctx.fillStyle = 'transparent';  // NO FILL - outlines only!
     
     const totalPlanes = window.config().totalPlanes;
-    const currentPlane = appState.currentPlane || 0;
     
     let processedPlanes = 0;
     let totalCells = 0;
+    
+    // Configure uniform stroke style for all boundaries (no distance-based brightness)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';  // Uniform semi-transparent white
+    ctx.lineWidth = 0.5;
     
     // Render boundaries from all planes for comprehensive overlay
     const planesToProcess = Array.from({length: totalPlanes}, (_, i) => i);
@@ -153,11 +156,6 @@ async function _buildZProjectionTexture(appState, progressCallback) {
         if (planeNum < 0 || planeNum >= totalPlanes) continue;
         
         try {
-            const distance = Math.abs(planeNum - currentPlane);
-            const alpha = 0.4 * (1.0 / (1.0 + distance * 0.2));
-            
-            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.lineWidth = 0.5;
             
             const boundaries = await getBoundariesForPlane(planeNum, appState);
             
