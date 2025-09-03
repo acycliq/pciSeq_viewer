@@ -49,7 +49,7 @@ function getArrowSpotBinaryCache() {
     return cache;
 }
 
-export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, showTooltip = null) {
+export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0) {
     if (!USE_ARROW) return null;
     const cache = getArrowSpotBinaryCache();
     if (!cache || cache.length === 0) return null;
@@ -93,45 +93,23 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         }
     } catch {}
 
-    // Convert binary data to array of objects for picking support
-    const app = (typeof window !== 'undefined') ? window.appState : null;
-    const geneDict = (app && app.arrowGeneDict) || {};
-    const finalColors = (typeof maskedColors !== 'undefined') ? maskedColors : colors;
-    
-    const dataArray = [];
-    for (let i = 0; i < length; i++) {
-        const geneName = geneDict[geneIds[i]] || 'Unknown';
-        dataArray.push({
-            position: [positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]],
-            color: [finalColors[i * 4], finalColors[i * 4 + 1], finalColors[i * 4 + 2], finalColors[i * 4 + 3]],
-            radius: radii[i],
-            // Properties for tooltip (matching IconLayer format)
-            gene: geneName,
-            x: positions[i * 3],
-            y: positions[i * 3 + 1],
-            z: positions[i * 3 + 2],
-            plane_id: planes[i],
-            spot_id: i,
-            // Additional properties that IconLayer has but binary data doesn't include
-            neighbour: 'N/A', // Parent cell - not available in binary format
-            prob: 0, // Parent probability - not available in binary format
-            score: 0, // Detection score - not available in binary format  
-            intensity: 0 // Intensity - not available in binary format
-        });
-    }
+    const data = {
+        length,
+        attributes: {
+            getPosition: { value: positions, size: 3 },
+            getFillColor: { value: (typeof maskedColors !== 'undefined') ? maskedColors : colors, size: 4 },
+            getRadius: { value: radii, size: 1 }
+        }
+    };
 
     try { const adv = window.advancedConfig ? window.advancedConfig() : null; if (adv?.performance?.showPerformanceStats) console.log(`Arrow binary scatter: points=${length}, baseRadius=${base}`); } catch {}
 
     return new ScatterplotLayer({
         id: 'spots-scatter-binary',
-        data: dataArray,
+        data,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-        pickable: true,
-        onHover: showTooltip,
-        // Accessors for object data
-        getPosition: d => d.position,
-        getFillColor: d => d.color,
-        getRadius: d => d.radius,
+        pickable: false,
+        // Accessors provided via data.attributes
         filled: true,
         stroked: false,
         radiusUnits: 'pixels',

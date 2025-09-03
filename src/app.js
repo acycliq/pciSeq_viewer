@@ -284,7 +284,7 @@ function updateAllLayers() {
     const zoom = (typeof state.currentZoom === 'number') ? state.currentZoom : INITIAL_VIEW_STATE.zoom;
     if (USE_ARROW && zoom < 7) {
         try { console.log(`[layers] Using binary Scatterplot for spots at zoom ${zoom.toFixed(1)} (showGenes=${state.showGenes})`); } catch {}
-        const pc = createArrowPointCloudLayer(state.currentPlane, state.geneSizeScale, state.selectedGenes, 1.0, (info) => showTooltip(info, elements.tooltip));
+        const pc = createArrowPointCloudLayer(state.currentPlane, state.geneSizeScale, state.selectedGenes);
         if (pc && state.showGenes) layers.push(pc);
         // Simplified: no deferred cleanup needed with single IconLayer approach
         state.lastIconLayers = [];

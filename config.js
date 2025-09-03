@@ -29,11 +29,11 @@ function config() {
         backgroundTiles: "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg",
 
         // Optional: Arrow manifests (used when advanced performance.useArrow=true)
-        arrowSpotsManifest: "./data/pciSeq/spots150_inefficiency=2.0/arrow_spots/manifest.json",
-        arrowCellsManifest: "./data/pciSeq/spots150_inefficiency=2.0/arrow_cells/manifest.json",
-        arrowBoundariesManifest: "./data/pciSeq/spots150_inefficiency=2.0/arrow_boundaries/manifest.json",
+        arrowSpotsManifest: "./data/arrow_spots/manifest.json",
+        arrowCellsManifest: "./data/arrow_cells/manifest.json",
+        arrowBoundariesManifest: "./data/arrow_boundaries/manifest.json",
         arrowCellsClassDict: "./data/arrow_cells/class_dict.json",
-        arrowSpotsGeneDict: "./data/pciSeq/spots150_inefficiency=2.0/arrow_spots/gene_dict.json"
+        arrowSpotsGeneDict: "./data/arrow_spots/gene_dict.json"
     };
 }
 
