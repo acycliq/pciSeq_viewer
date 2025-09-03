@@ -140,12 +140,12 @@ body {
 }
 
 #cellClassPanelBtn {
-    top: 22px;
+    top: 12px;
     right: 12px;
 }
 
 #cellClassViewerBtn {
-    top: 55px; /* add extra space below Cell Classes */
+    top: 45px; /* add extra space below Cell Classes */
     right: 12px;
 }
 
@@ -267,12 +267,6 @@ body {
     align-items: center;
     gap: 6px;
     white-space: nowrap;
-}
-
-.control-column {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
 }
 
 .control-item input[type="checkbox"] {
