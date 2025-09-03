@@ -5,7 +5,8 @@ export function initGenesPanel({
   selectedGenes,
   blockData,
   createLayers,
-  deckgl
+  deckgl,
+  geneColors
 }) {
   function createGeneGlyph(color) {
     const canvas = document.createElement('canvas');
@@ -65,7 +66,7 @@ export function initGenesPanel({
       checkbox.id = `gene-${gene}`;
       checkbox.checked = selectedGenes.has(gene);
       checkbox.addEventListener('change', () => toggleGene(gene, checkbox.checked));
-      const glyph = createGeneGlyph('#fff');
+      const glyph = createGeneGlyph(geneColors.get(gene));
       const nameSpan = document.createElement('span');
       nameSpan.className = 'gene-name';
       const count = blockData.geneData.filter(b => b.gene_name === gene).length;

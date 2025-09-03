@@ -644,7 +644,8 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedGenes,
         blockData,
         createLayers,
-        deckgl
+        deckgl,
+        geneColors
     });
 
     console.log('Bio demo initialized with', blockData.geneData.length, 'gene spots and', blockData.stoneData.length, 'stone blocks');
