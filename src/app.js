@@ -302,7 +302,7 @@ function updateAllLayers() {
             state.currentPlane,
             state.geneSizeScale,
             (info) => showTooltip(info, elements.tooltip),
-            bounds,
+            USE_ARROW ? bounds : null, // Only cull viewport when using Arrow data
             true // combine into a single IconLayer at deep zoom to minimize churn
         );
         layers.push(...iconLayers);
@@ -661,6 +661,9 @@ async function init() {
     
     // Initialize rectangular selector
     state.rectangularSelector = new RectangularSelector(state.deckglInstance, state);
+    
+    // Ensure it's accessible via window.appState
+    window.appState.rectangularSelector = state.rectangularSelector;
     
     // Setup selection tool button
     const selectionToolBtn = document.getElementById('selectionToolBtn');

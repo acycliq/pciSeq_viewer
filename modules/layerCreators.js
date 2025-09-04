@@ -473,18 +473,28 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
     // staying well under the 255 limit while maintaining picking functionality.
     if (combineIntoSingleLayer) {
         if (!viewportBounds) {
-            // Drop an error if missing viewport bounds (I shouldnt be here anyway)
-            throw new Error('Viewport bounds are null during combined IconLayer build (deep zoom).');
+            // TSV mode: no viewport culling, include all spots
+            console.log('TSV mode: building combined IconLayer without viewport culling');
         }
         const combined = [];
-        const { minX, minY, maxX, maxY } = viewportBounds;
-        // Convert viewport bounds from tile space back to image pixel space once
-        const minImg = transformFromTileCoordinates(minX, minY, IMG_DIMENSIONS);
-        const maxImg = transformFromTileCoordinates(maxX, maxY, IMG_DIMENSIONS);
-        const ix0 = Math.min(minImg[0], maxImg[0]);
-        const iy0 = Math.min(minImg[1], maxImg[1]);
-        const ix1 = Math.max(minImg[0], maxImg[0]);
-        const iy1 = Math.max(minImg[1], maxImg[1]);
+        let ix0, iy0, ix1, iy1;
+        
+        if (viewportBounds) {
+            // Arrow mode: apply viewport culling
+            const { minX, minY, maxX, maxY } = viewportBounds;
+            const minImg = transformFromTileCoordinates(minX, minY, IMG_DIMENSIONS);
+            const maxImg = transformFromTileCoordinates(maxX, maxY, IMG_DIMENSIONS);
+            ix0 = Math.min(minImg[0], maxImg[0]);
+            iy0 = Math.min(minImg[1], maxImg[1]);
+            ix1 = Math.max(minImg[0], maxImg[0]);
+            iy1 = Math.max(minImg[1], maxImg[1]);
+        } else {
+            // TSV mode: no culling, use infinite bounds
+            ix0 = -Infinity;
+            iy0 = -Infinity;
+            ix1 = Infinity;
+            iy1 = Infinity;
+        }
         // Respect selection strictly: if empty set, show nothing. If null, show all genes.
         const genes = selectedGenes ? Array.from(selectedGenes) : Array.from(geneDataMap.keys());
         let count = 0;
