@@ -6,15 +6,25 @@ import { tableFromIPC } from 'https://cdn.jsdelivr.net/npm/apache-arrow@12.0.1/+
 import RBush from 'https://cdn.jsdelivr.net/npm/rbush@3.0.1/+esm';
 
 async function fetchJSON(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
-  return res.json();
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+    return res.json();
+  } catch (error) {
+    // Handle CORS or network errors
+    throw new Error(`CORS or network error fetching ${url}: ${error.message}`);
+  }
 }
 
 async function fetchFeather(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch feather ${url}: ${res.status}`);
-  return new Uint8Array(await res.arrayBuffer());
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch feather ${url}: ${res.status}`);
+    return new Uint8Array(await res.arrayBuffer());
+  } catch (error) {
+    // Handle CORS or network errors
+    throw new Error(`CORS or network error fetching feather ${url}: ${error.message}`);
+  }
 }
 
 function resolveShardUrls(manifestUrl, manifest) {
@@ -45,7 +55,13 @@ function getList(table, name) {
 
 async function buildIndexArrow(cfg) {
   const { manifestUrl, img } = cfg;
-  const manifest = await fetchJSON(manifestUrl);
+  
+  // Add timeout to prevent hanging indefinitely
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Worker timeout - likely CORS issue with GCS')), 30000);
+  });
+  
+  const manifest = await Promise.race([fetchJSON(manifestUrl), timeoutPromise]);
   const shards = resolveShardUrls(manifestUrl, manifest);
   // cellId -> { minX, minY, maxX, maxY, planes:Set<number> }
   const cellMap = new Map();

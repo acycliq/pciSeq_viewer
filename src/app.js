@@ -771,9 +771,29 @@ async function init() {
                     const { imageWidth: width, imageHeight: height } = cfg;
                     const tileSize = (adv && adv.visualization && adv.visualization.tileSize) ? adv.visualization.tileSize : 256;
                     const workerUrl = new URL('../modules/workers/spatial-index-worker.js', window.location.href);
+                    console.log('Starting spatial index worker:', workerUrl.href);
+                    console.log('Manifest URL:', manifest);
+                    
                     const w = new Worker(workerUrl, { type: 'module' });
+                    
+                    // Add onerror handler for worker creation failures
+                    w.onerror = (error) => {
+                        console.error('Spatial index worker creation error:', error);
+                        if (btn) { btn.disabled = false; btn.textContent = 'Selection Tool'; }
+                    };
+                    
+                    // Add timeout fallback in case worker hangs
+                    const workerTimeout = setTimeout(() => {
+                        console.error('Spatial index worker timeout - terminating worker');
+                        w.terminate();
+                        if (btn) { btn.disabled = false; btn.textContent = 'Selection Tool'; }
+                    }, 45000); // 45 second timeout
+                    
                     w.onmessage = (ev) => {
+                        clearTimeout(workerTimeout); // Clear timeout on any message
                         const { type, rtree, error } = ev.data || {};
+                        console.log('Worker message received:', type);
+                        
                         if (type === 'indexReady' && rtree) {
                             try {
                                 const tree = new RBush();
@@ -783,6 +803,7 @@ async function init() {
                                 console.log('✅ Spatial index ready (worker)');
                             } catch (e) {
                                 console.error('Failed to rehydrate spatial index:', e);
+                                if (btn) { btn.disabled = false; btn.textContent = 'Selection Tool'; }
                             }
                         } else if (type === 'error') {
                             console.error('Index worker error:', error);
@@ -792,6 +813,7 @@ async function init() {
                     w.postMessage({ type: 'build', payload: { manifestUrl: manifest, img: { width, height, tileSize } } });
                 } catch (e) {
                     console.error('Failed to start spatial index worker:', e);
+                    if (btn) { btn.disabled = false; btn.textContent = 'Selection Tool'; }
                 }
             }
         });
