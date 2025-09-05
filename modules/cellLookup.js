@@ -5,6 +5,7 @@
 
 // Import the shared coordinate transformation function
 import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
+import { USE_ARROW } from '../config/constants.js';
 
 // Global cell data storage
 let cellLookupData = new Map(); // cellId -> { x, y, z, bounds }
@@ -32,9 +33,46 @@ async function initializeCellLookup() {
 }
 
 /**
- * Load and parse cell data from TSV file
+ * Load and parse cell data from Arrow or TSV based on configuration
  */
 async function loadCellData() {
+    if (USE_ARROW && window.appState && window.appState.cellDataMap) {
+        console.log('🏹 Using Arrow-loaded cell data from appState.cellDataMap');
+        return loadFromArrowData();
+    } else {
+        console.log('📄 Loading cell data from TSV file');
+        return loadFromTSVFile();
+    }
+}
+
+/**
+ * Load cell data from existing Arrow-loaded cellDataMap
+ */
+function loadFromArrowData() {
+    const cellDataMap = window.appState.cellDataMap;
+    console.log('📊 Processing', cellDataMap.size, 'Arrow-loaded cell records...');
+    
+    for (const [cellId, cellData] of cellDataMap) {
+        const x = cellData.position.x;
+        const y = cellData.position.y;
+        const z = cellData.position.z || 0;
+        
+        // Default bounds around cell center (Arrow doesn't include gaussian_contour)
+        const bounds = { minX: x-50, maxX: x+50, minY: y-50, maxY: y+50 };
+        
+        cellLookupData.set(cellId, {
+            x: x,
+            y: y,
+            z: z,
+            bounds: bounds
+        });
+    }
+}
+
+/**
+ * Load and parse cell data from TSV file (fallback)
+ */
+async function loadFromTSVFile() {
     const config = window.config ? window.config() : {};
     const cellDataPath = config.cellDataFile || 'data/newSpots_newSegmentation/cellData.tsv';
     console.log('🌐 Fetching cell data from:', cellDataPath);
@@ -65,7 +103,7 @@ async function loadCellData() {
         throw new Error('Required columns (Cell_Num, X, Y) not found in cellData.tsv');
     }
 
-    console.log('📊 Processing', lines.length - 1, 'cell records...');
+    console.log('📊 Processing', lines.length - 1, 'TSV cell records...');
 
     // Process cell data
     for (let i = 1; i < lines.length; i++) {
