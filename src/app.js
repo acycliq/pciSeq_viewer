@@ -751,6 +751,91 @@ async function init() {
 
     // If Arrow boundaries are enabled, refresh layers when buffers for a plane are ready
     try {
+        // Function to process Arrow boundaries in main thread for spatial indexing
+        async function processArrowBoundariesForSpatialIndex(manifestUrl, img) {
+            // Import Arrow dynamically
+            const { tableFromIPC } = await import('https://cdn.jsdelivr.net/npm/apache-arrow@12.0.1/+esm');
+            
+            const manifest = await fetch(manifestUrl).then(r => r.json());
+            const baseDir = manifestUrl.substring(0, manifestUrl.lastIndexOf('/') + 1);
+            const shards = manifest.shards.map(s => ({ 
+                url: new URL(s.url, baseDir).href, 
+                plane: Number(s.plane ?? -1) 
+            }));
+            
+            const cellMap = new Map();
+            
+            // Transform to tile space 
+            function toTileXY(x, y) {
+                const { width, height, tileSize } = img;
+                const maxDimension = Math.max(width, height);
+                const xAdj = width / maxDimension;
+                const yAdj = height / maxDimension;
+                return [x * (tileSize / width) * xAdj, y * (tileSize / height) * yAdj];
+            }
+            
+            // Process each shard
+            for (const { url, plane } of shards) {
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) continue;
+                    
+                    const buffer = await response.arrayBuffer();
+                    const table = tableFromIPC(new Uint8Array(buffer));
+                    
+                    // Extract data from Arrow table
+                    const xListsCol = table.getChild('x_list');
+                    const yListsCol = table.getChild('y_list');
+                    const labelsCol = table.getChild('label');
+                    const planeCol = table.getChild('plane_id');
+                    
+                    if (!xListsCol || !yListsCol || !labelsCol) continue;
+                    
+                    const n = table.numRows;
+                    for (let i = 0; i < n; i++) {
+                        const xList = xListsCol.get(i)?.toArray();
+                        const yList = yListsCol.get(i)?.toArray();
+                        const label = Number(labelsCol.get(i));
+                        const planeId = planeCol ? Number(planeCol.get(i)) : (Number.isFinite(plane) ? plane : -1);
+                        
+                        if (!xList || !yList || xList.length < 2 || label < 0) continue;
+                        
+                        // Compute bounds in tile space
+                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                        for (let k = 0; k < xList.length; k++) {
+                            const [tx, ty] = toTileXY(Number(xList[k]), Number(yList[k]));
+                            minX = Math.min(minX, tx);
+                            maxX = Math.max(maxX, tx);
+                            minY = Math.min(minY, ty);
+                            maxY = Math.max(maxY, ty);
+                        }
+                        
+                        if (!cellMap.has(label)) {
+                            cellMap.set(label, { minX, minY, maxX, maxY, planes: new Set() });
+                        }
+                        const acc = cellMap.get(label);
+                        acc.minX = Math.min(acc.minX, minX);
+                        acc.minY = Math.min(acc.minY, minY);
+                        acc.maxX = Math.max(acc.maxX, maxX);
+                        acc.maxY = Math.max(acc.maxY, maxY);
+                        if (Number.isFinite(planeId) && planeId >= 0) acc.planes.add(planeId);
+                    }
+                } catch (e) {
+                    console.warn('Failed to process shard:', url, e.message);
+                }
+            }
+            
+            // Convert to array format for worker
+            return Array.from(cellMap.entries()).map(([cellId, bounds]) => ({
+                cellId,
+                minX: bounds.minX,
+                minY: bounds.minY,
+                maxX: bounds.maxX,
+                maxY: bounds.maxY,
+                planes: Array.from(bounds.planes)
+            }));
+        }
+
         let markedReady = false;
         window.addEventListener('arrow-boundaries-ready', () => {
             updateAllLayers();
@@ -774,7 +859,7 @@ async function init() {
                     console.log('Starting spatial index worker:', workerUrl.href);
                     console.log('Manifest URL:', manifest);
                     
-                    const w = new Worker(workerUrl, { type: 'module' });
+                    const w = new Worker(workerUrl); // Remove module type for importScripts compatibility
                     
                     // Add onerror handler for worker creation failures
                     w.onerror = (error) => {
@@ -810,7 +895,16 @@ async function init() {
                             if (btn) { btn.disabled = false; btn.textContent = 'Selection Tool'; }
                         }
                     };
-                    w.postMessage({ type: 'build', payload: { manifestUrl: manifest, img: { width, height, tileSize } } });
+                    // Process Arrow boundaries in main thread, then send to worker for spatial indexing
+                    processArrowBoundariesForSpatialIndex(manifest, { width, height, tileSize })
+                        .then(cellBounds => {
+                            console.log(`Processed ${cellBounds.length} cells for spatial indexing`);
+                            w.postMessage({ type: 'buildIndex', payload: { cellBounds } });
+                        })
+                        .catch(error => {
+                            console.error('Failed to process Arrow boundaries:', error);
+                            if (btn) { btn.disabled = false; btn.textContent = 'Selection Tool'; }
+                        });
                 } catch (e) {
                     console.error('Failed to start spatial index worker:', e);
                     if (btn) { btn.disabled = false; btn.textContent = 'Selection Tool'; }
