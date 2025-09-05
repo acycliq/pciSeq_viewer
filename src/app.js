@@ -855,7 +855,9 @@ async function init() {
                     ).href;
                     const { imageWidth: width, imageHeight: height } = cfg;
                     const tileSize = (adv && adv.visualization && adv.visualization.tileSize) ? adv.visualization.tileSize : 256;
-                    const workerUrl = new URL('../modules/workers/spatial-index-worker.js', window.location.href);
+                    // Use absolute path to ensure correct resolution on GitHub Pages
+                    const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+                    const workerUrl = new URL('modules/workers/spatial-index-worker.js', baseUrl);
                     console.log('Starting spatial index worker:', workerUrl.href);
                     console.log('Manifest URL:', manifest);
                     
