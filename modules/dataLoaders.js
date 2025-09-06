@@ -392,7 +392,10 @@ export function buildGeneSpotIndexes(geneDataMap, cellToSpotsIndex, spotToParent
                     neighbour: spot.neighbour,
                     neighbour_array: spot.neighbour_array,
                     prob: spot.prob,
-                    prob_array: spot.prob_array
+                    prob_array: spot.prob_array,
+                    // Include measurement fields for weighted counts
+                    intensity: spot.intensity,
+                    score: spot.score
                 });
             }
             

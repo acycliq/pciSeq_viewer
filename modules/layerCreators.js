@@ -436,6 +436,81 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
         stroked: false,
         filled: true,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+        onHover: (info) => {
+            if (info.picked && info.object && info.object.properties) {
+                // Get the cell label from the polygon properties
+                const cellLabel = info.object.properties.label;
+                
+                // Look up full cell data from the global state
+                let fullCellData = null;
+                if (window.appState && window.appState.cellDataMap) {
+                    const cellId = parseInt(cellLabel);
+                    fullCellData = window.appState.cellDataMap.get(cellId);
+                }
+                
+                if (fullCellData && window.updateCellInfo && typeof window.updateCellInfo === 'function') {
+                    // Convert to the format expected by donut chart and data tables
+                    const cx = Number(fullCellData.position?.x || 0);
+                    const cy = Number(fullCellData.position?.y || 0);
+                    const names = Array.isArray(fullCellData.classification?.className) ? fullCellData.classification.className : [];
+                    const probs = Array.isArray(fullCellData.classification?.probability) ? fullCellData.classification.probability : [];
+                    // Determine top class
+                    let topIdx = -1, topVal = -Infinity;
+                    for (let i = 0; i < probs.length; i++) { const v = probs[i]; if (typeof v === 'number' && v > topVal) { topVal = v; topIdx = i; } }
+                    const topClass = (topIdx >= 0 && names[topIdx]) ? names[topIdx] : (names[0] || 'Unknown');
+                    // Sum gene counts
+                    const geneCounts = Array.isArray(fullCellData.geneExpression?.geneCounts) ? fullCellData.geneExpression.geneCounts : [];
+                    const geneTotal = geneCounts.reduce((a, b) => a + (Number(b) || 0), 0);
+                    // Resolve a color for the top class if available
+                    let topColor = '#C0C0C0';
+                    try {
+                        const scheme = (window.currentColorScheme && window.currentColorScheme.cellClasses) ? window.currentColorScheme.cellClasses : [];
+                        const entry = scheme.find(e => e.className === topClass);
+                        if (entry && entry.color) topColor = entry.color;
+                    } catch {}
+
+                    const cellData = {
+                        cell_id: fullCellData.cellNum || Number(cellLabel),
+                        id: Number(cellLabel),
+                        centroid: [cx, cy],
+                        X: cx,
+                        Y: cy,
+                        ClassName: names,
+                        Prob: probs,
+                        Genenames: Array.isArray(fullCellData.geneExpression?.geneNames) ? fullCellData.geneExpression.geneNames : [],
+                        CellGeneCount: geneCounts,
+                        topClass: topClass,
+                        agg: {
+                            X: cx,
+                            Y: cy,
+                            GeneCountTotal: geneTotal,
+                            IdentifiedType: topClass,
+                            color: topColor
+                        }
+                    };
+                    
+                    console.log('Cell data structure for hover:', {
+                        label: cellLabel,
+                        fullCellData: fullCellData,
+                        convertedData: cellData
+                    });
+                    
+                    window.updateCellInfo(cellData);
+                    const panel = document.getElementById('cellInfoPanel');
+                    if (panel) {
+                        panel.style.display = 'block';
+                    }
+                } else {
+                    console.warn('No full cell data found for cell:', cellLabel);
+                }
+            } else {
+                // Hide cell info panel when not hovering over a cell
+                const panel = document.getElementById('cellInfoPanel');
+                if (panel) {
+                    panel.style.display = 'none';
+                }
+            }
+        },
         getFillColor: d => {
             const cellClass = d.properties.cellClass;
             const alpha = Math.round(polygonOpacity * 255);

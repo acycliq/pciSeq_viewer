@@ -976,6 +976,134 @@ function getCurrentViewportTileBounds() {
     }
 }
 
+// Cell Info Panel functionality
+window.updateCellInfo = function(cellProperties) {
+    try {
+        // Create compatible data structure for donut chart and data tables
+        const cellData = {
+            cell_id: cellProperties.cell_id || cellProperties.Cell_Num,
+            centroid: cellProperties.centroid || [cellProperties.x || 0, cellProperties.y || 0],
+            ClassName: cellProperties.ClassName || [],
+            Prob: cellProperties.Prob || [],
+            Genenames: cellProperties.Genenames || [],
+            CellGeneCount: cellProperties.CellGeneCount || []
+        };
+
+        console.log('Updating cell info with data:', cellData);
+
+        // If gene counts missing, derive from indexes (cellToSpotsIndex)
+        try {
+            if ((!cellData.Genenames || cellData.Genenames.length === 0 || !cellData.CellGeneCount || cellData.CellGeneCount.length === 0)
+                && window.appState && window.appState.cellToSpotsIndex) {
+                const cid = Number(cellData.cell_id || cellProperties.id);
+                if (Number.isFinite(cid)) {
+                    const spots = window.appState.cellToSpotsIndex.get(cid) || [];
+                    const counts = new Map();
+                    for (const s of spots) {
+                        const g = s && s.gene ? String(s.gene) : '';
+                        if (!g) continue;
+                        // Prefer numeric intensity if present; otherwise add 1
+                        const val = (s && typeof s.intensity === 'number' && isFinite(s.intensity)) ? s.intensity : 1;
+                        counts.set(g, (counts.get(g) || 0) + val);
+                    }
+                    const rows = Array.from(counts.entries()).map(([gene, count]) => ({ gene, count }));
+                    rows.sort((a, b) => b.count - a.count);
+                    // Truncate to two decimals without rounding for display consistency
+                    cellData.Genenames = rows.map(r => r.gene);
+                    cellData.CellGeneCount = rows.map(r => Math.trunc(Number(r.count) * 100) / 100);
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to derive gene counts from index:', e);
+        }
+
+        // Update donut first; isolate failures
+        try {
+            const fn = (typeof window !== 'undefined') ? window.donutchart : (typeof donutchart !== 'undefined' ? donutchart : null);
+            if (cellData.ClassName && cellData.Prob && typeof fn === 'function') {
+                fn(cellData);
+            }
+        } catch (e) {
+            console.warn('Donut update failed:', e);
+        }
+
+        // Update gene counts table (left of donut); isolate failures
+        try {
+            const geneTableFn = (typeof window !== 'undefined') ? window.renderGeneTable : (typeof renderGeneTable !== 'undefined' ? renderGeneTable : null);
+            if (typeof geneTableFn === 'function') {
+                geneTableFn(cellData);
+            }
+        } catch (e) {
+            console.warn('Gene table update failed:', e);
+        }
+
+        // Ensure panel is visible
+        const panel = document.getElementById('cellInfoPanel');
+        if (panel) panel.style.display = 'block';
+
+        // Update header with Cell Num, total counts, and coordinates
+        try {
+            const titleElement = document.getElementById('cellInfoTitle');
+            if (titleElement) {
+                const cellNum = cellData.cell_id || cellData.Cell_Num || cellProperties.id || 'Unknown';
+                const xVal = (cellData.X != null) ? cellData.X : (Array.isArray(cellData.centroid) ? cellData.centroid[0] : cellData.x);
+                const yVal = (cellData.Y != null) ? cellData.Y : (Array.isArray(cellData.centroid) ? cellData.centroid[1] : cellData.y);
+                const x = Number(xVal || 0).toFixed(0);
+                const y = Number(yVal || 0).toFixed(0);
+                let total = 0;
+                if (Array.isArray(cellData.CellGeneCount)) {
+                    total = cellData.CellGeneCount.reduce((acc, v) => acc + (Number(v) || 0), 0);
+                } else if (cellData.agg && typeof cellData.agg.GeneCountTotal === 'number') {
+                    total = Number(cellData.agg.GeneCountTotal) || 0;
+                }
+                // Truncate total to two decimals without rounding
+                const totalTrunc = (Math.trunc(total * 100) / 100).toFixed(2);
+                const str = `<b><strong>Cell Num: </strong>${cellNum}, <strong>Gene Counts: </strong>${totalTrunc},  (<strong>x, y</strong>): (${x}, ${y})</b>`;
+                titleElement.innerHTML = str;
+            }
+        } catch (e) {
+            console.warn('Failed to update cell info header:', e);
+        }
+    } catch (error) {
+        console.error('Error updating cell info:', error);
+    }
+};
+
+// Setup cell info panel close button
+document.addEventListener('DOMContentLoaded', () => {
+    const closeBtn = document.getElementById('cellInfoClose');
+    const panel = document.getElementById('cellInfoPanel');
+    
+    if (closeBtn && panel) {
+        closeBtn.addEventListener('click', () => {
+            panel.style.display = 'none';
+        });
+    }
+    
+    // Initialize D3 components when DOM is ready
+    if (typeof d3 !== 'undefined') {
+        // Initialize color scheme mapping
+        try {
+            let cellClasses = null;
+            if (typeof window.classColorsCodes === 'function') {
+                cellClasses = window.classColorsCodes();
+            } else if (typeof window.getColorScheme === 'function') {
+                const cs = window.getColorScheme();
+                cellClasses = cs && cs.cellClasses ? cs.cellClasses : null;
+            }
+            if (Array.isArray(cellClasses)) {
+                window.currentColorScheme = { cellClasses };
+            } else {
+                console.warn('Color scheme not available; donut will use fallback gray');
+                window.currentColorScheme = { cellClasses: [{ className: 'Generic', color: '#C0C0C0' }, { className: 'Other', color: '#C0C0C0' }] };
+            }
+        } catch (error) {
+            console.warn('Could not load color scheme for cell info panel:', error);
+            window.currentColorScheme = { cellClasses: [{ className: 'Generic', color: '#C0C0C0' }, { className: 'Other', color: '#C0C0C0' }] };
+        }
+    }
+});
+
 // Initialize cell lookup UI immediately when page loads (before data loading)
 window.addEventListener('load', async () => {
     // Start end-to-end timing

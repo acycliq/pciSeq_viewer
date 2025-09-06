@@ -27,6 +27,9 @@
     <script src="config/colorSchemes.js"></script>
     <!-- Import cell lookup module -->
     <script type="module" src="modules/cellLookup.js"></script>
+    <!-- Cell info components -->
+    <script src="modules/donut.js"></script>
+    <script src="modules/class-table.js"></script>
 </head>
 <body>
     <div id="map"></div>
@@ -168,6 +171,30 @@
         <span id="pixelCoords">---, ---</span> px | 
         <span id="micronCoords">---, ---</span> μm | 
         <span id="deckglCoords">---, ---</span> deck
+    </div>
+
+    <!-- Cell Info Panel (Bottom Right) -->
+    <div id="cellInfoPanel" class="cell-info-panel" style="display: none;">
+        <div class="cell-info-header">
+            <span id="cellInfoTitle">Cell Information</span>
+            <button id="cellInfoClose" class="widget-close-btn">×</button>
+        </div>
+        <div class="cell-info-content">
+            <div class="cell-info-layout">
+                <!-- Gene Counts Table (left) -->
+                <div class="cell-info-left">
+                    <table id="geneCountsTable" class="display compact" style="width:100%"></table>
+                </div>
+                <!-- Donut Chart (right) -->
+                <div class="cell-info-right">
+                    <div class="cell-info-chart-container">
+                        <div id="cellInfoChart">
+                            <svg width="280" height="160"></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="src/app.js"></script>

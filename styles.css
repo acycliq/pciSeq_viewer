@@ -1,5 +1,158 @@
 /* Combined Gene Expression and Cell Boundary Viewer Styles */
 
+/* Cell Info Panel */
+.cell-info-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 600px;
+    max-height: 500px;
+    background: rgba(31, 41, 55, 0.95);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #e8e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 12px;
+    z-index: 2000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.cell-info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.cell-info-content {
+    padding: 15px;
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+/* Two-column layout: table left, donut right */
+.cell-info-layout {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.cell-info-left, .cell-info-right {
+    flex: 1 1 0;
+}
+
+/* Constrain heights to match donut svg height */
+.cell-info-left {
+    max-height: 160px;
+    overflow: auto;
+}
+
+.cell-info-right #cellInfoChart svg {
+    display: block;
+}
+
+.cell-info-chart-container {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.cell-info-tables {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.table-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cell-info-panel table {
+    width: 100% !important;
+    font-size: 11px;
+}
+
+.cell-info-panel table thead th {
+    background: rgba(0,0,0,0.2);
+    color: #94a3b8;
+    padding: 6px 8px;
+    text-transform: uppercase;
+    font-size: 10px;
+}
+
+.cell-info-panel table tbody td {
+    padding: 4px 8px;
+}
+
+.cell-info-panel .dataTables_wrapper {
+    padding: 0;
+}
+
+.cell-info-panel .dataTables_wrapper .dataTables_length,
+.cell-info-panel .dataTables_wrapper .dataTables_filter,
+.cell-info-panel .dataTables_wrapper .dataTables_info,
+.cell-info-panel .dataTables_wrapper .dataTables_paginate {
+    display: none;
+}
+
+.cell-info-panel table.dataTable {
+    background: transparent;
+    color: #e8e8f0;
+    border-collapse: collapse;
+}
+
+.cell-info-panel table.dataTable thead th {
+    background: rgba(0, 0, 0, 0.2);
+    color: #94a3b8;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 8px;
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+
+.cell-info-panel table.dataTable tbody td {
+    padding: 4px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #e8e8f0;
+}
+
+.cell-info-panel table.dataTable tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Donut chart styles */
+.cell-info-panel .slices path {
+    stroke: rgba(255, 255, 255, 0.2);
+    stroke-width: 1px;
+}
+
+.cell-info-panel .sliceLabels text {
+    font-size: 11px;
+    fill: #e8e8f0;
+    pointer-events: none;
+}
+
+.cell-info-panel .lines polyline {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.45);
+    stroke-width: 1px;
+}
+
+.donutTooltip {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
 /* Cell Search Modal */
 .cell-search-modal {
     position: fixed;
