@@ -136,7 +136,7 @@
 }
 
 .cell-info-panel .sliceLabels text {
-    font-size: 11px;
+    font-size: 10px;
     fill: #e8e8f0;
     pointer-events: none;
 }
