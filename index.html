@@ -52,6 +52,7 @@
     <!-- Gene Panel Button with Size Slider -->
     <div class="minimal-controls" style="top: 15px; left: 15px; right: auto;">
         <button id="genePanelBtn">🧬 Genes</button>
+        <button id="geneDistributionBtn" title="Gene Distribution Chart">📊 Distribution</button>
         <div class="control-item gene-size-item">
             <label for="geneSizeSlider">Size</label>
             <input type="range" id="geneSizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
@@ -115,9 +116,29 @@
         </div>
     </div>
 
+    <!-- Gene Distribution Chart Widget -->
+    <div id="geneDistributionWidget" class="gene-widget hidden" style="top: 80px; left: 20px; width: 500px; height: 400px;">
+        <div class="gene-widget-header">
+            <span class="gene-widget-title">📊 Gene Distribution Chart</span>
+            <div class="widget-header-buttons">
+                <button id="geneDistributionWidgetUndock" class="widget-undock-btn" title="Open in separate window">⧉</button>
+                <button id="geneDistributionWidgetClose" class="widget-close-btn">×</button>
+            </div>
+        </div>
+        <div class="gene-widget-search">
+            <select id="geneDistributionSelect" style="width: 120px;">
+                <option value="">Select a gene...</option>
+            </select>
+        </div>
+        <div class="gene-widget-content" style="height: 320px; overflow: hidden;">
+            <div id="geneDistributionChart" style="width: 100%; height: 100%;"></div>
+        </div>
+    </div>
+
     <!-- Widget overlay backdrop -->
     <div id="geneWidgetBackdrop" class="widget-backdrop hidden"></div>
     <div id="cellClassWidgetBackdrop" class="widget-backdrop hidden"></div>
+    <div id="geneDistributionWidgetBackdrop" class="widget-backdrop hidden"></div>
 
     <!-- Main Controls -->
     <div class="main-controls">

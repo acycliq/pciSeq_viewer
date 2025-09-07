@@ -271,6 +271,21 @@ body {
     color: #007bff;
 }
 
+/* Gene Distribution Button - same styling as Gene Panel Button */
+#geneDistributionBtn {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.9);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: 13px;
+    user-select: none;
+}
+
+#geneDistributionBtn:hover {
+    color: #007bff;
+}
+
 /* Top-right action buttons (Cell Classes & Christina) */
 #cellClassPanelBtn,
 #cellClassViewerBtn {

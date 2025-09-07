@@ -103,6 +103,14 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         window.showGeneWidget();
     });
     
+    // Open gene distribution chart widget
+    const geneDistributionBtn = document.getElementById('geneDistributionBtn');
+    if (geneDistributionBtn) {
+        geneDistributionBtn.addEventListener('click', () => {
+            window.showGeneDistributionWidget();
+        });
+    }
+    
     // Close gene widget
     elements.geneWidgetClose.addEventListener('click', () => {
         window.hideGeneWidget();

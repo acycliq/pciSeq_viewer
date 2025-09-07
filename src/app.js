@@ -77,6 +77,11 @@ import {
     openCellClassViewer,
     getCellClassViewerData
 } from './cellClassViewer.js';
+import {
+    initGeneDistributionChart,
+    showGeneDistributionWidget,
+    hideGeneDistributionWidget
+} from './geneDistributionChart.js';
 
 // Extract deck.gl components
 const {DeckGL, OrthographicView, COORDINATE_SYSTEM} = deck;
@@ -100,6 +105,10 @@ window.toggleAllCellClasses = toggleAllCellClasses;
 window.undockCellClassWidget = undockCellClassWidget;
 window.openCellClassViewer = openCellClassViewer;
 window.getCellClassViewerData = getCellClassViewerData;
+
+// Gene distribution chart functions
+window.showGeneDistributionWidget = showGeneDistributionWidget;
+window.hideGeneDistributionWidget = hideGeneDistributionWidget;
 
 // === SCALE BAR FUNCTIONS ===
 function calculateScaleBar(viewState) {
@@ -1098,6 +1107,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('Could not load color scheme for cell info panel:', error);
             window.currentColorScheme = { cellClasses: [{ className: 'Generic', color: '#C0C0C0' }, { className: 'Other', color: '#C0C0C0' }] };
         }
+        
+        // Initialize gene distribution chart
+        initGeneDistributionChart();
     }
 });
 
