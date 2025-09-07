@@ -3,8 +3,8 @@
 /* Cell Info Panel */
 .cell-info-panel {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: 50px;
+    right: 0;
     max-height: 500px;
     background: rgba(31, 41, 55, 0.95);
     backdrop-filter: blur(8px);
