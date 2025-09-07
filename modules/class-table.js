@@ -25,13 +25,13 @@
 
             // Build HTML table
             var html = '';
-            html += '<thead><tr><th>Gene</th><th style="text-align:right">Counts</th></tr></thead>';
+            html += '<thead><tr><th>Gene</th><th style="text-align:right; padding-left: 40px;">Counts</th></tr></thead>';
             html += '<tbody>';
             for (var j = 0; j < rows.length; j++) {
                 var r = rows[j];
                 html += '<tr>' +
                         '<td>' + r.gene + '</td>' +
-                        '<td style="text-align:right; white-space:nowrap;">' + formatCount(r.count) + '</td>' +
+                        '<td style="text-align:right; white-space:nowrap; padding-left: 40px;">' + formatCount(r.count) + '</td>' +
                         '</tr>';
             }
             html += '</tbody>';
