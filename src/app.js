@@ -174,7 +174,6 @@ function updateCoordinateDisplay(info) {
         const [deckX, deckY] = info.coordinate;
         
         // Convert deck.gl coordinates to image pixels
-        // deck.gl (256, 256) should map to image (6411, 6411) if image is 6411x4412 for example
         const longSide = Math.max(config.imageWidth, config.imageHeight);
         const imageX = deckX * longSide / 256;
         const imageY = deckY * longSide / 256;
@@ -189,8 +188,6 @@ function updateCoordinateDisplay(info) {
             `${Math.round(imageX)}, ${Math.round(imageY)}`;
         document.getElementById('micronCoords').textContent = 
             `${micronX.toFixed(1)}, ${micronY.toFixed(1)}`;
-        document.getElementById('deckglCoords').textContent = 
-            `${deckX.toFixed(2)}, ${deckY.toFixed(2)}`;
             
         coordDisplay.style.display = 'block';
     } else {

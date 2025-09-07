@@ -3,7 +3,7 @@
 /* Cell Info Panel */
 .cell-info-panel {
     position: fixed;
-    bottom: 50px;
+    bottom: 20px;
     right: 0;
     max-height: 500px;
     background: rgba(31, 41, 55, 0.95);
@@ -809,8 +809,9 @@ body {
 /* Coordinate Display */
 .coordinate-display {
     position: fixed;
-    bottom: 15px;
-    right: 20px;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
     background: rgba(0, 0, 0, 0.8);
     color: white;
     padding: 8px 12px;
