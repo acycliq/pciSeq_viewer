@@ -5,7 +5,6 @@
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 600px;
     max-height: 500px;
     background: rgba(31, 41, 55, 0.95);
     backdrop-filter: blur(8px);
@@ -44,7 +43,7 @@
 }
 
 .cell-info-left, .cell-info-right {
-    flex: 1 1 0;
+    flex: 0 1 auto;
 }
 
 /* Constrain heights to match donut svg height */
