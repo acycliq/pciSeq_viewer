@@ -192,7 +192,8 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
             }
             
             state.showZProjectionOverlay = zProjectionToggle.checked;
-            zProjectionControls.style.display = zProjectionToggle.checked ? 'block' : 'none';
+            // Keep opacity controls hidden for now
+            zProjectionControls.style.display = 'none';
             updateLayersCallback();
         });
     }
