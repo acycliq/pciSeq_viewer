@@ -14,7 +14,7 @@ function advancedConfig() {
             sliderDebounce: 100,        // Debouncing for slider interactions (ms)
             loadingTimeout: 2000,       // Loading timeout (ms)
             showPerformanceStats: true, // Show performance timing in console
-            useArrow: true             // Feature flag: use Arrow loaders (A/B testing)
+            useArrow: false             // Feature flag: use Arrow loaders (A/B testing)
         },
         
         // Display settings
