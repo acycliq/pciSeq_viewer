@@ -630,8 +630,8 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
                 sizeScale: geneSizeScale,
                 
                 updateTriggers: { 
-                    getSize: [currentPlane],
-                    data: [scoreThreshold] // Trigger data change when threshold changes
+                    getSize: [currentPlane]
+                    // data prop changes are automatically detected by deck.gl
                 }
             });
             
@@ -694,8 +694,8 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             
             // Trigger layer update when plane changes (for size recalculation)
             updateTriggers: {
-                getSize: [currentPlane],
-                data: [scoreThreshold] // Trigger data change when threshold changes
+                getSize: [currentPlane]
+                // data prop changes are automatically detected by deck.gl
             }
         });
 
