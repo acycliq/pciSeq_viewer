@@ -275,6 +275,7 @@ self.onmessage = async (e) => {
       const maxDim = Math.max(width, height);
       const xAdj = width / maxDim;
       const yAdj = height / maxDim;
+      let scoreMin = Infinity;
       let off = 0;
       for (const sh of shards) {
         const n = sh.n || 0;
@@ -289,7 +290,9 @@ self.onmessage = async (e) => {
           const gid = sh.gene_id ? sh.gene_id[i] : -1;
           geneIds[off] = gid | 0;
           planes[off] = sh.plane_id ? sh.plane_id[i] : 0;
-          scores[off] = sh.omp_score ? sh.omp_score[i] : 0;
+          const s = sh.omp_score ? sh.omp_score[i] : 0;
+          scores[off] = s;
+          if (Number.isFinite(s) && s < scoreMin) scoreMin = s;
           const col = (geneIdColors && geneIdColors[gid] && geneIdColors[gid].length === 3) ? geneIdColors[gid] : [255,255,255];
           colors[4*off + 0] = col[0] | 0;
           colors[4*off + 1] = col[1] | 0;
@@ -299,7 +302,8 @@ self.onmessage = async (e) => {
         }
       }
       const transfers = [positions.buffer, colors.buffer, geneIds.buffer, planes.buffer, scores.buffer];
-      self.postMessage({ id, ok: true, type, positions, colors, geneIds, planes, scores }, transfers);
+      if (!Number.isFinite(scoreMin)) scoreMin = 0;
+      self.postMessage({ id, ok: true, type, positions, colors, geneIds, planes, scores, scoreMin }, transfers);
     } else {
       throw new Error(`Unknown message type: ${type}`);
     }
