@@ -22,6 +22,10 @@ const elements = {
     geneSizeValue: document.getElementById(UI_ELEMENTS.geneSizeValue),
     genePanelBtn: document.getElementById(UI_ELEMENTS.genePanelBtn),
     
+    // Score filtering controls
+    scoreFilterSlider: document.getElementById('scoreFilterSlider'),
+    scoreFilterValue: document.getElementById('scoreFilterValue'),
+    
     // Gene widget
     geneWidget: document.getElementById('geneWidget'),
     geneWidgetBackdrop: document.getElementById('geneWidgetBackdrop'),

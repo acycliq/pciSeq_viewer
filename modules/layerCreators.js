@@ -49,12 +49,12 @@ function getArrowSpotBinaryCache() {
     return cache;
 }
 
-export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0) {
+export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0) {
     if (!USE_ARROW) return null;
     const cache = getArrowSpotBinaryCache();
     if (!cache || cache.length === 0) return null;
 
-    const { positions, colors, planes, geneIds, length } = cache;
+    const { positions, colors, planes, geneIds, scores, length } = cache;
     // Compute per-point radius based on |plane - currentPlane| (simple falloff)
     // Match IconLayer visual size: Icon uses size in pixels (diameter),
     // ScatterplotLayer uses radius in pixels. So use half the icon size.
@@ -90,6 +90,24 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
             // Show none
             var maskedColors = new Uint8Array(colors);
             for (let i = 0; i < length; i++) maskedColors[4*i + 3] = 0;
+        }
+    } catch {}
+
+    // Apply score filtering via alpha channel (after gene filtering)
+    try {
+        if (scoreThreshold > 0 && scores) {
+            // If no maskedColors from gene filtering, create a copy
+            if (typeof maskedColors === 'undefined') {
+                maskedColors = new Uint8Array(colors);
+            }
+            // Apply score filter on top of gene filter
+            for (let i = 0; i < length; i++) {
+                const score = scores[i] || 0;
+                const visible = score >= scoreThreshold;
+                if (!visible) {
+                    maskedColors[4*i + 3] = 0; // Hide spots below threshold
+                }
+            }
         }
     } catch {}
 
@@ -539,7 +557,7 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
  * @param {Function} showTooltip - Tooltip callback function
  * @returns {IconLayer[]} Array of gene icon layers
  */
-export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false) {
+export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0) {
     const layers = [];
     if (!showGenes || !geneIconAtlas) return layers;
 
@@ -586,9 +604,18 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             // no cap
         }
         if (combined.length) {
-            layers.push(new IconLayer({
+            // Apply OMP score filtering when threshold > 0
+            let filteredData = combined;
+            if (scoreThreshold > 0) {
+                filteredData = combined.filter(d => {
+                    const score = d.score;
+                    return (score !== null && score !== undefined && !isNaN(score) && Number(score) >= scoreThreshold);
+                });
+            }
+            
+            const iconLayer = new IconLayer({
                 id: `genes-combined`,
-                data: combined,
+                data: filteredData,
                 visible: true,
                 pickable: true,
                 onHover: showTooltip,
@@ -601,8 +628,14 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
                 getColor: [255, 255, 255],
                 sizeUnits: 'pixels',
                 sizeScale: geneSizeScale,
-                updateTriggers: { getSize: [currentPlane] }
-            }));
+                
+                updateTriggers: { 
+                    getSize: [currentPlane],
+                    data: [scoreThreshold] // Trigger data change when threshold changes
+                }
+            });
+            
+            layers.push(iconLayer);
         }
         return layers;
     }
@@ -628,9 +661,18 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             data = filtered;
             if (data.length === 0) continue; // Skip empty layers
         }
+        // Apply OMP score filtering to individual gene data
+        let filteredGeneData = data;
+        if (scoreThreshold > 0) {
+            filteredGeneData = data.filter(d => {
+                const score = d.score;
+                return (score !== null && score !== undefined && !isNaN(score) && Number(score) >= scoreThreshold);
+            });
+        }
+        
         const layer = new IconLayer({
             id: `genes-${gene}`,
-            data,
+            data: filteredGeneData,
             visible: selectedGenes.has(gene),
             pickable: true, // Enable gene picking
             onHover: showTooltip, // Gene hover handler
@@ -649,9 +691,11 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             sizeUnits: 'pixels',
             sizeScale: geneSizeScale,
             
+            
             // Trigger layer update when plane changes (for size recalculation)
             updateTriggers: {
-                getSize: [currentPlane]
+                getSize: [currentPlane],
+                data: [scoreThreshold] // Trigger data change when threshold changes
             }
         });
 

@@ -290,7 +290,7 @@ function updateAllLayers() {
     const zoom = (typeof state.currentZoom === 'number') ? state.currentZoom : INITIAL_VIEW_STATE.zoom;
     if (USE_ARROW && zoom < 7) {
         try { console.log(`[layers] Using binary Scatterplot for spots at zoom ${zoom.toFixed(1)} (showGenes=${state.showGenes})`); } catch {}
-        const pc = createArrowPointCloudLayer(state.currentPlane, state.geneSizeScale, state.selectedGenes);
+        const pc = createArrowPointCloudLayer(state.currentPlane, state.geneSizeScale, state.selectedGenes, 1.0, state.scoreThreshold);
         if (pc && state.showGenes) layers.push(pc);
         // Simplified: no deferred cleanup needed with single IconLayer approach
         state.lastIconLayers = [];
@@ -309,7 +309,8 @@ function updateAllLayers() {
             state.geneSizeScale,
             (info) => showTooltip(info, elements.tooltip),
             USE_ARROW ? bounds : null, // Only cull viewport when using Arrow data
-            true // combine into a single IconLayer at deep zoom to minimize churn
+            true, // combine into a single IconLayer at deep zoom to minimize churn
+            state.scoreThreshold // Score threshold for filtering
         );
         layers.push(...iconLayers);
         state.lastIconLayers = iconLayers;

@@ -258,15 +258,17 @@ self.onmessage = async (e) => {
         const y = getTypedColumn(table, 'y');
         const plane_id = getTypedColumn(table, 'plane_id');
         const gene_id = getTypedColumn(table, 'gene_id');
+        const omp_score = getTypedColumn(table, 'omp_score');
         const n = x ? x.length : 0;
         if (!n) continue;
-        shards.push({ x, y, plane_id, gene_id, n });
+        shards.push({ x, y, plane_id, gene_id, omp_score, n });
         total += n;
       }
       const positions = new Float32Array(total * 3);
       const colors = new Uint8Array(total * 4);
       const geneIds = new Int32Array(total);
       const planes = new Int32Array(total);
+      const scores = new Float32Array(total);
       const width = img && img.width || 256;
       const height = img && img.height || 256;
       const tileSize = img && img.tileSize || 256;
@@ -287,6 +289,7 @@ self.onmessage = async (e) => {
           const gid = sh.gene_id ? sh.gene_id[i] : -1;
           geneIds[off] = gid | 0;
           planes[off] = sh.plane_id ? sh.plane_id[i] : 0;
+          scores[off] = sh.omp_score ? sh.omp_score[i] : 0;
           const col = (geneIdColors && geneIdColors[gid] && geneIdColors[gid].length === 3) ? geneIdColors[gid] : [255,255,255];
           colors[4*off + 0] = col[0] | 0;
           colors[4*off + 1] = col[1] | 0;
@@ -295,8 +298,8 @@ self.onmessage = async (e) => {
           off++;
         }
       }
-      const transfers = [positions.buffer, colors.buffer, geneIds.buffer, planes.buffer];
-      self.postMessage({ id, ok: true, type, positions, colors, geneIds, planes }, transfers);
+      const transfers = [positions.buffer, colors.buffer, geneIds.buffer, planes.buffer, scores.buffer];
+      self.postMessage({ id, ok: true, type, positions, colors, geneIds, planes, scores }, transfers);
     } else {
       throw new Error(`Unknown message type: ${type}`);
     }

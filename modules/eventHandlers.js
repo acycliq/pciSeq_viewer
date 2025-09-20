@@ -96,6 +96,14 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         );
     });
 
+    // Score filter slider
+    elements.scoreFilterSlider.addEventListener('input', (e) => {
+        const threshold = parseFloat(e.target.value);
+        state.scoreThreshold = threshold;
+        elements.scoreFilterValue.textContent = threshold.toFixed(2);
+        updateLayersCallback(); // Fast update - only filter properties change
+    });
+
     // === GENE WIDGET MANAGEMENT ===
     
     // Open gene widget

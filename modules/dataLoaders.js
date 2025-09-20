@@ -124,8 +124,8 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                 }
                 const manifestUrl = new URL(ARROW_MANIFESTS.spotsManifest, window.location.href).href;
                 const img = { width: cfg.imageWidth, height: cfg.imageHeight, tileSize: 256 };
-                const { positions, colors, planes, geneIds } = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
-                window.appState.arrowScatterCache = { positions, colors, planes, geneIds, length: (positions?.length||0)/3 };
+                const { positions, colors, planes, geneIds, scores } = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
+                window.appState.arrowScatterCache = { positions, colors, planes, geneIds, scores, length: (positions?.length||0)/3 };
                 if (window?.advancedConfig?.().performance?.showPerformanceStats) {
                     console.log(`✅ Prebuilt scatter cache in worker: points=${window.appState.arrowScatterCache.length}`);
                 }

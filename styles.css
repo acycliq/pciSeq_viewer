@@ -486,6 +486,42 @@ body {
     font-family: monospace;
 }
 
+/* Score Filter Slider - same styling as gene size slider */
+.score-filter-item {
+    gap: 4px;
+}
+.score-filter-item input[type="range"] {
+    width: 60px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    appearance: none;
+    outline: none;
+}
+.score-filter-item input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: pointer;
+}
+.score-filter-item input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+.score-filter-item #scoreFilterValue {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.8);
+    min-width: 24px;
+    text-align: center;
+    font-family: monospace;
+}
+
 /* Polygon Opacity Slider */
 .polygon-opacity-item {
     gap: 4px;
