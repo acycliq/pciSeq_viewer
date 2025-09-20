@@ -96,12 +96,18 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         );
     });
 
-    // Score filter slider
+    // Score filter slider (rAF-throttled to one update per frame)
+    let scoreRafId = null;
     elements.scoreFilterSlider.addEventListener('input', (e) => {
         const threshold = parseFloat(e.target.value);
         state.scoreThreshold = threshold;
         elements.scoreFilterValue.textContent = threshold.toFixed(2);
-        updateLayersCallback(); // Fast update - only filter properties change
+        if (scoreRafId == null) {
+            scoreRafId = requestAnimationFrame(() => {
+                scoreRafId = null;
+                updateLayersCallback();
+            });
+        }
     });
 
     // === GENE WIDGET MANAGEMENT ===
