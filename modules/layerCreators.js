@@ -93,30 +93,15 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         }
     } catch {}
 
-    // Apply score filtering via alpha channel (after gene filtering)
-    try {
-        if (hasScores && scoreThreshold > 0 && scores) {
-            // If no maskedColors from gene filtering, create a copy
-            if (typeof maskedColors === 'undefined') {
-                maskedColors = new Uint8Array(colors);
-            }
-            // Apply score filter on top of gene filter
-            for (let i = 0; i < length; i++) {
-                const score = scores[i] || 0;
-                const visible = score >= scoreThreshold;
-                if (!visible) {
-                    maskedColors[4*i + 3] = 0; // Hide spots below threshold
-                }
-            }
-        }
-    } catch {}
+    // GPU-side score filtering via DataFilterExtension (no CPU loop)
 
     const data = {
         length,
         attributes: {
             getPosition: { value: positions, size: 3 },
             getFillColor: { value: (typeof maskedColors !== 'undefined') ? maskedColors : colors, size: 4 },
-            getRadius: { value: radii, size: 1 }
+            getRadius: { value: radii, size: 1 },
+            ...(scores ? { getFilterValue: { value: scores, size: 1 } } : {})
         }
     };
 
@@ -132,7 +117,10 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         stroked: false,
         radiusUnits: 'pixels',
         radiusMinPixels: 0.5,
-        opacity: layerOpacity
+        opacity: layerOpacity,
+        extensions: [new DataFilterExtension({ filterSize: 1 })],
+        filterEnabled: Boolean(scores),
+        filterRange: [Number(scoreThreshold) || 0, 1.0]
     });
 }
 
