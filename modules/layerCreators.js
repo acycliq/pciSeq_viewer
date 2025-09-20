@@ -49,7 +49,7 @@ function getArrowSpotBinaryCache() {
     return cache;
 }
 
-export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0) {
+export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false) {
     if (!USE_ARROW) return null;
     const cache = getArrowSpotBinaryCache();
     if (!cache || cache.length === 0) return null;
@@ -95,7 +95,7 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
 
     // Apply score filtering via alpha channel (after gene filtering)
     try {
-        if (scoreThreshold > 0 && scores) {
+        if (hasScores && scoreThreshold > 0 && scores) {
             // If no maskedColors from gene filtering, create a copy
             if (typeof maskedColors === 'undefined') {
                 maskedColors = new Uint8Array(colors);
@@ -557,7 +557,7 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
  * @param {Function} showTooltip - Tooltip callback function
  * @returns {IconLayer[]} Array of gene icon layers
  */
-export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0) {
+export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0, hasScores = false) {
     const layers = [];
     if (!showGenes || !geneIconAtlas) return layers;
 
@@ -604,9 +604,9 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             // no cap
         }
         if (combined.length) {
-            // Apply OMP score filtering when threshold > 0
+            // Apply OMP score filtering when threshold > 0 AND dataset has scores
             let filteredData = combined;
-            if (scoreThreshold > 0) {
+            if (hasScores && scoreThreshold > 0) {
                 filteredData = combined.filter(d => {
                     const score = d.score;
                     return (score !== null && score !== undefined && !isNaN(score) && Number(score) >= scoreThreshold);
@@ -663,7 +663,7 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
         }
         // Apply OMP score filtering to individual gene data
         let filteredGeneData = data;
-        if (scoreThreshold > 0) {
+        if (hasScores && scoreThreshold > 0) {
             filteredGeneData = data.filter(d => {
                 const score = d.score;
                 return (score !== null && score !== undefined && !isNaN(score) && Number(score) >= scoreThreshold);

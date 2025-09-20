@@ -49,6 +49,7 @@ const state = {
     // Score filtering
     scoreThreshold: 0.0,  // Default: show all spots (minimum score)
     scoreRange: [0, 1.0], // Normalized score range [min, max]
+    hasScores: false,     // Whether dataset contains valid OMP scores
     
     // Interactions
     polygonHighlighter: null,

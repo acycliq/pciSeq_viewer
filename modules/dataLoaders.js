@@ -132,9 +132,19 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
             } catch (e) {
                 console.warn('Failed to prebuild scatter cache in worker:', e);
             }
+            
+            // For Arrow data, assume scores are available (can be refined later if needed)
+            window.appState.hasScores = true;
+            console.log('Arrow dataset: assuming scores are available');
         } else {
             // Use Web Worker for non-blocking data loading (TSV)
-            const geneData = await loadGeneDataWithWorker();
+            const workerResult = await loadGeneDataWithWorker();
+            const { geneData, hasScores } = workerResult;
+            
+            // Store hasScores flag in state
+            window.appState.hasScores = hasScores;
+            console.log(`Dataset has valid OMP scores: ${hasScores}`);
+            
             geneDataMap.clear();
             selectedGenes.clear();
             geneData.forEach(({ gene, spots }) => {

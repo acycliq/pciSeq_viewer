@@ -290,7 +290,7 @@ function updateAllLayers() {
     const zoom = (typeof state.currentZoom === 'number') ? state.currentZoom : INITIAL_VIEW_STATE.zoom;
     if (USE_ARROW && zoom < 7) {
         try { console.log(`[layers] Using binary Scatterplot for spots at zoom ${zoom.toFixed(1)} (showGenes=${state.showGenes})`); } catch {}
-        const pc = createArrowPointCloudLayer(state.currentPlane, state.geneSizeScale, state.selectedGenes, 1.0, state.scoreThreshold);
+        const pc = createArrowPointCloudLayer(state.currentPlane, state.geneSizeScale, state.selectedGenes, 1.0, state.scoreThreshold, state.hasScores);
         if (pc && state.showGenes) layers.push(pc);
         // Simplified: no deferred cleanup needed with single IconLayer approach
         state.lastIconLayers = [];
@@ -310,7 +310,8 @@ function updateAllLayers() {
             (info) => showTooltip(info, elements.tooltip),
             USE_ARROW ? bounds : null, // Only cull viewport when using Arrow data
             true, // combine into a single IconLayer at deep zoom to minimize churn
-            state.scoreThreshold // Score threshold for filtering
+            state.scoreThreshold, // Score threshold for filtering
+            state.hasScores // Whether dataset has valid scores
         );
         layers.push(...iconLayers);
         state.lastIconLayers = iconLayers;
@@ -652,6 +653,18 @@ async function init() {
     const {atlas, mapping} = await loadGeneData(state.geneDataMap, state.selectedGenes);
     state.geneIconAtlas = atlas;
     state.geneIconMapping = mapping;
+    
+    // Show/hide score filter slider based on whether dataset has valid scores
+    const scoreFilterContainer = document.querySelector('.score-filter-item');
+    if (scoreFilterContainer) {
+        if (state.hasScores) {
+            scoreFilterContainer.style.display = 'flex';
+            console.log('Score filter enabled: dataset contains valid OMP scores');
+        } else {
+            scoreFilterContainer.style.display = 'none';
+            console.log('Score filter disabled: dataset has no valid OMP scores');
+        }
+    }
     
     // Build lightning-fast lookup indexes after gene data is loaded
     buildGeneSpotIndexes(state.geneDataMap, state.cellToSpotsIndex, state.spotToParentsIndex);

@@ -30,6 +30,7 @@ function processGeneData(rawData) {
     const geneMap = new Map();
     let processedCount = 0;
     let skippedCount = 0;
+    let hasValidScores = false;
     
     rawData.forEach((row, rowIndex) => {
         try {
@@ -49,6 +50,11 @@ function processGeneData(rawData) {
                 score: row.omp_score ? parseFloat(row.omp_score) : null,
                 intensity: row.omp_intensity ? parseFloat(row.omp_intensity) : null
             };
+            
+            // Check if this spot has a valid score for hasScores flag
+            if (spot.score !== null && !isNaN(spot.score)) {
+                hasValidScores = true;
+            }
             
             // Add derived fields for most likely parent (position 0)
             if (spot.neighbour_array && spot.neighbour_array.length > 0) {
@@ -84,7 +90,12 @@ function processGeneData(rawData) {
     }));
     
     console.log(`Gene Worker: Processed ${processedCount} spots for ${geneData.length} genes (skipped ${skippedCount})`);
-    return geneData;
+    console.log(`Gene Worker: Dataset has valid scores: ${hasValidScores}`);
+    
+    return {
+        geneData: geneData,
+        hasScores: hasValidScores
+    };
 }
 
 // === CELL DATA PROCESSING ===
