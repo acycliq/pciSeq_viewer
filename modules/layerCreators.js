@@ -49,7 +49,7 @@ function getArrowSpotBinaryCache() {
     return cache;
 }
 
-export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false) {
+export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false) {
     if (!USE_ARROW) return null;
     const cache = getArrowSpotBinaryCache();
     if (!cache || cache.length === 0) return null;
@@ -63,38 +63,38 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
     // - radiusFactors[i]: Distance-based factor (cached per plane)
     // - radiusScale: Global size multiplier (updated instantly for gene size slider)
     const baseScale = ((GENE_SIZE_CONFIG && GENE_SIZE_CONFIG.BASE_SIZE ? GENE_SIZE_CONFIG.BASE_SIZE : 12)) / 10;
-    let radiusFactors;
-    try {
-        const app = (typeof window !== 'undefined') ? window.appState || (window.appState = {}) : {};
-        const cacheObj = app._scatterRadiiCache || (app._scatterRadiiCache = {});
-        
-        // Check if we need to recompute: plane changed, data changed, or first time
-        const needsInit = !cacheObj.factors || cacheObj.length !== length || 
-                         cacheObj.planesBuffer !== planes.buffer || cacheObj.plane !== (currentPlane || 0);
-        
-        if (needsInit) {
-            // EXPENSIVE OPERATION: Only run when plane changes (not on every render)
-            console.log(`Computing radius factors for ${length} spots (plane ${currentPlane})`);
+    let radiusFactors = null;
+    if (!uniformMarkerSize) {
+        try {
+            const app = (typeof window !== 'undefined') ? window.appState || (window.appState = {}) : {};
+            const cacheObj = app._scatterRadiiCache || (app._scatterRadiiCache = {});
+            
+            // Check if we need to recompute: plane changed, data changed, or first time
+            const needsInit = !cacheObj.factors || cacheObj.length !== length || 
+                             cacheObj.planesBuffer !== planes.buffer || cacheObj.plane !== (currentPlane || 0);
+            
+            if (needsInit) {
+                const cur = (currentPlane || 0) | 0;
+                const factors = new Float32Array(length);
+                for (let i = 0; i < length; i++) {
+                    const dz = Math.abs(((planes[i] | 0) - cur));
+                    factors[i] = 1 / Math.sqrt(1 + dz); // Distance falloff factor only
+                }
+                // Cache the computed factors
+                cacheObj.factors = factors;
+                cacheObj.length = length;
+                cacheObj.plane = cur;
+                cacheObj.planesBuffer = planes.buffer;
+            }
+            radiusFactors = cacheObj.factors; // Reuse cached factors
+        } catch {
+            // Fallback: Compute without caching if cache fails
+            radiusFactors = new Float32Array(length);
             const cur = (currentPlane || 0) | 0;
-            const factors = new Float32Array(length);
             for (let i = 0; i < length; i++) {
                 const dz = Math.abs(((planes[i] | 0) - cur));
-                factors[i] = 1 / Math.sqrt(1 + dz); // Distance falloff factor only
+                radiusFactors[i] = 1 / Math.sqrt(1 + dz);
             }
-            // Cache the computed factors
-            cacheObj.factors = factors;
-            cacheObj.length = length;
-            cacheObj.plane = cur;
-            cacheObj.planesBuffer = planes.buffer;
-        }
-        radiusFactors = cacheObj.factors; // Reuse cached factors
-    } catch {
-        // Fallback: Compute without caching if cache fails
-        radiusFactors = new Float32Array(length);
-        const cur = (currentPlane || 0) | 0;
-        for (let i = 0; i < length; i++) {
-            const dz = Math.abs(((planes[i] | 0) - cur));
-            radiusFactors[i] = 1 / Math.sqrt(1 + dz);
         }
     }
 
@@ -134,13 +134,13 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         attributes: {
             getPosition: { value: positions, size: 3 },
             getFillColor: { value: (typeof maskedColors !== 'undefined') ? maskedColors : colors, size: 4 },
-            getRadius: { value: radiusFactors, size: 1 },
+            getRadius: uniformMarkerSize ? { constant: 1 } : { value: radiusFactors, size: 1 },
             // Only add filter attribute when scores exist (conditional GPU filtering)
             ...(scores ? { getFilterValue: { value: scores, size: 1 } } : {})
         }
     };
 
-    try { const adv = window.advancedConfig ? window.advancedConfig() : null; if (adv?.performance?.showPerformanceStats) console.log(`Arrow binary scatter: points=${length}, baseScale=${baseScale}, geneSizeScale=${geneSizeScale}`); } catch {}
+    try { const adv = window.advancedConfig ? window.advancedConfig() : null; if (adv?.performance?.showPerformanceStats) console.log(`Arrow binary scatter: points=${length}, baseScale=${baseScale}, geneSizeScale=${geneSizeScale}, uniform=${uniformMarkerSize}`); } catch {}
 
     return new ScatterplotLayer({
         id: 'spots-scatter-binary',
@@ -585,7 +585,7 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
  * @param {Function} showTooltip - Tooltip callback function
  * @returns {IconLayer[]} Array of gene icon layers
  */
-export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0, hasScores = false) {
+export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false) {
     const layers = [];
     if (!showGenes || !geneIconAtlas) return layers;
 
@@ -651,14 +651,14 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
                 iconAtlas: geneIconAtlas,
                 iconMapping: geneIconMapping,
                 getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
-                getSize: d => GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane)),
+                getSize: d => uniformMarkerSize ? GENE_SIZE_CONFIG.BASE_SIZE : (GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane))),
                 getIcon: d => d.gene,
                 getColor: [255, 255, 255],
                 sizeUnits: 'pixels',
                 sizeScale: geneSizeScale,
                 
                 updateTriggers: { 
-                    getSize: [currentPlane]
+                    getSize: [currentPlane, uniformMarkerSize]
                     // data prop changes are automatically detected by deck.gl
                 }
             });
@@ -712,7 +712,7 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
             
             // Dynamic sizing based on distance from current plane (depth effect)
-            getSize: d => GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane)),
+            getSize: d => uniformMarkerSize ? GENE_SIZE_CONFIG.BASE_SIZE : (GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane))),
             
             getIcon: d => d.gene,
             getColor: [255, 255, 255], // White color for gene markers
@@ -722,7 +722,7 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             
             // Trigger layer update when plane changes (for size recalculation)
             updateTriggers: {
-                getSize: [currentPlane]
+                getSize: [currentPlane, uniformMarkerSize]
                 // data prop changes are automatically detected by deck.gl
             }
         });

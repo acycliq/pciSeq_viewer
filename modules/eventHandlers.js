@@ -110,6 +110,14 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         }
     });
 
+    // Uniform marker size toggle
+    if (elements.uniformSizeToggle) {
+        elements.uniformSizeToggle.addEventListener('change', (e) => {
+            state.uniformMarkerSize = Boolean(e.target.checked);
+            updateLayersCallback();
+        });
+    }
+
     // === GENE WIDGET MANAGEMENT ===
     
     // Open gene widget

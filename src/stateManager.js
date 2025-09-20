@@ -51,6 +51,9 @@ const state = {
     scoreRange: [0, 1.0], // Normalized score range [min, max]
     hasScores: false,     // Whether dataset contains valid OMP scores
     
+    // Sizing behavior
+    uniformMarkerSize: false, // When true, ignore plane distance for marker size
+    
     // Interactions
     polygonHighlighter: null,
     genePanelWin: null

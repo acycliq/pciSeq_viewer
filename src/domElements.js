@@ -25,6 +25,8 @@ const elements = {
     // Score filtering controls
     scoreFilterSlider: document.getElementById('scoreFilterSlider'),
     scoreFilterValue: document.getElementById('scoreFilterValue'),
+    // Uniform size toggle
+    uniformSizeToggle: document.getElementById('uniformSizeToggle'),
     
     // Gene widget
     geneWidget: document.getElementById('geneWidget'),
