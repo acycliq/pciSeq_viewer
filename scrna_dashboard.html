@@ -706,7 +706,7 @@
                 const maxGeneNameLength = Math.max(...geneNames.map(name => name.length));
                 const dynamicLeftMargin = Math.max(80, Math.min(maxGeneNameLength * 8, 200));
 
-                const margin = { top: 20, right: 20, bottom: 40, left: dynamicLeftMargin };
+                const margin = { top: 20, right: 80, bottom: 40, left: dynamicLeftMargin };
                 const innerW = width - margin.left - margin.right;
                 const innerH = height - margin.top - margin.bottom;
 
@@ -768,6 +768,87 @@
                     .attr('text-anchor', 'middle')
                     .style('font-size', '12px')
                     .text('Specificity Score');
+
+                // Add colorbar for expression levels
+                const colorbarWidth = 25;
+                const colorbarHeight = Math.min(innerH * 0.8, 250);
+                const colorbarY = (innerH - colorbarHeight) / 2;
+                const maxExpression = d3.max(data, d => d.expression) || 1;
+
+                const specificityColorbar = svg.append('g')
+                    .attr('transform', `translate(${width - margin.right + 15}, ${margin.top + colorbarY})`);
+
+                const specificityColorbarScale = d3.scaleLinear()
+                    .domain([0, maxExpression])
+                    .range([colorbarHeight, 0]);
+
+                const specificityColorbarAxis = d3.axisRight(specificityColorbarScale)
+                    .ticks(6)
+                    .tickSize(6)
+                    .tickFormat(d3.format('.0f'));
+
+                // Create colorbar gradient
+                const specificityGradient = svg.append('defs')
+                    .append('linearGradient')
+                    .attr('id', 'specificity-colorbar-gradient')
+                    .attr('gradientUnits', 'userSpaceOnUse')
+                    .attr('x1', 0).attr('y1', colorbarHeight)
+                    .attr('x2', 0).attr('y2', 0);
+
+                const numStops = 50;
+                for (let i = 0; i <= numStops; i++) {
+                    const value = (i / numStops) * maxExpression;
+                    specificityGradient.append('stop')
+                        .attr('offset', `${(i / numStops) * 100}%`)
+                        .attr('stop-color', colorScale(value));
+                }
+
+                // Add title above colorbar
+                specificityColorbar.append('text')
+                    .attr('x', colorbarWidth / 2)
+                    .attr('y', -15)
+                    .attr('text-anchor', 'middle')
+                    .style('font-size', '12px')
+                    .style('font-weight', '600')
+                    .style('fill', '#333')
+                    .text('Expression');
+
+                specificityColorbar.append('rect')
+                    .attr('x', 0)
+                    .attr('y', 0)
+                    .attr('width', colorbarWidth)
+                    .attr('height', colorbarHeight)
+                    .style('fill', 'url(#specificity-colorbar-gradient)')
+                    .attr('stroke', '#666')
+                    .attr('stroke-width', 1);
+
+                // Add tick marks and labels
+                const specificityAxisGroup = specificityColorbar.append('g')
+                    .attr('transform', `translate(${colorbarWidth}, 0)`)
+                    .call(specificityColorbarAxis);
+
+                // Style the axis
+                specificityAxisGroup.selectAll('path, line')
+                    .style('stroke', '#666')
+                    .style('stroke-width', 1);
+
+                specificityAxisGroup.selectAll('text')
+                    .style('font-size', '11px')
+                    .style('fill', '#333');
+
+                // Add tick marks on the left side of the colorbar for better visibility
+                const specificityLeftTicks = specificityColorbar.append('g');
+                const specificityTickValues = specificityColorbarScale.ticks(6);
+
+                specificityLeftTicks.selectAll('line')
+                    .data(specificityTickValues)
+                    .join('line')
+                    .attr('x1', -3)
+                    .attr('x2', 0)
+                    .attr('y1', d => specificityColorbarScale(d))
+                    .attr('y2', d => specificityColorbarScale(d))
+                    .style('stroke', '#666')
+                    .style('stroke-width', 1);
             }
 
             function renderPairwise() {
