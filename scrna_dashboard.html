@@ -373,16 +373,16 @@
             </div>
 
             <div class="chart-panel">
-                <h3 id="discriminatorsTitle">Top Discriminating Genes</h3>
-                <div id="discriminators" class="chart">
-                    <div class="loading">Select classes to analyze</div>
+                <h3>Top Discriminating Genes</h3>
+                <div class="chart">
+                    <div class="loading">TBA - To Be Added</div>
                 </div>
             </div>
 
             <div class="chart-panel">
-                <h3 id="volcanoTitle">Differential Expression Analysis</h3>
-                <div id="volcano" class="chart">
-                    <div class="loading">Select classes for DE analysis</div>
+                <h3>Differential Expression Analysis</h3>
+                <div class="chart">
+                    <div class="loading">TBA - To Be Added</div>
                 </div>
             </div>
         </div>
@@ -414,13 +414,10 @@
                 heatmap: document.getElementById('heatmap'),
                 specificity: document.getElementById('specificity'),
                 pairwise: document.getElementById('pairwise'),
-                discriminators: document.getElementById('discriminators'),
-                volcano: document.getElementById('volcano'),
                 tooltip: document.getElementById('tooltip'),
                 specificityTitle: document.getElementById('specificityTitle'),
-                pairwiseTitle: document.getElementById('pairwiseTitle'),
-                discriminatorsTitle: document.getElementById('discriminatorsTitle'),
-                volcanoTitle: document.getElementById('volcanoTitle')
+                pairwiseTitle: document.getElementById('pairwiseTitle')
+                // discriminators and volcano charts are hidden (TBA)
             };
 
             // Utility functions
@@ -1603,13 +1600,11 @@
                 if (state.classA && state.classB) {
                     elements.specificityTitle.textContent = `Most Specific Genes for ${state.classA}`;
                     elements.pairwiseTitle.textContent = `${state.classA} vs ${state.classB} Gene Counts`;
-                    elements.discriminatorsTitle.textContent = `Top Discriminating Genes ${state.classA} vs ${state.classB}`;
-                    elements.volcanoTitle.textContent = `Differential Expression: ${state.classA} vs ${state.classB}`;
+                    // Skip title updates for hidden charts
                 } else {
                     elements.specificityTitle.textContent = 'Gene Specificity Analysis';
                     elements.pairwiseTitle.textContent = 'Pairwise Class Comparison';
-                    elements.discriminatorsTitle.textContent = 'Top Discriminating Genes';
-                    elements.volcanoTitle.textContent = 'Differential Expression Analysis';
+                    // Skip title updates for hidden charts
                 }
             }
 
@@ -1622,8 +1617,8 @@
                     renderHeatmap();
                     renderSpecificity();
                     renderPairwise();
-                    renderDiscriminators();
-                    renderVolcano();
+                    // renderDiscriminators(); // Hidden - TBA
+                    // renderVolcano(); // Hidden - TBA
                 } catch (error) {
                     console.error('Rendering error:', error);
                     showError(`Rendering error: ${error.message}`);
