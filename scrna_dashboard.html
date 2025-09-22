@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>scRNA Reference Explorer Dashboard</title>
+    <title>Cell Type scRNA Reference Explorer Dashboard</title>
     <style>
         * {
             margin: 0;
@@ -237,26 +237,7 @@
             z-index: 1000;
         }
 
-        .back-button {
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            background: white;
-            color: #667eea;
-            padding: 0.75rem 1.25rem;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            transition: all 0.2s;
-            z-index: 999;
-        }
-
-        .back-button:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-1px);
-        }
+        
 
         .instructions {
             background: #f0f9ff;
@@ -297,7 +278,6 @@
     <script src="https://unpkg.com/d3-array@3"></script>
 </head>
 <body>
-    <a href="index.html" class="back-button">← Back to Viewer</a>
 
     <div class="status-bar" id="statusBar"></div>
 

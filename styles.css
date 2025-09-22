@@ -286,9 +286,10 @@ body {
     color: #007bff;
 }
 
-/* Top-right action buttons (Cell Classes & Christina) */
+/* Top-right action buttons (Cell Classes, Christina, scRNAseq) */
 #cellClassPanelBtn,
-#cellClassViewerBtn {
+#cellClassViewerBtn,
+#scrnaSeqBtn {
     position: absolute;
     z-index: 2000;
     display: flex;
@@ -315,12 +316,20 @@ body {
     right: 12px;
 }
 
+#scrnaSeqBtn {
+    top: 78px; /* placed right under Christina */
+    right: 12px;
+}
+
 #cellClassPanelBtn:hover,
-#cellClassViewerBtn:hover {
+#cellClassViewerBtn:hover,
+#scrnaSeqBtn:hover {
     background: #111827;
     border-color: #475569;
     color: #ffffff;
 }
+
+/* removed duplicate scRNAseq styling; now unified above */
 
 /* Aggregated Classes Button */
 #aggregatedClassesBtn {

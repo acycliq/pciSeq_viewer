@@ -79,13 +79,16 @@
         </button>
     </div>
 
-    <!-- Cell Class Panel Button -->
+    <!-- Top-right Action Buttons (Cell Classes, Christina, scRNAseq) -->
     <div class="minimal-controls" style="top: 50px; right: 15px; left: auto;">
         <button id="cellClassViewerBtn" onclick="openCellClassViewer()" title="Open Christina">
             <span>Christina</span>
         </button>
         <button id="cellClassPanelBtn" title="Cell Classes">
             <span>Cell Classes</span>
+        </button>
+        <button id="scrnaSeqBtn" onclick="openScRNASeqAnalysis()" title="Open scRNA-seq Analysis">
+            <span>scRNAseq</span>
         </button>
     </div>
 
@@ -227,5 +230,11 @@
     </div>
 
     <script type="module" src="src/app.js"></script>
+    <script>
+        // Function to open scRNA-seq analysis in new tab
+        function openScRNASeqAnalysis() {
+            window.open('scrna_dashboard.html', '_blank');
+        }
+    </script>
 </body>
 </html>
