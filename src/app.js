@@ -82,6 +82,11 @@ import {
     showGeneDistributionWidget,
     hideGeneDistributionWidget
 } from './geneDistributionChart.js';
+import {
+    initCellClassDistributionChart,
+    showCellClassDistributionWidget,
+    hideCellClassDistributionWidget
+} from './cellClassDistributionChart.js';
 
 // Extract deck.gl components
 const {DeckGL, OrthographicView, COORDINATE_SYSTEM} = deck;
@@ -109,6 +114,10 @@ window.getCellClassViewerData = getCellClassViewerData;
 // Gene distribution chart functions
 window.showGeneDistributionWidget = showGeneDistributionWidget;
 window.hideGeneDistributionWidget = hideGeneDistributionWidget;
+
+// Cell class distribution chart functions
+window.showCellClassDistributionWidget = showCellClassDistributionWidget;
+window.hideCellClassDistributionWidget = hideCellClassDistributionWidget;
 
 // === SCALE BAR FUNCTIONS ===
 function calculateScaleBar(viewState) {
@@ -1125,6 +1134,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Initialize gene distribution chart
         initGeneDistributionChart();
+
+        // Initialize cell class distribution chart
+        initCellClassDistributionChart();
     }
 });
 

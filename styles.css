@@ -289,7 +289,8 @@ body {
 /* Top-right action buttons (Cell Classes, Christina, scRNAseq) */
 #cellClassPanelBtn,
 #cellClassViewerBtn,
-#scrnaSeqBtn {
+#scrnaSeqBtn,
+#classesByZBtn {
     position: absolute;
     z-index: 2000;
     display: flex;
@@ -321,9 +322,15 @@ body {
     right: 12px;
 }
 
+#classesByZBtn {
+    top: 111px; /* placed right under scRNAseq */
+    right: 12px;
+}
+
 #cellClassPanelBtn:hover,
 #cellClassViewerBtn:hover,
-#scrnaSeqBtn:hover {
+#scrnaSeqBtn:hover,
+#classesByZBtn:hover {
     background: #111827;
     border-color: #475569;
     color: #ffffff;

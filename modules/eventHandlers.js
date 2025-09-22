@@ -132,7 +132,15 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
             window.showGeneDistributionWidget();
         });
     }
-    
+
+    // Open cell class distribution chart widget (new top-right button)
+    const classesByZBtn = document.getElementById('classesByZBtn');
+    if (classesByZBtn) {
+        classesByZBtn.addEventListener('click', () => {
+            window.showCellClassDistributionWidget();
+        });
+    }
+
     // Close gene widget
     elements.geneWidgetClose.addEventListener('click', () => {
         window.hideGeneWidget();
