@@ -199,12 +199,17 @@ function calculateCellClassDistribution(regionPolygons = null) {
         return false;
     }
 
+    // Get voxel size configuration for Z-coordinate conversion
+    const userConfig = window.config();
+    const [xVoxelSize, yVoxelSize, zVoxelSize] = userConfig.voxelSize; // [0.28, 0.28, 0.7]
+
     // Process each cell
     state.cellDataMap.forEach((cell, cellNum) => {
         if (!cell.position || typeof cell.position.z === 'undefined') return;
 
-        // Convert Z coordinate to plane ID (integer)
-        const plane_id = Math.round(cell.position.z);
+        // Convert physical Z coordinate to plane ID using voxel size conversion
+        // This matches the logic in cellLookup.js:219
+        const plane_id = Math.floor(cell.position.z * xVoxelSize / zVoxelSize);
         const cellClass = cell.primaryClass || 'Unknown';
         const cx = cell.position.x;
         const cy = cell.position.y;
