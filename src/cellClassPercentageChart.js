@@ -209,11 +209,16 @@ function createPercentageBarChart(data) {
         .attr('y', d => yScale(d.percentage))
         .attr('height', d => height - yScale(d.percentage))
         .attr('fill', d => getClassColor(d.className))
+        .attr('stroke', '#888')
+        .attr('stroke-width', 0.5)
         .style('cursor', 'pointer');
 
     // Add hover effects
     bars.on('mouseover', function(event, d) {
-        d3.select(this).style('opacity', 0.8);
+        // Highlight bar with orange outline
+        d3.select(this)
+            .attr('stroke-width', 2)
+            .attr('stroke', '#ff6b35');
         showTooltip(event.pageX, event.pageY,
             `<strong>${d.className}</strong><br/>` +
             `Count: ${d.count}<br/>` +
@@ -221,7 +226,10 @@ function createPercentageBarChart(data) {
         );
     })
     .on('mouseout', function() {
-        d3.select(this).style('opacity', 1);
+        // Reset to normal outline
+        d3.select(this)
+            .attr('stroke-width', 0.5)
+            .attr('stroke', '#888');
         hideTooltip();
     });
 

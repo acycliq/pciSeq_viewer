@@ -286,11 +286,12 @@ body {
     color: #007bff;
 }
 
-/* Top-right action buttons (Cell Classes, Christina, scRNAseq) */
+/* Top-right action buttons (Cell Classes, Christina, scRNAseq, Classes by Z, Class %) */
 #cellClassPanelBtn,
 #cellClassViewerBtn,
 #scrnaSeqBtn,
-#classesByZBtn {
+#classesByZBtn,
+#classPercentageBtn {
     position: absolute;
     z-index: 2000;
     display: flex;
@@ -327,10 +328,16 @@ body {
     right: 12px;
 }
 
+#classPercentageBtn {
+    top: 144px; /* placed right under Classes by Z */
+    right: 12px;
+}
+
 #cellClassPanelBtn:hover,
 #cellClassViewerBtn:hover,
 #scrnaSeqBtn:hover,
-#classesByZBtn:hover {
+#classesByZBtn:hover,
+#classPercentageBtn:hover {
     background: #111827;
     border-color: #475569;
     color: #ffffff;
