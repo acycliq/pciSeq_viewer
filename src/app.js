@@ -87,6 +87,11 @@ import {
     showCellClassDistributionWidget,
     hideCellClassDistributionWidget
 } from './cellClassDistributionChart.js';
+import {
+    initCellClassPercentageChart,
+    showCellClassPercentageWidget,
+    hideCellClassPercentageWidget
+} from './cellClassPercentageChart.js';
 
 // Extract deck.gl components
 const {DeckGL, OrthographicView, COORDINATE_SYSTEM} = deck;
@@ -118,6 +123,10 @@ window.hideGeneDistributionWidget = hideGeneDistributionWidget;
 // Cell class distribution chart functions
 window.showCellClassDistributionWidget = showCellClassDistributionWidget;
 window.hideCellClassDistributionWidget = hideCellClassDistributionWidget;
+
+// Cell class percentage chart functions
+window.showCellClassPercentageWidget = showCellClassPercentageWidget;
+window.hideCellClassPercentageWidget = hideCellClassPercentageWidget;
 
 // === SCALE BAR FUNCTIONS ===
 function calculateScaleBar(viewState) {
@@ -1137,6 +1146,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Initialize cell class distribution chart
         initCellClassDistributionChart();
+
+        // Initialize cell class percentage chart
+        initCellClassPercentageChart();
     }
 });
 

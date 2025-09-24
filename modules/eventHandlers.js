@@ -141,6 +141,14 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         });
     }
 
+    // Open cell class percentage chart widget (new top-right button)
+    const classPercentageBtn = document.getElementById('classPercentageBtn');
+    if (classPercentageBtn) {
+        classPercentageBtn.addEventListener('click', () => {
+            window.showCellClassPercentageWidget();
+        });
+    }
+
     // Close gene widget
     elements.geneWidgetClose.addEventListener('click', () => {
         window.hideGeneWidget();
