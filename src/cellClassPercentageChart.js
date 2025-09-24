@@ -152,7 +152,7 @@ function createPercentageBarChart(data) {
     }
 
     // Set up dimensions - extra bottom margin for rotated labels
-    const margin = { top: 40, right: 30, bottom: 180, left: 60 };
+    const margin = { top: 40, right: 30, bottom: 60, left: 60 };
     const containerRect = container.getBoundingClientRect();
     const width = Math.max(400, containerRect.width - margin.left - margin.right);
     const height = Math.max(300, containerRect.height - margin.top - margin.bottom);
