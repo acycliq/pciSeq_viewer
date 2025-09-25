@@ -111,10 +111,19 @@ function parseArrayString(str) {
         // Split by comma and clean up
         return cleaned.split(',').map(item => {
             const trimmed = item.trim().replace(/"/g, '');
-            
-            // Try to parse as number, otherwise keep as string
-            const num = parseFloat(trimmed);
-            return isNaN(num) ? trimmed : num;
+
+            // CRITICAL FIX: Don't convert cell class names to numbers!
+            // Cell class names like "016 CA1-ProS Glut" should stay as strings.
+            // Only parse pure numbers (no spaces/letters) to avoid truncation.
+            // parseFloat("016 CA1-ProS Glut") = 16 (WRONG!)
+            if (/^\d+(\.\d+)?$/.test(trimmed)) {
+                // Pure number - safe to parse
+                const num = parseFloat(trimmed);
+                return isNaN(num) ? trimmed : num;
+            } else {
+                // Contains letters/spaces - keep as string
+                return trimmed;
+            }
         });
         
     } catch (error) {
