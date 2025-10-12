@@ -7,8 +7,8 @@
 
 [//]: # ()
 [//]: # ([View interactive charts]&#40;https://acycliq.github.io/deckgl_viewer/counts_per_class.html&#41;)
-
----
+[//]: # ()
+[//]: # (---)
 
 ## Setting Up Your Own Data
 
