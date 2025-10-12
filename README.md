@@ -19,7 +19,7 @@
 
 ### Step 1: Run pciSeq
 
-Run function pciSeq.fit() with `save_data=True`:
+Run function `pciSeq.fit()` with `save_data=True`:
 
 ```python
 import pciSeq
