@@ -1,10 +1,10 @@
 /**
  * Boundary Tracer Module
- * 
+ *
  * Implements Bresenham's line algorithm to trace all pixels between consecutive
  * vertices of a polygon boundary. This is used to convert sparse vertex data
  * into a complete pixel-perfect boundary representation.
- * 
+ *
  * Usage:
  * - traceBoundaryPixels(vertices) - returns all boundary pixels
  * - processClippedBoundaries(cells) - processes cell data with clippedBoundary arrays
@@ -13,7 +13,7 @@
 /**
  * Bresenham's line algorithm to get all pixels between two points
  * @param {number} x0 - Start x coordinate
- * @param {number} y0 - Start y coordinate  
+ * @param {number} y0 - Start y coordinate
  * @param {number} x1 - End x coordinate
  * @param {number} y1 - End y coordinate
  * @returns {Array} Array of [x, y] pixel coordinates
@@ -31,9 +31,9 @@ function getLinePixels(x0, y0, x1, y1) {
 
     while (true) {
         pixels.push([x, y]);
-        
+
         if (x === x1 && y === y1) break;
-        
+
         const e2 = 2 * err;
         if (e2 > -dy) {
             err -= dy;
@@ -44,7 +44,7 @@ function getLinePixels(x0, y0, x1, y1) {
             y += sy;
         }
     }
-    
+
     return pixels;
 }
 
@@ -66,26 +66,26 @@ export function traceBoundaryPixels(vertices) {
     if (!vertices || vertices.length < 2) {
         return [];
     }
-    
+
     const intVertices = convertToIntegers(vertices);
     const boundaryPixels = new Set();
-    
+
     // Trace lines between consecutive vertices
     for (let i = 0; i < intVertices.length - 1; i++) {
         const [x0, y0] = intVertices[i];
         const [x1, y1] = intVertices[i + 1];
-        
+
         const linePixels = getLinePixels(x0, y0, x1, y1);
         linePixels.forEach(pixel => {
             boundaryPixels.add(`${pixel[0]},${pixel[1]}`);
         });
     }
-    
+
     // If polygon is not already closed, close it
     if (intVertices.length > 2) {
         const firstVertex = intVertices[0];
         const lastVertex = intVertices[intVertices.length - 1];
-        
+
         if (firstVertex[0] !== lastVertex[0] || firstVertex[1] !== lastVertex[1]) {
             const closingPixels = getLinePixels(lastVertex[0], lastVertex[1], firstVertex[0], firstVertex[1]);
             closingPixels.forEach(pixel => {
@@ -93,7 +93,7 @@ export function traceBoundaryPixels(vertices) {
             });
         }
     }
-    
+
     // Convert back to array of coordinates
     return Array.from(boundaryPixels).map(coord => {
         const [x, y] = coord.split(',').map(Number);
@@ -142,11 +142,11 @@ export function getBoundaryStats(vertices) {
     if (!vertices || vertices.length === 0) {
         return { vertexCount: 0, boundaryPixelCount: 0, boundingBox: null };
     }
-    
+
     const boundaryPixels = traceBoundaryPixels(vertices);
     const xs = boundaryPixels.map(p => p[0]);
     const ys = boundaryPixels.map(p => p[1]);
-    
+
     return {
         vertexCount: vertices.length,
         boundaryPixelCount: boundaryPixels.length,

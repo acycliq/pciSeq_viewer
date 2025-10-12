@@ -5,6 +5,7 @@
 
 // Import the shared coordinate transformation function
 import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
+import { USE_ARROW } from '../config/constants.js';
 
 // Global cell data storage
 let cellLookupData = new Map(); // cellId -> { x, y, z, bounds }
@@ -18,31 +19,68 @@ async function initializeCellLookup() {
         return;
     }
 
-    console.log('üîç Initializing cell lookup system...');
-    
+    console.log(' Initializing cell lookup system...');
+
     try {
         // Load cell data from cellData.tsv
         await loadCellData();
         isLookupInitialized = true;
-        console.log('‚úÖ Cell lookup initialized with', cellLookupData.size, 'cells');
+        console.log(' Cell lookup initialized with', cellLookupData.size, 'cells');
     } catch (error) {
-        console.error('‚ùå Failed to initialize cell lookup:', error);
+        console.error(' Failed to initialize cell lookup:', error);
         throw error;
     }
 }
 
 /**
- * Load and parse cell data from TSV file
+ * Load and parse cell data from Arrow or TSV based on configuration
  */
 async function loadCellData() {
+    if (USE_ARROW && window.appState && window.appState.cellDataMap) {
+        console.log('üπ Using Arrow-loaded cell data from appState.cellDataMap');
+        return loadFromArrowData();
+    } else {
+        console.log('üì Loading cell data from TSV file');
+        return loadFromTSVFile();
+    }
+}
+
+/**
+ * Load cell data from existing Arrow-loaded cellDataMap
+ */
+function loadFromArrowData() {
+    const cellDataMap = window.appState.cellDataMap;
+    console.log('üì Processing', cellDataMap.size, 'Arrow-loaded cell records...');
+
+    for (const [cellId, cellData] of cellDataMap) {
+        const x = cellData.position.x;
+        const y = cellData.position.y;
+        const z = cellData.position.z || 0;
+
+        // Default bounds around cell center (Arrow doesn't include gaussian_contour)
+        const bounds = { minX: x-50, maxX: x+50, minY: y-50, maxY: y+50 };
+
+        cellLookupData.set(cellId, {
+            x: x,
+            y: y,
+            z: z,
+            bounds: bounds
+        });
+    }
+}
+
+/**
+ * Load and parse cell data from TSV file (fallback)
+ */
+async function loadFromTSVFile() {
     const config = window.config ? window.config() : {};
     const cellDataPath = config.cellDataFile || 'data/newSpots_newSegmentation/cellData.tsv';
-    console.log('üåê Fetching cell data from:', cellDataPath);
-    
+    console.log('üå Fetching cell data from:', cellDataPath);
+
     const response = await fetch(cellDataPath);
-    console.log('üì° Response status:', response.status, response.statusText);
-    console.log('üì° Response headers:', [...response.headers.entries()]);
-    
+    console.log('üì Response status:', response.status, response.statusText);
+    console.log('üì Response headers:', [...response.headers.entries()]);
+
     if (!response.ok) {
         throw new Error(`Failed to load cell data: ${response.status} ${response.statusText} from ${cellDataPath}`);
     }
@@ -65,12 +103,12 @@ async function loadCellData() {
         throw new Error('Required columns (Cell_Num, X, Y) not found in cellData.tsv');
     }
 
-    console.log('üìä Processing', lines.length - 1, 'cell records...');
+    console.log('üì Processing', lines.length - 1, 'TSV cell records...');
 
     // Process cell data
     for (let i = 1; i < lines.length; i++) {
         const columns = lines[i].split('\t');
-        
+
         if (columns.length >= headers.length) {
             const cellNum = parseInt(columns[columnIndices.Cell_Num]);
             const x = parseFloat(columns[columnIndices.X]);
@@ -80,7 +118,7 @@ async function loadCellData() {
             // Validate data
             if (!isNaN(cellNum) && !isNaN(x) && !isNaN(y)) {
                 let bounds = null;
-                
+
                 // Parse gaussian contour if available
                 if (columnIndices.gaussian_contour !== -1 && columns[columnIndices.gaussian_contour]) {
                     try {
@@ -115,14 +153,14 @@ function parseContourBounds(contourStr) {
         // Remove brackets and split by space, then parse coordinate pairs
         const coordStr = contourStr.replace(/[\[\]]/g, '');
         const coords = coordStr.split(' ');
-        
+
         let minX = Infinity, maxX = -Infinity;
         let minY = Infinity, maxY = -Infinity;
-        
+
         for (let i = 0; i < coords.length; i += 2) {
             const x = parseFloat(coords[i]);
             const y = parseFloat(coords[i + 1]);
-            
+
             if (!isNaN(x) && !isNaN(y)) {
                 minX = Math.min(minX, x);
                 maxX = Math.max(maxX, x);
@@ -130,7 +168,7 @@ function parseContourBounds(contourStr) {
                 maxY = Math.max(maxY, y);
             }
         }
-        
+
         return { minX, maxX, minY, maxY };
     } catch (e) {
         return null;
@@ -156,8 +194,8 @@ async function searchAndNavigateToCell(cellId) {
         throw new Error(`Cell ${cellNum} not found in dataset`);
     }
 
-    console.log(`üéØ Navigating to cell ${cellNum} at position (${cellData.x}, ${cellData.y})`);
-    console.log(`üìä Cell bounds:`, cellData.bounds);
+    console.log(`üé Navigating to cell ${cellNum} at position (${cellData.x}, ${cellData.y})`);
+    console.log(`üì Cell bounds:`, cellData.bounds);
 
     // Get image dimensions for coordinate transformation
     const config = window.config ? window.config() : {};
@@ -166,33 +204,33 @@ async function searchAndNavigateToCell(cellId) {
         height: config.imageHeight,
         tileSize: 256
     };
-    
-    console.log(`üó∫Ô∏è Image dimensions: ${config.imageWidth}x${config.imageHeight}`);
-    
+
+    console.log(`üó∫Ô∏ Image dimensions: ${config.imageWidth}x${config.imageHeight}`);
+
     // CRITICAL: Transform coordinates from original image space to tile coordinate space
     const [transformedX, transformedY] = transformToTileCoordinates(cellData.x, cellData.y, imageDimensions);
-    
-    console.log(`üîÑ Coordinate transformation:`);
+
+    console.log(`üî Coordinate transformation:`);
     console.log(`   Original: (${cellData.x}, ${cellData.y})`);
     console.log(`   Transformed: (${transformedX}, ${transformedY})`);
-    
+
     // Calculate plane number from Z coordinate
     const [xVoxelSize, yVoxelSize, zVoxelSize] = config.voxelSize; // [0.28, 0.28, 0.7]
     const planeNumber = Math.floor(cellData.z * xVoxelSize / zVoxelSize);
-    
-    console.log(`üéØ Cell Z coordinate: ${cellData.z}`);
-    console.log(`üìê Voxel sizes: x=${xVoxelSize}, y=${yVoxelSize}, z=${zVoxelSize}`);
-    console.log(`üßÆ Calculation: ${cellData.z} * ${xVoxelSize} / ${zVoxelSize} = ${cellData.z * xVoxelSize / zVoxelSize}`);
-    console.log(`‚úàÔ∏è Calculated plane number: ${planeNumber} (valid range: 0-${config.totalPlanes - 1})`);
-    
+
+    console.log(`üé Cell Z coordinate: ${cellData.z}`);
+    console.log(` Voxel sizes: x=${xVoxelSize}, y=${yVoxelSize}, z=${zVoxelSize}`);
+    console.log(`üß Calculation: ${cellData.z} * ${xVoxelSize} / ${zVoxelSize} = ${cellData.z * xVoxelSize / zVoxelSize}`);
+    console.log(`‚úàÔ∏ Calculated plane number: ${planeNumber} (valid range: 0-${config.totalPlanes - 1})`);
+
     // Switch to the calculated plane
     if (window.updatePlane && typeof window.updatePlane === 'function') {
         window.updatePlane(planeNumber);
-        console.log(`üéöÔ∏è Switched to plane ${planeNumber}`);
+        console.log(`üéöÔ∏ Switched to plane ${planeNumber}`);
     } else {
-        console.warn('‚ö†Ô∏è Could not switch plane - updatePlane function not available');
+        console.warn(' Could not switch plane - updatePlane function not available');
     }
-    
+
     // CRITICAL: Use high zoom for close-up view of the cell
     const targetZoom = 8; // Maximum zoom for detailed cell view
 
@@ -203,16 +241,16 @@ async function searchAndNavigateToCell(cellId) {
     }
 
     // Temporarily disable the controller, do the navigation, then re-enable it with original settings
-    console.log('üéØ Navigating to cell at transformed coordinates:', transformedX, transformedY);
-    
+    console.log('üé Navigating to cell at transformed coordinates:', transformedX, transformedY);
+
     // Step 1: Save original controller configuration and disable controller during transition
     const originalController = deckInstance.props.controller;
-    console.log('üíæ Saved original controller config:', originalController);
-    
+    console.log('üí Saved original controller config:', originalController);
+
     deckInstance.setProps({
         controller: false
     });
-    
+
     // Step 2: Navigate with transition
     const targetViewState = {
         target: [transformedX, transformedY, 0],
@@ -220,21 +258,21 @@ async function searchAndNavigateToCell(cellId) {
         transitionDuration: 1500,
         transitionInterpolator: new deck.LinearInterpolator(['target', 'zoom'])
     };
-    
+
     deckInstance.setProps({
         viewState: targetViewState
     });
-    
+
     // Step 3: Re-enable controller with ORIGINAL configuration after transition
     setTimeout(() => {
         deckInstance.setProps({
             controller: originalController, // Restore original controller with maxZoom: 8, etc.
             viewState: undefined // Let controller take over
         });
-        console.log('üîì Controller re-enabled with original config (maxZoom: 8)');
+        console.log('üî Controller re-enabled with original config (maxZoom: 8)');
     }, 1600);
 
-    console.log(`üìç Started navigation to: (${transformedX}, ${transformedY}) at zoom ${targetZoom}`);
+    console.log(`üì Started navigation to: (${transformedX}, ${transformedY}) at zoom ${targetZoom}`);
 
     return cellData;
 }
@@ -258,7 +296,7 @@ function setupCellLookupUI() {
             input.select();
             status.textContent = '';
             status.className = 'cell-search-status';
-            console.log('üîç Cell lookup opened with Ctrl+F');
+            console.log(' Cell lookup opened with Ctrl+F');
         }
     });
 
@@ -294,7 +332,7 @@ function setupCellLookupUI() {
     // Search function
     async function performCellSearch() {
         const cellId = input.value.trim();
-        
+
         if (!cellId) {
             showStatus('Please enter a cell ID', 'error');
             return;
@@ -303,17 +341,17 @@ function setupCellLookupUI() {
         try {
             showStatus('Searching for cell...', '');
             goBtn.disabled = true;
-            
+
             const cellData = await searchAndNavigateToCell(cellId);
-            
+
             showStatus(`Found cell ${cellId}! Navigating...`, 'success');
-            
+
             // Close modal after short delay
             setTimeout(() => {
                 modal.style.display = 'none';
                 goBtn.disabled = false;
             }, 1500);
-            
+
         } catch (error) {
             showStatus(error.message, 'error');
             goBtn.disabled = false;
@@ -326,7 +364,7 @@ function setupCellLookupUI() {
         status.className = `cell-search-status ${type}`;
     }
 
-    console.log('üîç Cell lookup UI initialized - Press Ctrl+F to search for cells');
+    console.log(' Cell lookup UI initialized - Press Ctrl+F to search for cells');
 }
 
 // Export functions for use in main application

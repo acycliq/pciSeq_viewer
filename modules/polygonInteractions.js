@@ -32,16 +32,16 @@ export class PolygonBoundaryHighlighter {
         this.linesLayerId = 'cell-spot-lines';
         this.highlightColor = [255, 255, 255, 255]; // White highlight
         this.highlightWidth = 3;
-        
+
         // Cell-to-spot connections
         this.cellToSpotsIndex = cellToSpotsIndex;
         this.geneToId = geneToId;
         this.cellDataMap = cellDataMap;
-        
+
         // Pinned lines state
         this.pinnedCell = null; // Cell label that's pinned
         this.pinnedLineLayer = null; // Cached line layer for pinned cell
-        
+
         // Throttling for performance
         this.lastUpdateTime = 0;
         this.throttleDelay = 100; // 10fps (100ms) - much less frequent updates
@@ -68,7 +68,7 @@ export class PolygonBoundaryHighlighter {
         const currentProps = this.deckglInstance.props;
         this.originalHoverHandler = currentProps.onHover;
         this.originalClickHandler = currentProps.onClick;
-        
+
         // Update the deck.gl instance to include hover and click handling
         this.deckglInstance.setProps({
             ...currentProps,
@@ -159,24 +159,24 @@ export class PolygonBoundaryHighlighter {
     updateHighlight(polygonObject) {
         const currentLayers = this.deckglInstance.props.layers || [];
         let updatedLayers = [...currentLayers];
-        
+
         // Handle polygon highlight layer
-        const existingHighlightIndex = updatedLayers.findIndex(layer => 
+        const existingHighlightIndex = updatedLayers.findIndex(layer =>
             layer.id === this.highlightLayerId
         );
-        
+
         const highlightLayer = this.createHighlightLayer(polygonObject);
         if (existingHighlightIndex >= 0) {
             updatedLayers[existingHighlightIndex] = highlightLayer;
         } else {
             updatedLayers.push(highlightLayer);
         }
-        
+
         // Handle cell-to-spot lines layer
-        const existingLinesIndex = updatedLayers.findIndex(layer => 
+        const existingLinesIndex = updatedLayers.findIndex(layer =>
             layer.id === this.linesLayerId
         );
-        
+
         const lineLayer = this.createLineLayer(polygonObject);
         if (lineLayer) {
             if (existingLinesIndex >= 0) {
@@ -188,7 +188,7 @@ export class PolygonBoundaryHighlighter {
             // Remove line layer if no spots found
             updatedLayers.splice(existingLinesIndex, 1);
         }
-        
+
         this.deckglInstance.setProps({ layers: updatedLayers });
     }
 
@@ -198,18 +198,18 @@ export class PolygonBoundaryHighlighter {
     clearHighlight() {
         const currentLayers = this.deckglInstance.props.layers || [];
         let updatedLayers = [...currentLayers];
-        
+
         // Clear polygon highlight layer
-        const existingHighlightIndex = updatedLayers.findIndex(layer => 
+        const existingHighlightIndex = updatedLayers.findIndex(layer =>
             layer.id === this.highlightLayerId
         );
         if (existingHighlightIndex >= 0) {
             updatedLayers[existingHighlightIndex] = this.createHighlightLayer(null);
         }
-        
+
         // Only remove lines layer if not pinned
         if (!this.pinnedCell) {
-            const existingLinesIndex = updatedLayers.findIndex(layer => 
+            const existingLinesIndex = updatedLayers.findIndex(layer =>
                 layer.id === this.linesLayerId
             );
             if (existingLinesIndex >= 0) {
@@ -217,14 +217,14 @@ export class PolygonBoundaryHighlighter {
             }
         } else {
             // Keep the pinned line layer
-            const existingLinesIndex = updatedLayers.findIndex(layer => 
+            const existingLinesIndex = updatedLayers.findIndex(layer =>
                 layer.id === this.linesLayerId
             );
             if (existingLinesIndex >= 0 && this.pinnedLineLayer) {
                 updatedLayers[existingLinesIndex] = this.pinnedLineLayer;
             }
         }
-        
+
         this.deckglInstance.setProps({ layers: updatedLayers });
     }
 
@@ -261,18 +261,18 @@ export class PolygonBoundaryHighlighter {
                 return transformToTileCoordinates(cellData.X, cellData.Y, IMG_DIMENSIONS);
             }
         }
-        
+
         // Fallback to polygon vertex average if cellData not available
         if (!polygonCoords || polygonCoords.length === 0) return null;
-        
+
         let sumX = 0, sumY = 0;
         const points = polygonCoords[0]; // Get the outer ring
-        
+
         for (const [x, y] of points) {
             sumX += x;
             sumY += y;
         }
-        
+
         return [sumX / points.length, sumY / points.length];
     }
 
@@ -296,7 +296,7 @@ export class PolygonBoundaryHighlighter {
                 ];
             }
         }
-        
+
         // Fallback to white with transparency
         return [255, 255, 255, 150];
     }
@@ -311,21 +311,21 @@ export class PolygonBoundaryHighlighter {
 
         const { LineLayer } = deck;
         const cellLabel = polygonObject.properties.label;
-        
+
         // Get all spots for this cell
         const spots = this.cellToSpotsIndex.get(cellLabel) || [];
         if (spots.length === 0) return null;
-        
+
         // Calculate cell centroid using actual cell coordinates if available
         const centroid = this.calculatePolygonCentroid(polygonObject.geometry.coordinates, cellLabel);
         if (!centroid) return null;
-        
+
         // Create line data from each spot to centroid
         // Transform spot coordinates to tile space to match gene markers
         const lineData = spots.map(spot => {
             // Transform using the same method as gene layers
             const sourcePosition = transformToTileCoordinates(spot.x, spot.y, IMG_DIMENSIONS);
-            
+
             return {
                 sourcePosition: centroid,
                 targetPosition: sourcePosition,
@@ -360,7 +360,7 @@ export class PolygonBoundaryHighlighter {
         // Only handle polygon clicks
         if (info.layer && info.layer.id.includes('polygons-') && info.object) {
             const cellLabel = info.object.properties.label;
-            
+
             if (this.pinnedCell === cellLabel) {
                 // Unpin if clicking the same cell
                 console.log(`Unpinning cell ${cellLabel}`);
@@ -379,27 +379,27 @@ export class PolygonBoundaryHighlighter {
     pinCellLines(polygonObject) {
         const cellLabel = polygonObject.properties.label;
         this.pinnedCell = cellLabel;
-        
+
         // Create the line layer for this cell
         const lineLayer = this.createLineLayer(polygonObject);
         if (lineLayer) {
             this.pinnedLineLayer = lineLayer;
-            
+
             // Add the pinned line layer
             const currentLayers = this.deckglInstance.props.layers || [];
-            const existingLinesIndex = currentLayers.findIndex(layer => 
+            const existingLinesIndex = currentLayers.findIndex(layer =>
                 layer.id === this.linesLayerId
             );
-            
+
             let updatedLayers = [...currentLayers];
             if (existingLinesIndex >= 0) {
                 updatedLayers[existingLinesIndex] = lineLayer;
             } else {
                 updatedLayers.push(lineLayer);
             }
-            
+
             this.deckglInstance.setProps({ layers: updatedLayers });
-            
+
             // Show pin notification near the cell
             this.showPinNotification(`Cell ${cellLabel} pinned`, 'pin', polygonObject);
         }
@@ -412,19 +412,19 @@ export class PolygonBoundaryHighlighter {
         const cellLabel = this.pinnedCell;
         this.pinnedCell = null;
         this.pinnedLineLayer = null;
-        
+
         // Remove the pinned lines layer
         const currentLayers = this.deckglInstance.props.layers || [];
-        const existingLinesIndex = currentLayers.findIndex(layer => 
+        const existingLinesIndex = currentLayers.findIndex(layer =>
             layer.id === this.linesLayerId
         );
-        
+
         if (existingLinesIndex >= 0) {
             const updatedLayers = [...currentLayers];
             updatedLayers.splice(existingLinesIndex, 1);
             this.deckglInstance.setProps({ layers: updatedLayers });
         }
-        
+
         // Show unpin notification
         if (cellLabel) {
             this.showPinNotification(`Cell ${cellLabel} unpinned`, 'unpin');
@@ -457,16 +457,16 @@ export class PolygonBoundaryHighlighter {
             `;
             document.body.appendChild(notification);
         }
-        
+
         // Set message and color based on type
         notification.textContent = message;
-        notification.style.background = type === 'pin' ? 
+        notification.style.background = type === 'pin' ?
             'rgba(34, 139, 34, 0.9)' : // Green for pin
             'rgba(220, 53, 69, 0.9)';  // Red for unpin
-        
+
         // Show notification
         notification.style.opacity = '1';
-        
+
         // Hide after 2 seconds
         setTimeout(() => {
             notification.style.opacity = '0';
@@ -480,7 +480,7 @@ export class PolygonBoundaryHighlighter {
         this.clearHighlight();
         this.unpinCellLines();
         this.hoveredPolygon = null;
-        
+
         // Remove notification if it exists
         const notification = document.getElementById('pin-notification');
         if (notification) {

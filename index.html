@@ -27,6 +27,9 @@
     <script src="config/colorSchemes.js"></script>
     <!-- Import cell lookup module -->
     <script type="module" src="modules/cellLookup.js"></script>
+    <!-- Cell info components -->
+    <script src="modules/donut.js"></script>
+    <script src="modules/class-table.js"></script>
 </head>
 <body>
     <div id="map"></div>
@@ -49,22 +52,50 @@
     <!-- Gene Panel Button with Size Slider -->
     <div class="minimal-controls" style="top: 15px; left: 15px; right: auto;">
         <button id="genePanelBtn">🧬 Genes</button>
+        <button id="geneDistributionBtn" title="Gene Distribution Chart">📊 Distribution</button>
         <div class="control-item gene-size-item">
             <label for="geneSizeSlider">Size</label>
             <input type="range" id="geneSizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
             <span id="geneSizeValue">1.0</span>
         </div>
+        <div class="control-item score-filter-item">
+            <label for="scoreFilterSlider">Score Filter</label>
+            <input type="range" id="scoreFilterSlider" min="0" max="1.0" step="0.01" value="0">
+            <span id="scoreFilterValue">0.00</span>
+        </div>
+        <div class="control-item" style="gap:6px; align-items:center;">
+            <input type="checkbox" id="uniformSizeToggle">
+            <label for="uniformSizeToggle" title="When enabled, all markers use the same size regardless of plane distance">Uniform<br>Size</label>
+        </div>
     </div>
 
     <!-- Selection Tool Button -->
     <div class="minimal-controls" style="top: 50px; left: 15px; right: auto;">
-        <button id="selectionToolBtn" style="background: transparent; border: none; padding: 0; margin: 0;"><img src="selection_tool.png" alt="Rectangular Selection Tool" style="width: 16px; height: 16px; background: transparent; padding: 0; margin: 0; display: block; border: none;"></button>
+        <button id="selectionToolBtn" title="Rectangular Selection"
+                style="position:absolute; top:12px; left:12px; z-index:2000; display:flex; align-items:center; gap:6px;
+                       background:#1f2937; color:#e8e8f0; border:1px solid #334155; border-radius:6px; padding:6px 10px; cursor:pointer;">
+            <img src="selection_tool.png" alt="Selection" style="width:16px; height:16px; display:block;">
+            <span>Selection</span>
+        </button>
     </div>
 
-    <!-- Cell Class Panel Button -->
+    <!-- Top-right Action Buttons (Cell Classes, Christina, scRNAseq, Classes by Z) -->
     <div class="minimal-controls" style="top: 50px; right: 15px; left: auto;">
-        <button id="cellClassViewerBtn" onclick="openCellClassViewer()" style="background: transparent; border: none; padding: 0; margin: 0;"><img src="lambda.png" alt="Cell Class Viewer" style="width: 16px; height: 16px; background: transparent; padding: 0; margin: 0; display: block; border: none;"></button>
-        <button id="cellClassPanelBtn">🔬 Cell Classes</button>
+        <button id="cellClassViewerBtn" onclick="openCellClassViewer()" title="Open Christina">
+            <span>Christina</span>
+        </button>
+        <button id="cellClassPanelBtn" title="Cell Classes">
+            <span>Cell Classes</span>
+        </button>
+        <button id="scrnaSeqBtn" onclick="openScRNASeqAnalysis()" title="Open scRNA-seq Analysis">
+            <span>scRNAseq</span>
+        </button>
+        <button id="classesByZBtn" title="Cell Class Distribution by Z-Plane">
+            <span>Classes by Z</span>
+        </button>
+        <button id="classPercentageBtn" title="Overall Cell Class Distribution">
+            <span>Class Distribution</span>
+        </button>
     </div>
 
     <!-- Floating Gene Panel Widget -->
@@ -103,9 +134,69 @@
         </div>
     </div>
 
+    <!-- Gene Distribution Chart Widget -->
+    <div id="geneDistributionWidget" class="gene-widget hidden" style="top: 80px; left: 20px; width: 500px; height: 400px;">
+        <div class="gene-widget-header">
+            <span class="gene-widget-title">📊 Gene Distribution Chart</span>
+            <div class="widget-header-buttons">
+                <button id="geneDistributionWidgetUndock" class="widget-undock-btn" title="Open in separate window">⧉</button>
+                <button id="geneDistributionWidgetClose" class="widget-close-btn">×</button>
+            </div>
+        </div>
+        <div class="gene-widget-search">
+            <select id="geneDistributionSelect" style="width: 120px;">
+                <option value="">Select a gene...</option>
+            </select>
+        </div>
+        <div class="gene-widget-content" style="height: 320px; overflow: hidden;">
+            <div id="geneDistributionChart" style="width: 100%; height: 100%;"></div>
+        </div>
+    </div>
+
+    <!-- Cell Class Distribution Chart Widget -->
+    <div id="cellClassDistributionWidget" class="gene-widget hidden" style="top: 490px; left: 80px; width: 1000px; height: 800px;">
+        <div class="gene-widget-header">
+            <span class="gene-widget-title">📈 Cell Class Distribution by Z-Plane</span>
+            <div class="widget-header-buttons">
+                <button id="cellClassDistributionWidgetUndock" class="widget-undock-btn" title="Open in separate window">⧉</button>
+                <button id="cellClassDistributionWidgetClose" class="widget-close-btn">×</button>
+            </div>
+        </div>
+        <div class="gene-widget-search">
+            <select id="classesByZRegionSelect" style="width: 160px;">
+                <option value="">Select a region...</option>
+            </select>
+        </div>
+        <div class="gene-widget-content" style="flex: 1; overflow: hidden;">
+            <div id="cellClassDistributionChart" style="width: 100%; height: 100%;"></div>
+        </div>
+    </div>
+
+    <!-- Cell Class Percentage Chart Widget -->
+    <div id="cellClassPercentageWidget" class="gene-widget hidden" style="top: 80px; right: 80px; width: 800px; height: 600px;">
+        <div class="gene-widget-header">
+            <span class="gene-widget-title">📊 Cell Class Percentages</span>
+            <div class="widget-header-buttons">
+                <button id="cellClassPercentageWidgetUndock" class="widget-undock-btn" title="Open in separate window">⧉</button>
+                <button id="cellClassPercentageWidgetClose" class="widget-close-btn">×</button>
+            </div>
+        </div>
+        <div class="gene-widget-search">
+            <select id="classPercentageRegionSelect" style="width: 160px;">
+                <option value="">Select a region...</option>
+            </select>
+        </div>
+        <div class="gene-widget-content" style="flex: 1; overflow: hidden;">
+            <div id="cellClassPercentageChart" style="width: 100%; height: 100%;"></div>
+        </div>
+    </div>
+
     <!-- Widget overlay backdrop -->
     <div id="geneWidgetBackdrop" class="widget-backdrop hidden"></div>
     <div id="cellClassWidgetBackdrop" class="widget-backdrop hidden"></div>
+    <div id="geneDistributionWidgetBackdrop" class="widget-backdrop hidden"></div>
+    <div id="cellClassDistributionWidgetBackdrop" class="widget-backdrop hidden"></div>
+    <div id="cellClassPercentageWidgetBackdrop" class="widget-backdrop hidden"></div>
 
     <!-- Main Controls -->
     <div class="main-controls">
@@ -130,23 +221,66 @@
             <input type="range" id="polygonOpacitySlider" min="0.0" max="1.0" step="0.1">
             <span id="polygonOpacityValue">0.4</span>
         </div>
+
+        <!-- Z-Projection Overlay Controls -->
+        <div class="control-item">
+            <input type="checkbox" id="zProjectionToggle">
+            <label for="zProjectionToggle" style="font-size: 12px;">All Planes</label>
+        </div>
+        <div id="zProjectionControls" style="display: none; margin-left: 15px;">
+            <div class="control-item" style="margin-top: 5px;">
+                <label for="zProjectionOpacity" style="font-size: 11px;">Overlay:</label>
+                <input type="range" id="zProjectionOpacity" min="0.1" max="0.8" step="0.1" value="0.3"
+                       style="width: 60px; margin: 0 5px;">
+                <span id="zProjectionOpacityValue" style="font-size: 10px;">30%</span>
+            </div>
+        </div>
     </div>
 
     <div class="loading-indicator" id="loadingIndicator">Loading...</div>
-    
+
     <!-- Scale Bar -->
     <div id="scaleBar" class="scale-bar">
         <div class="scale-bar-line"></div>
         <div class="scale-bar-label">100 μm</div>
     </div>
-    
+
     <!-- Coordinate Display -->
     <div id="coordinateDisplay" class="coordinate-display" style="display: none;">
-        <span id="pixelCoords">---, ---</span> px | 
-        <span id="micronCoords">---, ---</span> μm | 
-        <span id="deckglCoords">---, ---</span> deck
+        <span id="pixelCoords">---, ---</span> px |
+        <span id="micronCoords">---, ---</span> μm
+    </div>
+
+    <!-- Cell Info Panel (Bottom Right) -->
+    <div id="cellInfoPanel" class="cell-info-panel" style="display: none;">
+        <div class="cell-info-header">
+            <span id="cellInfoTitle">Cell Information</span>
+            <button id="cellInfoClose" class="widget-close-btn">×</button>
+        </div>
+        <div class="cell-info-content">
+            <div class="cell-info-layout">
+                <!-- Gene Counts Table (left) -->
+                <div class="cell-info-left">
+                    <table id="geneCountsTable" class="display compact"></table>
+                </div>
+                <!-- Donut Chart (right) -->
+                <div class="cell-info-right">
+                    <div class="cell-info-chart-container">
+                        <div id="cellInfoChart">
+                            <svg width="280" height="160"></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="src/app.js"></script>
+    <script>
+        // Function to open scRNA-seq analysis in new tab
+        function openScRNASeqAnalysis() {
+            window.open('scrna_dashboard.html', '_blank');
+        }
+    </script>
 </body>
 </html>

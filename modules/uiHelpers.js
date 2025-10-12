@@ -1,6 +1,6 @@
 /**
  * UI Helper Functions Module
- * 
+ *
  * This module contains utility functions for managing UI state, tooltips,
  * loading indicators, and polygon alias controls
  */
@@ -36,24 +36,34 @@ export function hideLoading(state, loadingElement) {
 export function showTooltip(info, tooltipElement) {
     if (info.picked && info.object) {
         let content = '';
-        
+
         // Check if this is a polygon layer
         if (info.layer?.id?.startsWith('polygons-')) {
             // Polygon tooltip - show enhanced cell information
             if (info.object.properties) {
                 const cellLabel = info.object.properties.label;
-                const cellClass = info.object.properties.cellClass || 'Unknown';
+                let cellClass = info.object.properties.cellClass || 'Unknown';
+                if (Array.isArray(cellClass)) cellClass = cellClass[0] || 'Unknown';
+                // If class came as a stringified list, parse and pick first
+                if (typeof cellClass === 'string' && cellClass.trim().startsWith('[')) {
+                    try {
+                        const parsed = JSON.parse(cellClass.replace(/'/g, '"'));
+                        if (Array.isArray(parsed) && parsed.length > 0) cellClass = parsed[0];
+                    } catch {}
+                }
+                cellClass = String(cellClass).trim();
                 const planeId = info.object.properties.plane_id;
-                
+
                 // Get cell coordinates and probability from cellData
                 let cellCoords = '';
                 let classProb = '';
+                let colorHex = '';
                 if (window.debugData && window.debugData.getCell) {
                     const cellData = window.debugData.getCell(parseInt(cellLabel));
                     if (cellData && cellData.position) {
                         const coords = cellData.position;
                         cellCoords = `<strong>Cell Coords:</strong> (${coords.x.toFixed(2)}, ${coords.y.toFixed(2)}, ${coords.z.toFixed(2)})<br>`;
-                        
+
                         // Get cell class probability if available
                         if (cellData.classification && cellData.classification.className && cellData.classification.probability) {
                             const classIndex = cellData.classification.className.indexOf(cellClass);
@@ -64,11 +74,22 @@ export function showTooltip(info, tooltipElement) {
                         }
                     }
                 }
-                
+                // Color hex (from class color schemes if available)
+                try {
+                    if (typeof classColorsCodes === 'function') {
+                        const scheme = classColorsCodes();
+                        const entry = scheme.find(e => e.className === cellClass);
+                        if (entry && entry.color) {
+                            colorHex = `<strong>Color:</strong> ${entry.color}<br>`;
+                        }
+                    }
+                } catch {}
+
                 content =  `<strong>Cell Label:</strong> ${cellLabel}<br>
                             ${cellCoords}
                             <strong>Plane:</strong>${planeId}<br>
                             <strong>Cell Class:</strong> ${cellClass}<br>
+                            ${colorHex}
                             ${classProb}`;
             }
         } else if (info.object.gene) {
@@ -76,13 +97,13 @@ export function showTooltip(info, tooltipElement) {
             const gene = info.object.gene;
             const coords = `(${info.object.x.toFixed(2)}, ${info.object.y.toFixed(2)}, ${info.object.z.toFixed(2)})`;
             const planeId = info.object.plane_id;
-            
+
             // Get spot_id and parent information
             let spotInfo = '';
             if (info.object.spot_id !== undefined) {
                 spotInfo = `<strong>Spot ID:</strong> ${info.object.spot_id}<br>`;
             }
-            
+
             // Get color information
             let colorInfo = '';
             if (typeof glyphSettings === 'function') {
@@ -92,7 +113,7 @@ export function showTooltip(info, tooltipElement) {
                     colorInfo = `<strong>Color:</strong> ${geneSetting.color}<br>`;
                 }
             }
-            
+
             // Get parent cell information
             let parentInfo = '';
             let label = info.object.neighbour;
@@ -102,7 +123,7 @@ export function showTooltip(info, tooltipElement) {
                 parentInfo = `<strong>Parent Cell:</strong> ${neighbour}<br>
                              <strong>Parent Probability:</strong> ${(info.object.prob * 100).toFixed(1)}%<br>`;
             }
-            
+
             // Get score and intensity information
             let qualityInfo = '';
             if (info.object.score !== undefined && info.object.score !== null) {
@@ -111,13 +132,13 @@ export function showTooltip(info, tooltipElement) {
             if (info.object.intensity !== undefined && info.object.intensity !== null) {
                 qualityInfo += `<strong>Intensity:</strong> ${info.object.intensity.toFixed(3)}<br>`;
             }
-            
+
             content = `${spotInfo}<strong>Gene:</strong> ${gene}<br>
                       ${colorInfo}<strong>Coords:</strong> ${coords}<br>
                       <strong>Plane:</strong> ${planeId}<br>
                       ${parentInfo}${qualityInfo}`;
         }
-        
+
         if (content) {
             tooltipElement.innerHTML = content;
             tooltipElement.style.display = 'block';
@@ -211,7 +232,7 @@ export function toggleAllPolygonAliases(polygonAliasVisibility, controlsContaine
  */
 export function toggleAllGenes(selectedGenes, geneDataMap, updateLayersCallback) {
     const allVisible = selectedGenes.size === geneDataMap.size;
-    
+
     if (allVisible) {
         // Hide all genes
         selectedGenes.clear();
@@ -221,7 +242,7 @@ export function toggleAllGenes(selectedGenes, geneDataMap, updateLayersCallback)
             selectedGenes.add(gene);
         });
     }
-    
+
     updateLayersCallback();
 }
 

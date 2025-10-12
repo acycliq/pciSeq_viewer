@@ -48,7 +48,7 @@ float getFaceIndex(vec3 normal_modelspace) {
 vec4 getBiomeColor() {
   // Check if this is gene data using voxelType (1 = gene data)
   bool isGeneData = (instanceVoxelType == 1.0);
-  
+
   if (isGeneData) {
     // Gene data: use original biome calculation
     vec2 coords = instanceBlockData.yz / 255.; // Convert byte to normalized coords
@@ -75,18 +75,18 @@ void main(void) {
   geometry.pickingColor = instancePickingColors;
 
   // SIMPLIFIED GEOMETRY SYSTEM (replaced complex Minecraft transformation system)
-  // 
+  //
   // Key fixes from debugging ghosting/texture issues between commits e9bdcdf2 -> d20e7ea2:
   // 1. POSITION SCALING: Must divide positions by 2.0 (original Minecraft block size)
   //    - Missing this made voxels 2x larger -> heavy ghosting from overlapping surfaces
-  // 2. TEXTURE SCALING: Must use anisotropicScale.xy for texture coordinates  
+  // 2. TEXTURE SCALING: Must use anisotropicScale.xy for texture coordinates
   //    - Missing this broke yellow line consistency in stone_atlas_2.png texture
   // 3. ANISOTROPIC Y-SCALING: Biological Z-stack data has elongated Y dimension (~2.5x)
   //    - Both geometry and texture must scale together for visual consistency
 
   // Simple cube geometry with anisotropic Y scaling only
   vec3 scaleVec = vec3(1.0, anisotropicScale, 1.0); // X=1.0, Y=dynamic (~2.5 for bio data), Z=1.0
-  
+
   // CRITICAL: Divide by 2.0 to match original Minecraft block size (unit cube -> half-size cube)
   // Missing this division caused "heavy ghosting" due to 2x larger voxels overlapping
   vec3 position_modelspace = (positions / 2.0) * scaleVec;
@@ -95,7 +95,7 @@ void main(void) {
   vec3 normal_modelspace = normals; // NOTE: with non-uniform scaling (scaleVec), correct normals via inverse-transpose:
                                     // vec3 normal_corr = normalize(normals / scaleVec);
                                     // Use normal_corr for lighting to avoid flat/incorrect shading on stretched axes.
-  
+
   // CRITICAL: Texture coordinates must match geometry scaling for consistent appearance
   // anisotropicScale.xy = (1.0, ~2.5) stretches Y-axis texture to match elongated voxels
   // This ensures yellow lines in stone_atlas_2.png appear consistently every 16 pixels
@@ -110,7 +110,7 @@ void main(void) {
 
   // Use stone texture from the custom 16x256px vertical atlas
   vec4 textureSettings = vec4(1.0, 0.0, 0.0, 1.0); // Use stone texture
-  
+
   // Stone texture coordinates (top of vertical strip: 16x16 pixels)
   vec4 textureFrame = vec4(0.0, 0.0, 16.0, 16.0);
   vTextureCoords = (textureFrame.xy + texCoords_modelspace * textureFrame.zw) / atlasTextureDim;
@@ -119,7 +119,7 @@ void main(void) {
   isVisible = 1.0;
 
   gl_Position = project_position_to_clipspace(instancePositions, instancePositions64Low, position_modelspace);
-  
+
   // Debug: Log first few positions (this will spam console but useful for debugging)
   if (instancePositions.x == -8.0 && instancePositions.y == 0.0 && instancePositions.z == -8.0) {
     // First block position for debugging
@@ -179,10 +179,10 @@ void main(void) {
   // Clean voxel type checking using tolerance for floating point precision
   const float VOXEL_TOLERANCE = 0.01;
   bool isGeneData = abs(vInstanceVoxelType - 1.0) < VOXEL_TOLERANCE;      // 1 = gene voxel
-  bool isCellVoxel = abs(vInstanceVoxelType - 2.0) < VOXEL_TOLERANCE;     // 2 = cell voxel  
+  bool isCellVoxel = abs(vInstanceVoxelType - 2.0) < VOXEL_TOLERANCE;     // 2 = cell voxel
   bool isBoundaryVoxel = abs(vInstanceVoxelType - 3.0) < VOXEL_TOLERANCE; // 3 = boundary voxel
   bool isStoneVoxel = abs(vInstanceVoxelType - 0.0) < VOXEL_TOLERANCE;    // 0 = stone voxel
-  
+
   vec4 color;
   if (isGeneData) {
     // Gene spots: use RGB data directly (alpha will be controlled by vColorScale.a for ghosting)
@@ -195,7 +195,7 @@ void main(void) {
   } else if (isBoundaryVoxel) {
     // Boundary voxels: use RGB data from boundary voxel definition
     vec4 boundary_rgb = vec4(vInstanceBlockData.rgb / 255.0, 1.0);
-    
+
     vec4 textureColor = texture2D(atlasTexture, vTextureCoords);
     color = mix(textureColor, boundary_rgb, 0.6);
   } else if (isStoneVoxel) {
@@ -211,16 +211,16 @@ void main(void) {
     // Unknown voxel type: use red for debugging
     color = vec4(1.0, 0.0, 0.0, 1.0);
   }
-  
+
   geometry.uv = vTextureCoords;
   // Apply color scale with proper alpha for ghosting effect
   gl_FragColor = vec4((color * vColorScale).rgb, vColorScale.a);
-  
+
   // Alpha test: discard fragments below threshold (0.001 = minimum visible alpha)
   if (gl_FragColor.a < 0.001) {
     discard;
   }
-  
+
   DECKGL_FILTER_COLOR(gl_FragColor, geometry);
 }
 `;
@@ -246,7 +246,7 @@ function loadTexture(gl, url) {
           height: data.height || 1
         };
       }
-      
+
       return new Texture2D(gl, {
         data,
         parameters: {
@@ -306,7 +306,7 @@ class VoxelLayer extends deck.Layer {
     const Model = deck.Model || window.luma?.Model || (window.luma && window.luma.engine && window.luma.engine.Model);
     const CubeGeometry = deck.CubeGeometry || window.luma?.CubeGeometry || (window.luma && window.luma.engine && window.luma.engine.CubeGeometry);
     if (!Model || !CubeGeometry) { throw new Error('Model/CubeGeometry not available'); }
-    
+
     return new Model(gl, {
       ...this.getShaders(),
       id: this.props.id,
@@ -314,7 +314,7 @@ class VoxelLayer extends deck.Layer {
       isInstanced: true
     });
   }
-  
+
   draw({uniforms}) {
     if (this.state.model) {
       const {sliceY, ghostOpacity = 0.1, anisotropicScale = 1.0} = this.props;
@@ -359,7 +359,7 @@ class VoxelLayer extends deck.Layer {
   calculateInstanceBlockData(attribute) {
     const {data, getBlockData, getTemperature, getHumidity, getLighting} = this.props;
     const {value} = attribute;
-    
+
     console.log('calculateInstanceBlockData called with', data.length, 'blocks');
     console.log('First block sample:', data[0]);
 
@@ -368,7 +368,7 @@ class VoxelLayer extends deck.Layer {
       if (object.rgb) {
         // Gene data: store RGB values
         value[i++] = object.rgb[0];
-        value[i++] = object.rgb[1]; 
+        value[i++] = object.rgb[1];
         value[i++] = object.rgb[2];
       } else {
         // Grey cube: store block data
@@ -384,7 +384,7 @@ class VoxelLayer extends deck.Layer {
   calculateInstanceVoxelType(attribute) {
     const {data, getVoxelType} = this.props;
     const {value} = attribute;
-    
+
     console.log('calculateInstanceVoxelType called with', data.length, 'blocks');
 
     let i = 0;
@@ -397,7 +397,7 @@ class VoxelLayer extends deck.Layer {
   calculateInstanceVoxelId(attribute) {
     const {data, getVoxelId} = this.props;
     const {value} = attribute;
-    
+
     console.log('calculateInstanceVoxelId called with', data.length, 'blocks');
 
     let i = 0;
@@ -410,7 +410,7 @@ class VoxelLayer extends deck.Layer {
   calculateInstancePickingColors(attribute) {
     const {data} = this.props;
     const {value} = attribute;
-    
+
     console.log('calculateInstancePickingColors called with', data.length, 'blocks');
 
     let i = 0;
@@ -421,7 +421,7 @@ class VoxelLayer extends deck.Layer {
       const r = (pickingIndex & 0x0000FF);
       const g = (pickingIndex & 0x00FF00) >> 8;
       const b = (pickingIndex & 0xFF0000) >> 16;
-      
+
       value[i++] = r;
       value[i++] = g;
       value[i++] = b;
@@ -455,14 +455,14 @@ class VoxelLayer extends deck.Layer {
   getPickingInfo(params) {
     const {info} = params;
     const {data} = this.props;
-    
+
     // Direct index mapping (no offset needed since deck.gl returns 0-based indices)
     const dataIndex = info.index;
-    
+
     if (dataIndex >= 0 && dataIndex < data.length) {
       info.object = data[dataIndex];
     }
-    
+
     return info;
   }
 

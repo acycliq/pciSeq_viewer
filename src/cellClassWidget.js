@@ -8,17 +8,17 @@ function populateCellClassWidget() {
         elements.cellClassList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">No cell classes available</div>';
         return;
     }
-    
+
     const cellClasses = Array.from(state.allCellClasses).sort();
-    
+
     // Don't modify selectedCellClasses here - preserve the current state
-    
+
     elements.cellClassList.innerHTML = '';
-    
+
     cellClasses.forEach(cellClass => {
         const item = document.createElement('div');
         item.className = 'gene-item';
-        
+
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.className = 'gene-checkbox';
@@ -31,7 +31,7 @@ function populateCellClassWidget() {
             }
             window.updateAllLayers();
             updateToggleAllCellClassesButton();
-            
+
             // Sync to undocked window if it exists
             if (window.undockedCellClassWindow && !window.undockedCellClassWindow.closed) {
                 const checkboxes = elements.cellClassList.querySelectorAll('.gene-checkbox');
@@ -42,27 +42,34 @@ function populateCellClassWidget() {
                 }, '*');
             }
         });
-        
+
         const colorSwatch = document.createElement('div');
         colorSwatch.className = 'gene-glyph';
         const color = state.cellClassColors.get(cellClass) || [192, 192, 192];
         colorSwatch.style.backgroundColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-        
+
         const name = document.createElement('span');
         name.className = 'gene-name';
         name.textContent = cellClass;
-        
+
         item.appendChild(checkbox);
         item.appendChild(colorSwatch);
         item.appendChild(name);
-        
+
         elements.cellClassList.appendChild(item);
     });
-    
+
     updateToggleAllCellClassesButton();
 }
 
 function updateToggleAllCellClassesButton() {
+    // Safety check: if allCellClasses hasn't been populated yet, show default state
+    if (!state.allCellClasses || state.allCellClasses.size === 0) {
+        elements.toggleAllCellClasses.textContent = 'Select All';
+        elements.toggleAllCellClasses.className = 'toggle-all-btn';
+        return;
+    }
+
     const allSelected = state.selectedCellClasses.size === state.allCellClasses.size;
     elements.toggleAllCellClasses.textContent = allSelected ? 'Unselect All' : 'Select All';
     elements.toggleAllCellClasses.className = allSelected ? 'toggle-all-btn unselect' : 'toggle-all-btn';
@@ -70,22 +77,22 @@ function updateToggleAllCellClassesButton() {
 
 function toggleAllCellClasses() {
     const shouldSelectAll = state.selectedCellClasses.size !== state.allCellClasses.size;
-    
+
     if (shouldSelectAll) {
         state.allCellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
     } else {
         state.selectedCellClasses.clear();
     }
-    
+
     // Update all checkboxes in the widget
     const checkboxes = elements.cellClassList.querySelectorAll('.gene-checkbox');
     checkboxes.forEach(checkbox => {
         checkbox.checked = shouldSelectAll;
     });
-    
+
     window.updateAllLayers();
     updateToggleAllCellClassesButton();
-    
+
     // Sync to undocked window if it exists
     if (window.undockedCellClassWindow && !window.undockedCellClassWindow.closed) {
         const checkboxes = elements.cellClassList.querySelectorAll('.gene-checkbox');
@@ -117,39 +124,39 @@ function setupCellClassDragFunctionality() {
     let currentY = 100; // Start from top
     let initialX = 0;
     let initialY = 0;
-    
+
     // Set initial position
     widget.style.left = currentX + 'px';
     widget.style.top = currentY + 'px';
-    
+
     function dragStart(e) {
         if (e.target.tagName === 'BUTTON') return;
-        
+
         initialX = e.clientX - currentX;
         initialY = e.clientY - currentY;
-        
+
         if (e.target === header || header.contains(e.target)) {
             isDragging = true;
             widget.classList.add('dragging');
         }
     }
-    
+
     function dragEnd() {
         isDragging = false;
         widget.classList.remove('dragging');
     }
-    
+
     function drag(e) {
         if (isDragging) {
             e.preventDefault();
             currentX = e.clientX - initialX;
             currentY = e.clientY - initialY;
-            
+
             widget.style.left = currentX + 'px';
             widget.style.top = currentY + 'px';
         }
     }
-    
+
     header.addEventListener('mousedown', dragStart);
     document.addEventListener('mousemove', drag);
     document.addEventListener('mouseup', dragEnd);
@@ -158,26 +165,26 @@ function setupCellClassDragFunctionality() {
 function undockCellClassWidget() {
     // Create a new window with the cell class list
     const newWindow = window.open('', 'CellClassPanel', 'width=450,height=600,scrollbars=yes');
-    
+
     // Store reference to undocked window
     window.undockedCellClassWindow = newWindow;
-    
+
     if (newWindow) {
         newWindow.document.write(`
             <html>
                 <head>
                     <title>Cell Class Panel</title>
                     <style>
-                        body { 
-                            margin: 0; 
-                            padding: 20px; 
-                            background: #1a1a1a; 
-                            color: white; 
-                            font-family: Arial, sans-serif; 
+                        body {
+                            margin: 0;
+                            padding: 20px;
+                            background: #1a1a1a;
+                            color: white;
+                            font-family: Arial, sans-serif;
                         }
-                        .gene-widget-content { 
-                            max-height: none; 
-                            overflow-y: auto; 
+                        .gene-widget-content {
+                            max-height: none;
+                            overflow-y: auto;
                         }
                         .gene-item {
                             display: flex;
@@ -271,7 +278,7 @@ function undockCellClassWidget() {
                     <script>
                         // Copy the current cell class list content
                         document.getElementById('undockedCellClassList').innerHTML = ${JSON.stringify(elements.cellClassList.innerHTML)};
-                        
+
                         // Add event listeners to the new checkboxes
                         const checkboxes = document.querySelectorAll('.gene-checkbox');
                         checkboxes.forEach((checkbox, index) => {
@@ -284,7 +291,7 @@ function undockCellClassWidget() {
                                 }, '*');
                             });
                         });
-                        
+
                         // Add search functionality
                         const searchInput = document.getElementById('undockedCellClassSearch');
                         searchInput.addEventListener('input', (e) => {
@@ -299,7 +306,7 @@ function undockCellClassWidget() {
                                 }
                             });
                         });
-                        
+
                         // Add toggle all functionality
                         const toggleAllBtn = document.getElementById('undockedToggleAllCellClasses');
                         toggleAllBtn.addEventListener('click', () => {
@@ -308,22 +315,22 @@ function undockCellClassWidget() {
                                 type: 'cellClassToggleAll'
                             }, '*');
                         });
-                        
+
                         // Update toggle button based on current state
                         function updateToggleButton() {
                             const allChecked = Array.from(checkboxes).every(cb => cb.checked);
                             toggleAllBtn.textContent = allChecked ? 'Unselect All' : 'Select All';
                             toggleAllBtn.className = allChecked ? 'toggle-all-btn unselect' : 'toggle-all-btn';
                         }
-                        
+
                         // Initial update
                         updateToggleButton();
-                        
+
                         // Listen for checkbox changes to update toggle button
                         checkboxes.forEach(checkbox => {
                             checkbox.addEventListener('change', updateToggleButton);
                         });
-                        
+
                         // Listen for messages from parent window
                         window.addEventListener('message', (event) => {
                             if (event.data.type === 'updateCheckboxes') {
@@ -340,7 +347,7 @@ function undockCellClassWidget() {
             </html>
         `);
         newWindow.document.close();
-        
+
         // Send initial checkbox states to undocked window
         setTimeout(() => {
             if (window.undockedCellClassWindow && !window.undockedCellClassWindow.closed) {
@@ -352,7 +359,7 @@ function undockCellClassWidget() {
                 }, '*');
             }
         }, 100);
-        
+
         // Listen for messages from the undocked window
         const messageHandler = (event) => {
             if (event.data.type === 'cellClassToggle') {
@@ -365,7 +372,7 @@ function undockCellClassWidget() {
             } else if (event.data.type === 'cellClassToggleAll') {
                 // Handle toggle all from undocked window
                 toggleAllCellClasses();
-                
+
                 // Send updated state back to undocked window
                 setTimeout(() => {
                     if (window.undockedCellClassWindow && !window.undockedCellClassWindow.closed) {
@@ -379,9 +386,9 @@ function undockCellClassWidget() {
                 }, 50);
             }
         };
-        
+
         window.addEventListener('message', messageHandler);
-        
+
         hideCellClassWidget();
     }
 }
@@ -389,7 +396,7 @@ function undockCellClassWidget() {
 function filterCellClasses(searchTerm) {
     const items = elements.cellClassList.querySelectorAll('.gene-item');
     const term = searchTerm.toLowerCase();
-    
+
     items.forEach(item => {
         const cellClassName = item.querySelector('.gene-name').textContent.toLowerCase();
         if (cellClassName.includes(term)) {

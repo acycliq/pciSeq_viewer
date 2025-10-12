@@ -7,15 +7,15 @@ function openCellClassViewer() {
         alert('Cell data is not loaded yet. Please wait for the data to load and try again.');
         return;
     }
-    
+
     const config = window.config();
     const midPlane = Math.floor((config.totalPlanes - 1) / 2);
     const selectedClasses = [];
-    
+
     // Open the separate HTML file with configuration parameters
     const url = `cellClassViewer.html?midPlane=${midPlane}`;
     const cellClassViewerWindow = window.open(url, 'cellClassViewer', 'width=1200,height=800');
-    
+
     setupCellClassViewerCommunication(cellClassViewerWindow, selectedClasses, midPlane);
 }
 
@@ -23,7 +23,7 @@ function setupCellClassViewerCommunication(cellClassViewerWindow, selectedClasse
     // Listen for messages from the cell class viewer
     const messageHandler = (event) => {
         if (event.source !== cellClassViewerWindow) return;
-        
+
         if (event.data.type === 'requestCellData') {
             const cellData = getCellClassViewerData(event.data.selectedClasses);
             cellClassViewerWindow.postMessage({
@@ -32,9 +32,9 @@ function setupCellClassViewerCommunication(cellClassViewerWindow, selectedClasse
             }, '*');
         }
     };
-    
+
     window.addEventListener('message', messageHandler);
-    
+
     // Clean up when window is closed
     const checkClosed = setInterval(() => {
         if (cellClassViewerWindow.closed) {
@@ -48,9 +48,9 @@ function getCellClassViewerData(selectedClasses) {
     if (!selectedClasses || selectedClasses.length === 0) {
         return [];
     }
-    
+
     const cellClassData = [];
-    
+
     // Iterate through all cells and find those matching selected classes
     state.cellDataMap.forEach((cell, cellNum) => {
         // Check if this cell's primary class is in the selected classes
@@ -71,7 +71,7 @@ function getCellClassViewerData(selectedClasses) {
             }
         }
     });
-    
+
     return cellClassData;
 }
 

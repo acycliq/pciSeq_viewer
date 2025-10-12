@@ -1,5 +1,156 @@
 /* Combined Gene Expression and Cell Boundary Viewer Styles */
 
+/* Cell Info Panel */
+.cell-info-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 0;
+    max-height: 500px;
+    background: rgba(31, 41, 55, 0.95);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #e8e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 12px;
+    z-index: 2000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.cell-info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.cell-info-content {
+    padding: 8px;
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+/* Two-column layout: table left, donut right */
+.cell-info-layout {
+    display: flex;
+    gap: 4px;
+    align-items: stretch;
+}
+
+.cell-info-left, .cell-info-right {
+    flex: 0 1 auto;
+}
+
+/* Constrain heights to match donut svg height */
+.cell-info-left {
+    max-height: 160px;
+    overflow: auto;
+}
+
+.cell-info-right #cellInfoChart svg {
+    display: block;
+}
+
+.cell-info-chart-container {
+    text-align: center;
+    margin: 0;
+}
+
+.cell-info-tables {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.table-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cell-info-panel table {
+    font-size: 11px;
+}
+
+.cell-info-panel table thead th {
+    background: rgba(0,0,0,0.2);
+    color: #94a3b8;
+    padding: 6px 8px;
+    text-transform: uppercase;
+    font-size: 10px;
+}
+
+.cell-info-panel table tbody td {
+    padding: 4px 8px;
+}
+
+.cell-info-panel .dataTables_wrapper {
+    padding: 0;
+}
+
+.cell-info-panel .dataTables_wrapper .dataTables_length,
+.cell-info-panel .dataTables_wrapper .dataTables_filter,
+.cell-info-panel .dataTables_wrapper .dataTables_info,
+.cell-info-panel .dataTables_wrapper .dataTables_paginate {
+    display: none;
+}
+
+.cell-info-panel table.dataTable {
+    background: transparent;
+    color: #e8e8f0;
+    border-collapse: collapse;
+}
+
+.cell-info-panel table.dataTable thead th {
+    background: rgba(0, 0, 0, 0.2);
+    color: #94a3b8;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 8px;
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+
+.cell-info-panel table.dataTable tbody td {
+    padding: 4px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #e8e8f0;
+}
+
+.cell-info-panel table.dataTable tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Donut chart styles */
+.cell-info-panel .slices path {
+    stroke: rgba(255, 255, 255, 0.2);
+    stroke-width: 1px;
+}
+
+.cell-info-panel .sliceLabels text {
+    font-size: 10px;
+    fill: #e8e8f0;
+    pointer-events: none;
+}
+
+.cell-info-panel .lines polyline {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.45);
+    stroke-width: 1px;
+}
+
+.donutTooltip {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
 /* Cell Search Modal */
 .cell-search-modal {
     position: fixed;
@@ -120,25 +271,79 @@ body {
     color: #007bff;
 }
 
-/* Cell Class Panel Button */
-#cellClassPanelBtn {
-    background: url('./cluster_3.png') no-repeat center;
-    /*background-size: 20px 20px;*/
-    width: 22px;
-    height: 22px;
+/* Gene Distribution Button - same styling as Gene Panel Button */
+#geneDistributionBtn {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.9);
     border: none;
+    padding: 0;
     cursor: pointer;
+    font-size: 13px;
     user-select: none;
-    opacity: 0.9;
-    transition: all 0.2s ease;
-    font-size: 0; /* Hide text */
-    filter: brightness(1.2);
 }
 
-#cellClassPanelBtn:hover {
-    opacity: 1;
-    filter: brightness(1.4);
+#geneDistributionBtn:hover {
+    color: #007bff;
 }
+
+/* Top-right action buttons (Cell Classes, Christina, scRNAseq, Classes by Z, Class %) */
+#cellClassPanelBtn,
+#cellClassViewerBtn,
+#scrnaSeqBtn,
+#classesByZBtn,
+#classPercentageBtn {
+    position: absolute;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #1f2937; /* match Selection tool */
+    color: #e8e8f0;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 13px; /* ensure text is visible */
+    line-height: 1;
+    width: 100px; /* make both buttons same length */
+}
+
+#cellClassPanelBtn {
+    top: 12px;
+    right: 12px;
+}
+
+#cellClassViewerBtn {
+    top: 45px; /* add extra space below Cell Classes */
+    right: 12px;
+}
+
+#scrnaSeqBtn {
+    top: 78px; /* placed right under Christina */
+    right: 12px;
+}
+
+#classesByZBtn {
+    top: 111px; /* placed right under scRNAseq */
+    right: 12px;
+}
+
+#classPercentageBtn {
+    top: 144px; /* placed right under Classes by Z */
+    right: 12px;
+}
+
+#cellClassPanelBtn:hover,
+#cellClassViewerBtn:hover,
+#scrnaSeqBtn:hover,
+#classesByZBtn:hover,
+#classPercentageBtn:hover {
+    background: #111827;
+    border-color: #475569;
+    color: #ffffff;
+}
+
+/* removed duplicate scRNAseq styling; now unified above */
 
 /* Aggregated Classes Button */
 #aggregatedClassesBtn {
@@ -167,18 +372,18 @@ body {
     transform: translateX(-50%);
     z-index: 10;
     background: rgba(0, 0, 0, 0.7);
-    padding: 8px 16px;
+    padding: 8px 5px;
     border-radius: 4px;
     backdrop-filter: blur(10px);
     color: white;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 1px;
     font-size: 13px;
 }
 
 #planeSlider {
-    width: 300px;
+    width: 250px;
     height: 4px;
     background: rgba(255, 255, 255, 0.3);
     border-radius: 2px;
@@ -297,6 +502,42 @@ body {
 }
 
 .gene-size-item #geneSizeValue {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.8);
+    min-width: 24px;
+    text-align: center;
+    font-family: monospace;
+}
+
+/* Score Filter Slider - same styling as gene size slider */
+.score-filter-item {
+    gap: 4px;
+}
+.score-filter-item input[type="range"] {
+    width: 60px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    appearance: none;
+    outline: none;
+}
+.score-filter-item input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: pointer;
+}
+.score-filter-item input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+.score-filter-item #scoreFilterValue {
     font-size: 10px;
     color: rgba(255, 255, 255, 0.8);
     min-width: 24px;
@@ -642,8 +883,9 @@ body {
 /* Coordinate Display */
 .coordinate-display {
     position: fixed;
-    bottom: 15px;
-    right: 20px;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
     background: rgba(0, 0, 0, 0.8);
     color: white;
     padding: 8px 12px;
