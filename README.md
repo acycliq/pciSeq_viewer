@@ -17,12 +17,12 @@
 1. Run pciSeq analysis on your dataset to generate Arrow files
 2. A local web server to serve the viewer (e.g., Python's `http.server`)
 
-### Step 1: Run pciSeq Analysis
+### Step 1: Run pciSeq
 
-Run your pciSeq analysis with `save_data=True`:
+Run function pciSeq.fit() with `save_data=True`:
 
 ```python
-from pciSeq.app import fit
+import pciSeq
 
 opts = {
     'save_data': True,
@@ -30,7 +30,7 @@ opts = {
     # ... other options
 }
 
-fit(spots=spots_df, coo=coo_matrices, scRNAseq=scrna_df, opts=opts)
+pciSeq.fit(spots=spots_df, coo=coo_matrices, scRNAseq=scrna_df, opts=opts)
 ```
 
 This generates Arrow files in: `/path/to/output/pciSeq/data/arrow/`
