@@ -99,7 +99,7 @@ async function handleLoadCells(cfg) {
   // Concatenate across shards (small columns)
   let Xs=[], Ys=[], Zs=[], cellIds=[];
   let classNameLists=[], probLists=[];
-  
+
   for (const url of shardUrls) {
     const buf = await fetchArrayBuffer(url);
     const table = decodeFeather(buf);
@@ -107,13 +107,13 @@ async function handleLoadCells(cfg) {
     const Y = getTypedColumn(table, 'Y');
     const Z = getTypedColumn(table, 'Z');
     const cell_id = getTypedColumn(table, 'cell_id');
-    
+
     // Handle list columns
     const class_name_col = table.getChild('class_name');
     const prob_col = table.getChild('prob');
-    
+
     Xs.push(X); Ys.push(Y); Zs.push(Z); cellIds.push(cell_id);
-    
+
     // Extract list data from Arrow list columns
     if (class_name_col) {
       for (let i = 0; i < class_name_col.length; i++) {
@@ -123,7 +123,7 @@ async function handleLoadCells(cfg) {
         classNameLists.push(jsArray);
       }
     }
-    
+
     if (prob_col) {
       for (let i = 0; i < prob_col.length; i++) {
         const listValue = prob_col.get(i);
@@ -133,7 +133,7 @@ async function handleLoadCells(cfg) {
       }
     }
   }
-  
+
   // Flatten typed chunks
   function concatTyped(chunks) {
     if (chunks.length === 1) return chunks[0];
@@ -143,11 +143,11 @@ async function handleLoadCells(cfg) {
     for (const a of chunks) { if (!a) continue; out.set(a, off); off += a.length; }
     return out;
   }
-  
+
   const X = concatTyped(Xs), Y = concatTyped(Ys), Z = concatTyped(Zs);
   const cell_id = concatTyped(cellIds);
   const transfers = uniqueTransferList([X,Y,Z,cell_id].map(a=>a && a.buffer));
-  
+
   return { columns: { X, Y, Z, cell_id, class_name: classNameLists, prob: probLists }, transfers };
 }
 

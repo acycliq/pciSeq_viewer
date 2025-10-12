@@ -1,6 +1,6 @@
 /**
  * Advanced Application Configuration
- * 
+ *
  * This file contains only the settings that are actually used by the application.
  * Most users should only need to modify config.js
  */
@@ -16,7 +16,7 @@ function advancedConfig() {
             showPerformanceStats: true, // Show performance timing in console
             useArrow: true             // Feature flag: use Arrow loaders (A/B testing)
         },
-        
+
         // Display settings
         display: {
             showBackgroundImages: true, // Show background tiles on startup
@@ -25,7 +25,7 @@ function advancedConfig() {
             geneMarkerSize: 1.0,        // Default gene marker size (1.0 = normal)
             polygonOpacity: 0.4         // Default polygon opacity (0.0 to 1.0)
         },
-        
+
         // Visualization settings
         visualization: {
             tileSize: 256,              // Tile size for coordinate system

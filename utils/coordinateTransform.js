@@ -1,6 +1,6 @@
 /**
  * Coordinate Transformation Utilities
- * 
+ *
  * This module provides functions for transforming coordinates between different
  * coordinate systems used in the deck.gl viewer application.
  */
@@ -18,11 +18,11 @@ export function clamp(value, min, max) {
 
 /**
  * Transform coordinates from original image space to tile coordinate space (256x256)
- * 
+ *
  * This function handles any aspect ratio by scaling coordinates to fit the tile system
  * while maintaining proper proportions. It uses adjustment factors based on the
  * larger dimension to ensure correct aspect ratio preservation.
- * 
+ *
  * @param {number} x - X coordinate in original image space
  * @param {number} y - Y coordinate in original image space
  * @param {Object} imageDimensions - Image dimensions object
@@ -30,7 +30,7 @@ export function clamp(value, min, max) {
  * @param {number} imageDimensions.height - Original image height
  * @param {number} imageDimensions.tileSize - Target tile size (usually 256)
  * @returns {Array<number>} [transformedX, transformedY] in tile coordinate space
- * 
+ *
  * @example
  * // Transform gene coordinates to tile space
  * const genePos = transformToTileCoordinates(3205, 2206, IMG_DIMENSIONS);
@@ -39,11 +39,11 @@ export function clamp(value, min, max) {
 export function transformToTileCoordinates(x, y, imageDimensions) {
     const {width, height, tileSize} = imageDimensions;
     const maxDimension = Math.max(width, height);
-    
+
     // Adjustment factors to handle aspect ratio
     const xAdjustment = width / maxDimension;
     const yAdjustment = height / maxDimension;
-    
+
     return [
         x * (tileSize / width) * xAdjustment,
         y * (tileSize / height) * yAdjustment
@@ -52,10 +52,10 @@ export function transformToTileCoordinates(x, y, imageDimensions) {
 
 /**
  * Transform coordinates from tile space back to original image space
- * 
+ *
  * This is the inverse of transformToTileCoordinates, useful for converting
  * tile coordinates back to original image coordinates.
- * 
+ *
  * @param {number} x - X coordinate in tile space
  * @param {number} y - Y coordinate in tile space
  * @param {Object} imageDimensions - Image dimensions object
@@ -67,11 +67,11 @@ export function transformToTileCoordinates(x, y, imageDimensions) {
 export function transformFromTileCoordinates(x, y, imageDimensions) {
     const {width, height, tileSize} = imageDimensions;
     const maxDimension = Math.max(width, height);
-    
+
     // Inverse adjustment factors
     const xAdjustment = width / maxDimension;
     const yAdjustment = height / maxDimension;
-    
+
     return [
         x / ((tileSize / width) * xAdjustment),
         y / ((tileSize / height) * yAdjustment)
@@ -83,7 +83,7 @@ export function transformFromTileCoordinates(x, y, imageDimensions) {
 
 /**
  * Calculate zoom level to fit entire image in viewport
- * 
+ *
  * @param {Object} imageDimensions - Image dimensions
  * @param {number} viewportWidth - Viewport width in pixels
  * @param {number} viewportHeight - Viewport height in pixels
@@ -96,7 +96,7 @@ export function calculateFitZoom(imageDimensions, viewportWidth, viewportHeight)
 
 /**
  * Get the center point of an image in tile coordinates
- * 
+ *
  * @param {Object} imageDimensions - Image dimensions object
  * @returns {Array<number>} [centerX, centerY] in tile coordinate space
  */

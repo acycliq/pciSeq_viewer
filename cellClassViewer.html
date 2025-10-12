@@ -138,15 +138,15 @@
         // Get deck.gl from the opener window to avoid CORS issues
         const deck = window.opener.deck;
         const {DeckGL, OrthographicView, COORDINATE_SYSTEM} = deck;
-        
+
         // Use the shared coordinate transformation function from the parent window
         // This ensures perfect alignment and eliminates code duplication
         const transformCoords = window.opener.transformToTileCoordinates;
-        
+
         // Get configuration from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const currentPlane = parseInt(urlParams.get('midPlane')) || 50;
-        
+
         // Simple variables (like original implementation)
         let cellSize = 1.0;
         let cellOpacity = 1.0;
@@ -155,26 +155,26 @@
         let cellClassCells = [];
         let cellClassDeck = null;
         let cellClassColors = new Map();
-        
+
         function initializeCellClassViewer() {
             const container = document.getElementById('cell-class-map');
             if (!container) {
                 setTimeout(initializeCellClassViewer, 100);
                 return;
             }
-            
+
             if (typeof deck === 'undefined') {
                 setTimeout(initializeCellClassViewer, 100);
                 return;
             }
-            
+
             const config = window.config();
             if (!config) {
                 setTimeout(initializeCellClassViewer, 100);
                 return;
             }
-            
-            
+
+
             try {
                 cellClassDeck = new DeckGL({
                     container: container,
@@ -215,7 +215,7 @@
                     },
                     layers: []
                 });
-                
+
                 // Initialize simple state
                 initializeClassSelection();
                 createAggregatedCellData();
@@ -223,13 +223,13 @@
                 setupGlobalControls();
                 setupScreenshotCapture();
                 updateCellsDisplay();
-                
+
             } catch (error) {
                 console.error('Failed to create DeckGL instance:', error);
                 setTimeout(initializeAggregatedDeck, 500);
             }
         }
-        
+
         function initializeClassSelection() {
             selectedClasses = new Set();
             classOpacityMap = new Map();
@@ -240,12 +240,12 @@
             if (parentState && parentState.cellDataMap && parentState.cellClassColors) {
                 cellClassColors = new Map(parentState.cellClassColors);
                 cellClassCells = [];
-                
+
                 parentState.cellDataMap.forEach((cell, cellId) => {
                     if (cell && cell.position && cell.position.x !== undefined && cell.position.y !== undefined) {
                         const primaryClassName = cell.primaryClass || 'Unknown';
                         const color = cellClassColors.get(primaryClassName) || [128, 128, 128];
-                        
+
                         cellClassCells.push({
                             cellNum: cell.cellNum || cellId,
                             x: cell.position.x,
@@ -257,11 +257,11 @@
                         });
                     }
                 });
-                
+
                 console.log('Loaded ' + cellClassCells.length + ' cells for aggregated view');
             }
         }
-        
+
         function setupGlobalControls() {
             const opacitySlider = document.getElementById('cellOpacity');
             const opacityValue = document.getElementById('cellOpacityValue');
@@ -269,7 +269,7 @@
             if (opacitySlider && opacityValue) {
                 opacitySlider.value = cellOpacity;
                 opacityValue.textContent = cellOpacity.toFixed(2);
-                
+
                 opacitySlider.addEventListener('input', (e) => {
                     cellOpacity = parseFloat(e.target.value);
                     opacityValue.textContent = cellOpacity.toFixed(2);
@@ -283,7 +283,7 @@
             if (sizeSlider && sizeValue) {
                 sizeSlider.value = cellSize;
                 sizeValue.textContent = cellSize.toFixed(1);
-                
+
                 sizeSlider.addEventListener('input', (e) => {
                     cellSize = parseFloat(e.target.value);
                     sizeValue.textContent = cellSize.toFixed(1);
@@ -291,7 +291,7 @@
                 });
             }
         }
-        
+
         function populateClassList() {
             const classList = document.getElementById('class-list');
             classList.innerHTML = '';
@@ -367,7 +367,7 @@
                 classList.appendChild(classItem);
             });
         }
-        
+
         function updateCellsDisplay() {
             if (!cellClassDeck) {
                 return;
@@ -375,7 +375,7 @@
 
             const layers = [];
             const cfg = window.config();
-            
+
             // Add background tile layer
             const backgroundLayer = new deck.TileLayer({
                 id: 'background-tiles',
@@ -457,74 +457,74 @@
 
             cellClassDeck.setProps({layers: layers});
         }
-        
+
         // Screenshot capture functionality
         async function captureAllClassScreenshots() {
             const progressElement = document.getElementById('screenshotProgress');
             const progressText = document.getElementById('progressText');
             const captureBtn = document.getElementById('captureScreenshots');
-            
+
             try {
                 // Check if browser supports File System Access API
                 if (!window.showDirectoryPicker) {
                     alert('Operation is not supported in this browser.\n\nPlease use Chrome/Opera/Edge.');
                     return;
                 }
-                
+
                 // Show file picker for directory selection
                 const dirHandle = await window.showDirectoryPicker();
-                
+
                 progressElement.style.display = 'block';
                 captureBtn.disabled = true;
                 captureBtn.textContent = '⏳ Capturing...';
-                
+
                 // Get all unique cell classes
                 const allClasses = new Set();
                 cellClassCells.forEach(cell => {
                     allClasses.add(cell.className);
                 });
-                
+
                 const classList = Array.from(allClasses).sort();
                 let currentIndex = 0;
-                
+
                 // Store current state
                 const originalSelectedClasses = new Set(selectedClasses);
                 const originalOpacityMap = new Map(classOpacityMap);
-                
+
                 // Function to capture single class
                 async function captureSingleClass(className) {
                     progressText.textContent = `Capturing ${className} (${currentIndex + 1}/${classList.length})`;
-                    
+
                     // Clear all selections and set only current class visible
                     selectedClasses.clear();
                     selectedClasses.add(className);
                     classOpacityMap.set(className, 1.0);
-                    
+
                     console.log(`Set selectedClasses to:`, Array.from(selectedClasses));
                     console.log(`Set classOpacityMap for ${className} to:`, classOpacityMap.get(className));
-                    
+
                     // Update display and wait for render
                     updateCellsDisplay();
-                    
+
                     // Calculate visible cells for this class
-                    const visibleCells = cellClassCells.filter(cell => 
+                    const visibleCells = cellClassCells.filter(cell =>
                         selectedClasses.has(cell.className)
                     );
-                    
+
                     // Debug info
                     console.log(`Capturing ${className}: visible cells =`, visibleCells.length);
-                    
+
                     // SAFE CAPTURE: Use temporary callback that doesn't interfere
                     const dataURL = await new Promise((resolve, reject) => {
                         let captured = false;
                         let originalCallback = null;
-                        
+
                         const timeout = setTimeout(() => {
                             if (!captured) {
                                 captured = true;
                                 // Restore original callback if any
                                 cellClassDeck.setProps({ onAfterRender: originalCallback });
-                                
+
                                 // Try direct capture as fallback
                                 try {
                                     const canvas = cellClassDeck.canvas;
@@ -540,30 +540,30 @@
                                 }
                             }
                         }, 3000);
-                        
+
                         const tempCallback = () => {
                             if (captured) return;
-                            
+
                             console.log(`Safe render completed for ${className}`);
-                            
+
                             try {
                                 const canvas = cellClassDeck.canvas;
                                 if (!canvas) {
                                     throw new Error('Canvas not available');
                                 }
-                                
+
                                 console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
                                 const dataURL = canvas.toDataURL('image/png');
                                 console.log('DataURL length:', dataURL.length);
-                                
+
                                 captured = true;
                                 clearTimeout(timeout);
-                                
+
                                 // Restore original callback immediately
                                 cellClassDeck.setProps({ onAfterRender: originalCallback });
-                                
+
                                 resolve(dataURL);
-                                
+
                             } catch (error) {
                                 captured = true;
                                 clearTimeout(timeout);
@@ -571,50 +571,50 @@
                                 reject(error);
                             }
                         };
-                        
+
                         // Store original callback and set temporary one
                         originalCallback = cellClassDeck.props.onAfterRender || null;
                         cellClassDeck.setProps({ onAfterRender: tempCallback });
                         cellClassDeck.redraw();
                     });
-                    
+
                     // Convert to blob and save
                     const response = await fetch(dataURL);
                     const blob = await response.blob();
-                    
+
                     // Create file handle and write
                     const fileName = `${className.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
                     const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
                     const writable = await fileHandle.createWritable();
                     await writable.write(blob);
                     await writable.close();
-                    
+
                     currentIndex++;
                 }
-                
+
                 // Capture each class sequentially
                 for (const className of classList) {
                     await captureSingleClass(className);
                 }
-                
+
                 // Restore original state
                 selectedClasses.clear();
                 originalSelectedClasses.forEach(cls => selectedClasses.add(cls));
                 classOpacityMap.clear();
                 originalOpacityMap.forEach((opacity, cls) => classOpacityMap.set(cls, opacity));
                 updateCellsDisplay();
-                
+
                 // Update UI checkboxes to match restored state
                 document.querySelectorAll('.class-item input[type="checkbox"]').forEach(checkbox => {
                     const className = checkbox.parentElement.querySelector('.class-name').textContent;
                     checkbox.checked = selectedClasses.has(className);
                 });
-                
+
                 progressText.textContent = `✅ Captured ${classList.length} screenshots`;
                 setTimeout(() => {
                     progressElement.style.display = 'none';
                 }, 3000);
-                
+
             } catch (error) {
                 console.error('Screenshot capture failed:', error);
                 progressText.textContent = '❌ Capture failed';
@@ -626,7 +626,7 @@
                 captureBtn.textContent = 'Screen Capture';
             }
         }
-        
+
         // Setup screenshot button event listener
         function setupScreenshotCapture() {
             const captureBtn = document.getElementById('captureScreenshots');
@@ -634,7 +634,7 @@
                 captureBtn.addEventListener('click', captureAllClassScreenshots);
             }
         }
-        
+
         // Initialize when DOM is ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initializeCellClassViewer);

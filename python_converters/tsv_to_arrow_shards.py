@@ -139,9 +139,9 @@ def main():
         if "gene_id" in chunk.columns and "gene_name" in chunk.columns:
             if gene_dict_data is None:
                 gene_dict_data = {}
-            
+
             # Add genes from this chunk
-            chunk_gene_dict = dict(zip(pd.to_numeric(chunk["gene_id"], errors="coerce").fillna(0).astype(int), 
+            chunk_gene_dict = dict(zip(pd.to_numeric(chunk["gene_id"], errors="coerce").fillna(0).astype(int),
                                      chunk["gene_name"].fillna("")))
             gene_dict_data.update(chunk_gene_dict)
 

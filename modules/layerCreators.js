@@ -1,22 +1,22 @@
 /**
  * Layer Creation Module
- * 
+ *
  * This module contains functions that create different types of deck.gl layers
  * for visualizing tiles, polygons, and gene expression data
  */
 
-import { 
-    IMG_DIMENSIONS, 
-    MAX_TILE_CACHE, 
+import {
+    IMG_DIMENSIONS,
+    MAX_TILE_CACHE,
     GENE_SIZE_CONFIG,
     getTileUrlPattern,
     USE_ARROW,
     ARROW_MANIFESTS
 } from '../config/constants.js';
-import { 
-    clamp, 
-    transformToTileCoordinates, 
-    transformFromTileCoordinates 
+import {
+    clamp,
+    transformToTileCoordinates,
+    transformFromTileCoordinates
 } from '../utils/coordinateTransform.js';
 import { loadImage } from './dataLoaders.js';
 
@@ -58,7 +58,7 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
     // ⚡ PERFORMANCE OPTIMIZATION: Radius computation caching
     // PROBLEM: Computing radius for 20M+ spots on every plane change = 80M+ operations = UI lag
     // SOLUTION: Cache radius factors per plane, only recompute when plane actually changes
-    // 
+    //
     // Strategy: radius = radiusFactors[i] * radiusScale
     // - radiusFactors[i]: Distance-based factor (cached per plane)
     // - radiusScale: Global size multiplier (updated instantly for gene size slider)
@@ -68,11 +68,11 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         try {
             const app = (typeof window !== 'undefined') ? window.appState || (window.appState = {}) : {};
             const cacheObj = app._scatterRadiiCache || (app._scatterRadiiCache = {});
-            
+
             // Check if we need to recompute: plane changed, data changed, or first time
-            const needsInit = !cacheObj.factors || cacheObj.length !== length || 
+            const needsInit = !cacheObj.factors || cacheObj.length !== length ||
                              cacheObj.planesBuffer !== planes.buffer || cacheObj.plane !== (currentPlane || 0);
-            
+
             if (needsInit) {
                 const cur = (currentPlane || 0) | 0;
                 const factors = new Float32Array(length);
@@ -156,7 +156,7 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         // ⚡ PERFORMANCE OPTIMIZATION: Global radius scaling
         // Apply gene size changes via radiusScale (avoids recomputing 20M+ per-point radii)
         radiusScale: baseScale * (geneSizeScale || 1.0),
-        
+
         // ⚡ GPU filtering setup: Always present but conditionally enabled
         extensions: [new DataFilterExtension({ filterSize: 1 })],
         filterEnabled: Boolean(scores), // Only filter when scores exist
@@ -184,7 +184,7 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
         visible: showTiles,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
         extent: [0, 0, IMG_DIMENSIONS.width, IMG_DIMENSIONS.height],
-        
+
         // Async tile data loading with caching
         getTileData: async ({index}) => {
             const {x, y, z} = index;
@@ -208,11 +208,11 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
                 .replace('{z}', z)
                 .replace('{y}', y)
                 .replace('{x}', x);
-            
+
             // Check if we should show tile errors
             const advancedConfig = window.advancedConfig ? window.advancedConfig() : { performance: { showTileErrors: false } };
             const suppressErrors = !advancedConfig.performance.showTileErrors;
-            
+
             const promise = loadImage(imageUrl, suppressErrors)
                 .then(imageData => {
                     // Cache the resolved image data, not the promise
@@ -242,7 +242,7 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
 
             return promise;
         },
-        
+
         // Render individual tile as bitmap
         renderSubLayers: (props) => {
             if (!props.data) return null;
@@ -280,7 +280,7 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
 export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null) {
     const layers = [];
     console.log(`createPolygonLayers called for plane ${planeNum}, showPolygons: ${showPolygons}`);
-    
+
     if (!showPolygons) {
         console.log('Polygons disabled in state');
         return layers;
@@ -301,7 +301,7 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
                         if (adv?.performance?.showPerformanceStats) {
                             const polys = buffers?.length || 0;
                             const pts = Math.floor((buffers?.positions?.length || 0) / 2);
-                            console.log(`Arrow: plane ${planeNum} buffers loaded — polys=${polys}, points=${pts}`);
+                            console.log(`Arrow: plane ${planeNum} buffers loaded � polys=${polys}, points=${pts}`);
                             if (timings) {
                                 const kb = Math.round((timings.fetchedBytes || 0) / 1024);
                                 console.log(`Arrow timings (plane ${planeNum}): manifest=${timings.fetchManifestMs.toFixed(1)}ms, fetch=${timings.fetchShardsMs.toFixed(1)}ms, decode=${timings.decodeShardsMs.toFixed(1)}ms, assemble=${timings.assembleBuffersMs.toFixed(1)}ms, bytes=${kb}KB`);
@@ -343,7 +343,7 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
                 if (adv?.performance?.showPerformanceStats) {
                     const polys = buffers?.length || 0;
                     const pts = Math.floor((buffers?.positions?.length || 0) / 2);
-                    console.log(`Arrow: plane ${planeNum} transformed to tile space — polys=${polys}, points=${pts}`);
+                    console.log(`Arrow: plane ${planeNum} transformed to tile space � polys=${polys}, points=${pts}`);
                 }
             } catch {}
         }
@@ -486,14 +486,14 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
             if (info.picked && info.object && info.object.properties) {
                 // Get the cell label from the polygon properties
                 const cellLabel = info.object.properties.label;
-                
+
                 // Look up full cell data from the global state
                 let fullCellData = null;
                 if (window.appState && window.appState.cellDataMap) {
                     const cellId = parseInt(cellLabel);
                     fullCellData = window.appState.cellDataMap.get(cellId);
                 }
-                
+
                 if (fullCellData && window.updateCellInfo && typeof window.updateCellInfo === 'function') {
                     // Convert to the format expected by donut chart and data tables
                     const cx = Number(fullCellData.position?.x || 0);
@@ -534,13 +534,13 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
                             color: topColor
                         }
                     };
-                    
+
                     console.log('Cell data structure for hover:', {
                         label: cellLabel,
                         fullCellData: fullCellData,
                         convertedData: cellData
                     });
-                    
+
                     window.updateCellInfo(cellData);
                     const panel = document.getElementById('cellInfoPanel');
                     if (panel) {
@@ -599,7 +599,7 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
         }
         const combined = [];
         let ix0, iy0, ix1, iy1;
-        
+
         if (viewportBounds) {
             // Arrow mode: apply viewport culling
             const { minX, minY, maxX, maxY } = viewportBounds;
@@ -640,7 +640,7 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
                     return (score !== null && score !== undefined && !isNaN(score) && Number(score) >= scoreThreshold);
                 });
             }
-            
+
             const iconLayer = new IconLayer({
                 id: `genes-combined`,
                 data: filteredData,
@@ -656,13 +656,13 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
                 getColor: [255, 255, 255],
                 sizeUnits: 'pixels',
                 sizeScale: geneSizeScale,
-                
-                updateTriggers: { 
+
+                updateTriggers: {
                     getSize: [currentPlane, uniformMarkerSize]
                     // data prop changes are automatically detected by deck.gl
                 }
             });
-            
+
             layers.push(iconLayer);
         }
         return layers;
@@ -697,7 +697,7 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
                 return (score !== null && score !== undefined && !isNaN(score) && Number(score) >= scoreThreshold);
             });
         }
-        
+
         const layer = new IconLayer({
             id: `genes-${gene}`,
             data: filteredGeneData,
@@ -707,19 +707,19 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
             iconAtlas: geneIconAtlas,
             iconMapping: geneIconMapping,
-            
+
             // Transform gene coordinates to match tile coordinate system
             getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
-            
+
             // Dynamic sizing based on distance from current plane (depth effect)
             getSize: d => uniformMarkerSize ? GENE_SIZE_CONFIG.BASE_SIZE : (GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane))),
-            
+
             getIcon: d => d.gene,
             getColor: [255, 255, 255], // White color for gene markers
             sizeUnits: 'pixels',
             sizeScale: geneSizeScale,
-            
-            
+
+
             // Trigger layer update when plane changes (for size recalculation)
             updateTriggers: {
                 getSize: [currentPlane, uniformMarkerSize]

@@ -8,14 +8,14 @@ function config() {
 
         // How many planes/slices does your dataset have?
         totalPlanes: 102,
-        
+
         // Which plane should the app start on? (0 to totalPlanes-1)
         startingPlane: 50,
-        
+
         // What are the dimensions of your images? (in pixels)
         imageWidth: 6411,
         imageHeight: 4412,
-        
+
         // Size of a cubic pixel in microns (x, y, z)
         voxelSize: [0.28, 0.28, 0.7],
 

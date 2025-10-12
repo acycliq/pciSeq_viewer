@@ -1,14 +1,14 @@
 /**
  * Data Loading Module
- * 
+ *
  * This module handles loading and processing of gene expression data and polygon
  * boundary data from various sources (TSV files, remote APIs, etc.)
  */
 
-import { 
+import {
     GENE_DATA_URL,
     CELL_DATA_URL,
-    IMG_DIMENSIONS, 
+    IMG_DIMENSIONS,
     POLYGON_ALIAS_THRESHOLDS,
     POLYGON_COLOR_PALETTE,
     getPolygonFileUrl,
@@ -146,12 +146,12 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                     }
                 } catch {}
                 if (window?.advancedConfig?.().performance?.showPerformanceStats) {
-                    console.log(`✅ Prebuilt scatter cache in worker: points=${window.appState.arrowScatterCache.length}`);
+                    console.log(` Prebuilt scatter cache in worker: points=${window.appState.arrowScatterCache.length}`);
                 }
             } catch (e) {
                 console.warn('Failed to prebuild scatter cache in worker:', e);
             }
-            
+
             // For Arrow data, assume scores are available (can be refined later if needed)
             window.appState.hasScores = true;
             console.log('Arrow dataset: assuming scores are available');
@@ -159,11 +159,11 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
             // Use Web Worker for non-blocking data loading (TSV)
             const workerResult = await loadGeneDataWithWorker();
             const { geneData, hasScores } = workerResult;
-            
+
             // Store hasScores flag in state
             window.appState.hasScores = hasScores;
             console.log(`Dataset has valid OMP scores: ${hasScores}`);
-            
+
             geneDataMap.clear();
             selectedGenes.clear();
             geneData.forEach(({ gene, spots }) => {
@@ -171,11 +171,11 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                 selectedGenes.add(gene);
             });
         }
-        
+
         // Build icon atlas for gene visualization
         const genes = Array.from(geneDataMap.keys());
         const {atlas, mapping} = buildGeneIconAtlas(genes);
-        
+
         return { atlas, mapping };
 
     } catch (err) {
@@ -211,7 +211,7 @@ export async function loadCellData(cellDataMap) {
             const prob = columns.prob || [];
             const n = cell_id?.length || 0;
             cellDataMap.clear();
-            
+
             for (let i = 0; i < n; i++) {
                 const cid = cell_id[i];
                 // class_name and prob are now native arrays from Arrow
@@ -264,7 +264,7 @@ export async function loadCellData(cellDataMap) {
             const cellData = await loadCellDataWithWorker();
             cellDataMap.clear();
             cellData.forEach(cell => { cellDataMap.set(cell.cellNum, cell); });
-            console.log(`✅ Cell data loaded: ${cellDataMap.size} cells`);
+            console.log(` Cell data loaded: ${cellDataMap.size} cells`);
             return true;
         }
 
@@ -284,10 +284,10 @@ export async function loadCellData(cellDataMap) {
 async function loadDataWithUnifiedWorker(dataType, url, planeId = null) {
     return new Promise((resolve, reject) => {
         const worker = new Worker('./unifiedWorker.js');
-        
+
         worker.onmessage = function(event) {
             const { type, data, error, planeId: returnedPlaneId } = event.data;
-            
+
             if (type === 'success') {
                 // For boundary data, check planeId matches
                 if (dataType === 'loadBoundaryData' && returnedPlaneId !== planeId) {
@@ -304,23 +304,23 @@ async function loadDataWithUnifiedWorker(dataType, url, planeId = null) {
                 reject(new Error(error));
             }
         };
-        
+
         worker.onerror = function(error) {
             worker.terminate();
             reject(error);
         };
-        
+
         // Send request to unified worker
         const absoluteUrl = new URL(url, window.location.href).href;
         const message = {
             type: dataType,
             url: absoluteUrl
         };
-        
+
         if (planeId !== null) {
             message.planeId = planeId;
         }
-        
+
         worker.postMessage(message);
     });
 }
@@ -367,14 +367,14 @@ function buildGeneIconAtlas(genes) {
         const finalConfig = cfg || defaultConfig;
         const p = {x: i * size + size/2, y: size/2};
         const r = size * 0.4;
-        
+
         ctx.save();
         ctx.strokeStyle = finalConfig.color;
         ctx.lineWidth = 4;
         ctxPath(finalConfig.glyphName, ctx, p, r);
         ctx.stroke();
         ctx.restore();
-        
+
         mapping[gene] = {x: i * size, y: 0, width: size, height: size};
     });
 
@@ -389,21 +389,21 @@ function buildGeneIconAtlas(genes) {
  */
 export function buildGeneSpotIndexes(geneDataMap, cellToSpotsIndex, spotToParentsIndex) {
     console.log('Building gene spot indexes for lightning-fast lookups...');
-    
+
     // Clear existing indexes
     cellToSpotsIndex.clear();
     spotToParentsIndex.clear();
-    
+
     let totalSpots = 0;
-    
+
     let globalSpotIndex = 0; // Track global position in geneData.tsv
-    
+
     geneDataMap.forEach((spots, geneName) => {
         spots.forEach((spot, spotIndex) => {
             const spot_id = globalSpotIndex; // Use global position as spot_id
             globalSpotIndex++;
             totalSpots++;
-            
+
             // Index 1: Cell parent -> spots (for "show me spots for this cell")
             const primaryParent = spot.neighbour;
             if (primaryParent) {
@@ -427,7 +427,7 @@ export function buildGeneSpotIndexes(geneDataMap, cellToSpotsIndex, spotToParent
                     score: spot.score
                 });
             }
-            
+
             // Index 2: Spot -> all parent candidates (for "show me parents for this spot")
             if (spot.neighbour_array && spot.prob_array) {
                 spotToParentsIndex.set(spot_id, {
@@ -444,8 +444,8 @@ export function buildGeneSpotIndexes(geneDataMap, cellToSpotsIndex, spotToParent
             }
         });
     });
-    
-    console.log(`✅ Built indexes: ${cellToSpotsIndex.size} cells, ${spotToParentsIndex.size} spots (${totalSpots} total)`);
+
+    console.log(` Built indexes: ${cellToSpotsIndex.size} cells, ${spotToParentsIndex.size} spots (${totalSpots} total)`);
 }
 
 /**
@@ -541,7 +541,7 @@ function tsvToGeoJSON(tsvData, planeId, allCellClasses, cellDataMap) {
 
             // Transform coordinates from image space to tile space (256x256)
             // This ensures polygons align with gene markers and background tiles
-            const scaledCoords = parsedCoords.map(([x, y]) => 
+            const scaledCoords = parsedCoords.map(([x, y]) =>
                 transformToTileCoordinates(x, y, IMG_DIMENSIONS)
             );
 
@@ -640,10 +640,10 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
 
     try {
         console.log(`Loading polygon data for plane ${planeNum} with Web Worker`);
-        
+
         // Use Web Worker for non-blocking data loading
         const rawGeojson = await loadPolygonDataWithWorker(planeNum);
-        
+
         // Transform coordinates from image space to tile space (same as original)
         const geojson = {
             type: 'FeatureCollection',
@@ -652,24 +652,24 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
                 geometry: {
                     ...feature.geometry,
                     coordinates: [
-                        feature.geometry.coordinates[0].map(([x, y]) => 
+                        feature.geometry.coordinates[0].map(([x, y]) =>
                             transformToTileCoordinates(x, y, IMG_DIMENSIONS)
                         )
                     ]
                 }
             }))
         };
-        
+
         // Process cell classes for coloring
         console.log(`Processing ${geojson.features.length} features for plane ${planeNum}`);
         console.log('cellDataMap size:', cellDataMap ? cellDataMap.size : 'null');
-        
+
         // Debug: Check first few features before processing
         if (geojson.features.length > 0) {
             // console.log('Sample feature before processing:', geojson.features[0]);
             // console.log('Sample feature properties:', geojson.features[0].properties);
         }
-        
+
         if (cellDataMap && cellDataMap.size > 0) {
             let processedCount = 0;
             geojson.features.forEach(feature => {
@@ -696,12 +696,12 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
             });
             console.log('Using fallback cell classes:', Array.from(allCellClasses));
         }
-        
+
         // console.log(`Loaded ${geojson.features.length} polygons for plane ${planeNum}`);
-        
+
         // Cache the result for future use
         polygonCache.set(planeNum, geojson);
-        
+
         // Update cell boundary index if provided
         if (cellBoundaryIndex) {
             updateCellBoundaryIndex(planeNum, geojson, cellBoundaryIndex);
@@ -711,7 +711,7 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
     } catch (err) {
         console.error(`Failed to load polygon data for plane ${planeNum}:`, err);
         console.error('Error details:', err.message, err.stack);
-        
+
         // Return empty collection on error (don't cache failures)
         return { type: 'FeatureCollection', features: [] };
     }
@@ -734,19 +734,19 @@ async function loadPolygonDataWithWorker(planeNum) {
  */
 export function buildCellBoundaryIndex(polygonCache, cellBoundaryIndex) {
     console.log('Building cell boundary index for fast lookup...');
-    
+
     // Clear existing index
     cellBoundaryIndex.clear();
-    
+
     let totalBoundaries = 0;
-    
+
     // Iterate through all planes in polygon cache
     polygonCache.forEach((geojson, planeId) => {
         if (geojson && geojson.features) {
             geojson.features.forEach(feature => {
                 if (feature.properties && feature.properties.label) {
                     const cellId = parseInt(feature.properties.label);
-                    
+
                     // Add plane to this cell's plane list
                     if (!cellBoundaryIndex.has(cellId)) {
                         cellBoundaryIndex.set(cellId, []);
@@ -757,8 +757,8 @@ export function buildCellBoundaryIndex(polygonCache, cellBoundaryIndex) {
             });
         }
     });
-    
-    console.log(`✅ Built cell boundary index: ${cellBoundaryIndex.size} cells across ${polygonCache.size} planes (${totalBoundaries} total boundaries)`);
+
+    console.log(` Built cell boundary index: ${cellBoundaryIndex.size} cells across ${polygonCache.size} planes (${totalBoundaries} total boundaries)`);
 }
 
 /**
@@ -769,16 +769,16 @@ export function buildCellBoundaryIndex(polygonCache, cellBoundaryIndex) {
  */
 export function updateCellBoundaryIndex(planeId, geojson, cellBoundaryIndex) {
     if (!geojson || !geojson.features) return;
-    
+
     geojson.features.forEach(feature => {
         if (feature.properties && feature.properties.label) {
             const cellId = parseInt(feature.properties.label);
-            
+
             // Add plane to this cell's plane list
             if (!cellBoundaryIndex.has(cellId)) {
                 cellBoundaryIndex.set(cellId, []);
             }
-            
+
             // Only add if not already present
             const planes = cellBoundaryIndex.get(cellId);
             if (!planes.includes(planeId)) {
@@ -806,7 +806,7 @@ export function getCellBoundaryPlanes(cellId, cellBoundaryIndex) {
 export function assignColorsToCellClasses(allCellClasses, cellClassColors) {
     const classes = Array.from(allCellClasses);
     console.log(`Assigning colors for ${classes.length} cell classes:`, classes);
-    
+
     classes.forEach((cellClass) => {
         if (!cellClassColors.has(cellClass)) {
             const color = getCellClassColor(cellClass);
@@ -814,6 +814,6 @@ export function assignColorsToCellClasses(allCellClasses, cellClassColors) {
             // console.log(`Assigned color to ${cellClass}:`, color);
         }
     });
-    
+
     console.log('Final color map:', Array.from(cellClassColors.entries()));
 }
