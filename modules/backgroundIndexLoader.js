@@ -28,7 +28,7 @@ async function buildCellBoundaryIndex(appState) {
     const config = window.config();
     const totalPlanes = config.totalPlanes;
 
-    console.log(`ðŸ” Building cell boundary index from ${totalPlanes} planes...`);
+    console.log(` Building cell boundary index from ${totalPlanes} planes...`);
     const startTime = performance.now();
 
     // Process planes with limited concurrency to avoid blocking UI/network
@@ -55,12 +55,12 @@ async function buildCellBoundaryIndex(appState) {
     // Debug: Show info for cell 7113
     const cell7113Planes = cellBoundaryIndex.get(7113);
     if (cell7113Planes) {
-        console.log(`ðŸŽ Cell 7113 found on ${cell7113Planes.length} planes: [${cell7113Planes.join(', ')}]`);
-        console.log(`ðŸŽ Cell 7113 range: planes ${Math.min(...cell7113Planes)} to ${Math.max(...cell7113Planes)}`);
+        console.log(` Cell 7113 found on ${cell7113Planes.length} planes: [${cell7113Planes.join(', ')}]`);
+        console.log(` Cell 7113 range: planes ${Math.min(...cell7113Planes)} to ${Math.max(...cell7113Planes)}`);
     }
 
     // Build spatial index for fast queries
-    console.log(`ðŸ—ºï¸ Building spatial index for fast cell queries...`);
+    console.log(` Building spatial index for fast cell queries...`);
     const spatialIndex = await buildSpatialIndex(cellBoundaryIndex, appState);
 
     const endTime = performance.now();
@@ -103,18 +103,18 @@ async function loadPlaneForIndex(planeId, cellBoundaryIndex, appState) {
 
             // Log progress every 20 planes
             if (planeId % 20 === 0) {
-                console.log(`ðŸ“ Background index progress: plane ${planeId} loaded (${cellCount} cells)`);
+                console.log(` Background index progress: plane ${planeId} loaded (${cellCount} cells)`);
             }
         } else {
             // File exists but is empty or has no features
-            console.log(`ðŸ“ Plane ${planeId} boundary file is empty, skipping`);
+            console.log(` Plane ${planeId} boundary file is empty, skipping`);
         }
 
     } catch (error) {
         if (error.message && error.message.includes('404')) {
-            console.log(`ðŸ“ Plane ${planeId} boundary file not found, skipping`);
+            console.log(` Plane ${planeId} boundary file not found, skipping`);
         } else if (error.message && error.message.includes('empty')) {
-            console.log(`ðŸ“ Plane ${planeId} boundary file is empty, skipping`);
+            console.log(` Plane ${planeId} boundary file is empty, skipping`);
         } else {
             console.warn(` Failed to load plane ${planeId} for background index:`, error.message || error);
         }
@@ -151,7 +151,7 @@ async function buildSpatialIndex(cellBoundaryIndex, appState) {
 
         processedCells++;
         if (processedCells % 250 === 0) await idleYield();
-        if (processedCells % 1000 === 0) console.log(`ðŸ—ºï¸ Spatial index progress: ${processedCells}/${totalCells} cells processed`);
+        if (processedCells % 1000 === 0) console.log(` Spatial index progress: ${processedCells}/${totalCells} cells processed`);
     }
 
     console.log(` Spatial index built: ${spatialIndex.all().length} cells indexed`);

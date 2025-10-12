@@ -551,7 +551,7 @@ export class RectangularSelector {
                 console.log(' Chunk viewer window opened successfully');
             } else {
                 console.warn(' Popup blocked - chunk viewer not opened');
-                console.log('ðŸ’ Please enable popups and try again');
+                console.log('ðŸ Please enable popups and try again');
             }
         } catch (error) {
             console.error(' Failed to open chunk viewer:', error);

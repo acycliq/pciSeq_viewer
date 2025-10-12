@@ -301,7 +301,7 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
                         if (adv?.performance?.showPerformanceStats) {
                             const polys = buffers?.length || 0;
                             const pts = Math.floor((buffers?.positions?.length || 0) / 2);
-                            console.log(`Arrow: plane ${planeNum} buffers loaded â€ polys=${polys}, points=${pts}`);
+                            console.log(`Arrow: plane ${planeNum} buffers loaded â polys=${polys}, points=${pts}`);
                             if (timings) {
                                 const kb = Math.round((timings.fetchedBytes || 0) / 1024);
                                 console.log(`Arrow timings (plane ${planeNum}): manifest=${timings.fetchManifestMs.toFixed(1)}ms, fetch=${timings.fetchShardsMs.toFixed(1)}ms, decode=${timings.decodeShardsMs.toFixed(1)}ms, assemble=${timings.assembleBuffersMs.toFixed(1)}ms, bytes=${kb}KB`);
@@ -343,7 +343,7 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
                 if (adv?.performance?.showPerformanceStats) {
                     const polys = buffers?.length || 0;
                     const pts = Math.floor((buffers?.positions?.length || 0) / 2);
-                    console.log(`Arrow: plane ${planeNum} transformed to tile space â€ polys=${polys}, points=${pts}`);
+                    console.log(`Arrow: plane ${planeNum} transformed to tile space â polys=${polys}, points=${pts}`);
                 }
             } catch {}
         }

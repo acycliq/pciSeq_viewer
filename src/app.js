@@ -147,7 +147,7 @@ function calculateScaleBar(viewState) {
     const pixelsPerMicron = 1 / micronsPerPixel;
 
     // Choose appropriate scale length
-    const scaleOptions = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]; // Î¼m
+    const scaleOptions = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]; // m
     const targetPixels = 100; // Target scale bar length in pixels
 
     let bestScale = scaleOptions[0];
@@ -380,7 +380,7 @@ function updateAllLayers() {
                 }
                 if (lyr.id === 'spots-scatter-binary') hasBinary = true;
             }
-            console.log(`â±ï¸ Zoom transition end: ${state.zoomTransition.from || 'none'} -> ${state.zoomTransition.to} in ${elapsed.toFixed(1)}ms | layers=${totalLayers}, iconLayers=${iconLayers}, iconPointsâ‰ˆ${iconPoints}, binary=${hasBinary}`);
+            console.log(`Zoom transition end: ${state.zoomTransition.from || 'none'} -> ${state.zoomTransition.to} in ${elapsed.toFixed(1)}ms | layers=${totalLayers}, iconLayers=${iconLayers}, iconPoints${iconPoints}, binary=${hasBinary}`);
             state.zoomTransition.inProgress = false;
         }
     } catch {}
@@ -409,7 +409,7 @@ function updatePlaneImmediate(newPlane) {
     const perfTime = performance.now() - perfStart;
     const advancedConfig = window.advancedConfig();
     if (advancedConfig.performance.showPerformanceStats) {
-        console.log(`âš Immediate plane update: ${perfTime.toFixed(1)}ms`);
+        console.log(`Immediate plane update: ${perfTime.toFixed(1)}ms`);
     }
 }
 
@@ -588,13 +588,13 @@ function initializeDeckGL() {
                 if (mode !== __lastZoomMode) {
                     if (adv.performance.showPerformanceStats) {
                         state.zoomTransition = { inProgress: true, from: __lastZoomMode, to: mode, start: performance.now() };
-                        console.log(`â±ï¸ Zoom transition start: ${state.zoomTransition.from || 'none'} -> ${mode} at zoom ${viewState.zoom.toFixed(2)}`);
+                        console.log(`Zoom transition start: ${state.zoomTransition.from || 'none'} -> ${mode} at zoom ${viewState.zoom.toFixed(2)}`);
                     }
                     __lastZoomMode = mode;
                     __lastDragging = dragging;
                     updateAllLayers();
                 } else if (mode === 'icon') {
-                    // NOTE (perf-critical): At deep zoom (â‰¥7) we rebuild the combined IconLayer
+                    // NOTE (perf-critical): At deep zoom (7) we rebuild the combined IconLayer
                     // only when panning ends (dragging -> not dragging). Rebuilding on every
                     // pan frame caused jank/GC spikes with dense data. This "pan-end refresh"
                     // keeps interactions smooth and then repopulates instantly on release.
@@ -647,12 +647,12 @@ async function init() {
 
     // Performance optimization info
     if (advancedConfig.performance.enablePerformanceMode) {
-        console.log(' Performance optimizations enabled:');
-        console.log('  â¢ Two-phase updates (immediate UI + background data)');
-        console.log('  â¢ Smart caching with automatic cleanup');
-        console.log('  â¢ Background preloading of adjacent planes');
-        console.log('  â¢ Reduced slider debouncing for instant response');
-        console.log('  â¢ Memory management (max 50 planes cached)');
+        console.log('Performance optimizations enabled:');
+        console.log('  Two-phase updates (immediate UI + background data)');
+        console.log('   Smart caching with automatic cleanup');
+        console.log('   Background preloading of adjacent planes');
+        console.log('   Reduced slider debouncing for instant response');
+        console.log('   Memory management (max 50 planes cached)');
     }
 
     // Clear polygon cache to ensure fresh load on app restart
@@ -885,7 +885,7 @@ async function init() {
                 // Start spatial index worker (Arrow only) after READY
                 try {
                     const btn = document.getElementById('selectionToolBtn');
-                    if (btn) { btn.disabled = true; btn.textContent = 'Selection (Indexingâ€¦)'; }
+                    if (btn) { btn.disabled = true; btn.textContent = 'Selection (Indexing)'; }
                     const cfg = window.config();
                     const adv = window.advancedConfig ? window.advancedConfig() : null;
                     const manifest = new URL(
@@ -974,7 +974,7 @@ window.transformToTileCoordinates = transformToTileCoordinates;
  */
 async function buildGlobalZProjectionBackground() {
     try {
-        console.log('ðŸŒ Starting background Z-projection build...');
+        console.log('Starting background Z-projection build...');
 
         await buildGlobalZProjection(state, (progress) => {
             // Progress callback
@@ -983,7 +983,7 @@ async function buildGlobalZProjectionBackground() {
             }
         });
 
-        console.log(' Z-projection overlay ready! Check viewer controls to enable.');
+        console.log('Z-projection overlay ready! Check viewer controls to enable.');
 
         // If overlay is already enabled, update layers
         if (state.showZProjectionOverlay) {
@@ -1002,8 +1002,8 @@ function getCurrentViewportTileBounds() {
         const vp = vps && vps[0];
         if (!vp) return null;
         const w = vp.width || 0, h = vp.height || 0;
-        const p0 = vp.unproject([0, h]);     // bottom-left screen â†’ world
-        const p1 = vp.unproject([w, 0]);     // top-right screen â†’ world
+        const p0 = vp.unproject([0, h]);     // bottom-left screen  world
+        const p1 = vp.unproject([w, 0]);     // top-right screen  world
         const minX = Math.min(p0[0], p1[0]);
         const maxX = Math.max(p0[0], p1[0]);
         const minY = Math.min(p0[1], p1[1]);

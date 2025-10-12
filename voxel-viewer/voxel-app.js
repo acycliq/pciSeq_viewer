@@ -54,7 +54,7 @@ function getDataset() {
         console.log('Selection cells:', window.opener.lastSelectionResults.cells.count);
         return window.opener.lastSelectionResults;
     } else {
-        console.log('ðŸŽ Using demo test dataset');
+        console.log(' Using demo test dataset');
         return generateTestDataset();
     }
 }
@@ -107,9 +107,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const boundaryVoxels = []; // voxels for traced cell boundary lines
 
         // Center-aligned integer bounds so voxel centers lie strictly inside float bounds.
-        // Derivation: We test at centers (i + 0.5). To ensure (i + 0.5) â‰¥ left_float, we need
-        // i â‰¥ left_float - 0.5 â‡’ i_min = ceil(left_float - 0.5). Similarly, to ensure
-        // (i + 0.5) â‰¤ right_float, we need i â‰¤ right_float - 0.5 â‡’ i_max = floor(right_float - 0.5).
+        // Derivation: We test at centers (i + 0.5). To ensure (i + 0.5)  left_float, we need
+        // i  left_float - 0.5  i_min = ceil(left_float - 0.5). Similarly, to ensure
+        // (i + 0.5)  right_float, we need i  right_float - 0.5  i_max = floor(right_float - 0.5).
         // Doing this for both axes guarantees the very first sampled center is inside the
         // true float rectangle. This avoids the classic bug where the "first" row/column of
         // centers (e.g., 0.5) is actually outside a top/left edge at 0.65/0.60, which would
@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         console.log('Selection dimensions (integer pixels):', {width: selectionWidth, height: selectionHeight, depth: selectionDepth});
         console.log('Block dimensions (1:1 integer mapping):', {maxX, maxY, maxZ});
-        console.log('Mapping: original[X,Y,Z] â† viewer[X,Z,Y] with direct integer arithmetic');
+        console.log('Mapping: original[X,Y,Z]  viewer[X,Z,Y] with direct integer arithmetic');
 
 
 
@@ -176,9 +176,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const stoneEndTime = performance.now();
         console.log(` Stone creation completed in ${(stoneEndTime - stoneStartTime).toFixed(1)}ms`);
-        console.log(`ðŸ“ Performance: ${totalPlanes} planes, ${totalBlocks} blocks processed, ${stoneVoxels.length} stone blocks created`);
-        console.log(`ðŸ•³ï¸ Cell boundary holes: ${holesCreated} holes created (${((holesCreated/totalBlocks)*100).toFixed(1)}% of total blocks)`);
-        console.log(`ðŸ§ Hole stone blocks: ${cellVoxels.length} voxels inside cell boundaries`);
+        console.log(` Performance: ${totalPlanes} planes, ${totalBlocks} blocks processed, ${stoneVoxels.length} stone blocks created`);
+        console.log(` Cell boundary holes: ${holesCreated} holes created (${((holesCreated/totalBlocks)*100).toFixed(1)}% of total blocks)`);
+        console.log(` Hole stone blocks: ${cellVoxels.length} voxels inside cell boundaries`);
 
         // Debug: Show stone positions from different planes
         console.log(' Sample stone positions across different planes:');
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const boundaryEndTime = performance.now();
         console.log(` Boundary tracing completed in ${(boundaryEndTime - boundaryStartTime).toFixed(1)}ms`);
-        console.log(`ðŸ” Boundary voxels created: ${boundaryVoxels.length} voxels from ${dataset.cells.count} cells`);
+        console.log(` Boundary voxels created: ${boundaryVoxels.length} voxels from ${dataset.cells.count} cells`);
 
         // Debug: Log cell IDs and their voxel counts
         const uniqueCellIds = [...new Set(boundaryVoxels.map(v => v.cellId))];
@@ -214,13 +214,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const spotY = Math.floor(spot.y);  // Clean integer pixels
             const spotZ = Math.floor(spot.z);  // Clean integer depth
 
-            const x = spotX - bounds.left;            // Global â†’ Local X (simple integer subtraction)
-            const y = planeIdToSliceY(spot.plane_id); // plane_id â†’ viewer Y (anisotropic scaling)
-            const z = spotY - bounds.top;             // Global â†’ Local Yâ†’Z (simple integer subtraction)
+            const x = spotX - bounds.left;            // Global  Local X (simple integer subtraction)
+            const y = planeIdToSliceY(spot.plane_id); // plane_id  viewer Y (anisotropic scaling)
+            const z = spotY - bounds.top;             // Global  Local YZ (simple integer subtraction)
 
             // Debug: Log transformation for first few spots
             if (index < 5) {
-                console.log(`ðŸŽ¯ Spot ${index}: plane_id=${spot.plane_id} â† Y=${y}, original(${spotX}, ${spotY}, ${spotZ}) â†’ viewer(${x}, ${y}, ${z})`);
+                console.log(` Spot ${index}: plane_id=${spot.plane_id}  Y=${y}, original(${spotX}, ${spotY}, ${spotZ})  viewer(${x}, ${y}, ${z})`);
             }
 
             // Get gene color from main viewer's glyph configuration
@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Extract unique genes from the dataset for gene controls
         const uniqueGenes = [...new Set(dataset.spots.data.map(spot => spot.gene))];
-        console.log('ðŸ§ Found unique genes in selection:', uniqueGenes.length, uniqueGenes);
+        console.log(' Found unique genes in selection:', uniqueGenes.length, uniqueGenes);
 
         // Build gene sets and colors for controls
         availableGenes.clear();
@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
             geneColors.set(gene, color.formatHex());
         });
 
-        console.log('ðŸŽ Gene colors:', Object.fromEntries(geneColors));
+        console.log(' Gene colors:', Object.fromEntries(geneColors));
 
         console.log('Transformed', geneVoxels.length, 'gene spots,', stoneVoxels.length, 'stone blocks,', cellVoxels.length, 'hole stone blocks, and', boundaryVoxels.length, 'boundary voxels');
         console.log('Sample gene block:', geneVoxels[0]);
@@ -435,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function() {
             geneList.appendChild(geneItem);
         });
 
-        console.log(`ðŸŽ›ï¸ Built gene controls for ${sortedGenes.length} genes`);
+        console.log(` Built gene controls for ${sortedGenes.length} genes`);
     }
 
     // Toggle individual gene visibility
@@ -446,7 +446,7 @@ document.addEventListener('DOMContentLoaded', function() {
             selectedGenes.delete(gene);
         }
 
-        console.log(`ðŸ§ Gene ${gene}: ${isVisible ? 'shown' : 'hidden'}`);
+        console.log(` Gene ${gene}: ${isVisible ? 'shown' : 'hidden'}`);
         updateToggleAllButton();
 
         // Update layers
@@ -525,9 +525,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const parentCellY = Math.floor(spotBlock.parent_cell_Y);  // Clean integer pixels
                 const parentCellZ = Math.floor(spotBlock.parent_cell_Z);  // Clean integer depth
 
-                const parentViewerX = parentCellX - bounds.left;         // Global â†’ Local X (simple subtraction)
-                const parentViewerY = parentCellZ;                       // Z coordinate becomes Y (depth â†’ slicing axis)
-                const parentViewerZ = parentCellY - bounds.top;          // Global â†’ Local Yâ†’Z (simple subtraction)
+                const parentViewerX = parentCellX - bounds.left;         // Global  Local X (simple subtraction)
+                const parentViewerY = parentCellZ;                       // Z coordinate becomes Y (depth  slicing axis)
+                const parentViewerZ = parentCellY - bounds.top;          // Global  Local YZ (simple subtraction)
 
                 const targetPosition = [
                     parentViewerX,

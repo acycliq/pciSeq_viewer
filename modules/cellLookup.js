@@ -37,10 +37,10 @@ async function initializeCellLookup() {
  */
 async function loadCellData() {
     if (USE_ARROW && window.appState && window.appState.cellDataMap) {
-        console.log('ðŸ¹ Using Arrow-loaded cell data from appState.cellDataMap');
+        console.log(' Using Arrow-loaded cell data from appState.cellDataMap');
         return loadFromArrowData();
     } else {
-        console.log('ðŸ“ Loading cell data from TSV file');
+        console.log(' Loading cell data from TSV file');
         return loadFromTSVFile();
     }
 }
@@ -50,7 +50,7 @@ async function loadCellData() {
  */
 function loadFromArrowData() {
     const cellDataMap = window.appState.cellDataMap;
-    console.log('ðŸ“ Processing', cellDataMap.size, 'Arrow-loaded cell records...');
+    console.log(' Processing', cellDataMap.size, 'Arrow-loaded cell records...');
 
     for (const [cellId, cellData] of cellDataMap) {
         const x = cellData.position.x;
@@ -75,11 +75,11 @@ function loadFromArrowData() {
 async function loadFromTSVFile() {
     const config = window.config ? window.config() : {};
     const cellDataPath = config.cellDataFile || 'data/newSpots_newSegmentation/cellData.tsv';
-    console.log('ðŸŒ Fetching cell data from:', cellDataPath);
+    console.log(' Fetching cell data from:', cellDataPath);
 
     const response = await fetch(cellDataPath);
-    console.log('ðŸ“ Response status:', response.status, response.statusText);
-    console.log('ðŸ“ Response headers:', [...response.headers.entries()]);
+    console.log(' Response status:', response.status, response.statusText);
+    console.log(' Response headers:', [...response.headers.entries()]);
 
     if (!response.ok) {
         throw new Error(`Failed to load cell data: ${response.status} ${response.statusText} from ${cellDataPath}`);
@@ -103,7 +103,7 @@ async function loadFromTSVFile() {
         throw new Error('Required columns (Cell_Num, X, Y) not found in cellData.tsv');
     }
 
-    console.log('ðŸ“ Processing', lines.length - 1, 'TSV cell records...');
+    console.log(' Processing', lines.length - 1, 'TSV cell records...');
 
     // Process cell data
     for (let i = 1; i < lines.length; i++) {
@@ -194,8 +194,8 @@ async function searchAndNavigateToCell(cellId) {
         throw new Error(`Cell ${cellNum} not found in dataset`);
     }
 
-    console.log(`ðŸŽ Navigating to cell ${cellNum} at position (${cellData.x}, ${cellData.y})`);
-    console.log(`ðŸ“ Cell bounds:`, cellData.bounds);
+    console.log(` Navigating to cell ${cellNum} at position (${cellData.x}, ${cellData.y})`);
+    console.log(` Cell bounds:`, cellData.bounds);
 
     // Get image dimensions for coordinate transformation
     const config = window.config ? window.config() : {};
@@ -205,12 +205,12 @@ async function searchAndNavigateToCell(cellId) {
         tileSize: 256
     };
 
-    console.log(`ðŸ—ºï¸ Image dimensions: ${config.imageWidth}x${config.imageHeight}`);
+    console.log(` Image dimensions: ${config.imageWidth}x${config.imageHeight}`);
 
     // CRITICAL: Transform coordinates from original image space to tile coordinate space
     const [transformedX, transformedY] = transformToTileCoordinates(cellData.x, cellData.y, imageDimensions);
 
-    console.log(`ðŸ” Coordinate transformation:`);
+    console.log(` Coordinate transformation:`);
     console.log(`   Original: (${cellData.x}, ${cellData.y})`);
     console.log(`   Transformed: (${transformedX}, ${transformedY})`);
 
@@ -218,15 +218,15 @@ async function searchAndNavigateToCell(cellId) {
     const [xVoxelSize, yVoxelSize, zVoxelSize] = config.voxelSize; // [0.28, 0.28, 0.7]
     const planeNumber = Math.floor(cellData.z * xVoxelSize / zVoxelSize);
 
-    console.log(`ðŸŽ Cell Z coordinate: ${cellData.z}`);
+    console.log(` Cell Z coordinate: ${cellData.z}`);
     console.log(` Voxel sizes: x=${xVoxelSize}, y=${yVoxelSize}, z=${zVoxelSize}`);
-    console.log(`ðŸ§ Calculation: ${cellData.z} * ${xVoxelSize} / ${zVoxelSize} = ${cellData.z * xVoxelSize / zVoxelSize}`);
-    console.log(`âœˆï¸ Calculated plane number: ${planeNumber} (valid range: 0-${config.totalPlanes - 1})`);
+    console.log(` Calculation: ${cellData.z} * ${xVoxelSize} / ${zVoxelSize} = ${cellData.z * xVoxelSize / zVoxelSize}`);
+    console.log(` Calculated plane number: ${planeNumber} (valid range: 0-${config.totalPlanes - 1})`);
 
     // Switch to the calculated plane
     if (window.updatePlane && typeof window.updatePlane === 'function') {
         window.updatePlane(planeNumber);
-        console.log(`ðŸŽšï¸ Switched to plane ${planeNumber}`);
+        console.log(` Switched to plane ${planeNumber}`);
     } else {
         console.warn(' Could not switch plane - updatePlane function not available');
     }
@@ -241,11 +241,11 @@ async function searchAndNavigateToCell(cellId) {
     }
 
     // Temporarily disable the controller, do the navigation, then re-enable it with original settings
-    console.log('ðŸŽ Navigating to cell at transformed coordinates:', transformedX, transformedY);
+    console.log(' Navigating to cell at transformed coordinates:', transformedX, transformedY);
 
     // Step 1: Save original controller configuration and disable controller during transition
     const originalController = deckInstance.props.controller;
-    console.log('ðŸ’ Saved original controller config:', originalController);
+    console.log(' Saved original controller config:', originalController);
 
     deckInstance.setProps({
         controller: false
@@ -269,10 +269,10 @@ async function searchAndNavigateToCell(cellId) {
             controller: originalController, // Restore original controller with maxZoom: 8, etc.
             viewState: undefined // Let controller take over
         });
-        console.log('ðŸ” Controller re-enabled with original config (maxZoom: 8)');
+        console.log(' Controller re-enabled with original config (maxZoom: 8)');
     }, 1600);
 
-    console.log(`ðŸ“ Started navigation to: (${transformedX}, ${transformedY}) at zoom ${targetZoom}`);
+    console.log(` Started navigation to: (${transformedX}, ${transformedY}) at zoom ${targetZoom}`);
 
     return cellData;
 }
