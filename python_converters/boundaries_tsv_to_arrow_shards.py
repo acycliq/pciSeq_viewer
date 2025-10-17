@@ -98,12 +98,12 @@ def main():
         if not match:
             print(f"Warning: could not parse plane ID from filename, skipping: {path.name}")
             continue
-        
+
         current_plane_id = int(match.group(1))
         shard_name = f"boundaries_plane_{current_plane_id:02d}.feather"
 
         df = pd.read_csv(path, sep="\t", dtype={"label": "Int64", "coords": "string"})
-        
+
         # Use .apply for efficient parsing, drop rows where parsing fails
         df["parsed_coords"] = df["coords"].apply(parse_coords)
         df = df[df["parsed_coords"].str.len() > 0]
@@ -121,7 +121,7 @@ def main():
         x_lists = df["parsed_coords"].apply(lambda coords: [float(x) for x, _ in coords])
         y_lists = df["parsed_coords"].apply(lambda coords: [float(y) for _, y in coords])
         labels = pd.to_numeric(df["label"], errors="coerce").fillna(-1).astype("int32")
-        
+
         # Create the Arrow table
         arrays = {
             "x_list": pa.array(x_lists, type=pa.list_(pa.float32())),
@@ -130,15 +130,15 @@ def main():
             "label": pa.array(labels, type=pa.int32()),
         }
         table = pa.table(arrays, schema=schema)
-        
+
         # Write the Feather file
         feather.write_feather(table, (outdir / shard_name).as_posix(), compression=comp)
-        
+
         polys = len(df)
         pts = sum(x_lists.str.len())
         total_polys += polys
         total_points += pts
-        
+
         shards.append({"url": shard_name, "rows": int(polys), "plane": current_plane_id})
         print(f"Wrote {shard_name}: polys={polys}, points={pts}")
 

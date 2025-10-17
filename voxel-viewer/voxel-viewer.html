@@ -8,7 +8,7 @@
 </head>
 <body>
     <div id="container">
-        
+
         <!-- Toggle Controls moved to top-right -->
         <div class="mini-controls-right">
             <label>
@@ -32,7 +32,7 @@
                 Ghosting
             </label>
         </div>
-        
+
         <!-- Gene Controls Widget - at top left -->
         <div id="chunkGeneWidget" class="gene-widget hidden" style="top: 20px; left: 20px;">
             <div class="gene-widget-header">
@@ -55,7 +55,7 @@
             <button id="genePanelBtn">🧬 Genes</button>
         </div>
         <div class="slider-container">
-            <input type="range" class="z-slicer" 
+            <input type="range" class="z-slicer"
                    id="sliceZ" />
             <div class="slider-value" id="sliderValue"></div>
         </div>
@@ -63,7 +63,7 @@
 
     <!-- Import d3.js -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    
+
     <!-- Import deck.gl and luma.gl -->
     <script src="https://unpkg.com/deck.gl@8.1.0/dist.min.js"></script>
     <script src="https://unpkg.com/@luma.gl/core@8.1.0/dist.min.js"></script>
@@ -71,7 +71,7 @@
 
     <!-- Import dataset (using existing name for stability) -->
     <script src="sample-data.js"></script>
-    
+
     <!-- Configure asset base for textures relative to this viewer -->
     <!-- Import voxel layer -->
     <script src="./voxel-layer.js"></script>

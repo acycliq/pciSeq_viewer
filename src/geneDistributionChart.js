@@ -1,6 +1,6 @@
 /**
  * Gene Distribution Chart Module
- * 
+ *
  * Creates interactive bar charts showing gene spot distribution across planes
  */
 
@@ -13,7 +13,7 @@ let chartElements = null;
 // Initialize chart elements
 function initChartElements() {
     if (chartElements) return chartElements;
-    
+
     chartElements = {
         widget: document.getElementById('geneDistributionWidget'),
         backdrop: document.getElementById('geneDistributionWidgetBackdrop'),
@@ -22,7 +22,7 @@ function initChartElements() {
         closeBtn: document.getElementById('geneDistributionWidgetClose'),
         undockBtn: document.getElementById('geneDistributionWidgetUndock')
     };
-    
+
     return chartElements;
 }
 
@@ -35,21 +35,21 @@ function calculateGeneDistribution(geneName) {
     if (!state.geneDataMap.has(geneName)) {
         return [];
     }
-    
+
     const geneSpots = state.geneDataMap.get(geneName);
     const planeCounts = new Map();
-    
+
     // Count spots per plane
     geneSpots.forEach(spot => {
         const planeId = spot.plane_id || 0;
         planeCounts.set(planeId, (planeCounts.get(planeId) || 0) + 1);
     });
-    
+
     // Convert to array and sort by plane number
     const distribution = Array.from(planeCounts.entries())
         .map(([plane, count]) => ({ plane: +plane, count }))
         .sort((a, b) => a.plane - b.plane);
-    
+
     return distribution;
 }
 
@@ -61,42 +61,42 @@ function calculateGeneDistribution(geneName) {
 function createBarChart(data, geneName) {
     const els = initChartElements();
     const container = els.chart;
-    
+
     // Clear previous chart
     container.innerHTML = '';
-    
+
     if (!data || data.length === 0) {
         container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #888;">No data available for selected gene</div>';
         return;
     }
-    
+
     const margin = { top: 20, right: 30, bottom: 40, left: 50 };
     const width = container.clientWidth - margin.left - margin.right;
     const height = container.clientHeight - margin.top - margin.bottom;
-    
+
     // Create SVG
     const svg = d3.select(container)
         .append('svg')
         .attr('width', width + margin.left + margin.right)
         .attr('height', height + margin.top + margin.bottom);
-    
+
     const g = svg.append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
-    
+
     // Scales
     const xScale = d3.scaleBand()
         .domain(data.map(d => d.plane))
         .range([0, width])
         .padding(0.1);
-    
+
     const yScale = d3.scaleLinear()
         .domain([0, d3.max(data, d => d.count)])
         .range([height, 0]);
-    
+
     // Color scale
     const colorScale = d3.scaleSequential(d3.interpolateBlues)
         .domain([0, d3.max(data, d => d.count)]);
-    
+
     // Create bars
     g.selectAll('.bar')
         .data(data)
@@ -123,14 +123,14 @@ function createBarChart(data, geneName) {
                 .style('pointer-events', 'none')
                 .style('z-index', '10000')
                 .style('opacity', 0);
-            
+
             tooltip.html(`<strong>Plane ${d.plane}</strong><br/>Spots: ${d.count}`)
                 .style('left', (event.pageX + 10) + 'px')
                 .style('top', (event.pageY - 10) + 'px')
                 .transition()
                 .duration(200)
                 .style('opacity', 1);
-            
+
             // Highlight bar
             d3.select(this)
                 .attr('stroke-width', 2)
@@ -148,11 +148,11 @@ function createBarChart(data, geneName) {
                 window.navigateToPlane(d.plane);
             }
         });
-    
+
     // X axis with filtered tick labels
     const xAxis = d3.axisBottom(xScale)
         .tickValues(data.filter((d, i) => i % 5 === 0).map(d => d.plane));
-    
+
     g.append('g')
         .attr('transform', `translate(0,${height})`)
         .call(xAxis)
@@ -163,7 +163,7 @@ function createBarChart(data, geneName) {
         .style('text-anchor', 'middle')
         .style('font-size', '12px')
         .text('Plane');
-    
+
     // Y axis
     g.append('g')
         .call(d3.axisLeft(yScale))
@@ -175,7 +175,7 @@ function createBarChart(data, geneName) {
         .style('text-anchor', 'middle')
         .style('font-size', '12px')
         .text('Spot Count');
-    
+
     // Chart title
     g.append('text')
         .attr('x', width / 2)
@@ -185,11 +185,11 @@ function createBarChart(data, geneName) {
         .style('font-size', '14px')
         .style('font-weight', 'bold')
         .text(`${geneName} - Distribution Across Planes`);
-    
+
     // Add stats text
     const totalSpots = data.reduce((sum, d) => sum + d.count, 0);
     const planeRange = data.length > 0 ? `${d3.min(data, d => d.plane)} - ${d3.max(data, d => d.plane)}` : '0';
-    
+
     g.append('text')
         .attr('x', width - 5)
         .attr('y', 15)
@@ -205,12 +205,12 @@ function createBarChart(data, geneName) {
 function populateGeneSelect() {
     const els = initChartElements();
     const select = els.select;
-    
+
     // Clear existing options (except first)
     while (select.children.length > 1) {
         select.removeChild(select.lastChild);
     }
-    
+
     // Add gene options
     const genes = Array.from(state.geneDataMap.keys()).sort();
     genes.forEach(gene => {
@@ -227,12 +227,12 @@ function populateGeneSelect() {
  */
 export function showGeneDistributionWidget() {
     const els = initChartElements();
-    
+
     populateGeneSelect();
-    
+
     els.widget.classList.remove('hidden');
     els.backdrop.classList.remove('hidden');
-    
+
     // Add backdrop click handler
     els.backdrop.onclick = hideGeneDistributionWidget;
 }
@@ -242,7 +242,7 @@ export function showGeneDistributionWidget() {
  */
 export function hideGeneDistributionWidget() {
     const els = initChartElements();
-    
+
     els.widget.classList.add('hidden');
     els.backdrop.classList.add('hidden');
     els.backdrop.onclick = null;
@@ -253,10 +253,10 @@ export function hideGeneDistributionWidget() {
  */
 export function initGeneDistributionChart() {
     const els = initChartElements();
-    
+
     // Close button handler
     els.closeBtn.onclick = hideGeneDistributionWidget;
-    
+
     // Gene selection handler
     els.select.onchange = function() {
         const selectedGene = this.value;
@@ -267,13 +267,13 @@ export function initGeneDistributionChart() {
             els.chart.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #888;">Select a gene to view distribution</div>';
         }
     };
-    
-    
+
+
     // Undock button handler (placeholder)
     els.undockBtn.onclick = function() {
         console.log('Undock functionality not implemented yet');
     };
-    
+
     // Initial state
     els.chart.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #888;">Select a gene to view distribution</div>';
 }

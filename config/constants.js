@@ -1,6 +1,6 @@
 /**
  * Application Constants (Generated from User Configuration)
- * 
+ *
  * This file transforms the user-friendly config.js into the structured constants
  * that the application modules expect. Users should modify config.js, not this file.
  */

@@ -9,7 +9,7 @@ importScripts('https://unpkg.com/rbush@3.0.1/rbush.min.js');
 function buildSpatialIndex(cellBounds) {
   const tree = new RBush();
   const boxes = [];
-  
+
   for (const cellData of cellBounds) {
     boxes.push({
       minX: cellData.minX,
@@ -20,7 +20,7 @@ function buildSpatialIndex(cellBounds) {
       planes: cellData.planes
     });
   }
-  
+
   tree.load(boxes);
   return tree.toJSON();
 }

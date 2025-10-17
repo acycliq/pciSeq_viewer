@@ -19,25 +19,25 @@ function getGeneColor(geneName) {
     if (typeof glyphSettings === 'function') {
         const settings = glyphSettings();
         const geneSetting = settings.find(s => s.gene === geneName);
-        
+
         if (geneSetting && geneSetting.color) {
             // Convert hex color to RGB array
             const color = d3.rgb(geneSetting.color);
             return [color.r, color.g, color.b];
         }
     }
-    
+
     // Try to get from parent window's glyph configuration
     if (window.opener && typeof window.opener.glyphSettings === 'function') {
         const settings = window.opener.glyphSettings();
         const geneSetting = settings.find(s => s.gene === geneName);
-        
+
         if (geneSetting && geneSetting.color) {
             const color = d3.rgb(geneSetting.color);
             return [color.r, color.g, color.b];
         }
     }
-    
+
     // Default color for unknown genes (blue)
     return [0, 0, 255];
 }
@@ -46,7 +46,7 @@ function getGeneColor(geneName) {
 function getDataset() {
     const urlParams = new URLSearchParams(window.location.search);
     const source = urlParams.get('source');
-    
+
     if (source === 'selection' && window.opener?.lastSelectionResults) {
         console.log('Using selection data from main viewer');
         console.log('Selection bounds:', window.opener.lastSelectionResults.bounds);
@@ -54,7 +54,7 @@ function getDataset() {
         console.log('Selection cells:', window.opener.lastSelectionResults.cells.count);
         return window.opener.lastSelectionResults;
     } else {
-        console.log('🎮 Using demo test dataset');
+        console.log('� Using demo test dataset');
         return generateTestDataset();
     }
 }
@@ -68,12 +68,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Get dataset from selection or generate test data
     const dataset = getDataset();
     console.log('Generated dataset:', dataset);
-    
+
     // Gene selection state (declare early so transformBioDataToBlocks can use them)
     let availableGenes = new Set(); // All genes in the current dataset
     let selectedGenes = new Set(); // Currently visible genes
     let geneColors = new Map(); // Gene -> color mapping
-    
+
     // Print original spot coordinates
     console.log('=== ORIGINAL SPOT COORDINATES ===');
     dataset.spots.data.forEach((spot, i) => {
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const stoneVoxels = []; // will represent the background
         const cellVoxels = []; // voxels inside cell boundaries
         const boundaryVoxels = []; // voxels for traced cell boundary lines
-        
+
         // Center-aligned integer bounds so voxel centers lie strictly inside float bounds.
         // Derivation: We test at centers (i + 0.5). To ensure (i + 0.5) ≥ left_float, we need
         // i ≥ left_float - 0.5 ⇒ i_min = ceil(left_float - 0.5). Similarly, to ensure
@@ -121,41 +121,41 @@ document.addEventListener('DOMContentLoaded', function() {
             bottom: Math.floor(dataset.bounds.bottom - 0.5),
             depth: Math.floor(dataset.bounds.depth)
         };
-        
+
         // Calculate selection dimensions, then add 1 to include the boundary pixels
         const selectionWidth = (bounds.right - bounds.left) + 1;   // +1 to include right boundary pixel
         const selectionHeight = (bounds.bottom - bounds.top) + 1;  // +1 to include bottom boundary pixel
         const selectionDepth = bounds.depth + 1;                   // +1 to include depth boundary
         console.log('Selection dimensions with boundary pixels:', {width: selectionWidth, height: selectionHeight, depth: selectionDepth});
-        
+
         // Block dimensions = pixel dimensions (perfect 1:1 mapping)
         const maxX = selectionWidth;   // No Math.ceil() needed!
-        const maxY = selectionDepth;   // No Math.ceil() needed!  
+        const maxY = selectionDepth;   // No Math.ceil() needed!
         const maxZ = selectionHeight;  // No Math.ceil() needed!
-        
+
         // Scale factors eliminated - direct 1:1 integer mapping
         // scaleX, scaleY, scaleZ are now redundant and removed!
 
         console.log('Selection dimensions (integer pixels):', {width: selectionWidth, height: selectionHeight, depth: selectionDepth});
         console.log('Block dimensions (1:1 integer mapping):', {maxX, maxY, maxZ});
-        console.log('Mapping: original[X,Y,Z] → viewer[X,Z,Y] with direct integer arithmetic');
+        console.log('Mapping: original[X,Y,Z] � viewer[X,Z,Y] with direct integer arithmetic');
 
 
 
         // Create background stone grid using plane-based positioning with cell boundary holes (via raster mask)
-        console.log('🏗️ Creating stone blocks at plane positions with cell boundary holes (raster mask)...');
+        console.log(' Creating stone blocks at plane positions with cell boundary holes (raster mask)...');
         const stoneStartTime = performance.now();
-        
+
         let totalBlocks = 0;
         let holesCreated = 0;
-        
+
         // Get plane count from config
         let totalPlanes = Math.floor(maxY / 2.5); // fallback estimate
         if (window.opener && window.opener.window.config) {
             const config = window.opener.window.config();
             totalPlanes = config.totalPlanes;
         }
-        
+
         // Build scene indices (per-plane cells, id->color)
         const { cellsByPlane, colorById } = buildSceneIndex(dataset);
 
@@ -173,15 +173,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Avoid spread on very large arrays to prevent call stack overflow
         for (const v of vox.stoneVoxels) stoneVoxels.push(v);
         for (const v of vox.cellVoxels) cellVoxels.push(v);
-        
+
         const stoneEndTime = performance.now();
-        console.log(`✅ Stone creation completed in ${(stoneEndTime - stoneStartTime).toFixed(1)}ms`);
-        console.log(`📊 Performance: ${totalPlanes} planes, ${totalBlocks} blocks processed, ${stoneVoxels.length} stone blocks created`);
-        console.log(`🕳️ Cell boundary holes: ${holesCreated} holes created (${((holesCreated/totalBlocks)*100).toFixed(1)}% of total blocks)`);
-        console.log(`🧱 Hole stone blocks: ${cellVoxels.length} voxels inside cell boundaries`);
-        
+        console.log(` Stone creation completed in ${(stoneEndTime - stoneStartTime).toFixed(1)}ms`);
+        console.log(`� Performance: ${totalPlanes} planes, ${totalBlocks} blocks processed, ${stoneVoxels.length} stone blocks created`);
+        console.log(`🕳� Cell boundary holes: ${holesCreated} holes created (${((holesCreated/totalBlocks)*100).toFixed(1)}% of total blocks)`);
+        console.log(`� Hole stone blocks: ${cellVoxels.length} voxels inside cell boundaries`);
+
         // Debug: Show stone positions from different planes
-        console.log('🏗️ Sample stone positions across different planes:');
+        console.log(' Sample stone positions across different planes:');
         const planesToShow = [0, 1, 2, 3, 4, 5];
         planesToShow.forEach(targetPlane => {
             const stonesFromPlane = stoneVoxels.filter(stone => stone.planeId === targetPlane);
@@ -194,14 +194,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Boundary voxels already created in generateVoxelsFromMasks
         const boundaryStartTime = performance.now();
         for (const v of vox.boundaryVoxels) boundaryVoxels.push(v);
-        
+
         const boundaryEndTime = performance.now();
-        console.log(`✅ Boundary tracing completed in ${(boundaryEndTime - boundaryStartTime).toFixed(1)}ms`);
-        console.log(`🔴 Boundary voxels created: ${boundaryVoxels.length} voxels from ${dataset.cells.count} cells`);
-        
+        console.log(` Boundary tracing completed in ${(boundaryEndTime - boundaryStartTime).toFixed(1)}ms`);
+        console.log(`� Boundary voxels created: ${boundaryVoxels.length} voxels from ${dataset.cells.count} cells`);
+
         // Debug: Log cell IDs and their voxel counts
         const uniqueCellIds = [...new Set(boundaryVoxels.map(v => v.cellId))];
-        console.log('🔍 Debug: Cell IDs in boundary voxels:', uniqueCellIds);
+        console.log(' Debug: Cell IDs in boundary voxels:', uniqueCellIds);
         uniqueCellIds.forEach(cellId => {
             const voxelCount = boundaryVoxels.filter(v => v.cellId === cellId).length;
             console.log(`  Cell ${cellId}: voxelType=3, voxelId=${cellId}, ${voxelCount} voxels`);
@@ -213,14 +213,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const spotX = Math.floor(spot.x);  // Clean integer pixels
             const spotY = Math.floor(spot.y);  // Clean integer pixels
             const spotZ = Math.floor(spot.z);  // Clean integer depth
-            
+
             const x = spotX - bounds.left;            // Global → Local X (simple integer subtraction)
-            const y = planeIdToSliceY(spot.plane_id); // plane_id → viewer Y (anisotropic scaling)  
+            const y = planeIdToSliceY(spot.plane_id); // plane_id → viewer Y (anisotropic scaling)
             const z = spotY - bounds.top;             // Global → Local Y→Z (simple integer subtraction)
-            
+
             // Debug: Log transformation for first few spots
             if (index < 5) {
-                console.log(`🎯 Spot ${index}: plane_id=${spot.plane_id} → Y=${y}, original(${spotX}, ${spotY}, ${spotZ}) → viewer(${x}, ${y}, ${z})`);
+                console.log(`🎯 Spot ${index}: plane_id=${spot.plane_id} � Y=${y}, original(${spotX}, ${spotY}, ${spotZ}) → viewer(${x}, ${y}, ${z})`);
             }
 
             // Get gene color from main viewer's glyph configuration
@@ -248,31 +248,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Extract unique genes from the dataset for gene controls
         const uniqueGenes = [...new Set(dataset.spots.data.map(spot => spot.gene))];
-        console.log('🧬 Found unique genes in selection:', uniqueGenes.length, uniqueGenes);
-        
+        console.log('� Found unique genes in selection:', uniqueGenes.length, uniqueGenes);
+
         // Build gene sets and colors for controls
         availableGenes.clear();
         selectedGenes.clear();
         geneColors.clear();
-        
+
         uniqueGenes.forEach(gene => {
             availableGenes.add(gene);
             selectedGenes.add(gene); // Start with all genes visible
-            
+
             // Get gene color and store as hex string
             const rgb = getGeneColor(gene);
             const color = d3.rgb(rgb[0], rgb[1], rgb[2]);
             geneColors.set(gene, color.formatHex());
         });
-        
-        console.log('🎨 Gene colors:', Object.fromEntries(geneColors));
+
+        console.log('� Gene colors:', Object.fromEntries(geneColors));
 
         console.log('Transformed', geneVoxels.length, 'gene spots,', stoneVoxels.length, 'stone blocks,', cellVoxels.length, 'hole stone blocks, and', boundaryVoxels.length, 'boundary voxels');
         console.log('Sample gene block:', geneVoxels[0]);
         console.log('Sample stone block:', stoneVoxels[0]);
         console.log('Sample hole stone block:', cellVoxels[0]);
         console.log('Sample boundary voxel:', boundaryVoxels[0]);
-        
+
         return {
             geneData: geneVoxels,
             stoneData: stoneVoxels,
@@ -342,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let showHoleVoxels = false; // Toggle for showing hole voxels (cell boundary shapes)
     let showBoundaryVoxels = false; // Toggle for showing boundary voxels (red cell outlines)
     let showGhosting = true; // Toggle for showing ghosting effects
-    
+
     // Calculate anisotropic scale from config
     const config = window.opener.window.config();
     const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Helper to create a VoxelLayer with common settings
     function createVoxelLayer(id, data, config) {
         if (data.length === 0) return null;
-        
+
         return new VoxelLayer({
             id: id,
             data: data,
@@ -373,18 +373,18 @@ document.addEventListener('DOMContentLoaded', function() {
         canvas.width = 20;
         canvas.height = 20;
         canvas.className = 'gene-glyph';
-        
+
         const ctx = canvas.getContext('2d');
-        
+
         // Fill with gene color
         ctx.fillStyle = color;
         ctx.fillRect(2, 2, 16, 16);
-        
+
         // Add subtle border
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.lineWidth = 1;
         ctx.strokeRect(2, 2, 16, 16);
-        
+
         return canvas;
     }
 
@@ -392,15 +392,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function buildGeneControls() {
         const geneList = document.getElementById('geneList');
         geneList.innerHTML = ''; // Clear existing controls
-        
+
         // Sort genes alphabetically for consistent display
         const sortedGenes = [...availableGenes].sort();
-        
+
         sortedGenes.forEach(gene => {
             const geneItem = document.createElement('div');
             geneItem.className = 'gene-item';
             geneItem.dataset.gene = gene;
-            
+
             // Checkbox
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
@@ -408,18 +408,18 @@ document.addEventListener('DOMContentLoaded', function() {
             checkbox.id = `gene-${gene}`;
             checkbox.checked = selectedGenes.has(gene);
             checkbox.addEventListener('change', () => toggleGene(gene, checkbox.checked));
-            
+
             // Filled square glyph with gene color
             const glyph = createGeneGlyph(geneColors.get(gene));
-            
+
             // Gene name with spot count
             const nameSpan = document.createElement('span');
             nameSpan.className = 'gene-name';
-            
+
             // Count spots for this gene
             const geneSpotCount = blockData.geneData.filter(block => block.gene_name === gene).length;
             nameSpan.textContent = `${gene} (${geneSpotCount.toLocaleString()})`;
-            
+
             // Click handler for the entire item
             geneItem.addEventListener('click', (e) => {
                 if (e.target !== checkbox) {
@@ -427,17 +427,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     toggleGene(gene, checkbox.checked);
                 }
             });
-            
+
             geneItem.appendChild(checkbox);
             geneItem.appendChild(nameSpan);
             geneItem.appendChild(glyph);
-            
+
             geneList.appendChild(geneItem);
         });
-        
-        console.log(`🎛️ Built gene controls for ${sortedGenes.length} genes`);
+
+        console.log(`🎛� Built gene controls for ${sortedGenes.length} genes`);
     }
-    
+
     // Toggle individual gene visibility
     function toggleGene(gene, isVisible) {
         if (isVisible) {
@@ -445,22 +445,22 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             selectedGenes.delete(gene);
         }
-        
-        console.log(`🧬 Gene ${gene}: ${isVisible ? 'shown' : 'hidden'}`);
+
+        console.log(`� Gene ${gene}: ${isVisible ? 'shown' : 'hidden'}`);
         updateToggleAllButton();
-        
+
         // Update layers
         deckgl.setProps({
             layers: createLayers()
         });
     }
-    
+
     // Update the "Toggle All" button text and style based on current selection
     function updateToggleAllButton() {
         const toggleAllBtn = document.getElementById('toggleAllGenes');
         const totalGenes = availableGenes.size;
         const selected = selectedGenes.size;
-        
+
         if (selected === totalGenes) {
             toggleAllBtn.textContent = 'Unselect All';
             toggleAllBtn.className = 'toggle-all-btn unselect';
@@ -474,7 +474,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function filterGeneList(searchTerm) {
         const geneItems = document.querySelectorAll('.gene-item');
         const lowerSearchTerm = searchTerm.toLowerCase();
-        
+
         geneItems.forEach(item => {
             const geneName = item.dataset.gene.toLowerCase();
             const shouldShow = geneName.includes(lowerSearchTerm);
@@ -485,7 +485,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create line data connecting spots to their parent cells
     function createLinesData(solidOnly = true) {
         const lines = [];
-        
+
         // Use the same integer bounds as the transformation
         const bounds = {
             left: Math.floor(dataset.bounds.left),
@@ -494,51 +494,51 @@ document.addEventListener('DOMContentLoaded', function() {
             bottom: Math.floor(dataset.bounds.bottom),
             depth: Math.floor(dataset.bounds.depth)
         };
-        
+
         // Scale factors eliminated - direct 1:1 integer mapping
         // No more scaleX, scaleY, scaleZ needed!
 
         // Filter spots based on solid/ghost mode and gene selection
         const filteredGeneVoxels = solidOnly
-            ? blockData.geneData.filter(block => 
+            ? blockData.geneData.filter(block =>
                 block.position[1] <= currentSliceY && selectedGenes.has(block.gene_name))  // solid spots
-            : blockData.geneData.filter(block => 
+            : blockData.geneData.filter(block =>
                 block.position[1] > currentSliceY && selectedGenes.has(block.gene_name));   // ghost spots
-        
+
         filteredGeneVoxels.forEach(spotBlock => {
             // Check if this spot has valid parent cell coordinates (not null, undefined, or background cell)
             if (spotBlock.parent_cell_X !== null && spotBlock.parent_cell_X !== undefined &&
                 spotBlock.parent_cell_Y !== null && spotBlock.parent_cell_Y !== undefined &&
                 spotBlock.parent_cell_Z !== null && spotBlock.parent_cell_Z !== undefined &&
-                spotBlock.parent_cell_id !== null && spotBlock.parent_cell_id !== undefined && 
+                spotBlock.parent_cell_id !== null && spotBlock.parent_cell_id !== undefined &&
                 spotBlock.parent_cell_id !== 0) {
-                
+
                 // Source position: spot position (already in viewer coordinates)
                 const sourcePosition = [
                     spotBlock.position[0], // viewer X
-                    spotBlock.position[1], // viewer Y  
+                    spotBlock.position[1], // viewer Y
                     spotBlock.position[2]  // viewer Z
                 ];
-                
+
                 // Target position: parent cell coordinates (transform to viewer coordinates with simple integer arithmetic)
                 const parentCellX = Math.floor(spotBlock.parent_cell_X);  // Clean integer pixels
-                const parentCellY = Math.floor(spotBlock.parent_cell_Y);  // Clean integer pixels  
+                const parentCellY = Math.floor(spotBlock.parent_cell_Y);  // Clean integer pixels
                 const parentCellZ = Math.floor(spotBlock.parent_cell_Z);  // Clean integer depth
-                
+
                 const parentViewerX = parentCellX - bounds.left;         // Global → Local X (simple subtraction)
                 const parentViewerY = parentCellZ;                       // Z coordinate becomes Y (depth → slicing axis)
                 const parentViewerZ = parentCellY - bounds.top;          // Global → Local Y→Z (simple subtraction)
-                
+
                 const targetPosition = [
                     parentViewerX,
                     parentViewerY,
                     parentViewerZ
                 ];
-                
+
                 // Use the gene color for the line, but make it semi-transparent
                 const geneColor = spotBlock.rgb || [255, 255, 255];
                 const lineColor = [geneColor[0], geneColor[1], geneColor[2], 128]; // 50% transparency
-                
+
                 lines.push({
                     sourcePosition: sourcePosition,
                     targetPosition: targetPosition,
@@ -549,9 +549,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         });
-        
+
         console.log(`Created ${lines.length} ${solidOnly ? 'solid' : 'ghost'} spot-to-parent lines from ${filteredGeneVoxels.length} spots`);
-        
+
         return lines;
     }
 
@@ -600,7 +600,7 @@ document.addEventListener('DOMContentLoaded', function() {
         onClick: (info) => {
             if (info.object) {
                 console.log('Clicked:', {
-                    gene: info.object.gene_name, 
+                    gene: info.object.gene_name,
                     position: info.object.position,
                     original_coords: info.object.original_coords,
                     parent_cell: info.object.parent_cell_id
@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setCurrentPlaneId: (v) => { currentPlaneId = v; },
         setCurrentSliceY: (v) => { currentSliceY = v; }
     });
-    
+
     // Initialize minimal top-right controls via UI module
     initControls({
         deckgl,
@@ -649,8 +649,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     console.log('Bio demo initialized with', blockData.geneData.length, 'gene spots and', blockData.stoneData.length, 'stone blocks');
-    
+
     }).catch(error => {
-        console.error('❌ Failed to initialize chunk viewer:', error);
+        console.error(' Failed to initialize chunk viewer:', error);
     });
 });

@@ -43,14 +43,14 @@ def parse_list_column(series, parse_as='string'):
     def parse_cell(cell_value):
         if pd.isna(cell_value):
             return []
-        
+
         # Handle case where it's already a list or tuple
         if isinstance(cell_value, (list, tuple)):
             if parse_as == 'float':
                 return [float(x) for x in cell_value]
             else:
                 return [str(x) for x in cell_value]
-        
+
         # Handle string representation of lists
         if isinstance(cell_value, str):
             try:
@@ -65,9 +65,9 @@ def parse_list_column(series, parse_as='string'):
                     return []
             except (json.JSONDecodeError, ValueError, TypeError):
                 return []
-        
+
         return []
-    
+
     return series.apply(parse_cell)
 
 
@@ -79,15 +79,15 @@ def select_cast_columns(df: pd.DataFrame) -> pd.DataFrame:
     if "X" in df.columns: cols["X"] = pd.to_numeric(df["X"], errors="coerce").astype("float32")
     if "Y" in df.columns: cols["Y"] = pd.to_numeric(df["Y"], errors="coerce").astype("float32")
     if "Z" in df.columns: cols["Z"] = pd.to_numeric(df["Z"], errors="coerce").astype("float32")
-    
-    # Parse ClassName as list of strings  
-    if "ClassName" in df.columns: 
+
+    # Parse ClassName as list of strings
+    if "ClassName" in df.columns:
         cols["class_name"] = parse_list_column(df["ClassName"], parse_as='string')
-    
+
     # Parse Prob as list of floats
     if "Prob" in df.columns:
         cols["prob"] = parse_list_column(df["Prob"], parse_as='float')
-    
+
     if "gaussian_contour" in df.columns:
         cols["gaussian_contour"] = df["gaussian_contour"].astype("string")
     # Optional passthroughs (keep as string)
