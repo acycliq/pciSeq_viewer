@@ -380,7 +380,7 @@ function updateAllLayers() {
                 }
                 if (lyr.id === 'spots-scatter-binary') hasBinary = true;
             }
-            console.log(`â±ï¸ Zoom transition end: ${state.zoomTransition.from || 'none'} -> ${state.zoomTransition.to} in ${elapsed.toFixed(1)}ms | layers=${totalLayers}, iconLayers=${iconLayers}, iconPointsâ‰ˆ${iconPoints}, binary=${hasBinary}`);
+            console.log(`â±ï¿½ Zoom transition end: ${state.zoomTransition.from || 'none'} -> ${state.zoomTransition.to} in ${elapsed.toFixed(1)}ms | layers=${totalLayers}, iconLayers=${iconLayers}, iconPointsâ‰ˆ${iconPoints}, binary=${hasBinary}`);
             state.zoomTransition.inProgress = false;
         }
     } catch {}
@@ -409,7 +409,7 @@ function updatePlaneImmediate(newPlane) {
     const perfTime = performance.now() - perfStart;
     const advancedConfig = window.advancedConfig();
     if (advancedConfig.performance.showPerformanceStats) {
-        console.log(`âš Immediate plane update: ${perfTime.toFixed(1)}ms`);
+        console.log(`ï¿½ Immediate plane update: ${perfTime.toFixed(1)}ms`);
     }
 }
 
@@ -588,7 +588,7 @@ function initializeDeckGL() {
                 if (mode !== __lastZoomMode) {
                     if (adv.performance.showPerformanceStats) {
                         state.zoomTransition = { inProgress: true, from: __lastZoomMode, to: mode, start: performance.now() };
-                        console.log(`â±ï¸ Zoom transition start: ${state.zoomTransition.from || 'none'} -> ${mode} at zoom ${viewState.zoom.toFixed(2)}`);
+                        console.log(`â±ï¿½ Zoom transition start: ${state.zoomTransition.from || 'none'} -> ${mode} at zoom ${viewState.zoom.toFixed(2)}`);
                     }
                     __lastZoomMode = mode;
                     __lastDragging = dragging;
@@ -648,11 +648,11 @@ async function init() {
     // Performance optimization info
     if (advancedConfig.performance.enablePerformanceMode) {
         console.log(' Performance optimizations enabled:');
-        console.log('  â¢ Two-phase updates (immediate UI + background data)');
-        console.log('  â¢ Smart caching with automatic cleanup');
-        console.log('  â¢ Background preloading of adjacent planes');
-        console.log('  â¢ Reduced slider debouncing for instant response');
-        console.log('  â¢ Memory management (max 50 planes cached)');
+        console.log('  ï¿½ Two-phase updates (immediate UI + background data)');
+        console.log('  ï¿½ Smart caching with automatic cleanup');
+        console.log('  ï¿½ Background preloading of adjacent planes');
+        console.log('  ï¿½ Reduced slider debouncing for instant response');
+        console.log('  ï¿½ Memory management (max 50 planes cached)');
     }
 
     // Clear polygon cache to ensure fresh load on app restart
@@ -974,7 +974,7 @@ window.transformToTileCoordinates = transformToTileCoordinates;
  */
 async function buildGlobalZProjectionBackground() {
     try {
-        console.log('ðŸŒ Starting background Z-projection build...');
+        console.log('ï¿½ Starting background Z-projection build...');
 
         await buildGlobalZProjection(state, (progress) => {
             // Progress callback
@@ -1030,30 +1030,9 @@ window.updateCellInfo = function(cellProperties) {
 
         console.log('Updating cell info with data:', cellData);
 
-        // If gene counts missing, derive from indexes (cellToSpotsIndex)
-        try {
-            if ((!cellData.Genenames || cellData.Genenames.length === 0 || !cellData.CellGeneCount || cellData.CellGeneCount.length === 0)
-                && window.appState && window.appState.cellToSpotsIndex) {
-                const cid = Number(cellData.cell_id || cellProperties.id);
-                if (Number.isFinite(cid)) {
-                    const spots = window.appState.cellToSpotsIndex.get(cid) || [];
-                    const counts = new Map();
-                    for (const s of spots) {
-                        const g = s && s.gene ? String(s.gene) : '';
-                        if (!g) continue;
-                        // Prefer numeric intensity if present; otherwise add 1
-                        const val = (s && typeof s.intensity === 'number' && isFinite(s.intensity)) ? s.intensity : 1;
-                        counts.set(g, (counts.get(g) || 0) + val);
-                    }
-                    const rows = Array.from(counts.entries()).map(([gene, count]) => ({ gene, count }));
-                    rows.sort((a, b) => b.count - a.count);
-                    // Truncate to two decimals without rounding for display consistency
-                    cellData.Genenames = rows.map(r => r.gene);
-                    cellData.CellGeneCount = rows.map(r => Math.trunc(Number(r.count) * 100) / 100);
-                }
-            }
-        } catch (e) {
-            console.warn('Failed to derive gene counts from index:', e);
+        // Check if gene expression data is missing from Arrow files
+        if (!cellData.Genenames || cellData.Genenames.length === 0 || !cellData.CellGeneCount || cellData.CellGeneCount.length === 0) {
+            console.warn(`Cell ${cellData.cell_id || cellProperties.id}: Gene expression data (Genenames/CellGeneCount) is missing from Arrow files. Please regenerate Arrow files using the updated Python converter that includes gene_names and gene_counts columns.`);
         }
 
         // Update donut first; isolate failures

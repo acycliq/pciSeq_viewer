@@ -99,6 +99,7 @@ async function handleLoadCells(cfg) {
   // Concatenate across shards (small columns)
   let Xs=[], Ys=[], Zs=[], cellIds=[];
   let classNameLists=[], probLists=[];
+  let geneNameLists=[], geneCountLists=[];
 
   for (const url of shardUrls) {
     const buf = await fetchArrayBuffer(url);
@@ -111,6 +112,8 @@ async function handleLoadCells(cfg) {
     // Handle list columns
     const class_name_col = table.getChild('class_name');
     const prob_col = table.getChild('prob');
+    const gene_names_col = table.getChild('gene_names');
+    const gene_counts_col = table.getChild('gene_counts');
 
     Xs.push(X); Ys.push(Y); Zs.push(Z); cellIds.push(cell_id);
 
@@ -132,6 +135,24 @@ async function handleLoadCells(cfg) {
         probLists.push(jsArray);
       }
     }
+
+    if (gene_names_col) {
+      for (let i = 0; i < gene_names_col.length; i++) {
+        const listValue = gene_names_col.get(i);
+        // Convert Arrow List to JavaScript array
+        const jsArray = listValue ? Array.from(listValue) : [];
+        geneNameLists.push(jsArray);
+      }
+    }
+
+    if (gene_counts_col) {
+      for (let i = 0; i < gene_counts_col.length; i++) {
+        const listValue = gene_counts_col.get(i);
+        // Convert Arrow List to JavaScript array
+        const jsArray = listValue ? Array.from(listValue) : [];
+        geneCountLists.push(jsArray);
+      }
+    }
   }
 
   // Flatten typed chunks
@@ -148,7 +169,7 @@ async function handleLoadCells(cfg) {
   const cell_id = concatTyped(cellIds);
   const transfers = uniqueTransferList([X,Y,Z,cell_id].map(a=>a && a.buffer));
 
-  return { columns: { X, Y, Z, cell_id, class_name: classNameLists, prob: probLists }, transfers };
+  return { columns: { X, Y, Z, cell_id, class_name: classNameLists, prob: probLists, gene_names: geneNameLists, gene_counts: geneCountLists }, transfers };
 }
 
 async function handleLoadBoundariesPlane(cfg) {
