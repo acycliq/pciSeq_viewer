@@ -1,4 +1,4 @@
-[//]: # (https://acycliq.github.io/deckgl_viewer/)
+https://acycliq.github.io/deckgl_viewer/
 
 [//]: # ()
 [//]: # ()
