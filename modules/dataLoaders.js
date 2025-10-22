@@ -209,6 +209,8 @@ export async function loadCellData(cellDataMap) {
             const X = columns.X, Y = columns.Y, Z = columns.Z, cell_id = columns.cell_id;
             const className = columns.class_name || [];
             const prob = columns.prob || [];
+            const geneNames = columns.gene_names || [];
+            const geneCounts = columns.gene_counts || [];
             const n = cell_id?.length || 0;
             cellDataMap.clear();
 
@@ -231,16 +233,25 @@ export async function loadCellData(cellDataMap) {
                     console.warn(`Cell ${cid} has no valid classification, using 'Unknown' fallback. ClassNames:`, classNames, 'Probs:', probs);
                     cname = 'Unknown';
                 }
+
+                // Get gene expression data from Arrow columns
+                const cellGeneNames = geneNames[i] || [];
+                const cellGeneCounts = geneCounts[i] || [];
+                const totalCount = Array.isArray(cellGeneCounts) ? cellGeneCounts.reduce((sum, c) => sum + (Number(c) || 0), 0) : 0;
+
                 const cell = {
                     cellNum: cid,
                     position: {x: X[i],y: Y[i],z: Z[i]},
-                    geneExpression: { geneNames: [], geneCounts: [] },
+                    geneExpression: {
+                        geneNames: cellGeneNames,
+                        geneCounts: cellGeneCounts
+                    },
                     classification: {
                         className: classNames && classNames.length ? classNames.map(s => String(s).trim()) : [cname],
                         probability: Array.isArray(probs) && probs.length ? probs : [1]
                     },
-                    totalGeneCount: 0,
-                    uniqueGenes: 0,
+                    totalGeneCount: totalCount,
+                    uniqueGenes: cellGeneNames.length,
                     primaryClass: cname,
                     primaryProb: (Array.isArray(probs) && probs.length) ? Math.max(...probs) : undefined
                 };

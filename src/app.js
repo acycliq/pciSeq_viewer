@@ -147,7 +147,7 @@ function calculateScaleBar(viewState) {
     const pixelsPerMicron = 1 / micronsPerPixel;
 
     // Choose appropriate scale length
-    const scaleOptions = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]; // m
+    const scaleOptions = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]; // μm
     const targetPixels = 100; // Target scale bar length in pixels
 
     let bestScale = scaleOptions[0];
@@ -594,7 +594,7 @@ function initializeDeckGL() {
                     __lastDragging = dragging;
                     updateAllLayers();
                 } else if (mode === 'icon') {
-                    // NOTE (perf-critical): At deep zoom (7) we rebuild the combined IconLayer
+                    // NOTE (perf-critical): At deep zoom (≥7) we rebuild the combined IconLayer
                     // only when panning ends (dragging -> not dragging). Rebuilding on every
                     // pan frame caused jank/GC spikes with dense data. This "pan-end refresh"
                     // keeps interactions smooth and then repopulates instantly on release.
@@ -1002,8 +1002,8 @@ function getCurrentViewportTileBounds() {
         const vp = vps && vps[0];
         if (!vp) return null;
         const w = vp.width || 0, h = vp.height || 0;
-        const p0 = vp.unproject([0, h]);     // bottom-left screen  world
-        const p1 = vp.unproject([w, 0]);     // top-right screen  world
+        const p0 = vp.unproject([0, h]);     // bottom-left screen → world
+        const p1 = vp.unproject([w, 0]);     // top-right screen → world
         const minX = Math.min(p0[0], p1[0]);
         const maxX = Math.max(p0[0], p1[0]);
         const minY = Math.min(p0[1], p1[1]);
@@ -1030,30 +1030,10 @@ window.updateCellInfo = function(cellProperties) {
 
         console.log('Updating cell info with data:', cellData);
 
-        // If gene counts missing, derive from indexes (cellToSpotsIndex)
-        try {
-            if ((!cellData.Genenames || cellData.Genenames.length === 0 || !cellData.CellGeneCount || cellData.CellGeneCount.length === 0)
-                && window.appState && window.appState.cellToSpotsIndex) {
-                const cid = Number(cellData.cell_id || cellProperties.id);
-                if (Number.isFinite(cid)) {
-                    const spots = window.appState.cellToSpotsIndex.get(cid) || [];
-                    const counts = new Map();
-                    for (const s of spots) {
-                        const g = s && s.gene ? String(s.gene) : '';
-                        if (!g) continue;
-                        // Prefer numeric intensity if present; otherwise add 1
-                        const val = (s && typeof s.intensity === 'number' && isFinite(s.intensity)) ? s.intensity : 1;
-                        counts.set(g, (counts.get(g) || 0) + val);
-                    }
-                    const rows = Array.from(counts.entries()).map(([gene, count]) => ({ gene, count }));
-                    rows.sort((a, b) => b.count - a.count);
-                    // Truncate to two decimals without rounding for display consistency
-                    cellData.Genenames = rows.map(r => r.gene);
-                    cellData.CellGeneCount = rows.map(r => Math.trunc(Number(r.count) * 100) / 100);
-                }
-            }
-        } catch (e) {
-            console.warn('Failed to derive gene counts from index:', e);
+        // Check if gene expression data is missing from Arrow files
+        if (!cellData.Genenames || cellData.Genenames.length === 0 || !cellData.CellGeneCount || cellData.CellGeneCount.length === 0) {
+            console.error(`CRITICAL: Cell ${cellData.cell_id || cellProperties.id} has NO gene expression data. Arrow files missing gene_names/gene_counts columns.`);
+            console.error('REQUIRED: Regenerate ALL Arrow files with updated Python converter (python_converters/).');
         }
 
         // Update donut first; isolate failures
