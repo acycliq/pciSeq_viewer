@@ -1032,7 +1032,8 @@ window.updateCellInfo = function(cellProperties) {
 
         // Check if gene expression data is missing from Arrow files
         if (!cellData.Genenames || cellData.Genenames.length === 0 || !cellData.CellGeneCount || cellData.CellGeneCount.length === 0) {
-            console.warn(`Cell ${cellData.cell_id || cellProperties.id}: Gene expression data (Genenames/CellGeneCount) is missing from Arrow files. Please regenerate Arrow files using the updated Python converter that includes gene_names and gene_counts columns.`);
+            console.error(`CRITICAL: Cell ${cellData.cell_id || cellProperties.id} has NO gene expression data. Arrow files missing gene_names/gene_counts columns.`);
+            console.error('REQUIRED: Regenerate ALL Arrow files with updated Python converter (python_converters/).');
         }
 
         // Update donut first; isolate failures
