@@ -697,4 +697,52 @@ export function setupAdvancedKeyboardShortcuts(state, updatePlaneCallback, updat
             // Gene toggle removed - genes are always visible
         }
     });
+    // === TOP TOOLBAR + DRAWER ===
+    const toolbarSettings = document.getElementById('toolbarSettings');
+    const toolbarShowTiles = document.getElementById('toolbarShowTiles');
+    const toolbarShowPolygons = document.getElementById('toolbarShowPolygons');
+    const toolbarShowGenes = document.getElementById('toolbarShowGenes');
+    const toolbarCellProjection = document.getElementById('toolbarCellProjection');
+    const rightDrawer = document.getElementById('rightDrawer');
+    const drawerClose = document.getElementById('drawerClose');
+
+    if (toolbarSettings && rightDrawer) {
+        toolbarSettings.addEventListener('click', () => {
+            rightDrawer.style.display = 'block';
+        });
+    }
+    if (drawerClose && rightDrawer) {
+        drawerClose.addEventListener('click', () => {
+            rightDrawer.style.display = 'none';
+        });
+    }
+    const tilesCheckbox = document.getElementById('showTiles');
+    if (toolbarShowTiles && tilesCheckbox) {
+        toolbarShowTiles.addEventListener('click', () => {
+            tilesCheckbox.checked = !tilesCheckbox.checked;
+            tilesCheckbox.dispatchEvent(new Event('change'));
+        });
+    }
+    const polygonsCheckbox = document.getElementById('showPolygons');
+    if (toolbarShowPolygons && polygonsCheckbox) {
+        toolbarShowPolygons.addEventListener('click', () => {
+            polygonsCheckbox.checked = !polygonsCheckbox.checked;
+            polygonsCheckbox.dispatchEvent(new Event('change'));
+        });
+    }
+    if (toolbarShowGenes) {
+        toolbarShowGenes.addEventListener('click', () => {
+            state.showGenes = !state.showGenes;
+            updateLayersCallback();
+        });
+    }
+    if (toolbarCellProjection) {
+        toolbarCellProjection.addEventListener('click', () => {
+            const toggle = document.getElementById('cellProjectionToggle');
+            if (toggle) {
+                toggle.checked = !toggle.checked;
+                toggle.dispatchEvent(new Event('change'));
+            }
+        });
+    }
 }
