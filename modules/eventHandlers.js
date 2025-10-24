@@ -262,13 +262,95 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
                 cellProjectionControls.style.display = cellProjectionToggle.checked ? 'block' : 'none';
             }
 
-            // If enabled, load ALL planes
             if (cellProjectionToggle.checked) {
+                // If features are already prepared, reuse them (butter-fast re-enable)
+                const hasStable = Array.isArray(state.cellProjectionFeatures) && state.cellProjectionFeatures.length > 0;
+                if (hasStable) {
+                    updateLayersCallback();
+                    return;
+                }
+
+                // If caches are already full, skip plane load and only prepare/flatten features with a short indicator
+                try {
+                    const { USE_ARROW } = await import('../config/constants.js');
+                    const userConfig = window.config();
+                    const totalPlanes = userConfig.totalPlanes;
+                    if (USE_ARROW) {
+                        const { arrowGeojsonCache } = await import('./layerCreators.js');
+                        if (arrowGeojsonCache && arrowGeojsonCache.size >= totalPlanes) {
+                            await prepareProjectionFromCaches(state);
+                            updateLayersCallback();
+                            return;
+                        }
+                    } else {
+                        if (state.polygonCache && state.polygonCache.size >= totalPlanes) {
+                            await prepareProjectionFromCaches(state);
+                            updateLayersCallback();
+                            return;
+                        }
+                    }
+                } catch {}
+
+                // Otherwise, load ALL planes and prepare features
                 await loadAllPlanesForProjection(state, updateLayersCallback);
             } else {
+                // Toggle OFF: clear stable features reference to free memory
+                state.cellProjectionFeatures = null;
+                if (window.appState) window.appState.cellProjectionFeatures = null;
                 updateLayersCallback();
             }
         });
+    }
+
+    // Helper to prepare flattened feature array from existing caches with a brief indicator
+    async function prepareProjectionFromCaches(state) {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'block';
+            loadingIndicator.textContent = 'Preparing projection…';
+            // Yield to the browser so the indicator can paint before heavy work
+            await new Promise(resolve => requestAnimationFrame(resolve));
+        }
+
+        try {
+            const { USE_ARROW } = await import('../config/constants.js');
+            if (USE_ARROW) {
+                const { arrowGeojsonCache } = await import('./layerCreators.js');
+                const flat = [];
+                for (const fc of arrowGeojsonCache.values()) {
+                    if (fc && Array.isArray(fc.features)) flat.push(...fc.features);
+                }
+                state.cellProjectionFeatures = flat;
+                window.appState && (window.appState.cellProjectionFeatures = flat);
+                console.log(`Cell Projection features prepared from cache (Arrow): ${flat.length}`);
+            } else {
+                const flat = [];
+                for (const fc of state.polygonCache.values()) {
+                    if (!fc || !Array.isArray(fc.features)) continue;
+                    for (const f of fc.features) {
+                        const props = f.properties || (f.properties = {});
+                        if (props) {
+                            if (props.label != null) {
+                                if (props.totalGeneCount == null && state.cellDataMap) {
+                                    const cell = state.cellDataMap.get(Number(props.label));
+                                    if (cell && cell.totalGeneCount != null) props.totalGeneCount = cell.totalGeneCount;
+                                }
+                                if (props.totalGeneCount == null) props.totalGeneCount = 0;
+                            }
+                            if (!props.colorRGB && props.cellClass && state.cellClassColors && state.cellClassColors.has(props.cellClass)) {
+                                props.colorRGB = state.cellClassColors.get(props.cellClass);
+                            }
+                        }
+                        flat.push(f);
+                    }
+                }
+                state.cellProjectionFeatures = flat;
+                window.appState && (window.appState.cellProjectionFeatures = flat);
+                console.log(`Cell Projection features prepared from cache (TSV): ${flat.length}`);
+            }
+        } finally {
+            if (loadingIndicator) loadingIndicator.style.display = 'none';
+        }
     }
 
     // Gene count slider for filtering cells in Cell Projection mode (rAF-throttled)
@@ -532,11 +614,14 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
                     const props = f.properties || (f.properties = {});
                     if (props) {
                         // totalGeneCount from state.cellDataMap
-                        if (props.label != null && props.totalGeneCount == null && state.cellDataMap) {
-                            const cell = state.cellDataMap.get(Number(props.label));
-                            if (cell && typeof cell.totalGeneCount === 'number') {
-                                props.totalGeneCount = cell.totalGeneCount;
+                        if (props.label != null) {
+                            if (props.totalGeneCount == null && state.cellDataMap) {
+                                const cell = state.cellDataMap.get(Number(props.label));
+                                if (cell && cell.totalGeneCount != null) {
+                                    props.totalGeneCount = cell.totalGeneCount;
+                                }
                             }
+                            if (props.totalGeneCount == null) props.totalGeneCount = 0; // ensure numeric for GPU filter
                         }
                         // colorRGB from state.cellClassColors
                         if (!props.colorRGB && props.cellClass && state.cellClassColors && state.cellClassColors.has(props.cellClass)) {
