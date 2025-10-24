@@ -24,8 +24,8 @@ import { loadImage } from './dataLoaders.js';
 const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer, IconLayer, DataFilterExtension, PolygonLayer, PointCloudLayer, ScatterplotLayer} = deck;
 
 // Arrow boundary buffers cache (per plane) and lazy init for worker facade
-let arrowBoundaryCache = new Map();
-let arrowGeojsonCache = new Map();
+export let arrowBoundaryCache = new Map();
+export let arrowGeojsonCache = new Map();
 let arrowInitialized = false;
 async function ensureArrowInitialized() {
     if (!USE_ARROW || arrowInitialized) return;
@@ -275,15 +275,24 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
  * @param {Map} cellClassColors - Color mapping for each cell class
  * @param {number} polygonOpacity - Opacity value (0.0 to 1.0)
  * @param {Set} selectedCellClasses - Set of selected cell classes for filtering
+ * @param {Map} cellDataMap - Map of cell data for lookups
+ * @param {boolean} zProjectionCellMode - Show all cells from all planes
+ * @param {number} geneCountThreshold - Minimum gene count for filtering
  * @returns {GeoJsonLayer[]} Array of polygon layers
  */
-export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null) {
+export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null, zProjectionCellMode = false, geneCountThreshold = 0) {
     const layers = [];
-    console.log(`createPolygonLayers called for plane ${planeNum}, showPolygons: ${showPolygons}`);
+    console.log(`createPolygonLayers called for plane ${planeNum}, showPolygons: ${showPolygons}, zProjectionMode: ${zProjectionCellMode}, geneCountThreshold: ${geneCountThreshold}`);
 
     if (!showPolygons) {
         console.log('Polygons disabled in state');
         return layers;
+    }
+
+    // Z-Projection Cell Mode: Show all cells from all planes, filtered by gene count
+    if (zProjectionCellMode) {
+        console.log('Z-Projection Cell Mode: Loading polygons from all planes');
+        return createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold);
     }
 
     // Arrow fast-path: use binary PathLayer with buffers from worker
@@ -301,7 +310,7 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
                         if (adv?.performance?.showPerformanceStats) {
                             const polys = buffers?.length || 0;
                             const pts = Math.floor((buffers?.positions?.length || 0) / 2);
-                            console.log(`Arrow: plane ${planeNum} buffers loaded â€ polys=${polys}, points=${pts}`);
+                            console.log(`Arrow: plane ${planeNum} buffers loaded ï¿½ polys=${polys}, points=${pts}`);
                             if (timings) {
                                 const kb = Math.round((timings.fetchedBytes || 0) / 1024);
                                 console.log(`Arrow timings (plane ${planeNum}): manifest=${timings.fetchManifestMs.toFixed(1)}ms, fetch=${timings.fetchShardsMs.toFixed(1)}ms, decode=${timings.decodeShardsMs.toFixed(1)}ms, assemble=${timings.assembleBuffersMs.toFixed(1)}ms, bytes=${kb}KB`);
@@ -343,7 +352,7 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
                 if (adv?.performance?.showPerformanceStats) {
                     const polys = buffers?.length || 0;
                     const pts = Math.floor((buffers?.positions?.length || 0) / 2);
-                    console.log(`Arrow: plane ${planeNum} transformed to tile space â€ polys=${polys}, points=${pts}`);
+                    console.log(`Arrow: plane ${planeNum} transformed to tile space ï¿½ polys=${polys}, points=${pts}`);
                 }
             } catch {}
         }
@@ -570,6 +579,179 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
     });
     try { const adv = window.advancedConfig ? window.advancedConfig() : null; if (adv?.performance?.showPerformanceStats) console.log(`Created polygon layer: ${layer.id}`); } catch {}
     return layer;
+}
+
+/**
+ * Create Z-Projection polygon layers showing all cells from all planes
+ * Filters cells by gene count threshold
+ * @param {Map} polygonCache - Cache containing polygon data (only used for TSV mode)
+ * @param {Map} cellClassColors - Color mapping for each cell class
+ * @param {number} polygonOpacity - Opacity value (0.0 to 1.0)
+ * @param {Set} selectedCellClasses - Set of selected cell classes for filtering
+ * @param {Map} cellDataMap - Map of cell data for gene count lookups
+ * @param {number} geneCountThreshold - Minimum gene count for filtering
+ * @returns {GeoJsonLayer[]} Array with single combined polygon layer
+ */
+function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold) {
+    console.log(`Creating Z-projection polygon layers with gene count threshold: ${geneCountThreshold}`);
+
+    // Collect all features from all planes
+    const allFeatures = [];
+
+    if (USE_ARROW) {
+        // Arrow mode: Collect features from all cached planes in arrowGeojsonCache
+        for (const [planeNum, geojson] of arrowGeojsonCache.entries()) {
+            if (geojson && geojson.features) {
+                // Filter by gene count and cell class selection
+                const filteredFeatures = geojson.features.filter(feature => {
+                    const label = feature.properties?.label;
+                    const cellClass = feature.properties?.cellClass;
+
+                    // Filter by cell class selection
+                    if (selectedCellClasses && selectedCellClasses.size > 0 && (!cellClass || !selectedCellClasses.has(cellClass))) {
+                        return false;
+                    }
+
+                    // Filter by gene count threshold
+                    if (geneCountThreshold > 0 && cellDataMap && label != null) {
+                        const cellData = cellDataMap.get(Number(label));
+                        if (cellData && cellData.totalGeneCount != null) {
+                            return cellData.totalGeneCount >= geneCountThreshold;
+                        }
+                        // If no gene count data, exclude the cell
+                        return false;
+                    }
+
+                    return true;
+                });
+
+                allFeatures.push(...filteredFeatures);
+            }
+        }
+        console.log(`Z-Projection (Arrow): Collected ${allFeatures.length} features from ${arrowGeojsonCache.size} cached planes`);
+    } else {
+        // TSV mode: Collect features from all cached planes in polygonCache
+        for (const [planeNum, geojson] of polygonCache.entries()) {
+            if (geojson && geojson.features) {
+                // Filter by gene count and cell class selection
+                const filteredFeatures = geojson.features.filter(feature => {
+                    const label = feature.properties?.label;
+                    const cellClass = feature.properties?.cellClass;
+
+                    // Filter by cell class selection
+                    if (selectedCellClasses && selectedCellClasses.size > 0 && (!cellClass || !selectedCellClasses.has(cellClass))) {
+                        return false;
+                    }
+
+                    // Filter by gene count threshold
+                    if (geneCountThreshold > 0 && cellDataMap && label != null) {
+                        const cellData = cellDataMap.get(Number(label));
+                        if (cellData && cellData.totalGeneCount != null) {
+                            return cellData.totalGeneCount >= geneCountThreshold;
+                        }
+                        // If no gene count data, exclude the cell
+                        return false;
+                    }
+
+                    return true;
+                });
+
+                allFeatures.push(...filteredFeatures);
+            }
+        }
+        console.log(`Z-Projection (TSV): Collected ${allFeatures.length} features from ${polygonCache.size} cached planes`);
+    }
+
+    // Create combined GeoJSON with all features
+    const combinedGeojson = {
+        type: 'FeatureCollection',
+        features: allFeatures
+    };
+
+    // Return single layer with all cells
+    const layer = new GeoJsonLayer({
+        id: 'polygons-z-projection',
+        data: combinedGeojson,
+        pickable: true,
+        stroked: false,
+        filled: true,
+        coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+        onHover: (info) => {
+            if (info.picked && info.object && info.object.properties) {
+                const cellLabel = info.object.properties.label;
+                let fullCellData = null;
+                if (window.appState && window.appState.cellDataMap) {
+                    const cellId = parseInt(cellLabel);
+                    fullCellData = window.appState.cellDataMap.get(cellId);
+                }
+
+                if (fullCellData && window.updateCellInfo && typeof window.updateCellInfo === 'function') {
+                    const cx = Number(fullCellData.position?.x || 0);
+                    const cy = Number(fullCellData.position?.y || 0);
+                    const names = Array.isArray(fullCellData.classification?.className) ? fullCellData.classification.className : [];
+                    const probs = Array.isArray(fullCellData.classification?.probability) ? fullCellData.classification.probability : [];
+                    let topIdx = -1, topVal = -Infinity;
+                    for (let i = 0; i < probs.length; i++) { const v = probs[i]; if (typeof v === 'number' && v > topVal) { topVal = v; topIdx = i; } }
+                    const topClass = (topIdx >= 0 && names[topIdx]) ? names[topIdx] : (names[0] || 'Unknown');
+                    const geneCounts = Array.isArray(fullCellData.geneExpression?.geneCounts) ? fullCellData.geneExpression.geneCounts : [];
+                    const geneTotal = geneCounts.reduce((a, b) => a + (Number(b) || 0), 0);
+                    let topColor = '#C0C0C0';
+                    try {
+                        const scheme = (window.currentColorScheme && window.currentColorScheme.cellClasses) ? window.currentColorScheme.cellClasses : [];
+                        const entry = scheme.find(e => e.className === topClass);
+                        if (entry && entry.color) topColor = entry.color;
+                    } catch {}
+
+                    const cellData = {
+                        cell_id: fullCellData.cellNum || Number(cellLabel),
+                        id: Number(cellLabel),
+                        centroid: [cx, cy],
+                        X: cx,
+                        Y: cy,
+                        ClassName: names,
+                        Prob: probs,
+                        Genenames: Array.isArray(fullCellData.geneExpression?.geneNames) ? fullCellData.geneExpression.geneNames : [],
+                        CellGeneCount: geneCounts,
+                        topClass: topClass,
+                        agg: {
+                            X: cx,
+                            Y: cy,
+                            GeneCountTotal: geneTotal,
+                            IdentifiedType: topClass,
+                            color: topColor
+                        }
+                    };
+
+                    window.updateCellInfo(cellData);
+                    const panel = document.getElementById('cellInfoPanel');
+                    if (panel) {
+                        panel.style.display = 'block';
+                    }
+                }
+            } else {
+                const panel = document.getElementById('cellInfoPanel');
+                if (panel) {
+                    panel.style.display = 'none';
+                }
+            }
+        },
+        getFillColor: d => {
+            const cellClass = d.properties.cellClass;
+            const alpha = Math.round(polygonOpacity * 255);
+            if (cellClass && cellClassColors && cellClassColors.has(cellClass)) {
+                const color = cellClassColors.get(cellClass);
+                return [...color, alpha];
+            }
+            return [192, 192, 192, alpha];
+        },
+        updateTriggers: {
+            getFillColor: [cellClassColors, polygonOpacity],
+            data: [selectedCellClasses, geneCountThreshold]
+        }
+    });
+
+    console.log(`Created Z-projection layer with ${allFeatures.length} cells`);
+    return [layer];
 }
 
 /**

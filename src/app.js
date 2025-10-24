@@ -301,7 +301,9 @@ function updateAllLayers() {
         state.cellClassColors,
         state.polygonOpacity,
         state.selectedCellClasses,
-        state.cellDataMap
+        state.cellDataMap,
+        state.zProjectionCellMode,
+        state.geneCountThreshold
     ));
 
     // Add gene/spot layers: binary PointCloud at low zoom (Arrow), IconLayers at high zoom
