@@ -23,6 +23,9 @@ import { loadImage } from './dataLoaders.js';
 // Extract deck.gl components for layer creation
 const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer, IconLayer, DataFilterExtension, PolygonLayer, PointCloudLayer, ScatterplotLayer} = deck;
 
+// Reusable DataFilterExtension instance (avoid allocating on every render)
+const CELL_FILTER_EXTENSION = new DataFilterExtension({ filterSize: 1 });
+
 // Arrow boundary buffers cache (per plane) and lazy init for worker facade
 export let arrowBoundaryCache = new Map();
 export let arrowGeojsonCache = new Map();
@@ -544,12 +547,6 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
                         }
                     };
 
-                    console.log('Cell data structure for hover:', {
-                        label: cellLabel,
-                        fullCellData: fullCellData,
-                        convertedData: cellData
-                    });
-
                     window.updateCellInfo(cellData);
                     const panel = document.getElementById('cellInfoPanel');
                     if (panel) {
@@ -593,89 +590,27 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
  * @returns {GeoJsonLayer[]} Array with single combined polygon layer
  */
 function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold) {
-    console.log(`Creating Z-projection polygon layers with gene count threshold: ${geneCountThreshold}`);
+    console.log(`Creating Z-projection polygon layers with gene count threshold: ${geneCountThreshold} (GPU-filtered, stable data)`);
 
-    // Collect all features from all planes
-    const allFeatures = [];
+    // Use prebuilt, flattened features array from state to avoid rebuilding on every update
+    const features = (window.appState && window.appState.cellProjectionFeatures) || [];
+    const selectedKey = selectedCellClasses ? Array.from(selectedCellClasses).sort().join('|') : '';
 
-    if (USE_ARROW) {
-        // Arrow mode: Collect features from all cached planes in arrowGeojsonCache
-        for (const [planeNum, geojson] of arrowGeojsonCache.entries()) {
-            if (geojson && geojson.features) {
-                // Filter by gene count and cell class selection
-                const filteredFeatures = geojson.features.filter(feature => {
-                    const label = feature.properties?.label;
-                    const cellClass = feature.properties?.cellClass;
-
-                    // Filter by cell class selection
-                    if (selectedCellClasses && selectedCellClasses.size > 0 && (!cellClass || !selectedCellClasses.has(cellClass))) {
-                        return false;
-                    }
-
-                    // Filter by gene count threshold
-                    if (geneCountThreshold > 0 && cellDataMap && label != null) {
-                        const cellData = cellDataMap.get(Number(label));
-                        if (cellData && cellData.totalGeneCount != null) {
-                            return cellData.totalGeneCount >= geneCountThreshold;
-                        }
-                        // If no gene count data, exclude the cell
-                        return false;
-                    }
-
-                    return true;
-                });
-
-                allFeatures.push(...filteredFeatures);
-            }
-        }
-        console.log(`Z-Projection (Arrow): Collected ${allFeatures.length} features from ${arrowGeojsonCache.size} cached planes`);
-    } else {
-        // TSV mode: Collect features from all cached planes in polygonCache
-        for (const [planeNum, geojson] of polygonCache.entries()) {
-            if (geojson && geojson.features) {
-                // Filter by gene count and cell class selection
-                const filteredFeatures = geojson.features.filter(feature => {
-                    const label = feature.properties?.label;
-                    const cellClass = feature.properties?.cellClass;
-
-                    // Filter by cell class selection
-                    if (selectedCellClasses && selectedCellClasses.size > 0 && (!cellClass || !selectedCellClasses.has(cellClass))) {
-                        return false;
-                    }
-
-                    // Filter by gene count threshold
-                    if (geneCountThreshold > 0 && cellDataMap && label != null) {
-                        const cellData = cellDataMap.get(Number(label));
-                        if (cellData && cellData.totalGeneCount != null) {
-                            return cellData.totalGeneCount >= geneCountThreshold;
-                        }
-                        // If no gene count data, exclude the cell
-                        return false;
-                    }
-
-                    return true;
-                });
-
-                allFeatures.push(...filteredFeatures);
-            }
-        }
-        console.log(`Z-Projection (TSV): Collected ${allFeatures.length} features from ${polygonCache.size} cached planes`);
-    }
-
-    // Create combined GeoJSON with all features
-    const combinedGeojson = {
-        type: 'FeatureCollection',
-        features: allFeatures
-    };
-
-    // Return single layer with all cells
+    // Return single layer with all cells (GPU-filtered by gene count)
     const layer = new GeoJsonLayer({
         id: 'polygons-z-projection',
-        data: combinedGeojson,
+        data: features,
         pickable: true,
         stroked: false,
         filled: true,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+
+        // GPU filtering for gene count threshold
+        extensions: [CELL_FILTER_EXTENSION],
+        getFilterValue: f => f.properties.totalGeneCount || 0,
+        filterRange: [geneCountThreshold, 1e9],
+        filterEnabled: true,
+
         onHover: (info) => {
             if (info.picked && info.object && info.object.properties) {
                 const cellLabel = info.object.properties.label;
@@ -736,21 +671,24 @@ function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOp
             }
         },
         getFillColor: d => {
-            const cellClass = d.properties.cellClass;
+            const rgb = d.properties.colorRGB || [192, 192, 192];
             const alpha = Math.round(polygonOpacity * 255);
-            if (cellClass && cellClassColors && cellClassColors.has(cellClass)) {
-                const color = cellClassColors.get(cellClass);
-                return [...color, alpha];
-            }
-            return [192, 192, 192, alpha];
+            const cls = d.properties.cellClass;
+            // Original behavior: no selection = show all, empty selection = show none
+            const visible = (!selectedCellClasses) || (selectedCellClasses.size > 0 && cls && selectedCellClasses.has(cls));
+            return visible ? [rgb[0], rgb[1], rgb[2], alpha] : [0, 0, 0, 0];
         },
         updateTriggers: {
-            getFillColor: [cellClassColors, polygonOpacity],
-            data: [selectedCellClasses, geneCountThreshold]
+            // Recompute colors only when opacity or selection changes
+            getFillColor: [polygonOpacity, selectedKey]
+            // Note: filterRange changes are auto-detected; do NOT add getFilterValue here
         }
     });
 
-    console.log(`Created Z-projection layer with ${allFeatures.length} cells`);
+    try {
+        const count = Array.isArray(features) ? features.length : (features?.features?.length || 0);
+        console.log(`Created Z-projection layer with ${count} cells`);
+    } catch {}
     return [layer];
 }
 

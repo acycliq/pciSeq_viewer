@@ -271,7 +271,8 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         });
     }
 
-    // Gene count slider for filtering cells in Cell Projection mode
+    // Gene count slider for filtering cells in Cell Projection mode (rAF-throttled)
+    let geneCountRafId = null;
     if (geneCountSlider) {
         geneCountSlider.addEventListener('input', (e) => {
             const threshold = parseInt(e.target.value);
@@ -279,8 +280,12 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
             if (geneCountValue) {
                 geneCountValue.textContent = threshold.toString();
             }
-            if (state.zProjectionCellMode) {
-                updateLayersCallback();
+            // Throttle updates to one per frame
+            if (state.zProjectionCellMode && geneCountRafId == null) {
+                geneCountRafId = requestAnimationFrame(() => {
+                    geneCountRafId = null;
+                    updateLayersCallback();
+                });
             }
         });
     }
@@ -424,23 +429,35 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
 
                             const label = labels ? labels[pi] : -1;
 
-                            // Get cell class from cellDataMap
+                            // Get cell class, totalGeneCount, and colorRGB from cellDataMap
                             let cellClass = 'Generic';
+                            let totalGeneCount = 0;
+                            let colorRGB = [192, 192, 192]; // Default gray
                             if (state.cellDataMap && label >= 0) {
                                 const cell = state.cellDataMap.get(Number(label));
-                                if (cell && cell.classification) {
-                                    const names = cell.classification.className;
-                                    const probs = cell.classification.probability;
-                                    if (Array.isArray(names) && Array.isArray(probs) && probs.length > 0) {
-                                        let bestIdx = 0;
-                                        let bestProb = probs[0];
-                                        for (let j = 1; j < probs.length; j++) {
-                                            if (probs[j] > bestProb) {
-                                                bestProb = probs[j];
-                                                bestIdx = j;
+                                if (cell) {
+                                    // Extract cell class
+                                    if (cell.classification) {
+                                        const names = cell.classification.className;
+                                        const probs = cell.classification.probability;
+                                        if (Array.isArray(names) && Array.isArray(probs) && probs.length > 0) {
+                                            let bestIdx = 0;
+                                            let bestProb = probs[0];
+                                            for (let j = 1; j < probs.length; j++) {
+                                                if (probs[j] > bestProb) {
+                                                    bestProb = probs[j];
+                                                    bestIdx = j;
+                                                }
                                             }
+                                            cellClass = names[bestIdx] || 'Unknown';
                                         }
-                                        cellClass = names[bestIdx] || 'Unknown';
+                                    }
+                                    // Extract totalGeneCount for GPU filtering
+                                    totalGeneCount = cell.totalGeneCount || 0;
+
+                                    // Precompute RGB color for this class (avoid hot path lookups)
+                                    if (state.cellClassColors && state.cellClassColors.has(cellClass)) {
+                                        colorRGB = state.cellClassColors.get(cellClass);
                                     }
                                 }
                             }
@@ -448,7 +465,7 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
                             features.push({
                                 type: 'Feature',
                                 geometry: { type: 'Polygon', coordinates: [ring] },
-                                properties: { plane_id: plane, label, cellClass }
+                                properties: { plane_id: plane, label, cellClass, totalGeneCount, colorRGB }
                             });
                         }
 
@@ -490,11 +507,54 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
     if (USE_ARROW) {
         const { arrowGeojsonCache } = await import('./layerCreators.js');
         console.log(`Finished loading all ${totalPlanes} planes for Cell Projection. arrowGeojsonCache has ${arrowGeojsonCache.size} planes cached.`);
+
+        // Build flattened, stable features array for projection (reuse across updates)
+        try {
+            const flat = [];
+            for (const fc of arrowGeojsonCache.values()) {
+                if (fc && Array.isArray(fc.features)) flat.push(...fc.features);
+            }
+            state.cellProjectionFeatures = flat;
+            window.appState && (window.appState.cellProjectionFeatures = flat);
+            console.log(`Cell Projection features prepared (Arrow): ${flat.length}`);
+        } catch (e) {
+            console.warn('Failed to prepare flattened projection features (Arrow):', e);
+        }
     } else {
         console.log(`Finished loading all ${totalPlanes} planes for Cell Projection. polygonCache has ${state.polygonCache.size} planes cached.`);
+
+        // Enrich TSV features with totalGeneCount and precomputed color, then flatten
+        try {
+            const flat = [];
+            for (const fc of state.polygonCache.values()) {
+                if (!fc || !Array.isArray(fc.features)) continue;
+                for (const f of fc.features) {
+                    const props = f.properties || (f.properties = {});
+                    if (props) {
+                        // totalGeneCount from state.cellDataMap
+                        if (props.label != null && props.totalGeneCount == null && state.cellDataMap) {
+                            const cell = state.cellDataMap.get(Number(props.label));
+                            if (cell && typeof cell.totalGeneCount === 'number') {
+                                props.totalGeneCount = cell.totalGeneCount;
+                            }
+                        }
+                        // colorRGB from state.cellClassColors
+                        if (!props.colorRGB && props.cellClass && state.cellClassColors && state.cellClassColors.has(props.cellClass)) {
+                            props.colorRGB = state.cellClassColors.get(props.cellClass);
+                        }
+                    }
+                    flat.push(f);
+                }
+            }
+            state.cellProjectionFeatures = flat;
+            window.appState && (window.appState.cellProjectionFeatures = flat);
+            console.log(`Cell Projection features prepared (TSV): ${flat.length}`);
+        } catch (e) {
+            console.warn('Failed to prepare flattened projection features (TSV):', e);
+        }
     }
 
-    // Update layers to show the projection
+    // Update layers to show the projection using stable data
     updateLayersCallback();
 }
 
