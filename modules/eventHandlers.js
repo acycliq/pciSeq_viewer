@@ -452,23 +452,27 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
     }
 
     if (USE_ARROW) {
-        // Arrow mode: Load boundary data for all planes AND build GeoJSON cache
+        // Arrow mode: Load boundary data for all planes AND build GeoJSON cache (PARALLEL)
         const { loadBoundariesPlane } = await import('../arrow-loader/lib/arrow-loaders.js');
         const { arrowBoundaryCache, arrowGeojsonCache } = await import('./layerCreators.js');
         const { transformToTileCoordinates } = await import('../utils/coordinateTransform.js');
         const { IMG_DIMENSIONS } = await import('../config/constants.js');
 
-        for (let plane = 0; plane < totalPlanes; plane++) {
-            try {
-                // Update loading indicator
-                if (loadingIndicator) {
-                    loadingIndicator.textContent = `Loading plane ${plane + 1}/${totalPlanes}...`;
-                }
+        // Parallel loading with bounded concurrency
+        const CONCURRENCY = 6; // Load 6 planes in parallel
+        const planes = [...Array(totalPlanes).keys()];
+        let completed = 0;
 
+        // Worker function to load a single plane
+        const loadPlane = async (plane) => {
+            const t0 = performance.now();
+            try {
                 // Load boundaries into cache
                 if (!arrowBoundaryCache.has(plane)) {
-                    console.log(`Loading Arrow boundaries for plane ${plane}...`);
+                    const t1 = performance.now();
                     const { buffers } = await loadBoundariesPlane(plane);
+                    const t2 = performance.now();
+                    console.log(`Plane ${plane}: Arrow load took ${(t2 - t1).toFixed(0)}ms`);
                     arrowBoundaryCache.set(plane, buffers);
                 }
 
@@ -476,10 +480,9 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
                 if (!arrowGeojsonCache.has(plane)) {
                     const buffers = arrowBoundaryCache.get(plane);
                     if (buffers) {
-                        console.log(`Building GeoJSON cache for plane ${plane}...`);
-
                         // Transform coordinates to tile space if needed
                         if (!buffers._tileTransformed) {
+                            const t3 = performance.now();
                             const src = buffers.positions;
                             const dst = new Float32Array(src.length);
                             for (let i = 0; i < src.length; i += 2) {
@@ -491,9 +494,12 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
                             }
                             buffers.positions = dst;
                             buffers._tileTransformed = true;
+                            const t4 = performance.now();
+                            console.log(`Plane ${plane}: Transform took ${(t4 - t3).toFixed(0)}ms`);
                         }
 
                         // Build GeoJSON features
+                        const t5 = performance.now();
                         const { positions, startIndices, length, labels } = buffers;
                         const features = [];
 
@@ -551,34 +557,75 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
                             });
                         }
 
+                        const t6 = performance.now();
+                        console.log(`Plane ${plane}: Build features took ${(t6 - t5).toFixed(0)}ms (${features.length} features)`);
+
                         arrowGeojsonCache.set(plane, { type: 'FeatureCollection', features });
-                        console.log(`Built GeoJSON cache for plane ${plane}: ${features.length} features`);
                     }
                 }
             } catch (error) {
                 console.error(`Failed to load plane ${plane}:`, error);
+            } finally {
+                // Update progress
+                completed++;
+                const tTotal = performance.now();
+                console.log(`Plane ${plane}: TOTAL ${(tTotal - t0).toFixed(0)}ms`);
+                if (loadingIndicator) {
+                    loadingIndicator.textContent = `Loading planes: ${completed}/${totalPlanes}`;
+                }
             }
-        }
+        };
+
+        // Create worker pool - each worker pulls from planes queue
+        const workers = new Array(CONCURRENCY).fill(null).map(() => {
+            return (async () => {
+                while (planes.length > 0) {
+                    const plane = planes.shift();
+                    if (plane !== undefined) {
+                        await loadPlane(plane);
+                    }
+                }
+            })();
+        });
+
+        // Wait for all workers to complete
+        await Promise.all(workers);
     } else {
-        // TSV mode: Load polygon data for all planes
+        // TSV mode: Load polygon data for all planes (PARALLEL)
         const { loadPolygonData } = await import('./dataLoaders.js');
 
-        for (let plane = 0; plane < totalPlanes; plane++) {
-            try {
-                // Update loading indicator
-                if (loadingIndicator) {
-                    loadingIndicator.textContent = `Loading plane ${plane + 1}/${totalPlanes}...`;
-                }
+        const CONCURRENCY = 6;
+        const planes = [...Array(totalPlanes).keys()];
+        let completed = 0;
 
-                // Load polygons if not already cached
+        const loadPlane = async (plane) => {
+            try {
                 if (!state.polygonCache.has(plane)) {
-                    console.log(`Loading TSV polygons for plane ${plane}...`);
                     await loadPolygonData(plane, state.polygonCache, state.allCellClasses, state.cellDataMap);
                 }
             } catch (error) {
                 console.error(`Failed to load plane ${plane}:`, error);
+            } finally {
+                completed++;
+                if (loadingIndicator) {
+                    loadingIndicator.textContent = `Loading planes: ${completed}/${totalPlanes}`;
+                }
             }
-        }
+        };
+
+        // Create worker pool
+        const workers = new Array(CONCURRENCY).fill(null).map(() => {
+            return (async () => {
+                while (planes.length > 0) {
+                    const plane = planes.shift();
+                    if (plane !== undefined) {
+                        await loadPlane(plane);
+                    }
+                }
+            })();
+        });
+
+        await Promise.all(workers);
     }
 
     // Hide loading indicator
