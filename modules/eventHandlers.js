@@ -263,6 +263,18 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
             }
 
             if (cellProjectionToggle.checked) {
+                // Ensure slider max reflects dataset max gene count
+                const slider = document.getElementById('geneCountSlider');
+                const valueEl = document.getElementById('geneCountValue');
+                if (slider) {
+                    const max = Number(state.maxTotalGeneCount || 100);
+                    if (Number(slider.max) !== max) slider.max = String(max);
+                    if (Number(slider.value) > max) {
+                        slider.value = '0';
+                        state.geneCountThreshold = 0;
+                        if (valueEl) valueEl.textContent = '0';
+                    }
+                }
                 // If features are already prepared, reuse them (butter-fast re-enable)
                 const hasStable = Array.isArray(state.cellProjectionFeatures) && state.cellProjectionFeatures.length > 0;
                 if (hasStable) {

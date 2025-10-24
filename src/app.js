@@ -719,6 +719,29 @@ async function init() {
     // Load cell data - this is also shared across all planes
     console.log('Loading cell data...');
     await loadCellData(state.cellDataMap);
+    // Compute max total gene count once for UI slider bounds
+    try {
+        let maxCount = 0;
+        state.cellDataMap.forEach(cell => {
+            const v = cell && typeof cell.totalGeneCount === 'number' ? cell.totalGeneCount : 0;
+            if (v > maxCount) maxCount = v;
+        });
+        state.maxTotalGeneCount = Math.max(0, maxCount) || 100;
+        const slider = document.getElementById('geneCountSlider');
+        const valueEl = document.getElementById('geneCountValue');
+        if (slider) {
+            slider.max = String(state.maxTotalGeneCount);
+            // If current value exceeds new max, reset to 0 for safety
+            if (Number(slider.value) > state.maxTotalGeneCount) {
+                slider.value = '0';
+                state.geneCountThreshold = 0;
+                if (valueEl) valueEl.textContent = '0';
+            }
+        }
+        console.log(`Max total gene count computed: ${state.maxTotalGeneCount}`);
+    } catch (e) {
+        console.warn('Failed to compute max total gene count for slider bounds:', e);
+    }
 
     // If Arrow path is enabled, initialize class colors and default selection from cell data
     if (USE_ARROW) {
