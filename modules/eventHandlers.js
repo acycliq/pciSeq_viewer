@@ -319,7 +319,8 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         const loadingIndicator = document.getElementById('loadingIndicator');
         if (loadingIndicator) {
             loadingIndicator.style.display = 'block';
-            loadingIndicator.textContent = 'Preparing projection…';
+            const textEl = document.getElementById('loadingText') || loadingIndicator;
+            textEl.textContent = 'Preparing projection…';
             // Yield to the browser so the indicator can paint before heavy work
             await new Promise(resolve => requestAnimationFrame(resolve));
         }
@@ -460,7 +461,8 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
     const loadingIndicator = document.getElementById('loadingIndicator');
     if (loadingIndicator) {
         loadingIndicator.style.display = 'block';
-        loadingIndicator.textContent = 'Loading all planes...';
+        const textEl = document.getElementById('loadingText') || loadingIndicator;
+        textEl.textContent = 'Loading all planes...';
     }
 
     if (USE_ARROW) {
@@ -474,7 +476,8 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
             try {
                 // Update loading indicator
                 if (loadingIndicator) {
-                    loadingIndicator.textContent = `Loading plane ${plane + 1}/${totalPlanes}...`;
+                    const textEl = document.getElementById('loadingText') || loadingIndicator;
+                    textEl.textContent = `Loading plane ${plane + 1}/${totalPlanes}...`;
                 }
 
                 // Load boundaries into cache
@@ -579,7 +582,8 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
             try {
                 // Update loading indicator
                 if (loadingIndicator) {
-                    loadingIndicator.textContent = `Loading plane ${plane + 1}/${totalPlanes}...`;
+                    const textEl = document.getElementById('loadingText') || loadingIndicator;
+                    textEl.textContent = `Loading plane ${plane + 1}/${totalPlanes}...`;
                 }
 
                 // Load polygons if not already cached

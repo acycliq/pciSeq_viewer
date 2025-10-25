@@ -820,6 +820,14 @@ body {
     z-index: 3000;
     display: none;
     box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    display: none;
+    white-space: nowrap;
+}
+
+.loading-indicator #loadingTimer {
+    margin-left: 6px;
+    opacity: 1;
+    font: inherit; /* match Loading text font & size */
 }
 
 /* Minimize button */
