@@ -185,7 +185,7 @@ function donutchart(dataset) {
         .attrTween('d', function(d) {
             this._current = this._current || d;
             const interpolate = d3.interpolate(this._current, d);
-            this._current = interpolate(0);
+            this._current = interpolate(1);
             return function(t) {
                 return donutData.arc(interpolate(t));
             };
@@ -210,13 +210,13 @@ function donutchart(dataset) {
     text.enter()
         .append('text')
         .attr('dy', '.35em')
-        .text(d => `${d.data.label} ${percentFormat(d.data.value)}`)
         .merge(text)
+        .text(d => `${d.data.label} ${percentFormat(d.data.value)}`)
         .transition().duration(1000)
         .attrTween('transform', function(d) {
             this._current = this._current || d;
             const interpolate = d3.interpolate(this._current, d);
-            this._current = interpolate(0);
+            this._current = interpolate(1);
             return function(t) {
                 const d2 = interpolate(t);
                 const pos = donutData.outerArc.centroid(d2);
@@ -228,7 +228,7 @@ function donutchart(dataset) {
         .styleTween('text-anchor', function(d) {
             this._current = this._current || d;
             const interpolate = d3.interpolate(this._current, d);
-            this._current = interpolate(0);
+            this._current = interpolate(1);
             return function(t) {
                 const d2 = interpolate(t);
                 return midAngle(d2) < Math.PI ? 'start' : 'end';
@@ -248,7 +248,7 @@ function donutchart(dataset) {
         .attrTween('points', function(d) {
             this._current = this._current || d;
             const interpolate = d3.interpolate(this._current, d);
-            this._current = interpolate(0);
+            this._current = interpolate(1);
             return function(t) {
                 const d2 = interpolate(t);
                 const pos = donutData.outerArc.centroid(d2);

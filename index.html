@@ -222,7 +222,7 @@
             <span id="polygonOpacityValue">0.4</span>
         </div>
 
-        <!-- Z-Projection Overlay Controls -->
+        <!-- Z-Projection Overlay Controls (ghost boundaries) -->
         <div class="control-item">
             <input type="checkbox" id="zProjectionToggle">
             <label for="zProjectionToggle" style="font-size: 12px;">All Planes</label>
@@ -233,6 +233,20 @@
                 <input type="range" id="zProjectionOpacity" min="0.1" max="0.8" step="0.1" value="0.3"
                        style="width: 60px; margin: 0 5px;">
                 <span id="zProjectionOpacityValue" style="font-size: 10px;">30%</span>
+            </div>
+        </div>
+
+        <!-- Cell Projection Mode (show all cells from all planes) -->
+        <div class="control-item">
+            <input type="checkbox" id="cellProjectionToggle">
+            <label for="cellProjectionToggle" style="font-size: 12px;">Cell Projection</label>
+        </div>
+        <div id="cellProjectionControls" style="display: none; margin-left: 15px;">
+            <div class="control-item" style="margin-top: 5px;">
+                <label for="geneCountSlider" style="font-size: 11px;">Min Genes:</label>
+                <input type="range" id="geneCountSlider" min="0" max="100" step="1" value="0"
+                       style="width: 80px; margin: 0 5px;">
+                <span id="geneCountValue" style="font-size: 10px;">0</span>
             </div>
         </div>
     </div>
