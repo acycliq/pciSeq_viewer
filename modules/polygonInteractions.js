@@ -249,31 +249,28 @@ export class PolygonBoundaryHighlighter {
     }
 
     /**
-     * Calculate polygon centroid - uses actual cell coordinates from cellData if available,
-     * otherwise falls back to polygon vertex average
+     * Calculate polygon centroid - uses actual cell coordinates from cellData (X, Y columns)
+     * NO FALLBACK - if coordinates unavailable, returns null
      */
     calculatePolygonCentroid(polygonCoords, cellLabel = null) {
-        // Try to use actual cell coordinates from cellData.tsv first
-        if (cellLabel && this.cellDataMap && this.cellDataMap.has(cellLabel)) {
-            const cellData = this.cellDataMap.get(cellLabel);
-            if (cellData && cellData.X !== undefined && cellData.Y !== undefined) {
-                // Transform cell coordinates to tile space (same transformation as gene spots)
-                return transformToTileCoordinates(cellData.X, cellData.Y, IMG_DIMENSIONS);
-            }
+        // Get actual cell coordinates from cellData.tsv (X, Y columns)
+        if (!cellLabel || !this.cellDataMap || !this.cellDataMap.has(cellLabel)) {
+            console.warn(`Cell centroid unavailable: cellLabel=${cellLabel}, cellDataMap exists=${!!this.cellDataMap}`);
+            return null;
         }
 
-        // Fallback to polygon vertex average if cellData not available
-        if (!polygonCoords || polygonCoords.length === 0) return null;
+        const cellData = this.cellDataMap.get(cellLabel);
 
-        let sumX = 0, sumY = 0;
-        const points = polygonCoords[0]; // Get the outer ring
-
-        for (const [x, y] of points) {
-            sumX += x;
-            sumY += y;
+        // Check for nested position structure (current data format)
+        if (cellData && cellData.position &&
+            cellData.position.x !== undefined && cellData.position.y !== undefined) {
+            // Transform cell coordinates to tile space (same transformation as gene spots)
+            return transformToTileCoordinates(cellData.position.x, cellData.position.y, IMG_DIMENSIONS);
         }
 
-        return [sumX / points.length, sumY / points.length];
+        // Log error if coordinates unavailable - NO FALLBACK
+        console.warn(`Could not get X, Y coordinates for cell ${cellLabel}. cellData structure:`, cellData);
+        return null;
     }
 
 
