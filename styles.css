@@ -255,7 +255,8 @@ body {
 .app-curtain {
     position: fixed;
     inset: 0;
-    background: #0b0f19; /* exact match to loading indicator */
+    /*background: #0b0f19; !* exact match to loading indicator *!*/
+    background: rgba(0, 0, 0, 1.0); /* match to loading indicator but I set opacity to 1.0 */
     z-index: 2500; /* below centered loading indicator (z-index: 3000) */
     opacity: 1;
     transition: opacity 300ms ease;
@@ -812,7 +813,7 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: #0b0f19; /* match original curtain color */
+    background: rgba(0, 0, 0, 0.85); /* match initial curtain color */
     color: white;
     padding: 12px 18px;
     border-radius: 8px;
