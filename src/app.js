@@ -980,6 +980,14 @@ async function init() {
     } catch {}
 
     hideLoading(state, elements.loadingIndicator);
+    // Fade out and remove the initial curtain overlay now that init is complete
+    try {
+        const curtain = document.getElementById('appCurtain');
+        if (curtain) {
+            curtain.classList.add('hidden');
+            setTimeout(() => { curtain.style.display = 'none'; }, 350);
+        }
+    } catch {}
 
     if (advancedConfig.performance.showPerformanceStats) {
         console.log(' Initialization complete. Slider should now be very responsive!');
