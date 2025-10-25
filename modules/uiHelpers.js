@@ -15,6 +15,22 @@ import { POLYGON_COLOR_PALETTE } from '../config/constants.js';
 export function showLoading(state, loadingElement) {
     state.isLoading = true;
     loadingElement.style.display = 'block';
+
+    try {
+        // Avoid restarting if already ticking
+        if (!state._loadingTimerId) {
+            const timerEl = document.getElementById('loadingTimer');
+            state._loadingStart = performance.now();
+            if (timerEl) {
+                timerEl.textContent = ' 0.0s';
+            }
+            state._loadingTimerId = setInterval(() => {
+                if (!state.isLoading) return; // safeguard
+                const secs = (performance.now() - (state._loadingStart || performance.now())) / 1000;
+                if (timerEl) timerEl.textContent = ` ${secs.toFixed(1)}s`;
+            }, 100);
+        }
+    } catch {}
 }
 
 /**
@@ -25,6 +41,15 @@ export function showLoading(state, loadingElement) {
 export function hideLoading(state, loadingElement) {
     state.isLoading = false;
     loadingElement.style.display = 'none';
+
+    try {
+        if (state._loadingTimerId) {
+            clearInterval(state._loadingTimerId);
+            state._loadingTimerId = null;
+        }
+        const timerEl = document.getElementById('loadingTimer');
+        if (timerEl) timerEl.textContent = '';
+    } catch {}
 }
 
 /**
