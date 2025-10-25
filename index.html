@@ -32,6 +32,26 @@
     <script src="modules/class-table.js"></script>
 </head>
 <body>
+    <!-- Minimal three-bar preloader overlay -->
+    <div id="preloader" class="preloader hidden">
+        <div class="preloader-card">
+            <div class="preloader-row" id="preloader-spots-row">
+                <div class="preloader-label">Spots</div>
+                <div class="preloader-bar"><div id="preloader-spots-fill"></div></div>
+                <div class="preloader-percent" id="preloader-spots-percent">0%</div>
+            </div>
+            <div class="preloader-status" id="preloader-spots-status"></div>
+
+            <div class="preloader-row" id="preloader-cells-row">
+                <div class="preloader-label">Cells</div>
+                <div class="preloader-bar"><div id="preloader-cells-fill"></div></div>
+                <div class="preloader-percent" id="preloader-cells-percent">0%</div>
+            </div>
+            <div class="preloader-status" id="preloader-cells-status"></div>
+
+            
+        </div>
+    </div>
     <div id="map"></div>
     <div id="tooltip"></div>
 

@@ -54,6 +54,7 @@ import { RectangularSelector } from '../modules/rectangularSelector.js';
 // Import background indexing
 import { startBackgroundIndexing } from '../modules/backgroundIndexLoader.js';
 import Perf from '../utils/runtimePerf.js';
+import { preloader } from '../modules/preloader.js';
 
 // Import modular components
 import { state } from './stateManager.js';
@@ -407,6 +408,7 @@ function updatePlaneImmediate(newPlane) {
 
     // Update layers immediately (tiles + genes always work, polygons use cached data if available)
     updateAllLayers();
+    try { if (preloader.isComplete()) preloader.hide(); } catch {}
 
     const perfTime = performance.now() - perfStart;
     const advancedConfig = window.advancedConfig();
@@ -642,6 +644,13 @@ function initializeDeckGL() {
 
 // === MAIN INITIALIZATION ===
 async function init() {
+    // Show minimal three-bar preloader
+    try {
+        preloader.show();
+        preloader.set('spots', 0, 'Preparing…');
+        preloader.set('cells', 0, 'Preparing…');
+    } catch {}
+
     showLoading(state, elements.loadingIndicator);
 
     const userConfig = window.config();
@@ -671,9 +680,11 @@ async function init() {
 
     // Load gene data first - this builds the gene icon atlas and populates geneDataMap
     // Gene data is shared across all planes, so we only need to load it once
+    try { preloader.startAuto('spots', { start: 10, cap: 90, step: 10, interval: 250, message: 'Loading spots…' }); } catch {}
     const {atlas, mapping} = await loadGeneData(state.geneDataMap, state.selectedGenes);
     state.geneIconAtlas = atlas;
     state.geneIconMapping = mapping;
+    try { preloader.message('spots', 'Indexing spots…'); } catch {}
 
     // Show/hide score filter slider based on whether dataset has valid scores
     const scoreFilterContainer = document.querySelector('.score-filter-item');
@@ -689,6 +700,7 @@ async function init() {
 
     // Build lightning-fast lookup indexes after gene data is loaded
     buildGeneSpotIndexes(state.geneDataMap, state.cellToSpotsIndex, state.spotToParentsIndex);
+    try { preloader.complete('spots', 'Spots ready'); } catch {}
 
     // Initialize polygon highlighter with access to cell-to-spot indexes
     state.polygonHighlighter = new PolygonBoundaryHighlighter(
@@ -718,7 +730,9 @@ async function init() {
 
     // Load cell data - this is also shared across all planes
     console.log('Loading cell data...');
+    try { preloader.startAuto('cells', { start: 10, cap: 90, step: 10, interval: 250, message: 'Loading cells…' }); } catch {}
     await loadCellData(state.cellDataMap);
+    try { preloader.message('cells', 'Finalizing…'); } catch {}
     // Compute max total gene count once for UI slider bounds
     try {
         let maxCount = 0;
@@ -739,6 +753,7 @@ async function init() {
             }
         }
         console.log(`Max total gene count computed: ${state.maxTotalGeneCount}`);
+        try { preloader.complete('cells', 'Cells ready'); } catch {}
     } catch (e) {
         console.warn('Failed to compute max total gene count for slider bounds:', e);
     }
@@ -781,6 +796,8 @@ async function init() {
         } else {
             setTimeout(startIndexing, 0);
         }
+    } else {
+        // Arrow datasets: boundaries handled in background; no preloader bar for boundaries
     }
 
     // Initialize cell class widget with all classes selected by default
@@ -812,6 +829,7 @@ async function init() {
     // Now safely update all layers - all required data (genes, polygons) is loaded
     // This will render: background tiles + gene markers + cell boundary polygons
     updateAllLayers();
+    try { if (preloader.isComplete()) preloader.hide(); } catch {}
 
     // If Arrow boundaries are enabled, refresh layers when buffers for a plane are ready
     try {
@@ -980,6 +998,7 @@ async function init() {
     } catch {}
 
     hideLoading(state, elements.loadingIndicator);
+    try { if (preloader.isComplete()) preloader.hide(); } catch {}
 
     if (advancedConfig.performance.showPerformanceStats) {
         console.log(' Initialization complete. Slider should now be very responsive!');

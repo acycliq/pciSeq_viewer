@@ -251,6 +251,66 @@ body {
     color: #fff;
 }
 
+/* === Minimal Preloader Overlay === */
+.preloader {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 4000;
+    pointer-events: none; /* let interactions pass if needed */
+}
+.preloader.hidden { display: none; }
+.preloader-card {
+    background: rgba(17, 24, 39, 0.9); /* slate-900-ish */
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 16px 18px;
+    width: 420px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+.preloader-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 48px;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 0 2px 0;
+}
+.preloader-label {
+    color: rgba(255,255,255,0.85);
+    font-size: 13px;
+}
+.preloader-bar {
+    position: relative;
+    height: 6px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.preloader-bar > div {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0%;
+    background: #60a5fa; /* calm blue */
+    transition: width 200ms ease;
+}
+.preloader-percent {
+    text-align: right;
+    color: rgba(255,255,255,0.8);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+}
+.preloader-status {
+    margin: 0 0 8px 80px; /* align under bar, after label column */
+    color: rgba(255,255,255,0.6);
+    font-size: 11px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .preloader-bar > div { transition: none; }
+}
+
 #map {
     width: 100vw;
     height: 100vh;
