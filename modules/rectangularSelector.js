@@ -155,7 +155,7 @@ export class RectangularSelector {
         // Calculate stack depth in pixel coordinates
         const userConfig = window.config();
         const [xVoxel, yVoxel, zVoxel] = userConfig.voxelSize;
-        const stackDepth = userConfig.totalPlanes * (zVoxel / xVoxel);
+        const stackDepth = window.appState.totalPlanes * (zVoxel / xVoxel);
 
         // Convert cell boundaries from tile coordinates to pixel coordinates
         const clippedCellsInPixels = clippedCells.map(cell => ({
@@ -551,7 +551,7 @@ export class RectangularSelector {
                 console.log(' Chunk viewer window opened successfully');
             } else {
                 console.warn(' Popup blocked - chunk viewer not opened');
-                console.log('ðŸ Please enable popups and try again');
+                console.log('ï¿½ Please enable popups and try again');
             }
         } catch (error) {
             console.error(' Failed to open chunk viewer:', error);

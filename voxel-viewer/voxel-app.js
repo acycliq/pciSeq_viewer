@@ -151,9 +151,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Get plane count from config
         let totalPlanes = Math.floor(maxY / 2.5); // fallback estimate
-        if (window.opener && window.opener.window.config) {
+        if (window.opener && window.opener.window.appState && typeof window.opener.window.appState.totalPlanes === 'number') {
+            totalPlanes = window.opener.window.appState.totalPlanes;
+        } else if (window.opener && window.opener.window.config) {
             const config = window.opener.window.config();
-            totalPlanes = config.totalPlanes;
+            if (config.totalPlanes) totalPlanes = config.totalPlanes;
         }
 
         // Build scene indices (per-plane cells, id->color)
