@@ -51,11 +51,11 @@ function getArrowSpotBinaryCache() {
     return cache;
 }
 
-export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false) {
+export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, filterMode = 'score') {
     const cache = getArrowSpotBinaryCache();
     if (!cache || cache.length === 0) return null;
 
-    const { positions, colors, planes, geneIds, scores, length } = cache;
+    const { positions, colors, planes, geneIds, scores, intensities, filterPairs, length } = cache;
     // ⚡ PERFORMANCE OPTIMIZATION: Radius computation caching
     // PROBLEM: Computing radius for 20M+ spots on every plane change = 80M+ operations = UI lag
     // SOLUTION: Cache radius factors per plane, only recompute when plane actually changes
@@ -130,18 +130,38 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
     // PROBLEM: CPU loops on 20M+ spots block main thread during slider drags
     // SOLUTION: Use DataFilterExtension for GPU-side filtering (parallel processing)
 
+    // AND logic: if both metrics exist and are enabled, filter on both via 2D GPU filtering
+    const canFilterScore = Boolean(scores) && hasScores;
+    const canFilterIntensity = Boolean(intensities) && hasIntensity;
+    const use2D = canFilterScore && canFilterIntensity && Boolean(filterPairs);
     const data = {
         length,
         attributes: {
             getPosition: { value: positions, size: 3 },
             getFillColor: { value: (typeof maskedColors !== 'undefined') ? maskedColors : colors, size: 4 },
             getRadius: uniformMarkerSize ? { constant: 1 } : { value: radiusFactors, size: 1 },
-            // Only add filter attribute when scores exist (conditional GPU filtering)
-            ...(scores ? { getFilterValue: { value: scores, size: 1 } } : {})
+            // Filtering attributes
+            ...(use2D
+                ? { getFilterValue: { value: filterPairs, size: 2 } }
+                : canFilterScore
+                    ? { getFilterValue: { value: scores, size: 1 } }
+                    : canFilterIntensity
+                        ? { getFilterValue: { value: intensities, size: 1 } }
+                        : {})
         }
     };
 
     try { const adv = window.advancedConfig ? window.advancedConfig() : null; if (adv?.performance?.showPerformanceStats) console.log(`Arrow binary scatter: points=${length}, baseScale=${baseScale}, geneSizeScale=${geneSizeScale}, uniform=${uniformMarkerSize}`); } catch {}
+
+    // Upper bounds for filter ranges
+    let intensityUpper = 1.0;
+    try {
+        const app = (typeof window !== 'undefined') ? window.appState : null;
+        if (app && Array.isArray(app.intensityRange)) {
+            const hi = Number(app.intensityRange[1]);
+            if (Number.isFinite(hi)) intensityUpper = hi;
+        }
+    } catch {}
 
     return new ScatterplotLayer({
         id: 'spots-scatter-binary',
@@ -159,9 +179,15 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         radiusScale: baseScale * (geneSizeScale || 1.0),
 
         // ⚡ GPU filtering setup: Always present but conditionally enabled
-        extensions: [new DataFilterExtension({ filterSize: 1 })],
-        filterEnabled: Boolean(scores), // Only filter when scores exist
-        filterRange: [Number(scoreThreshold) || 0, 1.0] // GPU compares score >= threshold
+        extensions: [new DataFilterExtension({ filterSize: use2D ? 2 : 1 })],
+        filterEnabled: use2D || canFilterScore || canFilterIntensity,
+        filterRange: use2D
+            ? [ [Number(scoreThreshold) || 0, 1.0], [Number(intensityThreshold) || 0, Number(intensityUpper)] ]
+            : canFilterScore
+                ? [Number(scoreThreshold) || 0, 1.0]
+                : canFilterIntensity
+                    ? [Number(intensityThreshold) || 0, Number(intensityUpper)]
+                    : [0, 1.0]
     });
 }
 
@@ -692,7 +718,7 @@ function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOp
  * @param {Function} showTooltip - Tooltip callback function
  * @returns {IconLayer[]} Array of gene icon layers
  */
-export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false) {
+export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, filterMode = 'score') {
     const layers = [];
     if (!showGenes || !geneIconAtlas) return layers;
 
@@ -739,12 +765,15 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             // no cap
         }
         if (combined.length) {
-            // Apply OMP score filtering when threshold > 0 AND dataset has scores
+            // Apply AND filtering: score >= S AND intensity >= I (conditionally if thresholds engaged)
             let filteredData = combined;
-            if (hasScores && scoreThreshold > 0) {
+            if ((hasScores && scoreThreshold > 0) || (hasIntensity && intensityThreshold > 0)) {
                 filteredData = combined.filter(d => {
                     const score = d.score;
-                    return (score !== null && score !== undefined && !isNaN(score) && Number(score) >= scoreThreshold);
+                    const inten = d.intensity;
+                    const passScore = !(hasScores && scoreThreshold > 0) || (score != null && !isNaN(score) && Number(score) >= scoreThreshold);
+                    const passInten = !(hasIntensity && intensityThreshold > 0) || (inten != null && !isNaN(inten) && Number(inten) >= intensityThreshold);
+                    return passScore && passInten;
                 });
             }
 
@@ -796,12 +825,15 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             data = filtered;
             if (data.length === 0) continue; // Skip empty layers
         }
-        // Apply OMP score filtering to individual gene data
+        // Apply AND filtering: score >= S AND intensity >= I (conditionally)
         let filteredGeneData = data;
-        if (hasScores && scoreThreshold > 0) {
+        if ((hasScores && scoreThreshold > 0) || (hasIntensity && intensityThreshold > 0)) {
             filteredGeneData = data.filter(d => {
                 const score = d.score;
-                return (score !== null && score !== undefined && !isNaN(score) && Number(score) >= scoreThreshold);
+                const inten = d.intensity;
+                const passScore = !(hasScores && scoreThreshold > 0) || (score != null && !isNaN(score) && Number(score) >= scoreThreshold);
+                const passInten = !(hasIntensity && intensityThreshold > 0) || (inten != null && !isNaN(inten) && Number(inten) >= intensityThreshold);
+                return passScore && passInten;
             });
         }
 

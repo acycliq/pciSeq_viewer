@@ -56,6 +56,20 @@ const state = {
     scoreRange: [0, 1.0], // Normalized score range [min, max]
     hasScores: false,     // Whether dataset contains valid OMP scores
 
+    // Intensity filtering
+    // Note: intensityThreshold is an initial default that shows all spots.
+    // It is left at 0 until Arrow data loads; the loader then sets it to the
+    // dataset-dependent minimum (often <= 0) unless the user has already moved the slider.
+    intensityThreshold: 0.0,
+    // Note: intensityRange is a placeholder default only. After Arrow data loads,
+    // modules/dataLoaders.js replaces this with [min(0, intensityMin), intensityMax]
+    // computed from the dataset; the slider and GPU filter use that runtime range.
+    intensityRange: [0, 1.0],
+    hasIntensity: false,
+
+    // Active filter mode: 'score' or 'intensity'
+    filterMode: 'score',
+
     // Sizing behavior
     uniformMarkerSize: false, // When true, ignore plane distance for marker size
 

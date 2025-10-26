@@ -280,9 +280,10 @@ self.onmessage = async (e) => {
         const plane_id = getTypedColumn(table, 'plane_id');
         const gene_id = getTypedColumn(table, 'gene_id');
         const omp_score = getTypedColumn(table, 'omp_score');
+        const omp_intensity = getTypedColumn(table, 'omp_intensity');
         const n = x ? x.length : 0;
         if (!n) continue;
-        shards.push({ x, y, plane_id, gene_id, omp_score, n });
+        shards.push({ x, y, plane_id, gene_id, omp_score, omp_intensity, n });
         total += n;
       }
       const positions = new Float32Array(total * 3);
@@ -290,6 +291,7 @@ self.onmessage = async (e) => {
       const geneIds = new Int32Array(total);
       const planes = new Int32Array(total);
       const scores = new Float32Array(total);
+      const intensities = new Float32Array(total);
       const width = img && img.width || 256;
       const height = img && img.height || 256;
       const tileSize = img && img.tileSize || 256;
@@ -297,6 +299,9 @@ self.onmessage = async (e) => {
       const xAdj = width / maxDim;
       const yAdj = height / maxDim;
       let scoreMin = Infinity;
+      let scoreMax = -Infinity;
+      let intensityMin = Infinity;
+      let intensityMax = -Infinity;
       let off = 0;
       for (const sh of shards) {
         const n = sh.n || 0;
@@ -313,7 +318,10 @@ self.onmessage = async (e) => {
           planes[off] = sh.plane_id ? sh.plane_id[i] : 0;
           const s = sh.omp_score ? sh.omp_score[i] : 0;
           scores[off] = s;
-          if (Number.isFinite(s) && s < scoreMin) scoreMin = s;
+          if (Number.isFinite(s)) { if (s < scoreMin) scoreMin = s; if (s > scoreMax) scoreMax = s; }
+          const inten = (sh.omp_intensity ? sh.omp_intensity[i] : 0);
+          intensities[off] = inten;
+          if (Number.isFinite(inten)) { if (inten < intensityMin) intensityMin = inten; if (inten > intensityMax) intensityMax = inten; }
           const col = (geneIdColors && geneIdColors[gid] && geneIdColors[gid].length === 3) ? geneIdColors[gid] : [255,255,255];
           colors[4*off + 0] = col[0] | 0;
           colors[4*off + 1] = col[1] | 0;
@@ -322,9 +330,15 @@ self.onmessage = async (e) => {
           off++;
         }
       }
-      const transfers = [positions.buffer, colors.buffer, geneIds.buffer, planes.buffer, scores.buffer];
+      // Build interleaved [score, intensity] pairs for 2D GPU filtering
+      const filterPairs = new Float32Array(total * 2);
+      for (let i = 0; i < total; i++) { filterPairs[2*i] = scores[i]; filterPairs[2*i+1] = intensities[i]; }
+      const transfers = [positions.buffer, colors.buffer, geneIds.buffer, planes.buffer, scores.buffer, intensities.buffer, filterPairs.buffer];
       if (!Number.isFinite(scoreMin)) scoreMin = 0;
-      self.postMessage({ id, ok: true, type, positions, colors, geneIds, planes, scores, scoreMin }, transfers);
+      if (!Number.isFinite(scoreMax)) scoreMax = 1;
+      if (!Number.isFinite(intensityMin)) intensityMin = 0;
+      if (!Number.isFinite(intensityMax)) intensityMax = 1;
+      self.postMessage({ id, ok: true, type, positions, colors, geneIds, planes, scores, intensities, filterPairs, scoreMin, scoreMax, intensityMin, intensityMax }, transfers);
     } else {
       throw new Error(`Unknown message type: ${type}`);
     }

@@ -310,7 +310,18 @@ function updateAllLayers() {
     const zoom = (typeof state.currentZoom === 'number') ? state.currentZoom : INITIAL_VIEW_STATE.zoom;
     if (zoom < 7) {
         try { console.log(`[layers] Using binary Scatterplot for spots at zoom ${zoom.toFixed(1)} (showGenes=${state.showGenes})`); } catch {}
-        const pc = createArrowPointCloudLayer(state.currentPlane, state.geneSizeScale, state.selectedGenes, 1.0, state.scoreThreshold, state.hasScores, state.uniformMarkerSize);
+        const pc = createArrowPointCloudLayer(
+            state.currentPlane,
+            state.geneSizeScale,
+            state.selectedGenes,
+            1.0,
+            state.scoreThreshold,
+            state.hasScores,
+            state.uniformMarkerSize,
+            state.intensityThreshold,
+            state.hasIntensity,
+            state.filterMode
+        );
         if (pc && state.showGenes) layers.push(pc);
         // Simplified: no deferred cleanup needed with single IconLayer approach
         state.lastIconLayers = [];
@@ -332,7 +343,10 @@ function updateAllLayers() {
             true, // combine into a single IconLayer at deep zoom to minimize churn
             state.scoreThreshold, // Score threshold for filtering
             state.hasScores, // Whether dataset has valid scores
-            state.uniformMarkerSize // Uniform marker sizing toggle
+            state.uniformMarkerSize, // Uniform marker sizing toggle
+            state.intensityThreshold,
+            state.hasIntensity,
+            state.filterMode
         );
         layers.push(...iconLayers);
         state.lastIconLayers = iconLayers;
@@ -690,16 +704,16 @@ async function init() {
     state.geneIconAtlas = atlas;
     state.geneIconMapping = mapping;
 
-    // Show/hide score filter slider based on whether dataset has valid scores
+    // Show/hide score and intensity filter sliders based on dataset fields
     const scoreFilterContainer = document.querySelector('.score-filter-item');
     if (scoreFilterContainer) {
-        if (state.hasScores) {
-            scoreFilterContainer.style.display = 'flex';
-            console.log('Score filter enabled: dataset contains valid OMP scores');
-        } else {
-            scoreFilterContainer.style.display = 'none';
-            console.log('Score filter disabled: dataset has no valid OMP scores');
-        }
+        scoreFilterContainer.style.display = state.hasScores ? 'flex' : 'none';
+        console.log(state.hasScores ? 'Score filter enabled: dataset contains valid OMP scores' : 'Score filter disabled: dataset has no valid OMP scores');
+    }
+    const intensityFilterContainer = document.querySelector('.intensity-filter-item');
+    if (intensityFilterContainer) {
+        intensityFilterContainer.style.display = state.hasIntensity ? 'flex' : 'none';
+        console.log(state.hasIntensity ? 'Intensity filter enabled: dataset contains intensities' : 'Intensity filter disabled: dataset has no intensities');
     }
 
     // Build lightning-fast lookup indexes after gene data is loaded

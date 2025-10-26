@@ -118,8 +118,8 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                 }
                 const manifestUrl = new URL(ARROW_MANIFESTS.spotsManifest, window.location.href).href;
                 const img = { width: cfg.imageWidth, height: cfg.imageHeight, tileSize: 256 };
-                const { positions, colors, planes, geneIds, scores, scoreMin } = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
-                window.appState.arrowScatterCache = { positions, colors, planes, geneIds, scores, length: (positions?.length||0)/3 };
+                const { positions, colors, planes, geneIds, scores, intensities, filterPairs, scoreMin, scoreMax, intensityMin, intensityMax } = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
+                window.appState.arrowScatterCache = { positions, colors, planes, geneIds, scores, intensities, filterPairs, length: (positions?.length||0)/3 };
                 // Update score range with dataset min (UI min = min(0, scoreMin), max remains 1.0)
                 try {
                     const rawMin = Number.isFinite(scoreMin) ? scoreMin : 0;
@@ -139,6 +139,37 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                         }
                     }
                 } catch {}
+                // Update intensity range (UI min = min(0, intensityMin), max = intensityMax)
+                try {
+                    const rawMinI = Number.isFinite(intensityMin) ? intensityMin : 0;
+                    const rawMaxI = Number.isFinite(intensityMax) ? intensityMax : 1;
+                    const uiMinI = Math.min(0, rawMinI);
+                    const uiMaxI = rawMaxI;
+                    window.appState.intensityRange = [uiMinI, uiMaxI];
+                    const sliderI = document.getElementById('intensityFilterSlider');
+                    const valueI = document.getElementById('intensityFilterValue');
+                    if (sliderI) {
+                        sliderI.min = String(uiMinI);
+                        sliderI.max = String(uiMaxI);
+                        // Set an adaptive step for better control across ranges
+                        try {
+                            const range = (uiMaxI - uiMinI);
+                            let step = 0.01;
+                            if (range > 0 && range < 1) {
+                                // choose roughly 100 steps across the range
+                                step = Math.max(range / 100, 0.0001);
+                            } else if (range >= 1) {
+                                step = range / 100;
+                            }
+                            sliderI.step = String(step);
+                        } catch {}
+                        if (window.appState.intensityThreshold === 0) {
+                            sliderI.value = String(uiMinI);
+                            window.appState.intensityThreshold = uiMinI;
+                            if (valueI) valueI.textContent = Number(uiMinI).toFixed(2);
+                        }
+                    }
+                } catch {}
                 if (window?.advancedConfig?.().performance?.showPerformanceStats) {
                     console.log(` Prebuilt scatter cache in worker: points=${window.appState.arrowScatterCache.length}`);
                 }
@@ -148,6 +179,7 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
 
             // For Arrow data, assume scores are available (can be refined later if needed)
             window.appState.hasScores = true;
+            window.appState.hasIntensity = true;
             console.log('Arrow dataset: assuming scores are available');
         }
 

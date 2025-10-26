@@ -25,6 +25,9 @@ const elements = {
     // Score filtering controls
     scoreFilterSlider: document.getElementById('scoreFilterSlider'),
     scoreFilterValue: document.getElementById('scoreFilterValue'),
+    // Intensity filtering controls
+    intensityFilterSlider: document.getElementById('intensityFilterSlider'),
+    intensityFilterValue: document.getElementById('intensityFilterValue'),
     // Uniform size toggle
     uniformSizeToggle: document.getElementById('uniformSizeToggle'),
 

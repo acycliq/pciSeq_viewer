@@ -60,10 +60,17 @@
             <input type="range" id="geneSizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
             <span id="geneSizeValue">1.0</span>
         </div>
-        <div class="control-item score-filter-item">
-            <label for="scoreFilterSlider">Score Filter</label>
-            <input type="range" id="scoreFilterSlider" min="0" max="1.0" step="0.01" value="0">
-            <span id="scoreFilterValue">0.00</span>
+        <div class="filter-stack">
+            <div class="control-item score-filter-item">
+                <label for="scoreFilterSlider">Score Filter</label>
+                <input type="range" id="scoreFilterSlider" min="0" max="1.0" step="0.01" value="0">
+                <span id="scoreFilterValue">0.00</span>
+            </div>
+            <div class="control-item intensity-filter-item">
+                <label for="intensityFilterSlider">Intensity Filter</label>
+                <input type="range" id="intensityFilterSlider" min="0" max="1.0" step="0.01" value="0">
+                <span id="intensityFilterValue">0.00</span>
+            </div>
         </div>
         <div class="control-item" style="gap:6px; align-items:center;">
             <input type="checkbox" id="uniformSizeToggle">

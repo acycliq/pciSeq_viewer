@@ -101,6 +101,7 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
     elements.scoreFilterSlider.addEventListener('input', (e) => {
         const threshold = parseFloat(e.target.value);
         state.scoreThreshold = threshold;
+        state.filterMode = 'score';
         elements.scoreFilterValue.textContent = threshold.toFixed(2);
         if (scoreRafId == null) {
             scoreRafId = requestAnimationFrame(() => {
@@ -109,6 +110,23 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
             });
         }
     });
+
+    // Intensity filter slider (rAF-throttled)
+    let intensityRafId = null;
+    if (elements.intensityFilterSlider) {
+        elements.intensityFilterSlider.addEventListener('input', (e) => {
+            const threshold = parseFloat(e.target.value);
+            state.intensityThreshold = threshold;
+            state.filterMode = 'intensity';
+            if (elements.intensityFilterValue) elements.intensityFilterValue.textContent = threshold.toFixed(2);
+            if (intensityRafId == null) {
+                intensityRafId = requestAnimationFrame(() => {
+                    intensityRafId = null;
+                    updateLayersCallback();
+                });
+            }
+        });
+    }
 
     // Uniform marker size toggle
     if (elements.uniformSizeToggle) {

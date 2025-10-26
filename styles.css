@@ -485,6 +485,14 @@ body {
     user-select: none;
 }
 
+/* Stack score and intensity sliders vertically */
+.filter-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
 .gene-size-item {
     gap: 4px;
 }
@@ -553,6 +561,42 @@ body {
     border: none;
 }
 .score-filter-item #scoreFilterValue {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.8);
+    min-width: 24px;
+    text-align: center;
+    font-family: monospace;
+}
+
+/* Intensity Filter Slider - mirror score slider styling */
+.intensity-filter-item {
+    gap: 4px;
+}
+.intensity-filter-item input[type="range"] {
+    width: 60px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    appearance: none;
+    outline: none;
+}
+.intensity-filter-item input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: pointer;
+}
+.intensity-filter-item input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: #007bff;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+.intensity-filter-item #intensityFilterValue {
     font-size: 10px;
     color: rgba(255, 255, 255, 0.8);
     min-width: 24px;
