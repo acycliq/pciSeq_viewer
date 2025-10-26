@@ -8,8 +8,8 @@ function openCellClassViewer() {
         return;
     }
 
-    const config = window.config();
-    const midPlane = Math.floor((config.totalPlanes - 1) / 2);
+    const totalPlanes = window.appState.totalPlanes;
+    const midPlane = Math.floor((totalPlanes - 1) / 2);
     const selectedClasses = [];
 
     // Open the separate HTML file with configuration parameters

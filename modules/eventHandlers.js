@@ -284,8 +284,7 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
 
                 // If caches are already full, skip plane load and only prepare/flatten features with a short indicator
                 try {
-                    const userConfig = window.config();
-                    const totalPlanes = userConfig.totalPlanes;
+                    const totalPlanes = window.appState.totalPlanes;
                     const { arrowGeojsonCache } = await import('./layerCreators.js');
                     if (arrowGeojsonCache && arrowGeojsonCache.size >= totalPlanes) {
                         await prepareProjectionFromCaches(state);
@@ -413,8 +412,7 @@ export function debounce(func, delay) {
  * @param {Function} updateLayersCallback - Function to update layers after loading
  */
 async function loadAllPlanesForProjection(state, updateLayersCallback) {
-    const userConfig = window.config();
-    const totalPlanes = userConfig.totalPlanes;
+    const totalPlanes = window.appState.totalPlanes;
 
     console.log(`Loading ALL ${totalPlanes} planes for Cell Projection mode (Arrow-only)...`);
 

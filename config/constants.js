@@ -22,7 +22,8 @@ if (!advancedUserConfig) {
 export const IMG_DIMENSIONS = {
     width: userConfig.imageWidth,
     height: userConfig.imageHeight,
-    depth: userConfig.totalPlanes,
+    // Depth (number of planes) is derived from Arrow manifests at runtime
+    depth: 0,
     tileSize: 256
 };
 
@@ -37,7 +38,8 @@ export const MAX_PRELOAD = advancedUserConfig.performance.preloadRadius;
 export const MAX_TILE_CACHE = advancedUserConfig.performance.maxTileCache;
 
 export const DEFAULT_STATE = {
-    currentPlane: userConfig.startingPlane,
+    // Starting plane is set during app init to mid-plane based on manifest
+    currentPlane: 0,
     showTiles: advancedUserConfig.display.showBackgroundImages,
     showPolygons: advancedUserConfig.display.showCellBoundaries,
     showGenes: advancedUserConfig.display.showGeneMarkers,
@@ -45,13 +47,20 @@ export const DEFAULT_STATE = {
     polygonOpacity: advancedUserConfig.display.polygonOpacity
 };
 
+// Helper to get total planes after app init
+export function getTotalPlanes() {
+    return (window.appState && typeof window.appState.totalPlanes === 'number')
+        ? window.appState.totalPlanes
+        : 0;
+}
+
 // Feature flags removed: Arrow-only runtime
 
 // Arrow manifests and related paths (optional)
 export const ARROW_MANIFESTS = {
     spotsManifest: userConfig.arrowSpotsManifest || './data/arrow_spots/manifest.json',
     cellsManifest: userConfig.arrowCellsManifest || './data/arrow_cells/manifest.json',
-    boundariesManifest: userConfig.arrowBoundariesManifest || './data/arrow_boundaries/manifest.json',
+    boundariesManifest: userConfig.arrowBoundariesManifest,
     cellsClassDict: userConfig.arrowCellsClassDict || './data/arrow_cells/class_dict.json',
     spotsGeneDict: userConfig.arrowSpotsGeneDict || './data/arrow_spots/gene_dict.json'
 };

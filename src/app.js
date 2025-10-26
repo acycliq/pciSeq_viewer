@@ -269,7 +269,8 @@ function updateAllLayers() {
 
     const userConfig = window.config();
     const start = Math.max(0, state.currentPlane - preloadBehind);
-    const end = Math.min(userConfig.totalPlanes - 1, state.currentPlane + preloadAhead);
+    const totalPlanes = window.appState.totalPlanes;
+    const end = Math.min(totalPlanes - 1, state.currentPlane + preloadAhead);
 
     for (let plane = start; plane <= end; plane++) {
         const opacity = plane === state.currentPlane ? 1 : 0;
@@ -397,7 +398,8 @@ function updatePlaneImmediate(newPlane) {
     const perfStart = performance.now();
 
     const userConfig = window.config();
-    const clampedPlane = clamp(newPlane, 0, userConfig.totalPlanes - 1);
+    const totalPlanes2 = window.appState.totalPlanes;
+    const clampedPlane = clamp(newPlane, 0, totalPlanes2 - 1);
 
     // Update UI immediately - no async operations
     state.currentPlane = clampedPlane;
@@ -483,9 +485,9 @@ function cleanupPolygonCache() {
             Math.max(0, state.currentPlane - 2),
             Math.max(0, state.currentPlane - 1),
             state.currentPlane,
-            Math.min(userConfig.totalPlanes - 1, state.currentPlane + 1),
-            Math.min(userConfig.totalPlanes - 1, state.currentPlane + 2),
-            Math.min(userConfig.totalPlanes - 1, state.currentPlane + 3)
+            Math.min(totalPlanes - 1, state.currentPlane + 1),
+            Math.min(totalPlanes - 1, state.currentPlane + 2),
+            Math.min(totalPlanes - 1, state.currentPlane + 3)
         ]);
 
         // Remove distant planes
@@ -514,7 +516,7 @@ function preloadAdjacentPlanes(currentPlane) {
     }
 
     // Preload next plane
-    if (currentPlane < userConfig.totalPlanes - 1 && !state.polygonCache.has(currentPlane + 1)) {
+    if (currentPlane < totalPlanes - 1 && !state.polygonCache.has(currentPlane + 1)) {
         planesToPreload.push(currentPlane + 1);
     }
 
@@ -654,6 +656,34 @@ async function init() {
     // Setup advanced keyboard shortcuts
     setupAdvancedKeyboardShortcuts(state, updatePlane, updateAllLayers);
 
+    // Derive totalPlanes and startingPlane from Arrow boundaries manifest
+    try {
+        if (!userConfig.arrowBoundariesManifest) {
+            throw new Error('arrowBoundariesManifest is not configured');
+        }
+        const manifestUrl = new URL(userConfig.arrowBoundariesManifest, window.location.href).href;
+        const manifest = await fetch(manifestUrl).then(r => r.json());
+        let totalPlanes = 0;
+        if (manifest && Array.isArray(manifest.shards)) {
+            const planes = manifest.shards.map(s => Number(s.plane)).filter(n => Number.isFinite(n));
+            totalPlanes = planes.length > 0 ? (Math.max(...planes) + 1) : manifest.shards.length;
+        }
+        if (!Number.isFinite(totalPlanes) || totalPlanes <= 0) {
+            throw new Error('Invalid totalPlanes derived from manifest');
+        }
+        const startingPlane = Math.floor(totalPlanes / 2);
+        window.appState.totalPlanes = totalPlanes;
+        console.log(`The image has ${totalPlanes} planes`);
+        state.currentPlane = startingPlane;
+        elements.slider.min = 0;
+        elements.slider.max = totalPlanes - 1;
+        elements.slider.value = state.currentPlane;
+        elements.label.textContent = `Plane: ${state.currentPlane}`;
+    } catch (e) {
+        console.error('Failed to derive totalPlanes from manifest.', e);
+        throw e;
+    }
+
     // Load gene data first - this builds the gene icon atlas and populates geneDataMap
     // Gene data is shared across all planes, so we only need to load it once
     const {atlas, mapping} = await loadGeneData(state.geneDataMap, state.selectedGenes);
@@ -755,9 +785,10 @@ async function init() {
     state.allCellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
 
 // Preload adjacent planes (non-blocking)
+    const totalPlanes = window.appState.totalPlanes;
     const adjacentPlanes = [
         Math.max(0, state.currentPlane - 1),
-        Math.min(userConfig.totalPlanes - 1, state.currentPlane + 1)
+        Math.min(totalPlanes - 1, state.currentPlane + 1)
     ];
 
     adjacentPlanes.forEach(async (plane) => {
@@ -769,12 +800,7 @@ async function init() {
         }
     });
 
-    // Update UI to reflect the current plane state after data loading
-    state.currentPlane = DEFAULT_STATE.currentPlane;
-    elements.slider.min = 0;
-    elements.slider.max = userConfig.totalPlanes - 1;
-    elements.slider.value = state.currentPlane;
-    elements.label.textContent = `Plane: ${state.currentPlane}`;
+    // currentPlane and slider already initialized from manifest
 
     // Now safely update all layers - all required data (genes, polygons) is loaded
     // This will render: background tiles + gene markers + cell boundary polygons
@@ -880,10 +906,8 @@ async function init() {
                     if (btn) { btn.disabled = true; btn.textContent = 'Selection (Indexing)'; }
                     const cfg = window.config();
                     const adv = window.advancedConfig ? window.advancedConfig() : null;
-                    const manifest = new URL(
-                        cfg.arrowBoundariesManifest || './data/arrow_boundaries/manifest.json',
-                        window.location.href
-                    ).href;
+                    if (!cfg.arrowBoundariesManifest) throw new Error('arrowBoundariesManifest is not configured');
+                    const manifest = new URL(cfg.arrowBoundariesManifest, window.location.href).href;
                     const { imageWidth: width, imageHeight: height } = cfg;
                     const tileSize = (adv && adv.visualization && adv.visualization.tileSize) ? adv.visualization.tileSize : 256;
                     // Use absolute path to ensure correct resolution on GitHub Pages

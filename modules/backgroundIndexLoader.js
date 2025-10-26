@@ -25,8 +25,7 @@ function idleYield() {
  */
 async function buildCellBoundaryIndex(appState) {
     const cellBoundaryIndex = new Map();
-    const config = window.config();
-    const totalPlanes = config.totalPlanes;
+    const totalPlanes = window.appState.totalPlanes;
 
     console.log(` Building cell boundary index from ${totalPlanes} planes...`);
     const startTime = performance.now();

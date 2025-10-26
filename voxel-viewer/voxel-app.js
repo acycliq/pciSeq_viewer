@@ -616,10 +616,16 @@ document.addEventListener('DOMContentLoaded', function() {
         createLayers,
         planeIdToSliceY,
         getTotalPlanes: () => {
-            if (window.opener && window.opener.window.config) {
-                return window.opener.window.config().totalPlanes;
-            }
-            // Fallback to bounds-based estimate if config is unavailable
+            try {
+                if (window.opener && window.opener.window.appState && typeof window.opener.window.appState.totalPlanes === 'number') {
+                    return window.opener.window.appState.totalPlanes;
+                }
+                if (window.opener && window.opener.window.config) {
+                    // Legacy fallback if parent still provides totalPlanes in config
+                    return window.opener.window.config().totalPlanes;
+                }
+            } catch {}
+            // Fallback to bounds-based estimate if unavailable
             return blockData.bounds.maxY + 1;
         },
         getCurrentPlaneId: () => currentPlaneId,

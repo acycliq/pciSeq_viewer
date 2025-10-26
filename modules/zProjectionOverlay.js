@@ -35,7 +35,7 @@ async function _buildZProjectionTexture(appState, progressCallback) {
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
   ctx.lineWidth = 0.5;
 
-  const totalPlanes = window.config().totalPlanes;
+  const totalPlanes = window.appState.totalPlanes;
   const planesToProcess = Array.from({ length: totalPlanes }, (_, i) => i);
 
   for (let idx = 0; idx < planesToProcess.length; idx++) {
