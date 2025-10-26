@@ -1,8 +1,9 @@
 /**
- * Advanced Application Configuration
+ * Advanced Application Configuration (Arrow-only)
  *
- * This file contains only the settings that are actually used by the application.
- * Most users should only need to modify config.js
+ * TSV handling has been completely removed from the runtime.
+ * Data must be loaded from Arrow manifests exclusively.
+ * The `useArrow` flag is now mandatory and must remain true.
  */
 
 function advancedConfig() {
@@ -13,8 +14,7 @@ function advancedConfig() {
             maxTileCache: 1000,         // Maximum number of tiles to keep in memory
             sliderDebounce: 100,        // Debouncing for slider interactions (ms)
             loadingTimeout: 2000,       // Loading timeout (ms)
-            showPerformanceStats: true, // Show performance timing in console
-            useArrow: true             // Feature flag: use Arrow loaders (A/B testing)
+            showPerformanceStats: true  // Show performance timing in console
         },
 
         // Display settings

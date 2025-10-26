@@ -3,8 +3,7 @@ import {
     INITIAL_VIEW_STATE,
     MAX_PRELOAD,
     DEFAULT_STATE,
-    UI_ELEMENTS,
-    USE_ARROW
+    UI_ELEMENTS
 } from '../config/constants.js';
 import RBush from 'https://cdn.jsdelivr.net/npm/rbush@3.0.1/+esm';
 import { buildGlobalZProjection, createZProjectionLayer, isZProjectionReady } from '../modules/zProjectionOverlay.js';
@@ -308,7 +307,7 @@ function updateAllLayers() {
 
     // Add gene/spot layers: binary PointCloud at low zoom (Arrow), IconLayers at high zoom
     const zoom = (typeof state.currentZoom === 'number') ? state.currentZoom : INITIAL_VIEW_STATE.zoom;
-    if (USE_ARROW && zoom < 7) {
+    if (zoom < 7) {
         try { console.log(`[layers] Using binary Scatterplot for spots at zoom ${zoom.toFixed(1)} (showGenes=${state.showGenes})`); } catch {}
         const pc = createArrowPointCloudLayer(state.currentPlane, state.geneSizeScale, state.selectedGenes, 1.0, state.scoreThreshold, state.hasScores, state.uniformMarkerSize);
         if (pc && state.showGenes) layers.push(pc);
@@ -328,7 +327,7 @@ function updateAllLayers() {
             state.currentPlane,
             state.geneSizeScale,
             (info) => showTooltip(info, elements.tooltip),
-            USE_ARROW ? bounds : null, // Only cull viewport when using Arrow data
+            bounds,
             true, // combine into a single IconLayer at deep zoom to minimize churn
             state.scoreThreshold, // Score threshold for filtering
             state.hasScores, // Whether dataset has valid scores
@@ -504,9 +503,8 @@ function cleanupPolygonCache() {
     }
 }
 
-// Smart preloading of adjacent planes
+// Smart preloading of adjacent planes (Arrow-only polygons)
 function preloadAdjacentPlanes(currentPlane) {
-    if (USE_ARROW) return; // Do not preload TSV polygons in Arrow mode
     const userConfig = window.config();
     const planesToPreload = [];
 
@@ -541,20 +539,7 @@ function updatePlane(newPlane) {
     // Step 1: Immediate visual update (5-20ms)
     updatePlaneImmediate(newPlane);
 
-    // Step 2: Load TSV polygons only when Arrow is disabled
-    if (!USE_ARROW) {
-        const userConfig = window.config();
-        const planesToLoad = [
-            Math.max(0, state.currentPlane - 1),           // Previous plane
-            state.currentPlane,                            // Current plane
-            Math.min(userConfig.totalPlanes - 1, state.currentPlane + 1)  // Next plane
-        ];
-        planesToLoad.forEach(plane => {
-            if (!state.polygonCache.has(plane)) {
-                updatePlanePolygonsAsync(plane);
-            }
-        });
-    }
+    // No TSV path; Arrow boundaries load on demand and via background processes
 }
 
 // Expose updatePlane globally for cell lookup module
@@ -584,7 +569,7 @@ function initializeDeckGL() {
             // Update layers: threshold switches; rebuild IconLayers only on pan end
             try {
                 const adv = window.advancedConfig ? window.advancedConfig() : { performance: { showPerformanceStats: false } };
-                const mode = (USE_ARROW && viewState.zoom < 7) ? 'pc' : 'icon';
+                const mode = (viewState.zoom < 7) ? 'pc' : 'icon';
                 const dragging = Boolean(interactionState && interactionState.isDragging);
 
                 if (mode !== __lastZoomMode) {
@@ -743,8 +728,7 @@ async function init() {
         console.warn('Failed to compute max total gene count for slider bounds:', e);
     }
 
-    // If Arrow path is enabled, initialize class colors and default selection from cell data
-    if (USE_ARROW) {
+    // Initialize class colors and default selection from cell data
         state.allCellClasses.clear();
         state.cellDataMap.forEach((cell, cellId) => {
             const names = cell?.classification?.className;
@@ -760,34 +744,17 @@ async function init() {
         if (state.selectedCellClasses.size === 0) {
             state.allCellClasses.forEach(c => state.selectedCellClasses.add(c));
         }
-    }
 
     // Defer background boundary indexing until after READY (scheduled below)
 
-    // If Arrow is OFF, preload TSV polygons for current + adjacent planes to prevent flicker
-    if (!USE_ARROW) {
-        console.log(`Init: Loading polygon data for plane ${state.currentPlane} + adjacent planes`);
-        const polygonResult = await loadPolygonData(state.currentPlane, state.polygonCache, state.allCellClasses, state.cellDataMap);
-        console.log(`Init: Current plane polygon data loaded:`, polygonResult);
-        assignColorsToCellClasses(state.allCellClasses, state.cellClassColors);
-        try { Perf.markInteractive('tsv', { plane: state.currentPlane }); } catch {}
-        // Defer boundary indexing (TSV) to after READY
-        const startIndexing = () => {
-            console.log(' Starting background cell boundary indexing (deferred)...');
-            window.cellBoundaryIndexPromise = startBackgroundIndexing(state);
-        };
-        if ('requestIdleCallback' in window) {
-            window.requestIdleCallback(startIndexing, { timeout: 2000 });
-        } else {
-            setTimeout(startIndexing, 0);
-        }
-    }
+    // Mark interactive for Arrow path once initial data are ready
+    try { Perf.markInteractive('arrow', { plane: state.currentPlane }); } catch {}
 
     // Initialize cell class widget with all classes selected by default
     // Always ensure selectedCellClasses contains all available classes (in case new ones were discovered)
     state.allCellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
 
-    // Preload adjacent planes (non-blocking)
+// Preload adjacent planes (non-blocking)
     const adjacentPlanes = [
         Math.max(0, state.currentPlane - 1),
         Math.min(userConfig.totalPlanes - 1, state.currentPlane + 1)
@@ -813,7 +780,7 @@ async function init() {
     // This will render: background tiles + gene markers + cell boundary polygons
     updateAllLayers();
 
-    // If Arrow boundaries are enabled, refresh layers when buffers for a plane are ready
+    // Refresh layers when Arrow buffers for a plane are ready
     try {
         // Function to process Arrow boundaries in main thread for spatial indexing
         async function processArrowBoundariesForSpatialIndex(manifestUrl, img) {

@@ -10,7 +10,6 @@ import {
     MAX_TILE_CACHE,
     GENE_SIZE_CONFIG,
     getTileUrlPattern,
-    USE_ARROW,
     ARROW_MANIFESTS
 } from '../config/constants.js';
 import {
@@ -31,7 +30,7 @@ export let arrowBoundaryCache = new Map();
 export let arrowGeojsonCache = new Map();
 let arrowInitialized = false;
 async function ensureArrowInitialized() {
-    if (!USE_ARROW || arrowInitialized) return;
+    if (arrowInitialized) return;
     const { initArrow } = await import('../arrow-loader/lib/arrow-loaders.js');
     initArrow({
         spotsManifest: ARROW_MANIFESTS.spotsManifest,
@@ -53,7 +52,6 @@ function getArrowSpotBinaryCache() {
 }
 
 export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false) {
-    if (!USE_ARROW) return null;
     const cache = getArrowSpotBinaryCache();
     if (!cache || cache.length === 0) return null;
 
@@ -299,7 +297,6 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
     }
 
     // Arrow fast-path: use binary PathLayer with buffers from worker
-    if (USE_ARROW) {
         // Lazy async loader: we cannot await inside layer factory; kick off fetch and return existing cached layer if any
         (async () => {
             try {
@@ -391,16 +388,6 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
         const geojsonFromArrow = arrowGeojsonCache.get(planeNum);
         // Reuse standard filtering + GeoJsonLayer creation
         return [createFilledGeoJsonLayer(planeNum, geojsonFromArrow, cellClassColors, polygonOpacity, selectedCellClasses)];
-    }
-
-    const geojson = polygonCache.get(planeNum);
-    if (!geojson) {
-        console.log(`No polygon data for plane ${planeNum}`);
-        return layers;
-    }
-    const layer = createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpacity, selectedCellClasses);
-    layers.push(layer);
-    return layers;
 }
 
 function computeMostProbableClass(label, cellDataMap) {

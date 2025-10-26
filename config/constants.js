@@ -17,9 +17,7 @@ if (!advancedUserConfig) {
     throw new Error('Advanced configuration not found. Make sure advanced-config.js is loaded before this file.');
 }
 
-// Transform user config into application constants
-export const GENE_DATA_URL = userConfig.geneDataFile;
-export const CELL_DATA_URL = userConfig.cellDataFile;
+// Transform user config into application constants (Arrow-only runtime)
 
 export const IMG_DIMENSIONS = {
     width: userConfig.imageWidth,
@@ -47,8 +45,7 @@ export const DEFAULT_STATE = {
     polygonOpacity: advancedUserConfig.display.polygonOpacity
 };
 
-// Feature flags
-export const USE_ARROW = Boolean(advancedUserConfig?.performance?.useArrow);
+// Feature flags removed: Arrow-only runtime
 
 // Arrow manifests and related paths (optional)
 export const ARROW_MANIFESTS = {
@@ -60,25 +57,7 @@ export const ARROW_MANIFESTS = {
 };
 
 // Color palette for different polygon aliases
-export const POLYGON_COLOR_PALETTE = [
-    [255, 99, 132],   // Red
-    [54, 162, 235],   // Blue
-    [255, 205, 86],   // Yellow
-    [75, 192, 192],   // Teal
-    [153, 102, 255],  // Purple
-    [255, 159, 64],   // Orange
-    [201, 203, 207],  // Grey
-    [255, 99, 255],   // Pink
-    [99, 255, 132],   // Green
-    [132, 99, 255],   // Indigo
-];
-
-// Polygon Alias Generation Thresholds
-export const POLYGON_ALIAS_THRESHOLDS = {
-    GROUP_A_MAX: 2000,
-    GROUP_B_MAX: 4000,
-    GROUP_C_MAX: 6000
-};
+// Removed TSV-era polygon alias palette/thresholds (not used in Arrow-only runtime)
 
 // UI Element IDs (for consistency and easier refactoring)
 export const UI_ELEMENTS = {
@@ -113,11 +92,7 @@ export const GENE_SIZE_CONFIG = {
 
 
 // Helper function to get polygon file URL for a specific plane
-export function getPolygonFileUrl(planeNumber) {
-    // Zero-pad plane number to match file naming convention (plane_00.tsv, plane_01.tsv, etc.)
-    const paddedPlaneNumber = planeNumber.toString().padStart(2, '0');
-    return userConfig.cellBoundaryFiles.replace('{plane}', paddedPlaneNumber);
-}
+// Removed TSV polygon file URL helper (Arrow-only)
 
 // Helper function to get tile URL pattern
 export function getTileUrlPattern() {

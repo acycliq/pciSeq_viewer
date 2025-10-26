@@ -5,7 +5,7 @@
  * loading indicators, and polygon alias controls
  */
 
-import { POLYGON_COLOR_PALETTE } from '../config/constants.js';
+// Note: Arrow-only runtime; no TSV-specific palette usage here
 
 /**
  * Show loading indicator

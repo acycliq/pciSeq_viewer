@@ -5,7 +5,6 @@
 
 // Import the shared coordinate transformation function
 import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
-import { USE_ARROW } from '../config/constants.js';
 
 // Global cell data storage
 let cellLookupData = new Map(); // cellId -> { x, y, z, bounds }
@@ -22,7 +21,7 @@ async function initializeCellLookup() {
     console.log(' Initializing cell lookup system...');
 
     try {
-        // Load cell data from cellData.tsv
+        // Load cell data (Arrow-only)
         await loadCellData();
         isLookupInitialized = true;
         console.log(' Cell lookup initialized with', cellLookupData.size, 'cells');
@@ -36,13 +35,11 @@ async function initializeCellLookup() {
  * Load and parse cell data from Arrow or TSV based on configuration
  */
 async function loadCellData() {
-    if (USE_ARROW && window.appState && window.appState.cellDataMap) {
+    if (window.appState && window.appState.cellDataMap) {
         console.log(' Using Arrow-loaded cell data from appState.cellDataMap');
         return loadFromArrowData();
-    } else {
-        console.log(' Loading cell data from TSV file');
-        return loadFromTSVFile();
     }
+    throw new Error('Arrow cell data not available.');
 }
 
 /**
@@ -66,82 +63,6 @@ function loadFromArrowData() {
             z: z,
             bounds: bounds
         });
-    }
-}
-
-/**
- * Load and parse cell data from TSV file (fallback)
- */
-async function loadFromTSVFile() {
-    const config = window.config ? window.config() : {};
-    const cellDataPath = config.cellDataFile || 'data/newSpots_newSegmentation/cellData.tsv';
-    console.log(' Fetching cell data from:', cellDataPath);
-
-    const response = await fetch(cellDataPath);
-    console.log(' Response status:', response.status, response.statusText);
-    console.log(' Response headers:', [...response.headers.entries()]);
-
-    if (!response.ok) {
-        throw new Error(`Failed to load cell data: ${response.status} ${response.statusText} from ${cellDataPath}`);
-    }
-
-    const tsvText = await response.text();
-    const lines = tsvText.trim().split('\n');
-    const headers = lines[0].split('\t');
-
-    // Find column indices
-    const columnIndices = {
-        Cell_Num: headers.indexOf('Cell_Num'),
-        X: headers.indexOf('X'),
-        Y: headers.indexOf('Y'),
-        Z: headers.indexOf('Z'),
-        gaussian_contour: headers.indexOf('gaussian_contour')
-    };
-
-    // Validate required columns
-    if (columnIndices.Cell_Num === -1 || columnIndices.X === -1 || columnIndices.Y === -1) {
-        throw new Error('Required columns (Cell_Num, X, Y) not found in cellData.tsv');
-    }
-
-    console.log(' Processing', lines.length - 1, 'TSV cell records...');
-
-    // Process cell data
-    for (let i = 1; i < lines.length; i++) {
-        const columns = lines[i].split('\t');
-
-        if (columns.length >= headers.length) {
-            const cellNum = parseInt(columns[columnIndices.Cell_Num]);
-            const x = parseFloat(columns[columnIndices.X]);
-            const y = parseFloat(columns[columnIndices.Y]);
-            const z = columnIndices.Z !== -1 ? parseFloat(columns[columnIndices.Z]) : 0;
-
-            // Validate data
-            if (!isNaN(cellNum) && !isNaN(x) && !isNaN(y)) {
-                let bounds = null;
-
-                // Parse gaussian contour if available
-                if (columnIndices.gaussian_contour !== -1 && columns[columnIndices.gaussian_contour]) {
-                    try {
-                        const contourStr = columns[columnIndices.gaussian_contour];
-                        // Parse the contour coordinates to get bounds
-                        bounds = parseContourBounds(contourStr);
-                    } catch (e) {
-                        // If contour parsing fails, use point location
-                        bounds = { minX: x-50, maxX: x+50, minY: y-50, maxY: y+50 };
-                    }
-                } else {
-                    // Default bounds around cell center
-                    bounds = { minX: x-50, maxX: x+50, minY: y-50, maxY: y+50 };
-                }
-
-                cellLookupData.set(cellNum, {
-                    x: x,
-                    y: y,
-                    z: z || 0,
-                    bounds: bounds
-                });
-            }
-        }
     }
 }
 

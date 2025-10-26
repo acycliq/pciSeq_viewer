@@ -27,7 +27,7 @@ const Perf = (() => {
       startedAt = performance.now();
       console.log(`Perf: start (${label})`);
     },
-    markInteractive(kind = 'tsv', extra = {}) {
+    markInteractive(kind = 'arrow', extra = {}) {
       if (!isEnabled() || ready) return;
       ready = true;
       const now = performance.now();
@@ -41,4 +41,3 @@ const Perf = (() => {
 })();
 
 export default Perf;
-

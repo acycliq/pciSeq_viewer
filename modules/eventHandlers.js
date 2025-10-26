@@ -284,22 +284,13 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
 
                 // If caches are already full, skip plane load and only prepare/flatten features with a short indicator
                 try {
-                    const { USE_ARROW } = await import('../config/constants.js');
                     const userConfig = window.config();
                     const totalPlanes = userConfig.totalPlanes;
-                    if (USE_ARROW) {
-                        const { arrowGeojsonCache } = await import('./layerCreators.js');
-                        if (arrowGeojsonCache && arrowGeojsonCache.size >= totalPlanes) {
-                            await prepareProjectionFromCaches(state);
-                            updateLayersCallback();
-                            return;
-                        }
-                    } else {
-                        if (state.polygonCache && state.polygonCache.size >= totalPlanes) {
-                            await prepareProjectionFromCaches(state);
-                            updateLayersCallback();
-                            return;
-                        }
+                    const { arrowGeojsonCache } = await import('./layerCreators.js');
+                    if (arrowGeojsonCache && arrowGeojsonCache.size >= totalPlanes) {
+                        await prepareProjectionFromCaches(state);
+                        updateLayersCallback();
+                        return;
                     }
                 } catch {}
 
@@ -326,41 +317,14 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         }
 
         try {
-            const { USE_ARROW } = await import('../config/constants.js');
-            if (USE_ARROW) {
-                const { arrowGeojsonCache } = await import('./layerCreators.js');
-                const flat = [];
-                for (const fc of arrowGeojsonCache.values()) {
-                    if (fc && Array.isArray(fc.features)) flat.push(...fc.features);
-                }
-                state.cellProjectionFeatures = flat;
-                window.appState && (window.appState.cellProjectionFeatures = flat);
-                console.log(`Cell Projection features prepared from cache (Arrow): ${flat.length}`);
-            } else {
-                const flat = [];
-                for (const fc of state.polygonCache.values()) {
-                    if (!fc || !Array.isArray(fc.features)) continue;
-                    for (const f of fc.features) {
-                        const props = f.properties || (f.properties = {});
-                        if (props) {
-                            if (props.label != null) {
-                                if (props.totalGeneCount == null && state.cellDataMap) {
-                                    const cell = state.cellDataMap.get(Number(props.label));
-                                    if (cell && cell.totalGeneCount != null) props.totalGeneCount = cell.totalGeneCount;
-                                }
-                                if (props.totalGeneCount == null) props.totalGeneCount = 0;
-                            }
-                            if (!props.colorRGB && props.cellClass && state.cellClassColors && state.cellClassColors.has(props.cellClass)) {
-                                props.colorRGB = state.cellClassColors.get(props.cellClass);
-                            }
-                        }
-                        flat.push(f);
-                    }
-                }
-                state.cellProjectionFeatures = flat;
-                window.appState && (window.appState.cellProjectionFeatures = flat);
-                console.log(`Cell Projection features prepared from cache (TSV): ${flat.length}`);
+            const { arrowGeojsonCache } = await import('./layerCreators.js');
+            const flat = [];
+            for (const fc of arrowGeojsonCache.values()) {
+                if (fc && Array.isArray(fc.features)) flat.push(...fc.features);
             }
+            state.cellProjectionFeatures = flat;
+            window.appState && (window.appState.cellProjectionFeatures = flat);
+            console.log(`Cell Projection features prepared from cache (Arrow): ${flat.length}`);
         } finally {
             if (loadingIndicator) loadingIndicator.style.display = 'none';
         }
@@ -452,10 +416,7 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
     const userConfig = window.config();
     const totalPlanes = userConfig.totalPlanes;
 
-    // Import USE_ARROW from constants module
-    const { USE_ARROW } = await import('../config/constants.js');
-
-    console.log(`Loading ALL ${totalPlanes} planes for Cell Projection mode (Arrow: ${USE_ARROW})...`);
+    console.log(`Loading ALL ${totalPlanes} planes for Cell Projection mode (Arrow-only)...`);
 
     // Show loading indicator
     const loadingIndicator = document.getElementById('loadingIndicator');
@@ -465,7 +426,7 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
         textEl.textContent = 'Loading all planes...';
     }
 
-    if (USE_ARROW) {
+    {
         // Arrow mode: Load boundary data for all planes AND build GeoJSON cache
         const { loadBoundariesPlane } = await import('../arrow-loader/lib/arrow-loaders.js');
         const { arrowBoundaryCache, arrowGeojsonCache } = await import('./layerCreators.js');
@@ -574,27 +535,6 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
                 console.error(`Failed to load plane ${plane}:`, error);
             }
         }
-    } else {
-        // TSV mode: Load polygon data for all planes
-        const { loadPolygonData } = await import('./dataLoaders.js');
-
-        for (let plane = 0; plane < totalPlanes; plane++) {
-            try {
-                // Update loading indicator
-                if (loadingIndicator) {
-                    const textEl = document.getElementById('loadingText') || loadingIndicator;
-                    textEl.textContent = `Loading plane ${plane + 1}/${totalPlanes}...`;
-                }
-
-                // Load polygons if not already cached
-                if (!state.polygonCache.has(plane)) {
-                    console.log(`Loading TSV polygons for plane ${plane}...`);
-                    await loadPolygonData(plane, state.polygonCache, state.allCellClasses, state.cellDataMap);
-                }
-            } catch (error) {
-                console.error(`Failed to load plane ${plane}:`, error);
-            }
-        }
     }
 
     // Hide loading indicator
@@ -602,7 +542,7 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
         loadingIndicator.style.display = 'none';
     }
 
-    if (USE_ARROW) {
+    {
         const { arrowGeojsonCache } = await import('./layerCreators.js');
         console.log(`Finished loading all ${totalPlanes} planes for Cell Projection. arrowGeojsonCache has ${arrowGeojsonCache.size} planes cached.`);
 
@@ -617,41 +557,6 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
             console.log(`Cell Projection features prepared (Arrow): ${flat.length}`);
         } catch (e) {
             console.warn('Failed to prepare flattened projection features (Arrow):', e);
-        }
-    } else {
-        console.log(`Finished loading all ${totalPlanes} planes for Cell Projection. polygonCache has ${state.polygonCache.size} planes cached.`);
-
-        // Enrich TSV features with totalGeneCount and precomputed color, then flatten
-        try {
-            const flat = [];
-            for (const fc of state.polygonCache.values()) {
-                if (!fc || !Array.isArray(fc.features)) continue;
-                for (const f of fc.features) {
-                    const props = f.properties || (f.properties = {});
-                    if (props) {
-                        // totalGeneCount from state.cellDataMap
-                        if (props.label != null) {
-                            if (props.totalGeneCount == null && state.cellDataMap) {
-                                const cell = state.cellDataMap.get(Number(props.label));
-                                if (cell && cell.totalGeneCount != null) {
-                                    props.totalGeneCount = cell.totalGeneCount;
-                                }
-                            }
-                            if (props.totalGeneCount == null) props.totalGeneCount = 0; // ensure numeric for GPU filter
-                        }
-                        // colorRGB from state.cellClassColors
-                        if (!props.colorRGB && props.cellClass && state.cellClassColors && state.cellClassColors.has(props.cellClass)) {
-                            props.colorRGB = state.cellClassColors.get(props.cellClass);
-                        }
-                    }
-                    flat.push(f);
-                }
-            }
-            state.cellProjectionFeatures = flat;
-            window.appState && (window.appState.cellProjectionFeatures = flat);
-            console.log(`Cell Projection features prepared (TSV): ${flat.length}`);
-        } catch (e) {
-            console.warn('Failed to prepare flattened projection features (TSV):', e);
         }
     }
 
