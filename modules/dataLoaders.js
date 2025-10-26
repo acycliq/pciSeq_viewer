@@ -97,6 +97,7 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                 console.log(`Arrow spots: genes=${geneDataMap.size}, spots=${spotTotal}`);
             }
             // Prebuild scatter (binary) cache in worker to eliminate main-thread freeze on first render
+            let hasIntensityFlag = false;
             try {
                 const { buildSpotsScatterCache } = await import('../arrow-loader/lib/arrow-loaders.js');
                 const cfg = window.config();
@@ -118,8 +119,9 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                 }
                 const manifestUrl = new URL(ARROW_MANIFESTS.spotsManifest, window.location.href).href;
                 const img = { width: cfg.imageWidth, height: cfg.imageHeight, tileSize: 256 };
-                const { positions, colors, planes, geneIds, scores, intensities, filterPairs, scoreMin, scoreMax, intensityMin, intensityMax } = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
+                const { positions, colors, planes, geneIds, scores, intensities, filterPairs, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity } = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
                 window.appState.arrowScatterCache = { positions, colors, planes, geneIds, scores, intensities, filterPairs, length: (positions?.length||0)/3 };
+                hasIntensityFlag = Boolean(hasIntensity);
                 // Update score range with dataset min (UI min = min(0, scoreMin), max remains 1.0)
                 try {
                     const rawMin = Number.isFinite(scoreMin) ? scoreMin : 0;
@@ -139,8 +141,9 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                         }
                     }
                 } catch {}
-                // Update intensity range (UI min = min(0, intensityMin), max = intensityMax)
+                // Update intensity range only when intensities exist (UI min = min(0, intensityMin), max = intensityMax)
                 try {
+                    if (!hasIntensityFlag) throw new Error('No intensity present');
                     const rawMinI = Number.isFinite(intensityMin) ? intensityMin : 0;
                     const rawMaxI = Number.isFinite(intensityMax) ? intensityMax : 1;
                     const uiMinI = Math.min(0, rawMinI);
@@ -179,7 +182,7 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
 
             // For Arrow data, assume scores are available (can be refined later if needed)
             window.appState.hasScores = true;
-            window.appState.hasIntensity = true;
+            window.appState.hasIntensity = hasIntensityFlag;
             console.log('Arrow dataset: assuming scores are available');
         }
 

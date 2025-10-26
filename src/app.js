@@ -703,6 +703,11 @@ async function init() {
     const {atlas, mapping} = await loadGeneData(state.geneDataMap, state.selectedGenes);
     state.geneIconAtlas = atlas;
     state.geneIconMapping = mapping;
+    // Sync dataset capability flags from worker-populated appState
+    try {
+        state.hasScores = Boolean(window.appState && window.appState.hasScores);
+        state.hasIntensity = Boolean(window.appState && window.appState.hasIntensity);
+    } catch {}
 
     // Show/hide score and intensity filter sliders based on dataset fields
     const scoreFilterContainer = document.querySelector('.score-filter-item');
