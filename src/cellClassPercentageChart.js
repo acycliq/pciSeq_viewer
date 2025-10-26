@@ -421,7 +421,9 @@ export function initCellClassPercentageChart() {
     // Populate region dropdown and wire selection
     async function populateRegions() {
         try {
-            const resp = await fetch('data/region_boundaries/manifest.json');
+            const userConfig = window.config();
+            const manifestUrl = new URL(userConfig.arrowBoundariesManifest, window.location.href).href;
+            const resp = await fetch(manifestUrl);
             if (!resp.ok) throw new Error('manifest missing');
             const names = await resp.json();
             els.regionSelect.innerHTML = '<option value="">Select a region...</option>';
