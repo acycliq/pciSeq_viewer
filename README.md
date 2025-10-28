@@ -52,7 +52,7 @@ cp -r /path/to/output/pciSeq/data/arrow/arrow_boundaries ./data/
 
 Your data structure should look like:
 ```
-deckgl_viewer/
+pciSeq_viewer/
 ├── data/
 │   ├── arrow_spots/
 │   │   ├── manifest.json
@@ -73,8 +73,6 @@ Edit `config.js` to point to your Arrow files:
 ```javascript
 function config() {
     return {
-        totalPlanes: 102,           // Update to match your dataset
-        startingPlane: 50,          // Middle plane
         imageWidth: 6411,           // Your image dimensions
         imageHeight: 4412,
 
