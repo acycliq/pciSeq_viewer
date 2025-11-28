@@ -98,7 +98,6 @@
                 <h3 class="section-label">Cell Controls</h3>
                 <button id="cellClassPanelBtn" title="Cell Classes">Cell Classes</button>
                 <button id="cellClassViewerBtn" onclick="openCellClassViewer()" title="Open Christina">Christina</button>
-                <button id="scrnaSeqBtn" onclick="openScRNASeqAnalysis()" title="Open scRNA-seq Analysis">scRNAseq</button>
                 <button id="classesByZBtn" title="Cell Class Distribution by Z-Plane">Classes by Z</button>
                 <button id="classPercentageBtn" title="Overall Cell Class Distribution">Class Distribution</button>
             </div>
@@ -306,11 +305,5 @@
     </div>
 
     <script type="module" src="src/app.js"></script>
-    <script>
-        // Function to open scRNA-seq analysis in new tab
-        function openScRNASeqAnalysis() {
-            window.open('scrna_dashboard.html', '_blank');
-        }
-    </script>
 </body>
 </html>
