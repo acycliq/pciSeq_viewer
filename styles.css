@@ -271,94 +271,9 @@ body {
     height: 100vh;
 }
 
-/* Gene Panel Button */
-#genePanelBtn {
-    background: transparent;
-    color: rgba(255, 255, 255, 0.9);
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    font-size: 13px;
-    user-select: none;
-}
+/* Gene buttons now in drawer, styled by .controls-panel button:not(.widget-close-btn) */
 
-#genePanelBtn:hover {
-    color: #007bff;
-}
-
-/* Gene Distribution Button - same styling as Gene Panel Button */
-#geneDistributionBtn {
-    background: transparent;
-    color: rgba(255, 255, 255, 0.9);
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    font-size: 13px;
-    user-select: none;
-}
-
-#geneDistributionBtn:hover {
-    color: #007bff;
-}
-
-/* Top-right action buttons (Cell Classes, Christina, scRNAseq, Classes by Z, Class %) */
-#cellClassPanelBtn,
-#cellClassViewerBtn,
-#scrnaSeqBtn,
-#classesByZBtn,
-#classPercentageBtn {
-    position: absolute;
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: #1f2937; /* match Selection tool */
-    color: #e8e8f0;
-    border: 1px solid #334155;
-    border-radius: 6px;
-    padding: 6px 10px;
-    cursor: pointer;
-    font-size: 13px; /* ensure text is visible */
-    line-height: 1;
-    width: 100px; /* make both buttons same length */
-}
-
-#cellClassPanelBtn {
-    top: 12px;
-    right: 12px;
-}
-
-#cellClassViewerBtn {
-    top: 45px; /* add extra space below Cell Classes */
-    right: 12px;
-}
-
-#scrnaSeqBtn {
-    top: 78px; /* placed right under Christina */
-    right: 12px;
-}
-
-#classesByZBtn {
-    top: 111px; /* placed right under scRNAseq */
-    right: 12px;
-}
-
-#classPercentageBtn {
-    top: 144px; /* placed right under Classes by Z */
-    right: 12px;
-}
-
-#cellClassPanelBtn:hover,
-#cellClassViewerBtn:hover,
-#scrnaSeqBtn:hover,
-#classesByZBtn:hover,
-#classPercentageBtn:hover {
-    background: #111827;
-    border-color: #475569;
-    color: #ffffff;
-}
-
-/* removed duplicate scRNAseq styling; now unified above */
+/* Cell control buttons now in drawer, styled by .controls-panel button:not(.widget-close-btn) */
 
 /* Aggregated Classes Button */
 #aggregatedClassesBtn {
