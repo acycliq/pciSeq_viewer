@@ -241,6 +241,41 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         window.hideControlsPanel();
     });
 
+    // === REGION IMPORT MANAGEMENT ===
+
+    // Import regions button
+    elements.importRegionsBtn.addEventListener('click', () => {
+        elements.regionFileInput.click();
+    });
+
+    // Handle file selection
+    elements.regionFileInput.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        try {
+            const result = await window.importRegions(files);
+
+            if (result.imported.length > 0) {
+                console.log(`Imported ${result.imported.length} regions:`, result.imported);
+            }
+
+            if (result.errors.length > 0) {
+                console.error('Import errors:', result.errors);
+                alert(`Some regions failed to import:\n${result.errors.join('\n')}`);
+            } else if (result.imported.length > 0) {
+                // Success message (optional)
+                console.log('All regions imported successfully');
+            }
+        } catch (error) {
+            console.error('Failed to import regions:', error);
+            alert('Failed to import regions. Please check the console for details.');
+        }
+
+        // Clear the file input so the same files can be re-imported
+        e.target.value = '';
+    });
+
     // Z-Projection overlay toggle (ghost boundaries from all planes)
     const zProjectionToggle = document.getElementById('zProjectionToggle');
     const zProjectionControls = document.getElementById('zProjectionControls');

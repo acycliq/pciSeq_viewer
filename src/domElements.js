@@ -58,7 +58,12 @@ const elements = {
     // Controls Panel (drawer)
     controlsToggleBtn: document.getElementById('controlsToggleBtn'),
     controlsPanel: document.getElementById('controlsPanel'),
-    controlsCloseBtn: document.getElementById('controlsCloseBtn')
+    controlsCloseBtn: document.getElementById('controlsCloseBtn'),
+
+    // Regions
+    importRegionsBtn: document.getElementById('importRegionsBtn'),
+    regionFileInput: document.getElementById('regionFileInput'),
+    regionsList: document.getElementById('regionsList')
 };
 
 export { elements };

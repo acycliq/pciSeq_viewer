@@ -96,6 +96,14 @@ import {
     hideControlsPanel,
     toggleControlsPanel
 } from './controlsPanel.js';
+import {
+    importRegions,
+    deleteRegion,
+    toggleRegionVisibility,
+    loadRegionsFromStorage,
+    getRegionBoundaries,
+    getVisibleRegions
+} from './regionsManager.js';
 
 // Extract deck.gl components
 const {DeckGL, OrthographicView, COORDINATE_SYSTEM} = deck;
@@ -136,6 +144,13 @@ window.hideCellClassPercentageWidget = hideCellClassPercentageWidget;
 window.showControlsPanel = showControlsPanel;
 window.hideControlsPanel = hideControlsPanel;
 window.toggleControlsPanel = toggleControlsPanel;
+
+// Region management functions
+window.importRegions = importRegions;
+window.deleteRegion = deleteRegion;
+window.toggleRegionVisibility = toggleRegionVisibility;
+window.getRegionBoundaries = getRegionBoundaries;
+window.getVisibleRegions = getVisibleRegions;
 
 // === SCALE BAR FUNCTIONS ===
 function calculateScaleBar(viewState) {
@@ -362,6 +377,42 @@ function updateAllLayers() {
         state.lastIconLayers = iconLayers;
         state.iconCleanupPending = false;
         state.iconCleanupRemaining = 0;
+    }
+
+    // Add region overlay layers (visible regions)
+    const visibleRegions = getVisibleRegions();
+    console.log('[Regions] Visible regions:', visibleRegions.length, visibleRegions);
+    if (visibleRegions.length > 0) {
+        visibleRegions.forEach(region => {
+            console.log('[Regions] Creating layer for:', region.name, 'boundaries:', region.boundaries.length, 'points');
+            // Create a PathLayer for the region boundary
+            const regionLayer = new deck.PathLayer({
+                id: `region-${region.name}`,
+                data: [{ path: region.boundaries, name: region.name }],
+                getPath: d => d.path,
+                getColor: [34, 197, 94, 180], // Green accent with transparency
+                getWidth: 3,
+                widthMinPixels: 2,
+                widthScale: 1,
+                widthUnits: 'pixels',
+                pickable: true,
+                autoHighlight: true,
+                highlightColor: [34, 197, 94, 255],
+                onHover: (info) => {
+                    if (info.object) {
+                        showTooltip({
+                            x: info.x,
+                            y: info.y,
+                            object: { name: info.object.name }
+                        }, elements.tooltip, `Region: ${info.object.name}`);
+                    } else {
+                        elements.tooltip.style.opacity = '0';
+                    }
+                }
+            });
+            layers.push(regionLayer);
+            console.log('[Regions] Layer created:', regionLayer.id);
+        });
     }
 
     // Preserve pinned line layers before updating
@@ -1189,6 +1240,10 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('load', async () => {
     // Start end-to-end timing
     try { Perf.start('viewer'); } catch {}
+
+    // Load saved regions from localStorage
+    loadRegionsFromStorage();
+
     // Initialize cell lookup UI first - this sets up the Ctrl+F event listener
     if (window.cellLookup) {
         window.cellLookup.setupUI();

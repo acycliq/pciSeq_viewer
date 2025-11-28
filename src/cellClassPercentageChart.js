@@ -418,45 +418,31 @@ export function initCellClassPercentageChart() {
         console.log('Undock functionality not implemented yet');
     };
 
-    // Populate region dropdown and wire selection
-    async function populateRegions() {
-        try {
-            const userConfig = window.config();
-            const manifestUrl = new URL(userConfig.arrowBoundariesManifest, window.location.href).href;
-            const resp = await fetch(manifestUrl);
-            if (!resp.ok) throw new Error('manifest missing');
-            const names = await resp.json();
-            els.regionSelect.innerHTML = '<option value="">Select a region...</option>';
-            names.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = name;
-                opt.textContent = name;
-                els.regionSelect.appendChild(opt);
-            });
-        } catch (e) {
-            console.warn('Region manifest not found or invalid:', e);
-        }
-    }
-    populateRegions();
+    // Dropdown populated by regionsManager.updateChartDropdowns()
+    // No need to populate here - it's handled when regions are imported
 
-    els.regionSelect.onchange = async function() {
-        const region = this.value;
-        if (!region) {
-            lastPercentageData = null;
-            els.chart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;">Select a region to generate chart</div>';
+    els.regionSelect.onchange = function() {
+        const regionName = this.value;
+        if (!regionName) {
+            // Show all cells
+            lastPercentageData = calculateCellClassPercentages([]);
+            createPercentageBarChart(lastPercentageData);
             return;
         }
+
         try {
-            const url = `data/region_boundaries/${region}.csv`;
-            const text = await fetch(url).then(r => r.text());
-            const rows = d3.csvParse(text);
-            const poly = rows.map(r => [Number(r.x), Number(r.y)]).filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
-            const regions = [poly];
+            const boundaries = window.getRegionBoundaries(regionName);
+            if (!boundaries || boundaries.length === 0) {
+                els.chart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f88;">Region not found</div>';
+                return;
+            }
+
+            const regions = [boundaries];
             lastPercentageData = calculateCellClassPercentages(regions);
             createPercentageBarChart(lastPercentageData);
         } catch (err) {
-            console.error('Failed to load region CSV:', err);
-            els.chart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f88;">Failed to load region</div>';
+            console.error('Failed to generate chart:', err);
+            els.chart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f88;">Failed to generate chart</div>';
         }
     };
 
