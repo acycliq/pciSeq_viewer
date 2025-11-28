@@ -330,6 +330,12 @@ function createStackedBarChart(data) {
         .domain(classes_by_total)
         .range(classes_by_total.map(getClassColor));
 
+    // Helper function to sanitize class names for CSS selectors
+    function sanitizeClassName(name) {
+        // Replace all characters that are not alphanumeric, hyphen, or underscore
+        return name.replace(/[^a-zA-Z0-9_-]/g, '_');
+    }
+
     // Create stacked bars for each class (following Python's trace order)
     classes_by_total.forEach(cls => {
         const barData = z_values.map(z => {
@@ -344,11 +350,13 @@ function createStackedBarChart(data) {
 
         if (barData.length === 0) return;
 
+        const safeCls = sanitizeClassName(cls);
+
         // Create bars for this class
-        g.selectAll(`.bar-${cls.replace(/\s+/g, '-')}`)
+        g.selectAll(`.bar-${safeCls}`)
             .data(barData)
             .enter().append('rect')
-            .attr('class', `bar bar-${cls.replace(/\s+/g, '-')}`)
+            .attr('class', `bar bar-${safeCls}`)
             .attr('x', d => xScale(d.z))
             .attr('width', xScale.bandwidth())
             .attr('y', d => yScale(d.bottom + d.height))
