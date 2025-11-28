@@ -17,10 +17,10 @@ function config() {
         backgroundTiles: "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg",
 
         // Arrow manifests
-        arrowSpotsManifest: "https://storage.googleapis.com/arrow_files/pciSeq_without_adj/arrow_spots/manifest.json",
-        arrowCellsManifest: "https://storage.googleapis.com/arrow_files/pciSeq_without_adj/arrow_cells/manifest.json",
-        arrowBoundariesManifest: "https://storage.googleapis.com/arrow_files/pciSeq_without_adj/arrow_boundaries/manifest.json",
-        arrowSpotsGeneDict: "https://storage.googleapis.com/arrow_files/pciSeq_without_adj/arrow_spots/gene_dict.json"
+        arrowSpotsManifest: "./data/pciSeq/arrow_spots/manifest.json",
+        arrowCellsManifest: "./data/pciSeq/arrow_cells/manifest.json",
+        arrowBoundariesManifest: "./data/pciSeq/arrow_boundaries/manifest.json",
+        arrowSpotsGeneDict: "./data/pciSeq/arrow_spots/gene_dict.json"
     };
 }
 

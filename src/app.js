@@ -91,6 +91,11 @@ import {
     showCellClassPercentageWidget,
     hideCellClassPercentageWidget
 } from './cellClassPercentageChart.js';
+import {
+    showControlsPanel,
+    hideControlsPanel,
+    toggleControlsPanel
+} from './controlsPanel.js';
 
 // Extract deck.gl components
 const {DeckGL, OrthographicView, COORDINATE_SYSTEM} = deck;
@@ -126,6 +131,11 @@ window.hideCellClassDistributionWidget = hideCellClassDistributionWidget;
 // Cell class percentage chart functions
 window.showCellClassPercentageWidget = showCellClassPercentageWidget;
 window.hideCellClassPercentageWidget = hideCellClassPercentageWidget;
+
+// Controls panel (drawer) functions
+window.showControlsPanel = showControlsPanel;
+window.hideControlsPanel = hideControlsPanel;
+window.toggleControlsPanel = toggleControlsPanel;
 
 // === SCALE BAR FUNCTIONS ===
 function calculateScaleBar(viewState) {

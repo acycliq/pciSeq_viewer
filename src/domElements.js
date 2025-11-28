@@ -53,7 +53,12 @@ const elements = {
 
     // UI
     layerControls: document.getElementById(UI_ELEMENTS.layerControls),
-    tooltip: document.getElementById(UI_ELEMENTS.tooltip)
+    tooltip: document.getElementById(UI_ELEMENTS.tooltip),
+
+    // Controls Panel (drawer)
+    controlsToggleBtn: document.getElementById('controlsToggleBtn'),
+    controlsPanel: document.getElementById('controlsPanel'),
+    controlsCloseBtn: document.getElementById('controlsCloseBtn')
 };
 
 export { elements };

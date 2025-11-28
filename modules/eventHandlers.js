@@ -229,6 +229,18 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         window.openCellClassViewer();
     });
 
+    // === CONTROLS DRAWER MANAGEMENT ===
+
+    // Open/toggle controls panel
+    elements.controlsToggleBtn.addEventListener('click', () => {
+        window.toggleControlsPanel();
+    });
+
+    // Close controls panel
+    elements.controlsCloseBtn.addEventListener('click', () => {
+        window.hideControlsPanel();
+    });
+
     // Z-Projection overlay toggle (ghost boundaries from all planes)
     const zProjectionToggle = document.getElementById('zProjectionToggle');
     const zProjectionControls = document.getElementById('zProjectionControls');
@@ -367,7 +379,7 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
     }
 
 
-    // Escape key to close widgets
+    // Escape key to close widgets and controls panel
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (!elements.geneWidget.classList.contains('hidden')) {
@@ -375,6 +387,9 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
             }
             if (!elements.cellClassWidget.classList.contains('hidden')) {
                 window.hideCellClassWidget();
+            }
+            if (!elements.controlsPanel.classList.contains('hidden')) {
+                window.hideControlsPanel();
             }
         }
     });

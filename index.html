@@ -51,60 +51,109 @@
         </div>
     </div>
 
-    <!-- Gene Panel Button with Size Slider -->
-    <div class="minimal-controls" style="top: 15px; left: 15px; right: auto;">
-        <button id="genePanelBtn">🧬 Genes</button>
-        <button id="geneDistributionBtn" title="Gene Distribution Chart">📊 Distribution</button>
-        <div class="control-item gene-size-item">
-            <label for="geneSizeSlider">Size</label>
-            <input type="range" id="geneSizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
-            <span id="geneSizeValue">1.0</span>
-        </div>
-        <div class="filter-stack">
-            <div class="control-item score-filter-item">
-                <label for="scoreFilterSlider">Score Filter</label>
-                <input type="range" id="scoreFilterSlider" min="0" max="1.0" step="0.01" value="0">
-                <span id="scoreFilterValue">0.00</span>
-            </div>
-            <div class="control-item intensity-filter-item">
-                <label for="intensityFilterSlider">Intensity Filter</label>
-                <input type="range" id="intensityFilterSlider" min="0" max="1.0" step="0.01" value="0">
-                <span id="intensityFilterValue">0.00</span>
-            </div>
-        </div>
-        <div class="control-item" style="gap:6px; align-items:center;">
-            <input type="checkbox" id="uniformSizeToggle">
-            <label for="uniformSizeToggle" title="When enabled, all markers use the same size regardless of plane distance">Uniform<br>Size</label>
-        </div>
-    </div>
+    <!-- Controls Toggle Button -->
+    <button id="controlsToggleBtn" class="controls-toggle-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+    </button>
 
-    <!-- Selection Tool Button -->
-    <div class="minimal-controls" style="top: 50px; left: 15px; right: auto;">
-        <button id="selectionToolBtn" title="Rectangular Selection"
-                style="position:absolute; top:12px; left:12px; z-index:2000; display:flex; align-items:center; gap:6px;
-                       background:#1f2937; color:#e8e8f0; border:1px solid #334155; border-radius:6px; padding:6px 10px; cursor:pointer;">
-            <img src="selection_tool.png" alt="Selection" style="width:16px; height:16px; display:block;">
-            <span>Selection</span>
-        </button>
-    </div>
+    <!-- Controls Panel (hidden by default) -->
+    <div id="controlsPanel" class="controls-panel hidden">
+        <div class="controls-header">
+            <span class="controls-title">Controls</span>
+            <button id="controlsCloseBtn" class="widget-close-btn">×</button>
+        </div>
+        <div class="controls-content">
+            <!-- Gene Controls Section -->
+            <div class="control-section">
+                <h3 class="section-label">Gene Controls</h3>
+                <button id="genePanelBtn">🧬 Genes</button>
+                <button id="geneDistributionBtn" title="Gene Distribution Chart">📊 Distribution</button>
+                <div class="control-item gene-size-item">
+                    <label for="geneSizeSlider">Size</label>
+                    <input type="range" id="geneSizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
+                    <span id="geneSizeValue">1.0</span>
+                </div>
+                <div class="control-item score-filter-item">
+                    <label for="scoreFilterSlider">Score Filter</label>
+                    <input type="range" id="scoreFilterSlider" min="0" max="1.0" step="0.01" value="0">
+                    <span id="scoreFilterValue">0.00</span>
+                </div>
+                <div class="control-item intensity-filter-item">
+                    <label for="intensityFilterSlider">Intensity Filter</label>
+                    <input type="range" id="intensityFilterSlider" min="0" max="1.0" step="0.01" value="0">
+                    <span id="intensityFilterValue">0.00</span>
+                </div>
+                <div class="control-item">
+                    <input type="checkbox" id="uniformSizeToggle">
+                    <label for="uniformSizeToggle" title="When enabled, all markers use the same size regardless of plane distance">Uniform Size</label>
+                </div>
+            </div>
 
-    <!-- Top-right Action Buttons (Cell Classes, Christina, scRNAseq, Classes by Z) -->
-    <div class="minimal-controls" style="top: 50px; right: 15px; left: auto;">
-        <button id="cellClassViewerBtn" onclick="openCellClassViewer()" title="Open Christina">
-            <span>Christina</span>
-        </button>
-        <button id="cellClassPanelBtn" title="Cell Classes">
-            <span>Cell Classes</span>
-        </button>
-        <button id="scrnaSeqBtn" onclick="openScRNASeqAnalysis()" title="Open scRNA-seq Analysis">
-            <span>scRNAseq</span>
-        </button>
-        <button id="classesByZBtn" title="Cell Class Distribution by Z-Plane">
-            <span>Classes by Z</span>
-        </button>
-        <button id="classPercentageBtn" title="Overall Cell Class Distribution">
-            <span>Class Distribution</span>
-        </button>
+            <!-- Cell Controls Section -->
+            <div class="control-section">
+                <h3 class="section-label">Cell Controls</h3>
+                <button id="cellClassPanelBtn" title="Cell Classes">Cell Classes</button>
+                <button id="cellClassViewerBtn" onclick="openCellClassViewer()" title="Open Christina">Christina</button>
+                <button id="scrnaSeqBtn" onclick="openScRNASeqAnalysis()" title="Open scRNA-seq Analysis">scRNAseq</button>
+                <button id="classesByZBtn" title="Cell Class Distribution by Z-Plane">Classes by Z</button>
+                <button id="classPercentageBtn" title="Overall Cell Class Distribution">Class Distribution</button>
+            </div>
+
+            <!-- Layer Controls Section -->
+            <div class="control-section">
+                <h3 class="section-label">Layers</h3>
+                <div class="control-item">
+                    <input type="checkbox" id="showTiles" checked>
+                    <label for="showTiles">Dapi</label>
+                </div>
+                <div class="control-item">
+                    <input type="checkbox" id="showPolygons" checked>
+                    <label for="showPolygons">Cells</label>
+                </div>
+                <div class="control-item polygon-opacity-item">
+                    <label for="polygonOpacitySlider">Opacity</label>
+                    <input type="range" id="polygonOpacitySlider" min="0.0" max="1.0" step="0.1">
+                    <span id="polygonOpacityValue">0.4</span>
+                </div>
+                <div class="control-item">
+                    <input type="checkbox" id="zProjectionToggle">
+                    <label for="zProjectionToggle">All Planes</label>
+                </div>
+                <div id="zProjectionControls" style="display: none; margin-left: 15px;">
+                    <div class="control-item" style="margin-top: 5px;">
+                        <label for="zProjectionOpacity" style="font-size: 11px;">Overlay:</label>
+                        <input type="range" id="zProjectionOpacity" min="0.1" max="0.8" step="0.1" value="0.3"
+                               style="width: 60px; margin: 0 5px;">
+                        <span id="zProjectionOpacityValue" style="font-size: 10px;">30%</span>
+                    </div>
+                </div>
+                <div class="control-item">
+                    <input type="checkbox" id="cellProjectionToggle">
+                    <label for="cellProjectionToggle">Cell Projection</label>
+                </div>
+                <div id="cellProjectionControls" style="display: none; margin-left: 15px;">
+                    <div class="control-item" style="margin-top: 5px;">
+                        <label for="geneCountSlider" style="font-size: 11px;">Min Genes:</label>
+                        <input type="range" id="geneCountSlider" min="0" max="100" step="1" value="0"
+                               style="width: 80px; margin: 0 5px;">
+                        <span id="geneCountValue" style="font-size: 10px;">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tools Section -->
+            <div class="control-section">
+                <h3 class="section-label">Tools</h3>
+                <button id="selectionToolBtn" title="Rectangular Selection" style="display:flex; align-items:center; gap:6px;">
+                    <img src="selection_tool.png" alt="Selection" style="width:16px; height:16px; display:block;">
+                    <span>Selection</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Floating Gene Panel Widget -->
@@ -213,51 +262,6 @@
         <input type="range" id="planeSlider" min="0" max="99" value="50">
         <button class="nav-btn" id="nextBtn">►</button>
         <span id="planeLabel">Plane: 50</span>
-    </div>
-
-    <!-- Minimal Layer Controls -->
-    <div class="minimal-controls" id="layerControls">
-        <div class="control-item">
-            <input type="checkbox" id="showTiles" checked>
-            <label for="showTiles">Dapi</label>
-        </div>
-        <div class="control-item">
-            <input type="checkbox" id="showPolygons" checked>
-            <label for="showPolygons">Cells</label>
-        </div>
-        <div class="control-item polygon-opacity-item">
-            <label for="polygonOpacitySlider">Opacity</label>
-            <input type="range" id="polygonOpacitySlider" min="0.0" max="1.0" step="0.1">
-            <span id="polygonOpacityValue">0.4</span>
-        </div>
-
-        <!-- Z-Projection Overlay Controls (ghost boundaries) -->
-        <div class="control-item">
-            <input type="checkbox" id="zProjectionToggle">
-            <label for="zProjectionToggle" style="font-size: 12px;">All Planes</label>
-        </div>
-        <div id="zProjectionControls" style="display: none; margin-left: 15px;">
-            <div class="control-item" style="margin-top: 5px;">
-                <label for="zProjectionOpacity" style="font-size: 11px;">Overlay:</label>
-                <input type="range" id="zProjectionOpacity" min="0.1" max="0.8" step="0.1" value="0.3"
-                       style="width: 60px; margin: 0 5px;">
-                <span id="zProjectionOpacityValue" style="font-size: 10px;">30%</span>
-            </div>
-        </div>
-
-        <!-- Cell Projection Mode (show all cells from all planes) -->
-        <div class="control-item">
-            <input type="checkbox" id="cellProjectionToggle">
-            <label for="cellProjectionToggle" style="font-size: 12px;">Cell Projection</label>
-        </div>
-        <div id="cellProjectionControls" style="display: none; margin-left: 15px;">
-            <div class="control-item" style="margin-top: 5px;">
-                <label for="geneCountSlider" style="font-size: 11px;">Min Genes:</label>
-                <input type="range" id="geneCountSlider" min="0" max="100" step="1" value="0"
-                       style="width: 80px; margin: 0 5px;">
-                <span id="geneCountValue" style="font-size: 10px;">0</span>
-            </div>
-        </div>
     </div>
 
     <div class="loading-indicator" id="loadingIndicator">
