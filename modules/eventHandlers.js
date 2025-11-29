@@ -241,7 +241,7 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
 
     // === REGION IMPORT MANAGEMENT ===
 
-    // Import regions button
+    // Import regions button opens file dialog once
     elements.importRegionsBtn.addEventListener('click', () => {
         elements.regionFileInput.click();
     });
@@ -260,14 +260,11 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
 
             if (result.errors.length > 0) {
                 console.error('Import errors:', result.errors);
-                alert(`Some regions failed to import:\n${result.errors.join('\n')}`);
             } else if (result.imported.length > 0) {
-                // Success message (optional)
                 console.log('All regions imported successfully');
             }
         } catch (error) {
             console.error('Failed to import regions:', error);
-            alert('Failed to import regions. Please check the console for details.');
         }
 
         // Clear the file input so the same files can be re-imported

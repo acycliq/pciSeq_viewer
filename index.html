@@ -103,11 +103,16 @@
                         <button class="show-all-btn" id="showAllCellClassesBtn">Show All</button>
                         <button class="hide-all-btn" id="hideAllCellClassesBtn">Hide All</button>
                     </div>
-                    <input type="text" class="filter-input" id="cellClassFilter" placeholder="Filter classes...">
+                    <!-- Sticky filter container (pciSeq_3d pattern) -->
+                    <div class="cell-class-filter-container" id="cellClassFilterContainer">
+                        <input type="text" class="filter-input" id="cellClassFilter" placeholder="Filter classes…" autocomplete="off" spellcheck="false">
+                    </div>
                     <div class="cell-class-list" id="cellClassesList">
                         <!-- Cell classes will be populated here, ranked by count -->
                         <div class="loading-message">Loading cell classes...</div>
                     </div>
+                    <!-- Drag handle to resize list height (pciSeq_3d pattern) -->
+                    <div class="legend-resize-handle" id="cellClassesResizeHandle" title="Drag to resize"></div>
                 </div>
             </div>
 
@@ -122,8 +127,8 @@
             <!-- Regions Section -->
             <div class="control-section">
                 <h3 class="section-label">Regions</h3>
-                <input type="file" id="regionFileInput" accept=".csv" multiple style="display: none;">
-                <button id="importRegionsBtn" title="Import region boundary CSV files">Import Regions</button>
+                <input type="file" id="regionFileInput" accept=".csv" multiple style="display:none;">
+                <button id="importRegionsBtn" class="file-input-label" title="Import region boundary CSV files">Import Regions</button>
                 <div id="regionsList" style="margin-top: 10px;">
                     <!-- Region items will be added here dynamically -->
                 </div>
@@ -174,8 +179,8 @@
             <!-- Tools Section -->
             <div class="control-section">
                 <h3 class="section-label">Tools</h3>
-                <button id="selectionToolBtn" title="Rectangular Selection" style="display:flex; align-items:center; gap:6px;">
-                    <img src="selection_tool.png" alt="Selection" style="width:16px; height:16px; display:block;">
+                <button id="selectionToolBtn" class="accent-btn" title="Rectangular Selection">
+                    <img src="selection_tool.png" alt="Selection">
                     <span>Selection</span>
                 </button>
             </div>

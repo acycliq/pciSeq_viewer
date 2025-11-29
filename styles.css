@@ -245,7 +245,7 @@
 body {
     margin: 0;
     padding: 0;
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     overflow: hidden;
     background-color: #000;
     color: #fff;
@@ -344,7 +344,7 @@ body {
     text-align: center;
     font-weight: normal;
     color: rgba(255, 255, 255, 0.9);
-    font-family: monospace;
+    font-family: inherit;
 }
 
 .nav-btn {
@@ -444,7 +444,7 @@ body {
     color: rgba(255, 255, 255, 0.8);
     min-width: 24px;
     text-align: center;
-    font-family: monospace;
+    font-family: inherit;
 }
 
 /* Score Filter Slider - same styling as gene size slider */
@@ -480,7 +480,7 @@ body {
     color: rgba(255, 255, 255, 0.8);
     min-width: 24px;
     text-align: center;
-    font-family: monospace;
+    font-family: inherit;
 }
 
 /* Intensity Filter Slider - mirror score slider styling */
@@ -516,7 +516,7 @@ body {
     color: rgba(255, 255, 255, 0.8);
     min-width: 24px;
     text-align: center;
-    font-family: monospace;
+    font-family: inherit;
 }
 
 /* Polygon Opacity Slider */
@@ -556,7 +556,7 @@ body {
     color: rgba(255, 255, 255, 0.8);
     min-width: 24px;
     text-align: center;
-    font-family: monospace;
+    font-family: inherit;
 }
 
 /* Floating Gene Widget */
@@ -948,36 +948,26 @@ body {
     display: block;
 }
 
-/* Controls Panel */
+/* Controls Panel: align with pciSeq_3d sidebar layout */
 .controls-panel {
     position: fixed;
-    top: 70px;
-    left: 15px;
-    width: 320px;
-    max-height: calc(100vh - 100px);
-    background: var(--drawer-bg);
-    border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
-    border: 1px solid var(--drawer-border);
-    backdrop-filter: blur(20px);
+    top: 0;
+    left: 0;
+    width: 300px;
+    height: 100vh;
+    background: var(--drawer-surface);
+    border-right: 1px solid var(--drawer-border);
     z-index: 1000;
     display: flex;
     flex-direction: column;
-    transition: opacity 0.15s ease;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .controls-panel.hidden {
     display: none;
 }
 
-.controls-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--drawer-border);
-    background: var(--drawer-surface);
-}
+.controls-header { display: none; }
 
 .controls-title {
     color: var(--drawer-accent);
@@ -986,41 +976,16 @@ body {
     letter-spacing: 0px;
 }
 
-.controls-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px 16px 20px 16px;
-}
+.controls-content { flex: 1; overflow-y: auto; padding: 16px; }
 
 /* Control Sections */
-.control-section {
-    background: var(--drawer-surface);
-    border: 1px solid var(--drawer-border);
-    border-radius: 6px;
-    padding: 12px;
-    margin-bottom: 12px;
-    transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.control-section:hover {
-    background: rgba(27, 27, 27, 0.8);
-    border-color: rgba(42, 42, 42, 1.5);
-}
+.control-section { background: var(--drawer-bg); border: 1px solid var(--drawer-border); border-radius: 6px; padding: 12px; margin-bottom: 12px; }
 
 .control-section:last-child {
     margin-bottom: 0;
 }
 
-.section-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--drawer-accent);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin: 0 0 10px 0;
-    padding-bottom: 0px;
-    border-bottom: none;
-}
+.section-label { font-size: 13px; color: var(--drawer-accent); margin: 0 0 12px 0; font-weight: 600; }
 
 /* Collapsible section headers */
 .collapsible-header {
@@ -1046,153 +1011,59 @@ body {
     transform: rotate(-90deg);
 }
 
-.section-content {
-    max-height: 400px;
-    overflow: hidden;
-    transition: max-height 0.3s ease, opacity 0.2s ease;
-}
-
-.section-content.collapsed {
-    max-height: 0;
-    opacity: 0;
-}
+.section-content { overflow: visible; }
+.section-content.collapsed { display: none; }
 
 /* Cell class controls (Show All / Hide All buttons) - pciSeq_3d style */
-.cell-class-controls {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 8px;
-}
+.cell-class-controls { display: flex; gap: 8px; margin-bottom: 12px; }
 
 .show-all-btn,
-.hide-all-btn {
-    flex: 1;
-    padding: 6px 12px;
-    font-size: 11px;
-    font-weight: 600;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-}
+.hide-all-btn { flex: 1; padding: 8px 12px; background: transparent; color: var(--drawer-accent); border: 1px solid var(--drawer-accent); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.15s; display: inline-flex; align-items: center; justify-content: center; }
+.show-all-btn:hover,
+.hide-all-btn:hover { background: var(--drawer-accent); color: #0b0b0b; }
 
-.show-all-btn {
+/* Ensure legend buttons override generic drawer button styles */
+.controls-panel .cell-class-controls .show-all-btn,
+.controls-panel .cell-class-controls .hide-all-btn { width: auto; text-align: center; background: transparent; color: var(--drawer-accent); border: 1px solid var(--drawer-accent); border-radius: 6px; margin-bottom: 0; padding: 8px 12px; }
+
+.controls-panel .cell-class-controls .show-all-btn:hover,
+.controls-panel .cell-class-controls .hide-all-btn:hover {
     background: var(--drawer-accent);
-    color: #111111;
-}
-
-.show-all-btn:hover {
-    background: #1ea850;
-}
-
-.hide-all-btn {
-    background: rgba(34, 197, 94, 0.15);
-    color: var(--drawer-text);
-}
-
-.hide-all-btn:hover {
-    background: rgba(34, 197, 94, 0.25);
+    color: #0b0b0b;
+    border-color: var(--drawer-accent);
 }
 
 /* Filter input - pciSeq_3d style */
-.filter-input {
-    width: 100%;
-    padding: 6px 10px;
-    margin-bottom: 8px;
-    background: var(--drawer-surface);
-    border: 1px solid var(--drawer-border);
-    border-radius: 4px;
-    color: var(--drawer-text);
-    font-size: 11px;
-    font-family: inherit;
-}
+.cell-class-filter-container { position: sticky; top: 0; background: var(--drawer-surface); padding-bottom: 6px; margin-bottom: 8px; z-index: 1; }
+.filter-input { width: 100%; padding: 6px 8px; background: var(--drawer-bg); border: 1px solid var(--drawer-border); border-radius: 6px; color: var(--drawer-text); font-size: 12px; font-family: inherit; }
 
 .filter-input::placeholder {
     color: var(--drawer-muted);
 }
 
-.filter-input:focus {
-    outline: none;
-    border-color: var(--drawer-accent);
-    background: rgba(34, 197, 94, 0.05);
-}
+.filter-input:focus { outline: none; border-color: var(--drawer-accent); }
 
 /* Cell class list */
-.cell-class-list {
-    max-height: 320px;
-    overflow-y: auto;
-    overflow-x: hidden;
-}
+.cell-class-list { max-height: 500px; overflow-y: auto; overflow-x: hidden; padding-right: 5px; }
+.cell-class-list::-webkit-scrollbar { width: 8px; }
+.cell-class-list::-webkit-scrollbar-track { background: var(--drawer-bg); border-radius: 4px; }
+.cell-class-list::-webkit-scrollbar-thumb { background: var(--drawer-accent); border-radius: 4px; }
+.cell-class-list::-webkit-scrollbar-thumb:hover { background: #00cc00; }
 
-.cell-class-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 4px;
-    margin-bottom: 2px;
-    border-radius: 4px;
-    transition: background 0.15s ease;
-    cursor: pointer;
-}
+.cell-class-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; transition: background 0.15s ease, opacity 0.15s ease; }
+.cell-class-item:hover { background: var(--drawer-accent-weak); }
+.cell-class-item.dim { opacity: 0.45; }
 
-.cell-class-item:hover {
-    background: rgba(255, 255, 255, 0.03);
-}
+.cell-class-eye { width: 16px; height: 16px; opacity: 0.6; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; color: var(--drawer-text); }
+.cell-class-item:hover .cell-class-eye { opacity: 0.85; }
+.cell-class-item.dim .cell-class-eye { opacity: 0.35; }
 
-.cell-class-eye {
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    cursor: pointer;
-    transition: transform 0.15s ease;
-    user-select: none;
-}
+.cell-class-color { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--drawer-border); }
 
-.cell-class-eye:hover {
-    transform: scale(1.15);
-}
+.cell-class-name { flex: 1; font-size: 12px; color: var(--drawer-text); font-family: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.cell-class-eye.visible {
-    opacity: 1;
-}
-
-.cell-class-eye.hidden {
-    opacity: 0.3;
-}
-
-.cell-class-color {
-    flex-shrink: 0;
-    width: 14px;
-    height: 14px;
-    border-radius: 2px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.cell-class-name {
-    flex: 1;
-    font-size: 11px;
-    color: var(--drawer-text);
-    font-family: monospace;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.cell-class-count {
-    flex-shrink: 0;
-    font-size: 10px;
-    color: var(--drawer-muted);
-    font-weight: 500;
-    min-width: 50px;
-    text-align: right;
-    font-family: 'Courier New', monospace;
-}
+.cell-class-count { flex-shrink: 0; font-size: 11px; color: var(--drawer-muted); min-width: 50px; text-align: right; font-family: inherit; }
+.cell-class-item:hover .cell-class-count { color: var(--drawer-text); }
 
 .loading-message {
     padding: 20px;
@@ -1256,22 +1127,22 @@ body {
     font-weight: 500;
     min-width: 32px;
     text-align: right;
-    font-family: 'Courier New', monospace;
+    font-family: inherit;
 }
 
-/* Button styling within drawer - Green accent theme */
+/* Button styling within drawer - match pciSeq_3d (dark/transparent, no green fill) */
 .controls-panel button:not(.widget-close-btn) {
     width: 100%;
     text-align: left;
     padding: 8px 12px;
-    background: var(--drawer-accent-weak);
+    background: transparent; /* dark, no accent tint by default */
     border: 1px solid var(--drawer-border);
     border-radius: 6px;
     color: var(--drawer-text);
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease;
     margin-bottom: 6px;
 }
 
@@ -1279,15 +1150,9 @@ body {
     margin-bottom: 0;
 }
 
-.controls-panel button:not(.widget-close-btn):hover {
-    background: rgba(34, 197, 94, 0.15);
-    border-color: var(--drawer-accent);
-    color: var(--drawer-accent);
-}
+.controls-panel button:not(.widget-close-btn):hover { background: var(--drawer-accent-weak); }
 
-.controls-panel button:not(.widget-close-btn):active {
-    background: rgba(34, 197, 94, 0.2);
-}
+.controls-panel button:not(.widget-close-btn):active { background: var(--drawer-accent); color: #0b0b0b; }
 
 /* Scrollbar styling - Green accent */
 .controls-content::-webkit-scrollbar {
@@ -1369,3 +1234,44 @@ body {
     font-style: italic;
     padding: 10px;
 }
+
+/* File input and accent button styles (match pciSeq_3d Import Color Scheme) */
+.file-input-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
+.file-input-wrapper input[type=file] { position: absolute; left: -9999px; }
+.file-input-label,
+.accent-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 8px 12px; background: var(--drawer-accent); color: #0b0b0b; text-align: center; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s; border: none; }
+.file-input-label:hover,
+.accent-btn:hover { background: var(--drawer-accent-strong); }
+.accent-btn img { width: 16px; height: 16px; display: block; }
+
+/* Ensure these override generic drawer button styles */
+.controls-panel .file-input-label,
+.controls-panel .accent-btn { background: var(--drawer-accent) !important; color: #0b0b0b !important; border: none !important; text-align: center; }
+
+/* File status (pciSeq_3d style) */
+/* (removed file-status messaging per request) */
+
+/* Resize handle styling (pciSeq_3d) */
+.legend-resize-handle {
+    width: 100%;
+    height: 10px;
+    margin-top: 6px;
+    border-radius: 6px;
+    background: var(--drawer-border);
+    position: relative;
+    cursor: ns-resize;
+    transition: background 0.2s;
+}
+.legend-resize-handle:hover { background: var(--drawer-accent); }
+.legend-resize-handle::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 24px;
+    height: 4px;
+    border-radius: 2px;
+    background: #0b0b0b;
+}
+.legend-resize-handle:hover::before { background: #0b0b0b; }

@@ -100,7 +100,8 @@ import {
 import {
     showControlsPanel,
     hideControlsPanel,
-    toggleControlsPanel
+    toggleControlsPanel,
+    updateScaleBarOffset
 } from './controlsPanel.js';
 import {
     importRegions,
@@ -1290,10 +1291,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize cell class drawer (collapsible sections + toggle all button)
     initCellClassDrawer();
 
-    // Open controls drawer by default
+    // Controls drawer state (persist open/closed like pciSeq_3d keeps sidebar visible)
     const controlsPanel = document.getElementById('controlsPanel');
     if (controlsPanel) {
-        controlsPanel.classList.remove('hidden');
+        let desired = 'open';
+        try {
+            const saved = window.localStorage && window.localStorage.getItem('drawer-state');
+            if (saved === 'open' || saved === 'closed') desired = saved;
+        } catch {}
+        if (desired === 'open') controlsPanel.classList.remove('hidden');
+        else controlsPanel.classList.add('hidden');
+        // Place the scale bar to the right of the drawer if visible
+        try { updateScaleBarOffset(); } catch {}
     }
 
     // Setup debounced search inputs
