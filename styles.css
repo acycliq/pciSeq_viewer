@@ -1022,6 +1022,185 @@ body {
     border-bottom: none;
 }
 
+/* Collapsible section headers */
+.collapsible-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.15s ease;
+}
+
+.collapsible-header:hover {
+    color: var(--drawer-accent-strong);
+}
+
+.collapse-icon {
+    display: inline-block;
+    font-size: 10px;
+    transition: transform 0.2s ease;
+}
+
+.collapsible-header.collapsed .collapse-icon {
+    transform: rotate(-90deg);
+}
+
+.section-content {
+    max-height: 400px;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+}
+
+.section-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
+
+/* Cell class controls (Show All / Hide All buttons) - pciSeq_3d style */
+.cell-class-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.show-all-btn,
+.hide-all-btn {
+    flex: 1;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.show-all-btn {
+    background: var(--drawer-accent);
+    color: #111111;
+}
+
+.show-all-btn:hover {
+    background: #1ea850;
+}
+
+.hide-all-btn {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--drawer-text);
+}
+
+.hide-all-btn:hover {
+    background: rgba(34, 197, 94, 0.25);
+}
+
+/* Filter input - pciSeq_3d style */
+.filter-input {
+    width: 100%;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    background: var(--drawer-surface);
+    border: 1px solid var(--drawer-border);
+    border-radius: 4px;
+    color: var(--drawer-text);
+    font-size: 11px;
+    font-family: inherit;
+}
+
+.filter-input::placeholder {
+    color: var(--drawer-muted);
+}
+
+.filter-input:focus {
+    outline: none;
+    border-color: var(--drawer-accent);
+    background: rgba(34, 197, 94, 0.05);
+}
+
+/* Cell class list */
+.cell-class-list {
+    max-height: 320px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.cell-class-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+    margin-bottom: 2px;
+    border-radius: 4px;
+    transition: background 0.15s ease;
+    cursor: pointer;
+}
+
+.cell-class-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.cell-class-eye {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+    user-select: none;
+}
+
+.cell-class-eye:hover {
+    transform: scale(1.15);
+}
+
+.cell-class-eye.visible {
+    opacity: 1;
+}
+
+.cell-class-eye.hidden {
+    opacity: 0.3;
+}
+
+.cell-class-color {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.cell-class-name {
+    flex: 1;
+    font-size: 11px;
+    color: var(--drawer-text);
+    font-family: monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cell-class-count {
+    flex-shrink: 0;
+    font-size: 10px;
+    color: var(--drawer-muted);
+    font-weight: 500;
+    min-width: 50px;
+    text-align: right;
+    font-family: 'Courier New', monospace;
+}
+
+.loading-message {
+    padding: 20px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--drawer-muted);
+}
+
 /* Update .control-item for vertical layout in drawer */
 .controls-panel .control-item {
     display: flex;

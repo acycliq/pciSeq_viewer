@@ -40,8 +40,7 @@ const elements = {
     geneList: document.getElementById('geneList'),
     toggleAllGenes: document.getElementById('toggleAllGenes'),
 
-    // Cell class widget
-    cellClassPanelBtn: document.getElementById('cellClassPanelBtn'),
+    // Cell class widget (cellClassPanelBtn removed - now using always-visible drawer section)
     cellClassViewerBtn: document.getElementById('cellClassViewerBtn'),
     cellClassWidget: document.getElementById('cellClassWidget'),
     cellClassWidgetBackdrop: document.getElementById('cellClassWidgetBackdrop'),

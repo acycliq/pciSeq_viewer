@@ -194,10 +194,8 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
 
     // === CELL CLASS WIDGET MANAGEMENT ===
 
-    // Open cell class widget
-    elements.cellClassPanelBtn.addEventListener('click', () => {
-        window.showCellClassWidget();
-    });
+    // Note: cellClassPanelBtn removed - cell classes now in always-visible drawer
+    // Keeping widget close/undock handlers for backward compatibility if widget is opened programmatically
 
     // Close cell class widget
     elements.cellClassWidgetClose.addEventListener('click', () => {

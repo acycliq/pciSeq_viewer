@@ -93,10 +93,27 @@
                 </div>
             </div>
 
-            <!-- Cell Controls Section -->
+            <!-- Cell Classes Section (Collapsible) -->
             <div class="control-section">
-                <h3 class="section-label">Cell Controls</h3>
-                <button id="cellClassPanelBtn" title="Cell Classes">Cell Classes</button>
+                <h3 class="section-label collapsible-header" id="cellClassesHeader">
+                    <span class="collapse-icon">▼</span> Cell Classes
+                </h3>
+                <div class="section-content" id="cellClassesContent">
+                    <div class="cell-class-controls">
+                        <button class="show-all-btn" id="showAllCellClassesBtn">Show All</button>
+                        <button class="hide-all-btn" id="hideAllCellClassesBtn">Hide All</button>
+                    </div>
+                    <input type="text" class="filter-input" id="cellClassFilter" placeholder="Filter classes...">
+                    <div class="cell-class-list" id="cellClassesList">
+                        <!-- Cell classes will be populated here, ranked by count -->
+                        <div class="loading-message">Loading cell classes...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cell Charts Section -->
+            <div class="control-section">
+                <h3 class="section-label">Cell Charts</h3>
                 <button id="cellClassViewerBtn" onclick="openCellClassViewer()" title="Open Christina">Christina</button>
                 <button id="classesByZBtn" title="Cell Class Distribution by Z-Plane">Classes by Z</button>
                 <button id="classPercentageBtn" title="Overall Cell Class Distribution">Class Distribution</button>

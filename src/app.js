@@ -17,6 +17,9 @@ import {
 // Import utility functions
 import { debounce } from './utils.js';
 
+// Import cell class drawer functions
+import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
+
 // Import data loading functions
 import {
     loadGeneData,
@@ -910,6 +913,9 @@ async function init() {
     // Always ensure selectedCellClasses contains all available classes (in case new ones were discovered)
     state.allCellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
 
+    // Populate the cell class drawer with ranked list
+    populateCellClassDrawer();
+
 // Preload adjacent planes (non-blocking)
     const totalPlanes = window.appState.totalPlanes;
     const adjacentPlanes = [
@@ -1279,6 +1285,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Initialize cell class percentage chart
         initCellClassPercentageChart();
+    }
+
+    // Initialize cell class drawer (collapsible sections + toggle all button)
+    initCellClassDrawer();
+
+    // Open controls drawer by default
+    const controlsPanel = document.getElementById('controlsPanel');
+    if (controlsPanel) {
+        controlsPanel.classList.remove('hidden');
     }
 
     // Setup debounced search inputs
