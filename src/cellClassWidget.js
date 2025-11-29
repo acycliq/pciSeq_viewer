@@ -2,6 +2,7 @@
 import { state } from './stateManager.js';
 import { elements } from './domElements.js';
 import { widgetManager } from './widgetManager.js';
+import { debounce } from './utils.js';
 
 // === CELL CLASS WIDGET FUNCTIONS ===
 function populateCellClassWidget() {
@@ -287,6 +288,19 @@ function undockCellClassWidget() {
                     </div>
                     <div class="gene-widget-content" id="undockedCellClassList"></div>
                     <script>
+                        // Debounce utility function
+                        function debounce(func, wait) {
+                            let timeout;
+                            return function executedFunction(...args) {
+                                const later = () => {
+                                    clearTimeout(timeout);
+                                    func(...args);
+                                };
+                                clearTimeout(timeout);
+                                timeout = setTimeout(later, wait);
+                            };
+                        }
+
                         // Copy the current cell class list content
                         document.getElementById('undockedCellClassList').innerHTML = ${JSON.stringify(elements.cellClassList.innerHTML)};
 
@@ -303,10 +317,9 @@ function undockCellClassWidget() {
                             });
                         });
 
-                        // Add search functionality
+                        // Add search functionality with debouncing
                         const searchInput = document.getElementById('undockedCellClassSearch');
-                        searchInput.addEventListener('input', (e) => {
-                            const term = e.target.value.toLowerCase();
+                        const performSearch = debounce((term) => {
                             const items = document.querySelectorAll('.gene-item');
                             items.forEach(item => {
                                 const cellClassName = item.querySelector('.gene-name').textContent.toLowerCase();
@@ -316,6 +329,10 @@ function undockCellClassWidget() {
                                     item.style.display = 'none';
                                 }
                             });
+                        }, 200);
+
+                        searchInput.addEventListener('input', (e) => {
+                            performSearch(e.target.value.toLowerCase());
                         });
 
                         // Add toggle all functionality

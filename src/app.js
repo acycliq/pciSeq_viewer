@@ -14,6 +14,9 @@ import {
     clamp
 } from '../utils/coordinateTransform.js';
 
+// Import utility functions
+import { debounce } from './utils.js';
+
 // Import data loading functions
 import {
     loadGeneData,
@@ -1276,6 +1279,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Initialize cell class percentage chart
         initCellClassPercentageChart();
+    }
+
+    // Setup debounced search inputs
+    const geneSearchInput = document.getElementById('geneSearch');
+    const cellClassSearchInput = document.getElementById('cellClassSearch');
+
+    if (geneSearchInput) {
+        // Debounce gene search - wait 200ms after user stops typing
+        const debouncedGeneSearch = debounce((searchTerm) => {
+            if (typeof window.filterGenes === 'function') {
+                window.filterGenes(searchTerm);
+            }
+        }, 200);
+
+        geneSearchInput.addEventListener('input', (e) => {
+            debouncedGeneSearch(e.target.value);
+        });
+    }
+
+    if (cellClassSearchInput) {
+        // Debounce cell class search - wait 200ms after user stops typing
+        const debouncedCellClassSearch = debounce((searchTerm) => {
+            if (typeof window.filterCellClasses === 'function') {
+                window.filterCellClasses(searchTerm);
+            }
+        }, 200);
+
+        cellClassSearchInput.addEventListener('input', (e) => {
+            debouncedCellClassSearch(e.target.value);
+        });
     }
 });
 
