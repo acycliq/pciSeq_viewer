@@ -559,7 +559,12 @@ body {
     font-family: inherit;
 }
 
-/* Floating Gene Widget */
+/* ============================================
+   Widget Styles (Shared)
+   - Used by: Gene Distribution, Cell Class Distribution, Percentage widgets, etc.
+   - Covers: .widget-backdrop, .gene-widget*, .widget-*-btn, .gene-item* helpers
+   ============================================ */
+/* Floating Widgets */
 .widget-backdrop {
     position: fixed;
     top: 0;
@@ -755,6 +760,7 @@ body {
     background: rgba(255, 255, 255, 0.5);
 }
 
+/* End of Widget Styles */
 
 /* Loading indicator */
 .loading-indicator {
