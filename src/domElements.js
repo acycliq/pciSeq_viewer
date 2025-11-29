@@ -20,7 +20,7 @@ const elements = {
     // Gene controls
     geneSizeSlider: document.getElementById(UI_ELEMENTS.geneSizeSlider),
     geneSizeValue: document.getElementById(UI_ELEMENTS.geneSizeValue),
-    genePanelBtn: document.getElementById(UI_ELEMENTS.genePanelBtn),
+    // genePanelBtn removed
 
     // Score filtering controls
     scoreFilterSlider: document.getElementById('scoreFilterSlider'),
@@ -31,14 +31,7 @@ const elements = {
     // Uniform size toggle
     uniformSizeToggle: document.getElementById('uniformSizeToggle'),
 
-    // Gene widget
-    geneWidget: document.getElementById('geneWidget'),
-    geneWidgetBackdrop: document.getElementById('geneWidgetBackdrop'),
-    geneWidgetClose: document.getElementById('geneWidgetClose'),
-    geneWidgetUndock: document.getElementById('geneWidgetUndock'),
-    geneSearch: document.getElementById('geneSearch'),
-    geneList: document.getElementById('geneList'),
-    toggleAllGenes: document.getElementById('toggleAllGenes'),
+    // Gene widget removed (replaced by Genes drawer)
 
     // Cell class widget (cellClassPanelBtn removed - now using always-visible drawer section)
     cellClassViewerBtn: document.getElementById('cellClassViewerBtn'),

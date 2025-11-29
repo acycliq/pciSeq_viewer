@@ -64,13 +64,7 @@ import Perf from '../utils/runtimePerf.js';
 // Import modular components
 import { state } from './stateManager.js';
 import { elements } from './domElements.js';
-import {
-    showGeneWidget,
-    hideGeneWidget,
-    filterGenes,
-    toggleAllGenes,
-    undockGeneWidget
-} from './geneWidget.js';
+// Gene widget removed (replaced by Genes drawer)
 import {
     populateCellClassWidget,
     showCellClassWidget,
@@ -120,12 +114,7 @@ const {DeckGL, OrthographicView, COORDINATE_SYSTEM} = deck;
 let __lastZoomMode = null; // 'pc' or 'icon'
 let __lastDragging = false; // track pan-drag state
 
-// Expose gene widget functions globally for event handlers
-window.showGeneWidget = showGeneWidget;
-window.hideGeneWidget = hideGeneWidget;
-window.filterGenes = filterGenes;
-window.toggleAllGenes = toggleAllGenes;
-window.undockGeneWidget = undockGeneWidget;
+// Gene widget removed
 
 // Cell class widget functions
 window.showCellClassWidget = showCellClassWidget;
@@ -1314,18 +1303,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const geneSearchInput = document.getElementById('geneSearch');
     const cellClassSearchInput = document.getElementById('cellClassSearch');
 
-    if (geneSearchInput) {
-        // Debounce gene search - wait 200ms after user stops typing
-        const debouncedGeneSearch = debounce((searchTerm) => {
-            if (typeof window.filterGenes === 'function') {
-                window.filterGenes(searchTerm);
-            }
-        }, 200);
-
-        geneSearchInput.addEventListener('input', (e) => {
-            debouncedGeneSearch(e.target.value);
-        });
-    }
+    // Legacy geneSearchInput removed with gene widget
 
     if (cellClassSearchInput) {
         // Debounce cell class search - wait 200ms after user stops typing

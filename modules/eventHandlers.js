@@ -136,12 +136,7 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         });
     }
 
-    // === GENE WIDGET MANAGEMENT ===
-
-    // Open gene widget
-    elements.genePanelBtn.addEventListener('click', () => {
-        window.showGeneWidget();
-    });
+    // === GENE WIDGET MANAGEMENT REMOVED (using Genes drawer) ===
 
     // Open gene distribution chart widget
     const geneDistributionBtn = document.getElementById('geneDistributionBtn');
@@ -167,30 +162,7 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         });
     }
 
-    // Close gene widget
-    elements.geneWidgetClose.addEventListener('click', () => {
-        window.hideGeneWidget();
-    });
-
-    // Undock gene widget
-    elements.geneWidgetUndock.addEventListener('click', () => {
-        window.undockGeneWidget();
-    });
-
-    // Close widget on backdrop click
-    elements.geneWidgetBackdrop.addEventListener('click', () => {
-        window.hideGeneWidget();
-    });
-
-    // Gene search functionality
-    elements.geneSearch.addEventListener('input', (e) => {
-        window.filterGenes(e.target.value);
-    });
-
-    // Toggle all genes button
-    elements.toggleAllGenes.addEventListener('click', () => {
-        window.toggleAllGenes();
-    });
+    // Gene widget handlers removed
 
     // === CELL CLASS WIDGET MANAGEMENT ===
 
@@ -412,9 +384,6 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
     // Escape key to close widgets and controls panel
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            if (!elements.geneWidget.classList.contains('hidden')) {
-                window.hideGeneWidget();
-            }
             if (!elements.cellClassWidget.classList.contains('hidden')) {
                 window.hideCellClassWidget();
             }

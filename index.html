@@ -89,7 +89,6 @@
             <!-- Gene Controls Section -->
             <div class="control-section">
                 <h3 class="section-label">Gene Controls</h3>
-                <button id="genePanelBtn">Genes</button>
                 <button id="geneDistributionBtn" title="Gene Distribution Chart">Distribution</button>
                 <div class="control-item gene-size-item">
                     <label for="geneSizeSlider">Size</label>
@@ -206,23 +205,7 @@
         </div>
     </div>
 
-    <!-- Floating Gene Panel Widget -->
-    <div id="geneWidget" class="gene-widget hidden">
-        <div class="gene-widget-header">
-            <span class="gene-widget-title">🧬 Gene Panel</span>
-            <div class="widget-header-buttons">
-                <button id="geneWidgetUndock" class="widget-undock-btn" title="Open in separate window">⧉</button>
-                <button id="geneWidgetClose" class="widget-close-btn">×</button>
-            </div>
-        </div>
-        <div class="gene-widget-search">
-            <input type="text" id="geneSearch" placeholder="Search genes..." />
-            <button id="toggleAllGenes" class="toggle-all-btn">Unselect All</button>
-        </div>
-        <div class="gene-widget-content" id="geneList">
-            <!-- Gene list will be populated here -->
-        </div>
-    </div>
+    
 
     <!-- Floating Cell Class Panel Widget -->
     <div id="cellClassWidget" class="gene-widget hidden">
@@ -300,7 +283,6 @@
     </div>
 
     <!-- Widget overlay backdrop -->
-    <div id="geneWidgetBackdrop" class="widget-backdrop hidden"></div>
     <div id="cellClassWidgetBackdrop" class="widget-backdrop hidden"></div>
     <div id="geneDistributionWidgetBackdrop" class="widget-backdrop hidden"></div>
     <div id="cellClassDistributionWidgetBackdrop" class="widget-backdrop hidden"></div>
