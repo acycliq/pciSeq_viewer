@@ -587,11 +587,7 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.gene-widget.dragging {
-    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.8);
-    cursor: move;
-    transition: none;
-}
+/* removed: gene widget dragging state (widget deprecated) */
 
 .gene-widget-header {
     display: flex;
@@ -686,13 +682,7 @@ body {
     background: #0056b3;
 }
 
-.toggle-all-btn.unselect {
-    background: #dc3545;
-}
-
-.toggle-all-btn.unselect:hover {
-    background: #c82333;
-}
+/* removed: legacy unselect variant for gene widget toggle button */
 
 .gene-widget-search input::placeholder {
     color: rgba(255, 255, 255, 0.5);
