@@ -86,6 +86,19 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
                 cacheObj.length = length;
                 cacheObj.plane = cur;
                 cacheObj.planesBuffer = planes.buffer;
+
+                // Log cache creation
+                const adv = window.advancedConfig?.();
+                if (adv?.performance?.showPerformanceStats) {
+                    const bufferSizeMB = (factors.byteLength / 1024 / 1024).toFixed(2);
+                    let memoryInfo = '';
+                    if (performance.memory) {
+                        const usedMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1);
+                        const totalMB = (performance.memory.totalJSHeapSize / 1024 / 1024).toFixed(1);
+                        memoryInfo = ` | Memory: ${usedMB}/${totalMB} MB`;
+                    }
+                    console.log(`[CACHE] Built radius factors: ${bufferSizeMB} MB for plane ${cur}${memoryInfo}`);
+                }
             }
             radiusFactors = cacheObj.factors; // Reuse cached factors
         } catch {
@@ -99,32 +112,86 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         }
     }
 
-    // Apply gene visibility mask via alpha channel (fast, avoids realloc)
+    // ⚡ PERFORMANCE OPTIMIZATION: Cache masked color buffer to avoid GPU re-upload
+    // PROBLEM: Creating new Uint8Array(colors) every zoom causes 250-5300ms GPU upload lag
+    // SOLUTION: Cache the masked buffer and only rebuild when gene selection changes
+    let maskedColors;
     try {
-        if (selectedGenes && selectedGenes.size > 0) {
-            // If all selected (common case), skip loop
-            const app = (typeof window !== 'undefined') ? window.appState : null;
-            const geneDict = (app && app.arrowGeneDict) || {};
-            const totalGenes = Object.keys(geneDict).length;
-            const allSelected = selectedGenes.size >= totalGenes;
-            if (!allSelected) {
-                // Create a masked copy so deck.gl detects change (new buffer)
-                var maskedColors = new Uint8Array(colors); // copy
-                for (let i = 0; i < length; i++) {
-                    const name = geneDict[geneIds[i]];
-                    const visible = name ? selectedGenes.has(name) : false;
-                    maskedColors[4*i + 3] = visible ? 255 : 0;
+        const app = (typeof window !== 'undefined') ? window.appState || (window.appState = {}) : {};
+        const maskCache = app._geneMaskCache || (app._geneMaskCache = {});
+        const geneDict = (app && app.arrowGeneDict) || {};
+        const totalGenes = Object.keys(geneDict).length;
+
+        // Build cache key from selected genes
+        const selectedKey = selectedGenes ? Array.from(selectedGenes).sort().join('|') : '';
+        const cacheKey = `${selectedKey}_${length}_${colors.buffer}`;
+
+        // Check if we can reuse cached buffer
+        const needsRebuild = !maskCache.buffer ||
+                              maskCache.cacheKey !== cacheKey ||
+                              maskCache.length !== length;
+
+        if (needsRebuild) {
+            const t0 = performance.now();
+
+            if (selectedGenes && selectedGenes.size > 0) {
+                const allSelected = selectedGenes.size >= totalGenes;
+                if (!allSelected) {
+                    // Build new masked buffer
+                    maskedColors = new Uint8Array(colors);
+                    for (let i = 0; i < length; i++) {
+                        const name = geneDict[geneIds[i]];
+                        const visible = name ? selectedGenes.has(name) : false;
+                        maskedColors[4*i + 3] = visible ? 255 : 0;
+                    }
+                } else {
+                    // All selected - copy with full alpha
+                    maskedColors = new Uint8Array(colors);
+                    for (let i = 0; i < length; i++) maskedColors[4*i + 3] = 255;
                 }
-            } else {
-                var maskedColors = new Uint8Array(colors); // ensure new reference
-                for (let i = 0; i < length; i++) maskedColors[4*i + 3] = 255;
+            } else if (selectedGenes && selectedGenes.size === 0) {
+                // None selected - zero alpha
+                maskedColors = new Uint8Array(colors);
+                for (let i = 0; i < length; i++) maskedColors[4*i + 3] = 0;
             }
-        } else if (selectedGenes && selectedGenes.size === 0) {
-            // Show none
-            var maskedColors = new Uint8Array(colors);
-            for (let i = 0; i < length; i++) maskedColors[4*i + 3] = 0;
+
+            // Cache the result
+            if (maskedColors) {
+                maskCache.buffer = maskedColors;
+                maskCache.cacheKey = cacheKey;
+                maskCache.length = length;
+
+                const elapsed = performance.now() - t0;
+                const adv = window.advancedConfig?.();
+                if (adv?.performance?.showPerformanceStats) {
+                    const bufferSizeMB = (maskedColors.byteLength / 1024 / 1024).toFixed(2);
+                    let memoryInfo = '';
+                    if (performance.memory) {
+                        const usedMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1);
+                        const totalMB = (performance.memory.totalJSHeapSize / 1024 / 1024).toFixed(1);
+                        memoryInfo = ` | Memory: ${usedMB}/${totalMB} MB`;
+                    }
+                    console.log(`[CACHE MISS] Built new gene mask buffer: ${bufferSizeMB} MB in ${elapsed.toFixed(2)}ms (${selectedGenes?.size || 0}/${totalGenes} genes)${memoryInfo}`);
+                }
+            }
+        } else {
+            // Reuse cached buffer
+            maskedColors = maskCache.buffer;
+            const adv = window.advancedConfig?.();
+            if (adv?.performance?.showPerformanceStats) {
+                const bufferSizeMB = (maskedColors.byteLength / 1024 / 1024).toFixed(2);
+                let memoryInfo = '';
+                if (performance.memory) {
+                    const usedMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1);
+                    const totalMB = (performance.memory.totalJSHeapSize / 1024 / 1024).toFixed(1);
+                    memoryInfo = ` | Memory: ${usedMB}/${totalMB} MB`;
+                }
+                console.log(`[CACHE HIT] Reusing gene mask buffer: ${bufferSizeMB} MB (avoids GPU upload!)${memoryInfo}`);
+            }
         }
-    } catch {}
+    } catch (e) {
+        console.warn('Gene mask caching failed, fallback to direct copy:', e);
+    }
 
     // ⚡ PERFORMANCE OPTIMIZATION: GPU-based score filtering
     // PROBLEM: CPU loops on 20M+ spots block main thread during slider drags

@@ -355,26 +355,49 @@ function updateAllLayers() {
     } else {
         try { console.log(`[layers] Using IconLayers for spots at zoom ${zoom.toFixed(1)} (showGenes=${state.showGenes})`); } catch {}
         const bounds = getCurrentViewportTileBounds();
-        const iconLayers = createGeneLayers(
-            state.geneDataMap,
-            state.showGenes,
-            state.selectedGenes,
-            state.geneIconAtlas,
-            state.geneIconMapping,
-            state.currentPlane,
-            state.geneSizeScale,
-            (info) => showTooltip(info, elements.tooltip),
-            bounds,
-            true, // combine into a single IconLayer at deep zoom to minimize churn
-            state.scoreThreshold, // Score threshold for filtering
-            state.hasScores, // Whether dataset has valid scores
-            state.uniformMarkerSize, // Uniform marker sizing toggle
-            state.intensityThreshold,
-            state.hasIntensity,
-            state.filterMode
-        );
-        layers.push(...iconLayers);
-        state.lastIconLayers = iconLayers;
+
+        // ⚡ PERFORMANCE FIX: Never create IconLayer without viewport culling for Arrow data
+        // PROBLEM: When bounds=null, IconLayer loads all 3.2M spots, freezing GPU for 2-4 seconds
+        // SOLUTION: Skip IconLayer if bounds unavailable (rare during transitions), use PointCloud instead
+        if (!bounds) {
+            try { console.log(`[layers] Viewport bounds unavailable, skipping IconLayer (would load ${state.geneDataMap?.size || 0} genes unculled)`); } catch {}
+            // Fallback to PointCloud for this frame
+            const pc = createArrowPointCloudLayer(
+                state.currentPlane,
+                state.geneSizeScale,
+                state.selectedGenes,
+                1.0,
+                state.scoreThreshold,
+                state.hasScores,
+                state.uniformMarkerSize,
+                state.intensityThreshold,
+                state.hasIntensity,
+                state.filterMode
+            );
+            if (pc && state.showGenes) layers.push(pc);
+            state.lastIconLayers = [];
+        } else {
+            const iconLayers = createGeneLayers(
+                state.geneDataMap,
+                state.showGenes,
+                state.selectedGenes,
+                state.geneIconAtlas,
+                state.geneIconMapping,
+                state.currentPlane,
+                state.geneSizeScale,
+                (info) => showTooltip(info, elements.tooltip),
+                bounds,
+                true, // combine into a single IconLayer at deep zoom to minimize churn
+                state.scoreThreshold, // Score threshold for filtering
+                state.hasScores, // Whether dataset has valid scores
+                state.uniformMarkerSize, // Uniform marker sizing toggle
+                state.intensityThreshold,
+                state.hasIntensity,
+                state.filterMode
+            );
+            layers.push(...iconLayers);
+            state.lastIconLayers = iconLayers;
+        }
         state.iconCleanupPending = false;
         state.iconCleanupRemaining = 0;
     }
@@ -652,11 +675,31 @@ function initializeDeckGL() {
                 if (mode !== __lastZoomMode) {
                     if (adv.performance.showPerformanceStats) {
                         state.zoomTransition = { inProgress: true, from: __lastZoomMode, to: mode, start: performance.now() };
-                        console.log(`Zoom transition start: ${state.zoomTransition.from || 'none'} -> ${mode} at zoom ${viewState.zoom.toFixed(2)}`);
+                        console.log(`[TRANSITION] Start: ${state.zoomTransition.from || 'none'} -> ${mode} at zoom ${viewState.zoom.toFixed(2)}`);
+                        performance.mark('zoom-transition-start');
                     }
                     __lastZoomMode = mode;
                     __lastDragging = dragging;
-                    updateAllLayers();
+
+                    // Request animation frame to measure when rendering actually completes
+                    if (adv.performance.showPerformanceStats) {
+                        const beforeUpdate = performance.now();
+                        updateAllLayers();
+                        const afterUpdate = performance.now();
+                        console.log(`[TRANSITION] updateAllLayers() JS time: ${(afterUpdate - beforeUpdate).toFixed(2)}ms`);
+
+                        // Measure when the browser actually paints
+                        requestAnimationFrame(() => {
+                            performance.mark('zoom-transition-frame1');
+                            requestAnimationFrame(() => {
+                                performance.mark('zoom-transition-complete');
+                                const totalTime = performance.now() - beforeUpdate;
+                                console.log(`[TRANSITION] TOTAL time to screen (including GPU): ${totalTime.toFixed(2)}ms`);
+                            });
+                        });
+                    } else {
+                        updateAllLayers();
+                    }
                 } else if (mode === 'icon') {
                     // NOTE (perf-critical): At deep zoom (≥7) we rebuild the combined IconLayer
                     // only when panning ends (dragging -> not dragging). Rebuilding on every
