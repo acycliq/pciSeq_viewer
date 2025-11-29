@@ -1,6 +1,7 @@
 // Import dependencies
 import { state } from './stateManager.js';
 import { elements } from './domElements.js';
+import { widgetManager } from './widgetManager.js';
 
 // === GENE WIDGET FUNCTIONS ===
 
@@ -112,6 +113,13 @@ function toggleAllGenes() {
 }
 
 function showGeneWidget() {
+    // Register with widget manager for smart positioning
+    widgetManager.register('geneWidget', {
+        preferredWidth: 400,
+        preferredHeight: 500,
+        side: 'left'
+    });
+
     elements.geneWidget.classList.remove('hidden');
     elements.geneWidgetBackdrop.classList.remove('hidden');
     populateGeneWidget();
@@ -196,10 +204,8 @@ function hideGeneWidget() {
     elements.geneWidgetBackdrop.classList.add('hidden');
     elements.geneWidget.classList.remove('dragging');
 
-    // Reset position for next time
-    elements.geneWidget.style.left = '20px';
-    elements.geneWidget.style.top = '20px';
-    elements.geneWidget.style.transform = 'translateX(0)';
+    // Unregister from widget manager
+    widgetManager.unregister('geneWidget');
 }
 
 function filterGenes(searchTerm) {

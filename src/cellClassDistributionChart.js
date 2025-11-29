@@ -6,6 +6,7 @@
  */
 
 import { state } from './stateManager.js';
+import { widgetManager } from './widgetManager.js';
 
 // Chart widget elements
 let chartElements = null;
@@ -506,6 +507,13 @@ function createStackedBarChart(data) {
 export function showCellClassDistributionWidget() {
     const els = initChartElements();
 
+    // Register with widget manager for smart positioning
+    widgetManager.register('cellClassDistributionWidget', {
+        preferredWidth: 1000,
+        preferredHeight: 800,
+        side: 'left'
+    });
+
     els.widget.classList.remove('hidden');
     els.backdrop.classList.remove('hidden');
 
@@ -529,6 +537,9 @@ export function hideCellClassDistributionWidget() {
     els.widget.classList.add('hidden');
     els.backdrop.classList.add('hidden');
     els.backdrop.onclick = null;
+
+    // Unregister from widget manager
+    widgetManager.unregister('cellClassDistributionWidget');
 }
 
 /**

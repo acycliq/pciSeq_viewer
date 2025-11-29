@@ -6,6 +6,7 @@
 
 import { state } from './stateManager.js';
 import { elements } from './domElements.js';
+import { widgetManager } from './widgetManager.js';
 
 // Chart widget elements
 let chartElements = null;
@@ -228,6 +229,13 @@ function populateGeneSelect() {
 export function showGeneDistributionWidget() {
     const els = initChartElements();
 
+    // Register with widget manager for smart positioning
+    widgetManager.register('geneDistributionWidget', {
+        preferredWidth: 500,
+        preferredHeight: 400,
+        side: 'left'
+    });
+
     populateGeneSelect();
 
     els.widget.classList.remove('hidden');
@@ -246,6 +254,9 @@ export function hideGeneDistributionWidget() {
     els.widget.classList.add('hidden');
     els.backdrop.classList.add('hidden');
     els.backdrop.onclick = null;
+
+    // Unregister from widget manager
+    widgetManager.unregister('geneDistributionWidget');
 }
 
 /**

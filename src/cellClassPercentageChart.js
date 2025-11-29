@@ -6,6 +6,7 @@
  */
 
 import { state } from './stateManager.js';
+import { widgetManager } from './widgetManager.js';
 
 // Chart widget elements
 let chartElements = null;
@@ -279,6 +280,13 @@ function createPercentageBarChart(data) {
 export function showCellClassPercentageWidget() {
     const els = initChartElements();
 
+    // Register with widget manager for smart positioning
+    widgetManager.register('cellClassPercentageWidget', {
+        preferredWidth: 800,
+        preferredHeight: 600,
+        side: 'right'
+    });
+
     els.widget.classList.remove('hidden');
     els.backdrop.classList.remove('hidden');
 
@@ -302,6 +310,9 @@ export function hideCellClassPercentageWidget() {
     els.widget.classList.add('hidden');
     els.backdrop.classList.add('hidden');
     els.backdrop.onclick = null;
+
+    // Unregister from widget manager
+    widgetManager.unregister('cellClassPercentageWidget');
 }
 
 /**

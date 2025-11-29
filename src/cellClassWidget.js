@@ -1,6 +1,7 @@
 // Import dependencies
 import { state } from './stateManager.js';
 import { elements } from './domElements.js';
+import { widgetManager } from './widgetManager.js';
 
 // === CELL CLASS WIDGET FUNCTIONS ===
 function populateCellClassWidget() {
@@ -105,6 +106,13 @@ function toggleAllCellClasses() {
 }
 
 function showCellClassWidget() {
+    // Register with widget manager for smart positioning
+    widgetManager.register('cellClassWidget', {
+        preferredWidth: 400,
+        preferredHeight: 500,
+        side: 'right' // Position on right side
+    });
+
     elements.cellClassWidget.classList.remove('hidden');
     elements.cellClassWidgetBackdrop.classList.remove('hidden');
     populateCellClassWidget();
@@ -114,6 +122,9 @@ function showCellClassWidget() {
 function hideCellClassWidget() {
     elements.cellClassWidget.classList.add('hidden');
     elements.cellClassWidgetBackdrop.classList.add('hidden');
+
+    // Unregister from widget manager
+    widgetManager.unregister('cellClassWidget');
 }
 
 function setupCellClassDragFunctionality() {
