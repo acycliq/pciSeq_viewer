@@ -66,7 +66,26 @@
             <span class="controls-title">Controls</span>
             <button id="controlsCloseBtn" class="widget-close-btn">×</button>
         </div>
-        <div class="controls-content">
+            <div class="controls-content">
+            <!-- Genes Section (Collapsible) -->
+            <div class="control-section">
+                <h3 class="section-label collapsible-header" id="genesHeader">
+                    <span class="collapse-icon">▼</span> Genes
+                </h3>
+                <div class="section-content" id="genesContent">
+                    <div class="cell-class-controls">
+                        <button class="show-all-btn" id="showAllGenesBtn">Show All</button>
+                        <button class="hide-all-btn" id="hideAllGenesBtn">Hide All</button>
+                    </div>
+                    <div class="cell-class-filter-container" id="geneFilterContainer">
+                        <input type="text" class="filter-input" id="geneFilter" placeholder="Filter genes…" autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="cell-class-list" id="genesList">
+                        <div class="loading-message">Loading genes...</div>
+                    </div>
+                    <div class="legend-resize-handle" id="genesResizeHandle" title="Drag to resize"></div>
+                </div>
+            </div>
             <!-- Gene Controls Section -->
             <div class="control-section">
                 <h3 class="section-label">Gene Controls</h3>

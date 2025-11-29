@@ -19,6 +19,7 @@ import { debounce } from './utils.js';
 
 // Import cell class drawer functions
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
+import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
 
 // Import data loading functions
 import {
@@ -916,6 +917,8 @@ async function init() {
 
     // Populate the cell class drawer with ranked list
     populateCellClassDrawer();
+    // Populate the gene drawer
+    populateGeneDrawer();
 
 // Preload adjacent planes (non-blocking)
     const totalPlanes = window.appState.totalPlanes;
@@ -1290,6 +1293,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize cell class drawer (collapsible sections + toggle all button)
     initCellClassDrawer();
+    // Initialize gene drawer
+    initGeneDrawer();
 
     // Controls drawer state (persist open/closed like pciSeq_3d keeps sidebar visible)
     const controlsPanel = document.getElementById('controlsPanel');
