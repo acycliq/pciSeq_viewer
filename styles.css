@@ -913,43 +913,30 @@ body {
     --drawer-accent: #22c55e;
     --drawer-accent-strong: #16a34a;
     --drawer-accent-weak: rgba(34, 197, 94, 0.08);
+    --drawer-width: 300px;  /* full drawer width */
+    --rail-width: 16px;     /* always-visible gutter */
 }
 
-/* Controls Toggle Button */
-.controls-toggle-btn {
-    position: fixed;
-    top: 15px;
-    left: 15px;
-    z-index: 2000;
+/* Clickable gutter rail */
+.controls-rail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--rail-width);
+    height: 100vh;
     background: var(--drawer-surface);
-    color: var(--drawer-text);
-    border: 1px solid var(--drawer-border);
-    border-radius: 8px;
-    padding: 10px 12px;
+    border-right: 1px solid var(--drawer-border);
     cursor: pointer;
-    backdrop-filter: blur(12px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-    transition: all 0.15s ease;
 }
-
-.controls-toggle-btn:hover {
-    background: var(--drawer-accent);
-    border-color: var(--drawer-accent-strong);
-    color: #0b0b0b;
-}
-
-.controls-toggle-btn svg {
-    width: 20px;
-    height: 20px;
-    display: block;
-}
+.controls-panel.collapsed .controls-rail { left: auto; right: 0; }
+.controls-rail:hover { background: #1f1f1f; }
 
 /* Controls Panel: align with pciSeq_3d sidebar layout */
 .controls-panel {
     position: fixed;
     top: 0;
     left: 0;
-    width: 300px;
+    width: var(--drawer-width);
     height: 100vh;
     background: var(--drawer-surface);
     border-right: 1px solid var(--drawer-border);
@@ -957,10 +944,13 @@ body {
     display: flex;
     flex-direction: column;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    transform: translateX(0); /* expanded by default; collapsed handled by .hidden */
+    transition: transform 180ms ease;
+    will-change: transform;
 }
 
-.controls-panel.hidden {
-    display: none;
+.controls-panel.collapsed { /* only affects controls panel; allows global .hidden to remain generic */
+    transform: translateX(calc(-1 * (var(--drawer-width) - var(--rail-width))));
 }
 
 .controls-header { display: none; }
@@ -973,6 +963,8 @@ body {
 }
 
 .controls-content { flex: 1; overflow-y: auto; padding: 16px; }
+/* Ensure content is not under the rail when expanded, without doubling padding */
+.controls-panel:not(.collapsed) .controls-content { padding-left: 0; margin-left: var(--rail-width); }
 
 /* Control Sections */
 .control-section { background: var(--drawer-bg); border: 1px solid var(--drawer-border); border-radius: 6px; padding: 12px; margin-bottom: 12px; }

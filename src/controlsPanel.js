@@ -1,33 +1,39 @@
 import { elements } from './domElements.js';
 
+function updateAriaExpanded() {
+    const btn = document.getElementById('controlsToggleBtn');
+    if (!btn) return;
+    const expanded = !elements.controlsPanel.classList.contains('collapsed');
+    btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+}
+
 function updateScaleBarOffset() {
     const scaleBar = document.getElementById('scaleBar');
-    const toggleBtn = document.getElementById('controlsToggleBtn');
     if (!scaleBar) return;
-    // When drawer is visible on the left, push the scale bar to the right of it
-    const isHidden = elements.controlsPanel.classList.contains('hidden');
-    const drawerWidth = isHidden ? 0 : (elements.controlsPanel.offsetWidth || 300);
-    const margin = 20; // visual gap from drawer
-    scaleBar.style.left = `${drawerWidth + margin}px`;
-    if (toggleBtn) {
-        toggleBtn.style.left = `${drawerWidth + 15}px`;
-    }
+    const isCollapsed = elements.controlsPanel.classList.contains('collapsed');
+    const drawerWidth = elements.controlsPanel.offsetWidth || 300;
+    const railWidth = 16; // keep in sync with CSS --rail-width
+    const margin = 20; // visual gap from drawer/rail
+    const left = (isCollapsed ? railWidth : drawerWidth) + margin;
+    scaleBar.style.left = `${left}px`;
 }
 
 function showControlsPanel() {
-    elements.controlsPanel.classList.remove('hidden');
+    elements.controlsPanel.classList.remove('collapsed');
     try { window.localStorage && window.localStorage.setItem('drawer-state', 'open'); } catch {}
+    updateAriaExpanded();
     updateScaleBarOffset();
 }
 
 function hideControlsPanel() {
-    elements.controlsPanel.classList.add('hidden');
+    elements.controlsPanel.classList.add('collapsed');
     try { window.localStorage && window.localStorage.setItem('drawer-state', 'closed'); } catch {}
+    updateAriaExpanded();
     updateScaleBarOffset();
 }
 
 function toggleControlsPanel() {
-    if (elements.controlsPanel.classList.contains('hidden')) {
+    if (elements.controlsPanel.classList.contains('collapsed')) {
         showControlsPanel();
     } else {
         hideControlsPanel();

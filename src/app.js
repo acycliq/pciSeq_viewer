@@ -1285,18 +1285,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize gene drawer
     initGeneDrawer();
 
-    // Controls drawer state (persist open/closed like pciSeq_3d keeps sidebar visible)
+    // Controls drawer state (collapsed by default; persists open/closed)
     const controlsPanel = document.getElementById('controlsPanel');
     if (controlsPanel) {
-        let desired = 'open';
+        // Default to collapsed
+        let desired = 'closed';
         try {
             const saved = window.localStorage && window.localStorage.getItem('drawer-state');
             if (saved === 'open' || saved === 'closed') desired = saved;
         } catch {}
-        if (desired === 'open') controlsPanel.classList.remove('hidden');
-        else controlsPanel.classList.add('hidden');
-        // Place the scale bar to the right of the drawer if visible
+        if (desired === 'open') controlsPanel.classList.remove('collapsed');
+        else controlsPanel.classList.add('collapsed');
+        // Place the scale bar to the right of the drawer or rail
         try { updateScaleBarOffset(); } catch {}
+        // Sync aria-expanded on the embedded hamburger
+        try {
+            const btn = document.getElementById('controlsToggleBtn');
+            if (btn) btn.setAttribute('aria-expanded', desired === 'open' ? 'true' : 'false');
+        } catch {}
     }
 
     // Setup debounced search inputs

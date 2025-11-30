@@ -201,15 +201,12 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
 
     // === CONTROLS DRAWER MANAGEMENT ===
 
-    // Open/toggle controls panel
-    elements.controlsToggleBtn.addEventListener('click', () => {
-        window.toggleControlsPanel();
-    });
-
-    // Close controls panel
-    elements.controlsCloseBtn.addEventListener('click', () => {
-        window.hideControlsPanel();
-    });
+    // Toggle controls panel via gutter rail click
+    if (elements.controlsRail) {
+        elements.controlsRail.addEventListener('click', () => {
+            window.toggleControlsPanel();
+        });
+    }
 
     // === REGION IMPORT MANAGEMENT ===
 
@@ -387,7 +384,7 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
             if (!elements.cellClassWidget.classList.contains('hidden')) {
                 window.hideCellClassWidget();
             }
-            if (!elements.controlsPanel.classList.contains('hidden')) {
+            if (!elements.controlsPanel.classList.contains('collapsed')) {
                 window.hideControlsPanel();
             }
         }

@@ -50,7 +50,7 @@ const elements = {
     // Controls Panel (drawer)
     controlsToggleBtn: document.getElementById('controlsToggleBtn'),
     controlsPanel: document.getElementById('controlsPanel'),
-    controlsCloseBtn: document.getElementById('controlsCloseBtn'),
+    controlsRail: document.getElementById('controlsRail'),
 
     // Regions
     importRegionsBtn: document.getElementById('importRegionsBtn'),
