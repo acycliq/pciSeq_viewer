@@ -1032,7 +1032,7 @@ body {
 .filter-input:focus { outline: none; border-color: var(--drawer-accent); }
 
 /* Cell class list */
-.cell-class-list { max-height: 500px; overflow-y: auto; overflow-x: hidden; padding-right: 5px; }
+.cell-class-list { max-height: 200px; overflow-y: auto; overflow-x: hidden; padding-right: 5px; }
 .cell-class-list::-webkit-scrollbar { width: 8px; }
 .cell-class-list::-webkit-scrollbar-track { background: var(--drawer-bg); border-radius: 4px; }
 .cell-class-list::-webkit-scrollbar-thumb { background: var(--drawer-accent); border-radius: 4px; }
