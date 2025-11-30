@@ -210,6 +210,9 @@ function renderRegionsList() {
     const container = document.getElementById('regionsList');
     if (!container) return;
 
+    // Align Regions list visuals with Genes/Cell Classes
+    try { container.classList.add('cell-class-list'); } catch {}
+
     container.innerHTML = '';
 
     if (state.regions.size === 0) {
@@ -217,42 +220,129 @@ function renderRegionsList() {
         return;
     }
 
+    // Eye SVGs (same thin-stroke style used elsewhere)
+    const eyeOpenSvg = `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="12" cy="12" r="3" fill="currentColor"/>
+        </svg>`;
+    const eyeClosedSvg = `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="12" cy="12" r="3" fill="currentColor"/>
+          <line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="1.5"/>
+        </svg>`;
+
     for (const [name, region] of state.regions) {
         console.log('[Regions] Rendering region:', name, 'visible:', region.visible);
+
+        // Row container: reuse unified chip-like item
         const item = document.createElement('div');
-        item.className = 'region-item';
+        item.className = 'cell-class-item';
+        item.dataset.region = name;
+        if (!region.visible) item.classList.add('dim');
 
-        const checkbox = document.createElement('input');
-        const checkboxId = `region-checkbox-${name.replace(/\s+/g, '-')}`;
-        checkbox.id = checkboxId;
-        checkbox.type = 'checkbox';
-        checkbox.checked = region.visible;
-        console.log('[Regions] Checkbox for', name, 'set to:', checkbox.checked);
-        checkbox.addEventListener('change', (e) => {
-            console.log('[Regions] Checkbox change event for', name, ':', e.target.checked);
-            toggleRegionVisibility(name, e.target.checked);
-        });
+        // Color swatch (use drawer accent to denote regions)
+        const swatch = document.createElement('div');
+        swatch.className = 'cell-class-color';
+        swatch.style.background = 'var(--drawer-accent)';
 
-        const label = document.createElement('label');
-        label.htmlFor = checkboxId;
-        label.textContent = name;
+        // Name
+        const label = document.createElement('span');
+        label.className = 'cell-class-name';
+        label.textContent = (name && String(name).trim()) ? String(name) : '(unnamed region)';
+        label.title = name;
 
+        // Count (boundary points) to match layout
+        const count = Array.isArray(region.boundaries) ? region.boundaries.length : 0;
+        const countEl = document.createElement('span');
+        countEl.className = 'cell-class-count';
+        countEl.textContent = count.toLocaleString();
+        countEl.title = `${count} points`;
+
+        // Eye icon toggle
+        const eye = document.createElement('div');
+        // Keep eye always visible; use icon swap + dimming to indicate state
+        eye.className = 'cell-class-eye';
+        eye.innerHTML = region.visible ? eyeOpenSvg : eyeClosedSvg;
+        eye.title = region.visible ? 'Hide' : 'Show';
+
+        const toggle = () => {
+            const newVisible = !region.visible;
+            toggleRegionVisibility(name, newVisible);
+            region.visible = newVisible;
+            updateRegionEyeIcon(name, newVisible);
+        };
+        item.addEventListener('click', toggle);
+        eye.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
+
+        // Delete icon (always visible, thin-stroke trash)
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'region-delete-btn';
-        deleteBtn.textContent = '×';
         deleteBtn.title = 'Delete region';
-        deleteBtn.addEventListener('click', () => {
+        deleteBtn.setAttribute('aria-label', `Delete region ${name || ''}`);
+        deleteBtn.setAttribute('tabindex', '0');
+        deleteBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path d="M3 6h18" stroke="currentColor" stroke-width="1.5" fill="none"/>
+              <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+              <rect x="6" y="6" width="12" height="14" rx="2" ry="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+              <path d="M10 10v6M14 10v6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            </svg>`;
+        const handleDelete = (e) => {
+            e.stopPropagation();
             if (confirm(`Delete region "${name}"?`)) {
                 deleteRegion(name);
             }
+        };
+        deleteBtn.addEventListener('click', handleDelete);
+        deleteBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                handleDelete(e);
+            }
         });
 
-        item.appendChild(checkbox);
+        // Assemble: [swatch][name][count][eye][delete]
+        item.appendChild(swatch);
         item.appendChild(label);
+        item.appendChild(countEl);
+        item.appendChild(eye);
         item.appendChild(deleteBtn);
+
+        item.title = `${name}: ${count.toLocaleString()} points`;
 
         container.appendChild(item);
     }
+}
+
+// Update a single region row's UI (eye + dim) without full re-render
+function updateRegionEyeIcon(name, isVisible) {
+    const container = document.getElementById('regionsList');
+    if (!container) return;
+    const item = container.querySelector(`[data-region="${CSS.escape(name)}"]`);
+    if (!item) return;
+
+    const eye = item.querySelector('.cell-class-eye');
+    if (!eye) return;
+
+    const eyeOpenSvg = `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="12" cy="12" r="3" fill="currentColor"/>
+        </svg>`;
+    const eyeClosedSvg = `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="12" cy="12" r="3" fill="currentColor"/>
+          <line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="1.5"/>
+        </svg>`;
+
+    // Keep eye element visible; only swap icon and adjust dim state on row
+    eye.className = 'cell-class-eye';
+    eye.innerHTML = isVisible ? eyeOpenSvg : eyeClosedSvg;
+    eye.title = isVisible ? 'Hide' : 'Show';
+
+    if (isVisible) item.classList.remove('dim'); else item.classList.add('dim');
 }
 
 /**
@@ -323,4 +413,3 @@ export {
     getRegionBoundaries,
     getVisibleRegions
 };
-
