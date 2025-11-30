@@ -88,6 +88,71 @@ function updateUIAfterRegionChange() {
 }
 
 /**
+ * Region color palette (d3.schemeSet2) adapted for dark backgrounds.
+ *
+ * Source palette (d3.schemeSet2, 8 colors):
+ *   #66c2a5, #fc8d62, #8da0cb, #e78ac3, #a6d854, #ffd92f, #e5c494, #b3b3b3
+ * Changes: Dropped #e5c494 (brownish) and #b3b3b3 (gray) to improve contrast
+ * on a black/dark background and keep a calmer "zen" mood while remaining legible.
+ */
+const REGION_COLOR_SET2 = ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854', '#ffd92f'];
+
+function djb2Hash(str) {
+    let h = 5381;
+    for (let i = 0; i < str.length; i++) {
+        h = ((h << 5) + h) ^ str.charCodeAt(i);
+    }
+    return h >>> 0; // unsigned
+}
+
+function hexToRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!m) return [34, 197, 94]; // fallback to accent-ish green
+    return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+}
+
+/**
+ * Build a stable color index assignment for current regions using Set2 subset.
+ * Approach: iterate region names in alphabetical order; for each, try its hashed
+ * base index, then linearly probe until a free index is found. This guarantees
+ * the first up to N regions use distinct colors. Adding new regions may change
+ * colors of later items alphabetically, but earlier ones remain stable.
+ */
+function buildRegionColorIndexMap() {
+    const names = Array.from(state.regions.keys()).sort((a, b) => String(a).localeCompare(String(b)));
+    const used = new Set();
+    const mapping = new Map();
+    const N = REGION_COLOR_SET2.length;
+    for (const n of names) {
+        let idx = djb2Hash(String(n || 'region')) % N;
+        const start = idx;
+        // linear probe to find free slot
+        while (used.has(idx)) {
+            idx = (idx + 1) % N;
+            if (idx === start) break; // all used; will reuse
+        }
+        used.add(idx);
+        mapping.set(n, idx);
+    }
+    return mapping;
+}
+
+function getRegionColorHex(name) {
+    try {
+        const mapping = buildRegionColorIndexMap();
+        const idx = mapping.get(name);
+        if (typeof idx === 'number') return REGION_COLOR_SET2[idx];
+    } catch {}
+    // Fallback to pure hash if something goes wrong
+    const key = String(name || 'region');
+    return REGION_COLOR_SET2[djb2Hash(key) % REGION_COLOR_SET2.length];
+}
+
+function getRegionColorRgb(name) {
+    return hexToRgb(getRegionColorHex(name));
+}
+
+/**
  * Import regions from CSV files
  */
 async function importRegions(files) {
@@ -110,7 +175,7 @@ async function importRegions(files) {
             state.regions.set(regionName, {
                 name: regionName,
                 boundaries: boundaries,
-                visible: false // Start hidden
+                visible: true // Default to visible so imported regions are immediately outlined
             });
 
             imported.push(regionName);
@@ -242,10 +307,10 @@ function renderRegionsList() {
         item.dataset.region = name;
         if (!region.visible) item.classList.add('dim');
 
-        // Color swatch (use drawer accent to denote regions)
+        // Color swatch (use region color from curated d3.schemeSet2 subset)
         const swatch = document.createElement('div');
         swatch.className = 'cell-class-color';
-        swatch.style.background = 'var(--drawer-accent)';
+        try { swatch.style.background = getRegionColorHex(name); } catch { swatch.style.background = 'var(--drawer-accent)'; }
 
         // Name
         const label = document.createElement('span');
@@ -410,6 +475,8 @@ export {
     saveRegionsToStorage,
     renderRegionsList,
     updateChartDropdowns,
+    getRegionColorHex,
+    getRegionColorRgb,
     getRegionBoundaries,
     getVisibleRegions
 };
