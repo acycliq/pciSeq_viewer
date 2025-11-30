@@ -68,17 +68,13 @@ export class RectangularSelector {
                 container.style.cursor = this.isActive ? 'crosshair' : 'default';
             }
 
-            // Update button appearance
+            // Update button appearance via class (works with CSS !important rules)
             const button = document.getElementById('selectionToolBtn');
             if (button) {
                 if (this.isActive) {
-                    // Active state: blue background
-                    button.style.background = '#3b82f6';
-                    button.style.borderColor = '#60a5fa';
+                    button.classList.add('active');
                 } else {
-                    // Inactive state: restore original dark background
-                    button.style.background = '#1f2937';
-                    button.style.borderColor = '#334155';
+                    button.classList.remove('active');
                 }
             }
         } catch {}
