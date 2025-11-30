@@ -3,7 +3,8 @@ import {
     INITIAL_VIEW_STATE,
     MAX_PRELOAD,
     DEFAULT_STATE,
-    UI_ELEMENTS
+    UI_ELEMENTS,
+    IMG_DIMENSIONS
 } from '../config/constants.js';
 import RBush from 'https://cdn.jsdelivr.net/npm/rbush@3.0.1/+esm';
 import { buildGlobalZProjection, createZProjectionLayer, isZProjectionReady } from '../modules/zProjectionOverlay.js';
@@ -405,16 +406,26 @@ function updateAllLayers() {
     if (visibleRegions.length > 0) {
         visibleRegions.forEach(region => {
             console.log('[Regions] Creating layer for:', region.name, 'boundaries:', region.boundaries.length, 'points');
+            // Transform region boundary from image pixels to deck tile space
+            let transformedPath = [];
+            try {
+                const dims = IMG_DIMENSIONS || { width: window.config().imageWidth, height: window.config().imageHeight, tileSize: 256 };
+                transformedPath = (region.boundaries || []).map(([x, y]) => transformToTileCoordinates(x, y, dims));
+            } catch (e) {
+                console.warn('[Regions] Failed to transform region coordinates, drawing raw pixels may not align:', e);
+                transformedPath = region.boundaries || [];
+            }
             // Create a PathLayer for the region boundary
             const regionLayer = new deck.PathLayer({
                 id: `region-${region.name}`,
-                data: [{ path: region.boundaries, name: region.name }],
+                data: [{ path: transformedPath, name: region.name }],
                 getPath: d => d.path,
                 getColor: [34, 197, 94, 180], // Green accent with transparency
                 getWidth: 3,
                 widthMinPixels: 2,
                 widthScale: 1,
                 widthUnits: 'pixels',
+                coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN,
                 pickable: true,
                 autoHighlight: true,
                 highlightColor: [34, 197, 94, 255],
@@ -1332,6 +1343,14 @@ window.addEventListener('load', async () => {
 
     // Load saved regions from localStorage
     loadRegionsFromStorage();
+
+    // If region "CA1 Bbox" exists, make it visible so its shape is drawn
+    try {
+        const target = 'CA1 Bbox';
+        if (window.appState && window.appState.regions && window.appState.regions.has(target)) {
+            toggleRegionVisibility(target, true);
+        }
+    } catch {}
 
     // Initialize cell lookup UI first - this sets up the Ctrl+F event listener
     if (window.cellLookup) {
