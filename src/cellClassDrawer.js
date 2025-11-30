@@ -278,6 +278,23 @@ export function initCellClassDrawer() {
     // Setup collapsible sections
     setupCollapsibleSections();
 
+    // Set initial collapsed state: expand Genes and Cell Classes; collapse others
+    try {
+        const keepOpen = new Set(['genesHeader', 'cellClassesHeader']);
+        const headers = document.querySelectorAll('.collapsible-header');
+        headers.forEach(header => {
+            const content = header.nextElementSibling;
+            if (!content || !content.classList.contains('section-content')) return;
+            if (keepOpen.has(header.id)) {
+                header.classList.remove('collapsed');
+                content.classList.remove('collapsed');
+            } else {
+                header.classList.add('collapsed');
+                content.classList.add('collapsed');
+            }
+        });
+    } catch {}
+
     // Setup Show All button (pciSeq_3d style)
     const showAllBtn = document.getElementById('showAllCellClassesBtn');
     if (showAllBtn) {
