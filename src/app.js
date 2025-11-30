@@ -105,7 +105,8 @@ import {
     toggleRegionVisibility,
     loadRegionsFromStorage,
     getRegionBoundaries,
-    getVisibleRegions
+    getVisibleRegions,
+    getRegionColorRgb
 } from './regionsManager.js';
 
 // Extract deck.gl components
@@ -416,11 +417,14 @@ function updateAllLayers() {
                 transformedPath = region.boundaries || [];
             }
             // Create a PathLayer for the region boundary
+            // Color: derived from curated d3.schemeSet2 subset via deterministic mapping
+            let color = [34, 197, 94];
+            try { color = getRegionColorRgb(region.name); } catch {}
             const regionLayer = new deck.PathLayer({
                 id: `region-${region.name}`,
                 data: [{ path: transformedPath, name: region.name }],
                 getPath: d => d.path,
-                getColor: [34, 197, 94, 180], // Green accent with transparency
+                getColor: [...color, 230], // curated Set2 color with high alpha for dark bg
                 getWidth: 3,
                 widthMinPixels: 2,
                 widthScale: 1,
@@ -428,7 +432,7 @@ function updateAllLayers() {
                 coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN,
                 pickable: true,
                 autoHighlight: true,
-                highlightColor: [34, 197, 94, 255],
+                highlightColor: [...color, 255],
                 onHover: (info) => {
                     if (info.object) {
                         showTooltip({
