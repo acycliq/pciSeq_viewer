@@ -1299,20 +1299,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Controls drawer state (collapsed by default; persists open/closed)
     const controlsPanel = document.getElementById('controlsPanel');
     if (controlsPanel) {
-        // Default to collapsed
-        let desired = 'closed';
-        try {
-            const saved = window.localStorage && window.localStorage.getItem('drawer-state');
-            if (saved === 'open' || saved === 'closed') desired = saved;
-        } catch {}
-        if (desired === 'open') controlsPanel.classList.remove('collapsed');
-        else controlsPanel.classList.add('collapsed');
-        // Place the scale bar to the right of the drawer or rail
+        // Always start collapsed (no persistence)
+        controlsPanel.classList.add('collapsed');
+        // Place the scale bar to the right of the rail
         try { updateScaleBarOffset(); } catch {}
-        // Sync aria-expanded on the embedded hamburger
+        // Sync aria-expanded on the embedded control, if present
         try {
             const btn = document.getElementById('controlsToggleBtn');
-            if (btn) btn.setAttribute('aria-expanded', desired === 'open' ? 'true' : 'false');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
         } catch {}
     }
 

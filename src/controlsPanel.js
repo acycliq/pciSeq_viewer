@@ -20,14 +20,12 @@ function updateScaleBarOffset() {
 
 function showControlsPanel() {
     elements.controlsPanel.classList.remove('collapsed');
-    try { window.localStorage && window.localStorage.setItem('drawer-state', 'open'); } catch {}
     updateAriaExpanded();
     updateScaleBarOffset();
 }
 
 function hideControlsPanel() {
     elements.controlsPanel.classList.add('collapsed');
-    try { window.localStorage && window.localStorage.setItem('drawer-state', 'closed'); } catch {}
     updateAriaExpanded();
     updateScaleBarOffset();
 }
