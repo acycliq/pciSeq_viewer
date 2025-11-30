@@ -75,28 +75,32 @@
                     <div class="legend-resize-handle" id="genesResizeHandle" title="Drag to resize"></div>
                 </div>
             </div>
-            <!-- Gene Controls Section -->
+            <!-- Gene Controls Section (Collapsible) -->
             <div class="control-section">
-                <h3 class="section-label">Gene Controls</h3>
-                <button id="geneDistributionBtn" title="Gene Distribution Chart">Distribution</button>
-                <div class="control-item gene-size-item">
-                    <label for="geneSizeSlider">Size</label>
-                    <input type="range" id="geneSizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
-                    <span id="geneSizeValue">1.0</span>
-                </div>
-                <div class="control-item score-filter-item">
-                    <label for="scoreFilterSlider">Score Filter</label>
-                    <input type="range" id="scoreFilterSlider" min="0" max="1.0" step="0.01" value="0">
-                    <span id="scoreFilterValue">0.00</span>
-                </div>
-                <div class="control-item intensity-filter-item">
-                    <label for="intensityFilterSlider">Intensity Filter</label>
-                    <input type="range" id="intensityFilterSlider" min="0" max="1.0" step="0.01" value="0">
-                    <span id="intensityFilterValue">0.00</span>
-                </div>
-                <div class="control-item">
-                    <input type="checkbox" id="uniformSizeToggle">
-                    <label for="uniformSizeToggle" title="When enabled, all markers use the same size regardless of plane distance">Uniform Size</label>
+                <h3 class="section-label collapsible-header" id="geneControlsHeader">
+                    <span class="collapse-icon">▼</span> Gene Controls
+                </h3>
+                <div class="section-content" id="geneControlsContent">
+                    <button id="geneDistributionBtn" title="Gene Distribution Chart">Distribution</button>
+                    <div class="control-item gene-size-item">
+                        <label for="geneSizeSlider">Size</label>
+                        <input type="range" id="geneSizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
+                        <span id="geneSizeValue">1.0</span>
+                    </div>
+                    <div class="control-item score-filter-item">
+                        <label for="scoreFilterSlider">Score Filter</label>
+                        <input type="range" id="scoreFilterSlider" min="0" max="1.0" step="0.01" value="0">
+                        <span id="scoreFilterValue">0.00</span>
+                    </div>
+                    <div class="control-item intensity-filter-item">
+                        <label for="intensityFilterSlider">Intensity Filter</label>
+                        <input type="range" id="intensityFilterSlider" min="0" max="1.0" step="0.01" value="0">
+                        <span id="intensityFilterValue">0.00</span>
+                    </div>
+                    <div class="control-item">
+                        <input type="checkbox" id="uniformSizeToggle">
+                        <label for="uniformSizeToggle" title="When enabled, all markers use the same size regardless of plane distance">Uniform Size</label>
+                    </div>
                 </div>
             </div>
 
@@ -123,73 +127,89 @@
                 </div>
             </div>
 
-            <!-- Cell Charts Section -->
+            <!-- Cell Charts Section (Collapsible) -->
             <div class="control-section">
-                <h3 class="section-label">Cell Charts</h3>
-                <button id="cellClassViewerBtn" onclick="openCellClassViewer()" title="Open Christina">Christina</button>
-                <button id="classesByZBtn" title="Cell Class Distribution by Z-Plane">Classes by Z</button>
-                <button id="classPercentageBtn" title="Overall Cell Class Distribution">Class Distribution</button>
-            </div>
-
-            <!-- Regions Section -->
-            <div class="control-section">
-                <h3 class="section-label">Regions</h3>
-                <input type="file" id="regionFileInput" accept=".csv" multiple style="display:none;">
-                <button id="importRegionsBtn" class="file-input-label" title="Import region boundary CSV files">Import Regions</button>
-                <div id="regionsList" style="margin-top: 10px;">
-                    <!-- Region items will be added here dynamically -->
+                <h3 class="section-label collapsible-header" id="cellChartsHeader">
+                    <span class="collapse-icon">▼</span> Cell Charts
+                </h3>
+                <div class="section-content" id="cellChartsContent">
+                    <button id="cellClassViewerBtn" onclick="openCellClassViewer()" title="Open Christina">Christina</button>
+                    <button id="classesByZBtn" title="Cell Class Distribution by Z-Plane">Classes by Z</button>
+                    <button id="classPercentageBtn" title="Overall Cell Class Distribution">Class Distribution</button>
                 </div>
             </div>
 
-            <!-- Layer Controls Section -->
+            <!-- Regions Section (Collapsible) -->
             <div class="control-section">
-                <h3 class="section-label">Layers</h3>
-                <div class="control-item">
-                    <input type="checkbox" id="showTiles" checked>
-                    <label for="showTiles">Dapi</label>
-                </div>
-                <div class="control-item">
-                    <input type="checkbox" id="showPolygons" checked>
-                    <label for="showPolygons">Cells</label>
-                </div>
-                <div class="control-item polygon-opacity-item">
-                    <label for="polygonOpacitySlider">Opacity</label>
-                    <input type="range" id="polygonOpacitySlider" min="0.0" max="1.0" step="0.1">
-                    <span id="polygonOpacityValue">0.4</span>
-                </div>
-                <div class="control-item">
-                    <input type="checkbox" id="zProjectionToggle">
-                    <label for="zProjectionToggle">All Planes</label>
-                </div>
-                <div id="zProjectionControls" style="display: none; margin-left: 15px;">
-                    <div class="control-item" style="margin-top: 5px;">
-                        <label for="zProjectionOpacity" style="font-size: 11px;">Overlay:</label>
-                        <input type="range" id="zProjectionOpacity" min="0.1" max="0.8" step="0.1" value="0.3"
-                               style="width: 60px; margin: 0 5px;">
-                        <span id="zProjectionOpacityValue" style="font-size: 10px;">30%</span>
-                    </div>
-                </div>
-                <div class="control-item">
-                    <input type="checkbox" id="cellProjectionToggle">
-                    <label for="cellProjectionToggle">Cell Projection</label>
-                </div>
-                <div id="cellProjectionControls" style="display: none; margin-left: 15px;">
-                    <div class="control-item" style="margin-top: 5px;">
-                        <label for="geneCountSlider" style="font-size: 11px;">Min Genes:</label>
-                        <input type="range" id="geneCountSlider" min="0" max="100" step="1" value="0"
-                               style="width: 80px; margin: 0 5px;">
-                        <span id="geneCountValue" style="font-size: 10px;">0</span>
+                <h3 class="section-label collapsible-header" id="regionsHeader">
+                    <span class="collapse-icon">▼</span> Regions
+                </h3>
+                <div class="section-content" id="regionsContent">
+                    <input type="file" id="regionFileInput" accept=".csv" multiple style="display:none;">
+                    <button id="importRegionsBtn" class="file-input-label" title="Import region boundary CSV files">Import Regions</button>
+                    <div id="regionsList" style="margin-top: 10px;">
+                        <!-- Region items will be added here dynamically -->
                     </div>
                 </div>
             </div>
 
-            <!-- Tools Section -->
+            <!-- Layer Controls Section (Collapsible) -->
             <div class="control-section">
-                <h3 class="section-label">Tools</h3>
-                <button id="selectionToolBtn" class="accent-btn" title="Rectangular Selection">
-                    <img src="selection_tool.png" alt="Selection">
-                    <span>Selection</span>
-                </button>
+                <h3 class="section-label collapsible-header" id="layersHeader">
+                    <span class="collapse-icon">▼</span> Layers
+                </h3>
+                <div class="section-content" id="layersContent">
+                    <div class="control-item">
+                        <input type="checkbox" id="showTiles" checked>
+                        <label for="showTiles">Dapi</label>
+                    </div>
+                    <div class="control-item">
+                        <input type="checkbox" id="showPolygons" checked>
+                        <label for="showPolygons">Cells</label>
+                    </div>
+                    <div class="control-item polygon-opacity-item">
+                        <label for="polygonOpacitySlider">Opacity</label>
+                        <input type="range" id="polygonOpacitySlider" min="0.0" max="1.0" step="0.1">
+                        <span id="polygonOpacityValue">0.4</span>
+                    </div>
+                    <div class="control-item">
+                        <input type="checkbox" id="zProjectionToggle">
+                        <label for="zProjectionToggle">All Planes</label>
+                    </div>
+                    <div id="zProjectionControls" style="display: none; margin-left: 15px;">
+                        <div class="control-item" style="margin-top: 5px;">
+                            <label for="zProjectionOpacity" style="font-size: 11px;">Overlay:</label>
+                            <input type="range" id="zProjectionOpacity" min="0.1" max="0.8" step="0.1" value="0.3"
+                                   style="width: 60px; margin: 0 5px;">
+                            <span id="zProjectionOpacityValue" style="font-size: 10px;">30%</span>
+                        </div>
+                    </div>
+                    <div class="control-item">
+                        <input type="checkbox" id="cellProjectionToggle">
+                        <label for="cellProjectionToggle">Cell Projection</label>
+                    </div>
+                    <div id="cellProjectionControls" style="display: none; margin-left: 15px;">
+                        <div class="control-item" style="margin-top: 5px;">
+                            <label for="geneCountSlider" style="font-size: 11px;">Min Genes:</label>
+                            <input type="range" id="geneCountSlider" min="0" max="100" step="1" value="0"
+                                   style="width: 80px; margin: 0 5px;">
+                            <span id="geneCountValue" style="font-size: 10px;">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tools Section (Collapsible) -->
+            <div class="control-section">
+                <h3 class="section-label collapsible-header" id="toolsHeader">
+                    <span class="collapse-icon">▼</span> Tools
+                </h3>
+                <div class="section-content" id="toolsContent">
+                    <button id="selectionToolBtn" class="accent-btn" title="Rectangular Selection">
+                        <img src="selection_tool.png" alt="Selection">
+                        <span>Selection</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
