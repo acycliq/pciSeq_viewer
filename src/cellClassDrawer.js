@@ -58,7 +58,8 @@ export function populateCellClassDrawer() {
         const isVisible = state.selectedCellClasses.has(name);
         if (!isVisible) item.classList.add('dim');
         const eye = document.createElement('div');
-        eye.className = `cell-class-eye ${isVisible ? 'visible' : 'hidden'}`;
+        // Keep the eye always visible; swap SVG and dim the row for state
+        eye.className = 'cell-class-eye';
 
         // SVG icons identical to pciSeq_3d (thin stroke eye)
         const eyeOpenSvg = `
@@ -171,7 +172,8 @@ function updateEyeIcon(className, isVisible) {
           <line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="1.5"/>
         </svg>`;
 
-    eye.className = `cell-class-eye ${isVisible ? 'visible' : 'hidden'}`;
+    // Keep the eye element visible; just swap the icon
+    eye.className = 'cell-class-eye';
     eye.innerHTML = isVisible ? eyeOpenSvg : eyeClosedSvg;
     eye.title = isVisible ? 'Hide' : 'Show';
 }
