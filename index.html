@@ -322,6 +322,31 @@
         <span id="micronCoords">---, ---</span> μm
     </div>
 
+    <!-- About (Info) Button and Modal -->
+    <div id="aboutBtn" class="about-btn" aria-label="About this viewer" title="About">i</div>
+    <div id="aboutModal" class="about-modal-bg" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+        <div class="about-modal" role="document">
+            <button class="about-modal-close" id="aboutClose" aria-label="Close">×</button>
+            <h3 id="aboutTitle">About This Viewer</h3>
+            <p>
+                This web-based viewer renders large spatial transcriptomics datasets with smooth pan/zoom and
+                multi-plane visualization. Use the left drawer to toggle genes and cell classes, and the bottom
+                slider to navigate planes. Charts and tools open as widgets.
+            </p>
+            <p>
+                Marker size: by default, spots appear larger when they are closer to the current plane and smaller when
+                they are farther away (distance-aware sizing). Use the <em>Size</em> slider in Gene Controls to scale
+                all markers, or enable <em>Uniform Size</em> to keep the same size across all planes.
+            </p>
+            <p>
+                3D view: a separate voxel-by-voxel perspective viewer is available. It renders volumetric cells/genes
+                with depth, supports slicing, and is useful for inspecting structure in 3D. Launch it via
+                the Selection tool: enable Tools\Selection, then hold Ctrl and drag to draw a rectangle; releasing
+                spawns the 3D view for that region.
+            </p>
+        </div>
+    </div>
+
     <!-- Cell Info Panel (Bottom Right) -->
     <div id="cellInfoPanel" class="cell-info-panel" style="display: none;">
         <div class="cell-info-header">
@@ -345,6 +370,24 @@
             </div>
         </div>
     </div>
+
+    <script>
+        (function() {
+            const btn = document.getElementById('aboutBtn');
+            const modalBg = document.getElementById('aboutModal');
+            const closeBtn = document.getElementById('aboutClose');
+
+            if (!btn || !modalBg) return;
+
+            const open = () => modalBg.classList.add('active');
+            const close = () => modalBg.classList.remove('active');
+
+            btn.addEventListener('click', open);
+            if (closeBtn) closeBtn.addEventListener('click', close);
+            modalBg.addEventListener('click', (e) => { if (e.target === modalBg) close(); });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+        })();
+    </script>
 
     <script type="module" src="src/app.js"></script>
 </body>
