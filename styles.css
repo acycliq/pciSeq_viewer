@@ -1305,7 +1305,6 @@ body {
     font-weight: 800;
     font-family: Times, serif;
     position: absolute;
-    background: #444;
     top: 18px;
     right: 18px;
     width: 30px;
@@ -1314,10 +1313,12 @@ body {
     line-height: 30px;
     text-align: center;
     font-size: 20px;
-    color: #222;
     cursor: pointer;
+    background: var(--drawer-bg);
+    border: 1px solid var(--drawer-border);
+    color: var(--drawer-muted);
 }
-.about-btn:hover { background: #666; }
+.about-btn:hover { border-color: var(--drawer-accent); }
 
 .about-modal-bg {
     position: fixed;
