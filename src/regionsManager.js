@@ -51,7 +51,14 @@ function formatRegionName(filename) {
  * 1465,2916
  */
 function parseCSV(csvText) {
-    return d3.csvParse(csvText, row => {
+    const parsedData = d3.csvParse(csvText);
+
+    if (!parsedData.columns || !parsedData.columns.includes('x') || !parsedData.columns.includes('y')) {
+        console.warn('CSV file is missing "x" or "y" columns. Please ensure your CSV has an "x" and a "y" header.');
+        return [];
+    }
+
+    return parsedData.map(row => {
         const x = +row.x;
         const y = +row.y;
         return (Number.isFinite(x) && Number.isFinite(y)) ? [x, y] : null;
