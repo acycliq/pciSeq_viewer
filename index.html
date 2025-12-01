@@ -54,7 +54,15 @@
     <!-- Controls Panel (collapsed by default; gutter with embedded hamburger) -->
     <div id="controlsPanel" class="controls-panel collapsed" role="complementary" aria-label="Controls drawer">
         <!-- Clickable rail gutter to expand/collapse -->
-        <div id="controlsRail" class="controls-rail" title="Toggle controls"></div>
+        <div id="controlsRail" class="controls-rail" title="Toggle controls" role="button" aria-label="Toggle controls drawer" tabindex="0">
+            <div class="rail-content">
+                <div class="rail-grip" aria-hidden="true">
+                    <span></span><span></span><span></span>
+                    <span></span><span></span><span></span>
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        </div>
             <div class="controls-content">
             <!-- Genes Section (Collapsible) -->
             <div class="control-section">

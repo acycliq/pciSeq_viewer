@@ -927,9 +927,28 @@ body {
     background: var(--drawer-surface);
     border-right: 1px solid var(--drawer-border);
     cursor: pointer;
+    display: flex;
+    align-items: flex-start; /* align content to top */
+    justify-content: center;
+    padding-top: 14px; /* move grip slightly lower for visibility */
 }
 .controls-panel.collapsed .controls-rail { left: auto; right: 0; }
-.controls-rail:hover { background: #1f1f1f; }
+.controls-rail:hover { background: #1f1f1f; box-shadow: inset 0 0 0 1px var(--drawer-accent-weak); }
+
+/* Rail inner content */
+.rail-content { width: 100%; display: flex; flex-direction: column; align-items: center; }
+
+/* 3x3 grip dots */
+.rail-grip {
+    width: 10px;
+    height: 10px;
+    display: grid;
+    grid-template-columns: repeat(3, 2px);
+    grid-template-rows: repeat(3, 2px);
+    gap: 2px;
+}
+.rail-grip span { width: 2px; height: 2px; background: var(--drawer-muted); border-radius: 50%; display: block; }
+.controls-rail:hover .rail-grip span { background: var(--drawer-accent); }
 
 /* Controls Panel: align with pciSeq_3d sidebar layout */
 .controls-panel {
