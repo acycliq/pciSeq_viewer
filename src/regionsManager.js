@@ -5,6 +5,7 @@
  */
 
 import { state } from './stateManager.js';
+import { EYE_OPEN_SVG, EYE_CLOSED_SVG, TRASH_SVG } from './icons.js';
 
 const STORAGE_KEY = 'pciSeq_regions';
 
@@ -50,30 +51,11 @@ function formatRegionName(filename) {
  * 1465,2916
  */
 function parseCSV(csvText) {
-    const lines = csvText.trim().split('\n');
-    const coordinates = [];
-
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-
-        // Skip header row (if it contains 'x' and 'y')
-        if (line.toLowerCase().includes('x') && line.toLowerCase().includes('y')) {
-            continue;
-        }
-
-        const parts = line.split(',').map(p => p.trim());
-        if (parts.length >= 2) {
-            const x = parseFloat(parts[0]);
-            const y = parseFloat(parts[1]);
-
-            if (!isNaN(x) && !isNaN(y)) {
-                coordinates.push([x, y]);
-            }
-        }
-    }
-
-    return coordinates;
+    return d3.csvParse(csvText, row => {
+        const x = +row.x;
+        const y = +row.y;
+        return (Number.isFinite(x) && Number.isFinite(y)) ? [x, y] : null;
+    }).filter(d => d !== null);
 }
 
 /**
@@ -106,9 +88,15 @@ function djb2Hash(str) {
 }
 
 function hexToRgb(hex) {
-    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (!m) return [34, 197, 94]; // fallback to accent-ish green
-    return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+    // Prefer d3.rgb for robust color parsing (handles #RGB/#RRGGBB/named)
+    try {
+        const c = d3.rgb(hex);
+        if (c && Number.isFinite(c.r) && Number.isFinite(c.g) && Number.isFinite(c.b)) {
+            return [c.r, c.g, c.b];
+        }
+    } catch (e) {}
+    // Fallback to accent-ish green on invalid input
+    return [34, 197, 94];
 }
 
 /**
@@ -285,18 +273,7 @@ function renderRegionsList() {
         return;
     }
 
-    // Eye SVGs (same thin-stroke style used elsewhere)
-    const eyeOpenSvg = `
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-          <circle cx="12" cy="12" r="3" fill="currentColor"/>
-        </svg>`;
-    const eyeClosedSvg = `
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-          <circle cx="12" cy="12" r="3" fill="currentColor"/>
-          <line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="1.5"/>
-        </svg>`;
+    // Eye SVGs are centralized in src/icons.js
 
     for (const [name, region] of state.regions) {
         console.log('[Regions] Rendering region:', name, 'visible:', region.visible);
@@ -329,7 +306,7 @@ function renderRegionsList() {
         const eye = document.createElement('div');
         // Keep eye always visible; use icon swap + dimming to indicate state
         eye.className = 'cell-class-eye';
-        eye.innerHTML = region.visible ? eyeOpenSvg : eyeClosedSvg;
+        eye.innerHTML = region.visible ? EYE_OPEN_SVG : EYE_CLOSED_SVG;
         eye.title = region.visible ? 'Hide' : 'Show';
 
         const toggle = () => {
@@ -347,13 +324,7 @@ function renderRegionsList() {
         deleteBtn.title = 'Delete region';
         deleteBtn.setAttribute('aria-label', `Delete region ${name || ''}`);
         deleteBtn.setAttribute('tabindex', '0');
-        deleteBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-              <path d="M3 6h18" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <rect x="6" y="6" width="12" height="14" rx="2" ry="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              <path d="M10 10v6M14 10v6" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            </svg>`;
+        deleteBtn.innerHTML = TRASH_SVG;
         const handleDelete = (e) => {
             e.stopPropagation();
             if (confirm(`Delete region "${name}"?`)) {
@@ -390,21 +361,10 @@ function updateRegionEyeIcon(name, isVisible) {
     const eye = item.querySelector('.cell-class-eye');
     if (!eye) return;
 
-    const eyeOpenSvg = `
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-          <circle cx="12" cy="12" r="3" fill="currentColor"/>
-        </svg>`;
-    const eyeClosedSvg = `
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-          <circle cx="12" cy="12" r="3" fill="currentColor"/>
-          <line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="1.5"/>
-        </svg>`;
 
     // Keep eye element visible; only swap icon and adjust dim state on row
     eye.className = 'cell-class-eye';
-    eye.innerHTML = isVisible ? eyeOpenSvg : eyeClosedSvg;
+    eye.innerHTML = isVisible ? EYE_OPEN_SVG : EYE_CLOSED_SVG;
     eye.title = isVisible ? 'Hide' : 'Show';
 
     if (isVisible) item.classList.remove('dim'); else item.classList.add('dim');

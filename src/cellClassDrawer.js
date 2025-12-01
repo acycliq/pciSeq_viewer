@@ -6,6 +6,7 @@
 
 import { state } from './stateManager.js';
 import { debounce } from './utils.js';
+import { EYE_OPEN_SVG, EYE_CLOSED_SVG } from './icons.js';
 
 /**
  * Populate the cell class list, ranked by count
@@ -61,21 +62,8 @@ export function populateCellClassDrawer() {
         // Keep the eye always visible; swap SVG and dim the row for state
         eye.className = 'cell-class-eye';
 
-        // SVG icons identical to pciSeq_3d (thin stroke eye)
-        const eyeOpenSvg = `
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="12" cy="12" r="3" fill="currentColor"/>
-            </svg>`;
-
-        const eyeClosedSvg = `
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="12" cy="12" r="3" fill="currentColor"/>
-              <line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="1.5"/>
-            </svg>`;
-
-        eye.innerHTML = isVisible ? eyeOpenSvg : eyeClosedSvg;
+        // Use centralized eye SVGs
+        eye.innerHTML = isVisible ? EYE_OPEN_SVG : EYE_CLOSED_SVG;
         eye.title = isVisible ? 'Hide' : 'Show';
 
         // Color swatch
@@ -158,23 +146,9 @@ function updateEyeIcon(className, isVisible) {
     const eye = item.querySelector('.cell-class-eye');
     if (!eye) return;
 
-    // SVG icons identical to pciSeq_3d (thin stroke eye)
-    const eyeOpenSvg = `
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-          <circle cx="12" cy="12" r="3" fill="currentColor"/>
-        </svg>`;
-
-    const eyeClosedSvg = `
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-          <circle cx="12" cy="12" r="3" fill="currentColor"/>
-          <line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="1.5"/>
-        </svg>`;
-
-    // Keep the eye element visible; just swap the icon
+    // Keep the eye element visible; just swap the icon using centralized SVGs
     eye.className = 'cell-class-eye';
-    eye.innerHTML = isVisible ? eyeOpenSvg : eyeClosedSvg;
+    eye.innerHTML = isVisible ? EYE_OPEN_SVG : EYE_CLOSED_SVG;
     eye.title = isVisible ? 'Hide' : 'Show';
 }
 

@@ -553,9 +553,13 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
         const colorFn = (typeof window.classColorsCodes === 'function') ? window.classColorsCodes : null;
         const scheme = colorFn ? colorFn() : [];
         const toRgb = (hex) => {
-            const h = String(hex || '').replace('#','');
-            if (h.length !== 6) return [192,192,192];
-            return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+            // Use d3.rgb for robust parsing; keep gray fallback
+            try {
+                const c = d3.rgb(hex);
+                if (c) return [c.r, c.g, c.b];
+            } catch {}
+            console.warn(`Invalid or unsupported color '${hex}', using fallback gray`);
+            return [192, 192, 192];
         };
         for (const f of filteredData.features) {
             const cls = f?.properties?.cellClass;

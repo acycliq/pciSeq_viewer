@@ -4,6 +4,7 @@
  */
 
 import { state } from './stateManager.js';
+import { EYE_OPEN_SVG, EYE_CLOSED_SVG } from './icons.js';
 import { debounce } from './utils.js';
 
 export function populateGeneDrawer() {
@@ -61,18 +62,7 @@ export function populateGeneDrawer() {
         // Eye icon (thin stroke like pciSeq_3d)
         const eye = document.createElement('div');
         eye.className = `cell-class-eye ${visible ? 'visible' : 'hidden'}`;
-        const eyeOpenSvg = `
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="12" cy="12" r="3" fill="currentColor"/>
-            </svg>`;
-        const eyeOffSvg = `
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="12" cy="12" r="3" fill="currentColor"/>
-              <line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="1.5"/>
-            </svg>`;
-        eye.innerHTML = visible ? eyeOpenSvg : eyeOffSvg;
+        eye.innerHTML = visible ? EYE_OPEN_SVG : EYE_CLOSED_SVG;
 
         // Click to toggle
         const toggle = () => toggleGeneVisibility(name);
@@ -100,18 +90,7 @@ function toggleGeneVisibility(gene) {
     if (item) {
         const eye = item.querySelector('.cell-class-eye');
         const visible = state.selectedGenes.has(gene);
-        const eyeOpenSvg = `
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="12" cy="12" r="3" fill="currentColor"/>
-            </svg>`;
-        const eyeOffSvg = `
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="12" cy="12" r="3" fill="currentColor"/>
-              <line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="1.5"/>
-            </svg>`;
-        if (eye) eye.innerHTML = visible ? eyeOpenSvg : eyeOffSvg;
+        if (eye) eye.innerHTML = visible ? EYE_OPEN_SVG : EYE_CLOSED_SVG;
         if (visible) item.classList.remove('dim'); else item.classList.add('dim');
     }
 
