@@ -160,6 +160,10 @@
                 </h3>
                 <div class="section-content" id="layersContent">
                     <div class="control-item">
+                        <label for="backgroundSelect">Background</label>
+                        <select id="backgroundSelect" style="width: 140px;"></select>
+                    </div>
+                    <div class="control-item">
                         <input type="checkbox" id="showTiles" checked>
                         <label for="showTiles">Dapi</label>
                     </div>
@@ -308,6 +312,18 @@
     <div class="loading-indicator" id="loadingIndicator">
         <span id="loadingText">Loading...</span>
         <span id="loadingTimer"></span>
+    </div>
+
+    <!-- Basemap Toggle (Top-Right) -->
+    <div id="basemapToggle" class="basemap-toggle" role="radiogroup" aria-label="Basemap selector">
+        <label class="basemap-option">
+            <input type="radio" name="basemapRadio" id="basemapRadio1" value="">
+            <span id="basemapLabel1">Base A</span>
+        </label>
+        <label class="basemap-option">
+            <input type="radio" name="basemapRadio" id="basemapRadio2" value="">
+            <span id="basemapLabel2">Base B</span>
+        </label>
     </div>
 
     <!-- Scale Bar -->

@@ -64,9 +64,39 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
 
     // === LAYER VISIBILITY TOGGLES ===
 
-    // Background tiles toggle
+    // Background tiles toggle (primary/first background)
     elements.showTiles.addEventListener('change', (e) => {
-        state.showTiles = e.target.checked;
+        const checked = e.target.checked;
+        const cfg = window.config ? window.config() : {};
+        const list = (Array.isArray(cfg.backgrounds) && cfg.backgrounds.length)
+            ? cfg.backgrounds
+            : [{ id: 'default', name: 'Default', urlPattern: cfg.backgroundTiles }];
+        const primaryId = list[0]?.id || 'default';
+
+        if (checked) {
+            state.showTiles = true;
+            state.activeBackgroundId = primaryId;
+            if (window.appState) window.appState.activeBackgroundId = primaryId;
+            // Uncheck secondary if present
+            const altCb = document.getElementById('showTilesAlt');
+            if (altCb) altCb.checked = false;
+            // Sync radios and dropdown
+            if (elements.basemapRadio1) elements.basemapRadio1.checked = true;
+            if (elements.basemapRadio2) elements.basemapRadio2.checked = false;
+            if (elements.backgroundSelect) elements.backgroundSelect.value = primaryId;
+        } else {
+            // If primary was unchecked and no other is checked, hide tiles entirely
+            const altCb = document.getElementById('showTilesAlt');
+            const anyChecked = altCb && altCb.checked;
+            if (!anyChecked) {
+                state.showTiles = false;
+                // Clear radios
+                if (elements.basemapRadio1) elements.basemapRadio1.checked = false;
+                if (elements.basemapRadio2) elements.basemapRadio2.checked = false;
+            }
+        }
+        // Recreate tile layers to reflect potential background switch
+        try { state.tileLayers.clear(); } catch {}
         updateLayersCallback();
     });
 
@@ -75,6 +105,214 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         state.showPolygons = e.target.checked;
         updateLayersCallback();
     });
+
+    // Build secondary background checkbox in Layers drawer if a second background exists
+    try {
+        const cfg = window.config ? window.config() : {};
+        const list = (Array.isArray(cfg.backgrounds) && cfg.backgrounds.length)
+            ? cfg.backgrounds
+            : [{ id: 'default', name: 'Default', urlPattern: cfg.backgroundTiles }];
+        if (list.length > 1) {
+            const layersContent = document.getElementById('layersContent');
+            const existing = document.getElementById('showTilesAlt');
+            // Update primary label text to match background[0] name
+            try {
+                const primaryLabel = document.querySelector('label[for="showTiles"]');
+                if (primaryLabel) primaryLabel.textContent = list[0].name || list[0].id;
+            } catch {}
+            if (!existing && layersContent) {
+                const item = document.createElement('div');
+                item.className = 'control-item';
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.id = 'showTilesAlt';
+                const label = document.createElement('label');
+                label.htmlFor = 'showTilesAlt';
+                label.textContent = list[1].name || list[1].id;
+                item.appendChild(input);
+                item.appendChild(label);
+                // Insert right after the primary tiles item (which exists before)
+                const firstCheckbox = document.getElementById('showTiles');
+                if (firstCheckbox && firstCheckbox.parentElement && firstCheckbox.parentElement.parentElement === layersContent) {
+                    layersContent.insertBefore(item, firstCheckbox.parentElement.nextSibling);
+                } else {
+                    layersContent.insertBefore(item, layersContent.firstChild);
+                }
+                // Listener for secondary checkbox
+                input.addEventListener('change', () => {
+                    const checked = input.checked;
+                    if (checked) {
+                        state.showTiles = true;
+                        state.activeBackgroundId = list[1].id;
+                        if (window.appState) window.appState.activeBackgroundId = list[1].id;
+                        // Uncheck primary
+                        if (elements.showTiles) elements.showTiles.checked = false;
+                        // Sync radios and dropdown
+                        if (elements.basemapRadio1) elements.basemapRadio1.checked = false;
+                        if (elements.basemapRadio2) elements.basemapRadio2.checked = true;
+                        if (elements.backgroundSelect) elements.backgroundSelect.value = list[1].id;
+                    } else {
+                        // If secondary unchecked and primary not checked, hide tiles
+                        const primaryChecked = elements.showTiles && elements.showTiles.checked;
+                        if (!primaryChecked) {
+                            state.showTiles = false;
+                            if (elements.basemapRadio1) elements.basemapRadio1.checked = false;
+                            if (elements.basemapRadio2) elements.basemapRadio2.checked = false;
+                        }
+                    }
+                    try { state.tileLayers.clear(); } catch {}
+                    updateLayersCallback();
+                });
+            }
+        } else {
+            // Single background only: ensure primary label matches name
+            try {
+                const only = list[0];
+                const primaryLabel = document.querySelector('label[for="showTiles"]');
+                if (primaryLabel) primaryLabel.textContent = only.name || only.id;
+            } catch {}
+        }
+    } catch (e) {
+        console.warn('Secondary baselayer checkbox setup failed:', e);
+    }
+
+    // Background selector (dynamic switch of tile source)
+    try {
+        const bgSelect = elements.backgroundSelect || document.getElementById('backgroundSelect');
+        if (bgSelect) {
+            // Populate options from config
+            const cfg = window.config ? window.config() : {};
+            const list = (Array.isArray(cfg.backgrounds) && cfg.backgrounds.length)
+                ? cfg.backgrounds
+                : [{ id: 'default', name: 'Default', urlPattern: cfg.backgroundTiles }];
+            // Clear existing
+            bgSelect.innerHTML = '';
+            for (const b of list) {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = b.name || b.id;
+                bgSelect.appendChild(opt);
+            }
+            // Set initial value
+            const currentId = (window.appState && window.appState.activeBackgroundId) || cfg.defaultBackgroundId || list[0].id;
+            bgSelect.value = currentId;
+            // Handle change
+            bgSelect.addEventListener('change', () => {
+                const newId = bgSelect.value;
+                if (!newId || (window.appState && window.appState.activeBackgroundId === newId)) return;
+                state.activeBackgroundId = newId;
+                if (window.appState) window.appState.activeBackgroundId = newId;
+                // Recreate layer instances for the new source; keep tileCache so switching back is instant
+                try { state.tileLayers.clear(); } catch {}
+                // Keep radios in sync
+                try {
+                    if (elements.basemapRadio1 && elements.basemapRadio1.value === newId) {
+                        elements.basemapRadio1.checked = true;
+                        elements.basemapRadio2 && (elements.basemapRadio2.checked = false);
+                    } else if (elements.basemapRadio2 && elements.basemapRadio2.value === newId) {
+                        elements.basemapRadio2.checked = true;
+                        elements.basemapRadio1 && (elements.basemapRadio1.checked = false);
+                    }
+                    // Sync checkboxes: primary/secondary
+                    const cfg = window.config ? window.config() : {};
+                    const list = (Array.isArray(cfg.backgrounds) && cfg.backgrounds.length)
+                        ? cfg.backgrounds
+                        : [{ id: 'default', name: 'Default' }];
+                    const altCb = document.getElementById('showTilesAlt');
+                    if (list[0] && list[0].id === newId) {
+                        if (elements.showTiles) elements.showTiles.checked = true;
+                        if (altCb) altCb.checked = false;
+                    } else if (list[1] && list[1].id === newId) {
+                        if (elements.showTiles) elements.showTiles.checked = false;
+                        if (altCb) altCb.checked = true;
+                    }
+                    state.showTiles = true;
+                } catch {}
+                updateLayersCallback();
+            });
+        }
+    } catch (e) {
+        console.warn('Background selector setup failed:', e);
+    }
+
+    // Basemap radio buttons (top-right)
+    try {
+        const cfg = window.config ? window.config() : {};
+        const list = (Array.isArray(cfg.backgrounds) && cfg.backgrounds.length)
+            ? cfg.backgrounds
+            : [{ id: 'default', name: 'Default', urlPattern: cfg.backgroundTiles }];
+        const a = list[0];
+        const b = list[1] || null;
+        if (elements.basemapToggle && elements.basemapRadio1 && elements.basemapLabel1) {
+            elements.basemapRadio1.value = a.id;
+            elements.basemapLabel1.textContent = a.name || a.id;
+        }
+        if (b && elements.basemapRadio2 && elements.basemapLabel2) {
+            elements.basemapRadio2.value = b.id;
+            elements.basemapLabel2.textContent = b.name || b.id;
+            elements.basemapRadio2.parentElement.style.display = '';
+        } else if (elements.basemapRadio2 && elements.basemapRadio2.parentElement) {
+            // Hide second radio if only one background
+            elements.basemapRadio2.parentElement.style.display = 'none';
+        }
+
+        const currentId = (window.appState && window.appState.activeBackgroundId) || cfg.defaultBackgroundId || list[0].id;
+        if (elements.basemapRadio1 && elements.basemapRadio1.value === currentId) {
+            elements.basemapRadio1.checked = true;
+        } else if (elements.basemapRadio2 && elements.basemapRadio2.value === currentId) {
+            elements.basemapRadio2.checked = true;
+        }
+        // Sync checkboxes initial state
+        try {
+            const altCb = document.getElementById('showTilesAlt');
+            const cfg = window.config ? window.config() : {};
+            const list = (Array.isArray(cfg.backgrounds) && cfg.backgrounds.length)
+                ? cfg.backgrounds
+                : [{ id: 'default', name: 'Default' }];
+            if (elements.showTiles) elements.showTiles.checked = (list[0] && list[0].id === currentId);
+            if (altCb) altCb.checked = Boolean(list[1] && list[1].id === currentId);
+        } catch {}
+
+        function switchBasemap(newId) {
+            if (!newId || (window.appState && window.appState.activeBackgroundId === newId)) return;
+            state.activeBackgroundId = newId;
+            if (window.appState) window.appState.activeBackgroundId = newId;
+            try { state.tileLayers.clear(); } catch {}
+            // Sync dropdown if present
+            try { if (elements.backgroundSelect) elements.backgroundSelect.value = newId; } catch {}
+            // Sync checkboxes and showTiles
+            try {
+                const cfg = window.config ? window.config() : {};
+                const list = (Array.isArray(cfg.backgrounds) && cfg.backgrounds.length)
+                    ? cfg.backgrounds
+                    : [{ id: 'default' }];
+                const altCb = document.getElementById('showTilesAlt');
+                if (list[0] && list[0].id === newId) {
+                    state.showTiles = true;
+                    if (elements.showTiles) elements.showTiles.checked = true;
+                    if (altCb) altCb.checked = false;
+                } else if (list[1] && list[1].id === newId) {
+                    state.showTiles = true;
+                    if (elements.showTiles) elements.showTiles.checked = false;
+                    if (altCb) altCb.checked = true;
+                }
+            } catch {}
+            updateLayersCallback();
+        }
+
+        if (elements.basemapRadio1) {
+            elements.basemapRadio1.addEventListener('change', (e) => {
+                if (elements.basemapRadio1.checked) switchBasemap(elements.basemapRadio1.value);
+            });
+        }
+        if (elements.basemapRadio2) {
+            elements.basemapRadio2.addEventListener('change', (e) => {
+                if (elements.basemapRadio2.checked) switchBasemap(elements.basemapRadio2.value);
+            });
+        }
+    } catch (e) {
+        console.warn('Basemap radio setup failed:', e);
+    }
 
     // Polygon opacity slider
     elements.polygonOpacitySlider.addEventListener('input', (e) => {

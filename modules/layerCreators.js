@@ -10,6 +10,7 @@ import {
     MAX_TILE_CACHE,
     GENE_SIZE_CONFIG,
     getTileUrlPattern,
+    getActiveBackground,
     ARROW_MANIFESTS
 } from '../config/constants.js';
 import {
@@ -268,8 +269,9 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
  * @returns {TileLayer} Configured tile layer
  */
 export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
+    const bgId = (typeof window !== 'undefined' && window.appState && window.appState.activeBackgroundId) ? window.appState.activeBackgroundId : 'default';
     return new TileLayer({
-        id: `tiles-${planeNum}`,
+        id: `tiles-${bgId}-${planeNum}`,
         pickable: false, // Tiles don't need mouse interaction
         tileSize: IMG_DIMENSIONS.tileSize,
         minZoom: 0,
@@ -282,7 +284,7 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
         // Async tile data loading with caching
         getTileData: async ({index}) => {
             const {x, y, z} = index;
-            const cacheKey = `${planeNum}-${z}-${y}-${x}`;
+            const cacheKey = `${bgId}-${planeNum}-${z}-${y}-${x}`;
 
             // Return cached tile if available (instant return!)
             if (tileCache.has(cacheKey)) {
@@ -297,10 +299,21 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
 
             // Load new tile using configured URL pattern
             const urlPattern = getTileUrlPattern();
+            // Support optional TMS scheme (y flip) per background
+            let yIndex = y;
+            try {
+                const bg = getActiveBackground();
+                const isTms = Boolean(bg && (bg.scheme === 'tms' || bg.tms === true || bg.yFlip === true));
+                if (isTms) {
+                    const maxIndex = (1 << z) - 1; // 2^z-1
+                    yIndex = maxIndex - y;
+                }
+            } catch {}
+
             const imageUrl = urlPattern
                 .replace('{plane}', planeNum)
                 .replace('{z}', z)
-                .replace('{y}', y)
+                .replace('{y}', yIndex)
                 .replace('{x}', x);
 
             // Check if we should show tile errors

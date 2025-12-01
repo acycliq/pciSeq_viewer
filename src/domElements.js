@@ -56,6 +56,16 @@ const elements = {
     importRegionsBtn: document.getElementById('importRegionsBtn'),
     regionFileInput: document.getElementById('regionFileInput'),
     regionsList: document.getElementById('regionsList')
+    ,
+    // Background selector
+    backgroundSelect: document.getElementById('backgroundSelect')
+    ,
+    // Basemap radio controls (top-right)
+    basemapToggle: document.getElementById('basemapToggle'),
+    basemapRadio1: document.getElementById('basemapRadio1'),
+    basemapRadio2: document.getElementById('basemapRadio2'),
+    basemapLabel1: document.getElementById('basemapLabel1'),
+    basemapLabel2: document.getElementById('basemapLabel2')
 };
 
 export { elements };

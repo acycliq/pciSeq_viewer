@@ -104,6 +104,33 @@ export const GENE_SIZE_CONFIG = {
 // Removed TSV polygon file URL helper (Arrow-only)
 
 // Helper function to get tile URL pattern
+// Background sources: support multiple backgrounds while preserving legacy single string
+export const BACKGROUNDS = (Array.isArray(userConfig.backgrounds) && userConfig.backgrounds.length)
+    ? userConfig.backgrounds
+    : [{ id: 'default', name: 'Default', urlPattern: userConfig.backgroundTiles }];
+
+const DEFAULT_BACKGROUND_ID = userConfig.defaultBackgroundId || (BACKGROUNDS[0] && BACKGROUNDS[0].id) || 'default';
+
+// Resolve active background id from app state or URL/default
+function resolveActiveBackgroundId() {
+    try {
+        // Prefer runtime app state if already set (enables dynamic switching)
+        if (window.appState && window.appState.activeBackgroundId) return window.appState.activeBackgroundId;
+        // Fallback to URL param at load time
+        const params = new URLSearchParams(window.location.search);
+        const q = params.get('bg');
+        return q || DEFAULT_BACKGROUND_ID;
+    } catch {
+        return DEFAULT_BACKGROUND_ID;
+    }
+}
+
+export function getActiveBackground() {
+    const activeId = resolveActiveBackgroundId();
+    return BACKGROUNDS.find(b => b.id === activeId) || BACKGROUNDS[0];
+}
+
 export function getTileUrlPattern() {
-    return userConfig.backgroundTiles;
+    const bg = getActiveBackground();
+    return (bg && bg.urlPattern) ? bg.urlPattern : (userConfig.backgroundTiles || '');
 }

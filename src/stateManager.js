@@ -89,6 +89,17 @@ const state = {
 // Expose state globally for cell lookup module
 window.appState = state;
 
+// Initialize active background selection from config / URL (load-time default)
+try {
+    const cfg = window.config ? window.config() : {};
+    const list = (Array.isArray(cfg.backgrounds) && cfg.backgrounds.length) ? cfg.backgrounds : [{ id: 'default' }];
+    const params = new URLSearchParams(window.location.search);
+    const fromQuery = params.get('bg');
+    state.activeBackgroundId = fromQuery || cfg.defaultBackgroundId || (list[0] && list[0].id) || 'default';
+} catch {
+    state.activeBackgroundId = 'default';
+}
+
 // === DEBUG/CONSOLE ACCESS ===
 // Expose data for console access and debugging
 window.debugData = {

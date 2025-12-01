@@ -13,14 +13,32 @@ function config() {
         // Size of a cubic pixel in microns (x, y, z)
         voxelSize: [0.28, 0.28, 0.7],
 
-        // Background image: use {plane}, {z}, {y}, {x} as placeholders
+        // Background image sources (select via dropdown or ?bg=<id>)
+        // Use {plane}, {z}, {y}, {x} as placeholders
+        backgrounds: [
+            {
+                id: 'dapi',
+                name: 'DAPI',
+                urlPattern: "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg"
+            },
+            // Example/placeholder secondary background (adjust to your tiles)
+            {
+                id: 'alt',
+                name: 'OSM (test only)',
+                // Public XYZ tiles (for testing switching only; alignment won't match your image)
+                urlPattern: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            }
+        ],
+        defaultBackgroundId: 'dapi',
+
+        // Legacy single background (kept for backward compatibility)
         backgroundTiles: "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg",
 
         // Arrow manifests
-        arrowSpotsManifest: "https://storage.googleapis.com/arrow_files/pciSeq_without_adj/arrow_spots/manifest.json",
-        arrowCellsManifest: "https://storage.googleapis.com/arrow_files/pciSeq_without_adj/arrow_cells/manifest.json",
-        arrowBoundariesManifest: "https://storage.googleapis.com/arrow_files/pciSeq_without_adj/arrow_boundaries/manifest.json",
-        arrowSpotsGeneDict: "https://storage.googleapis.com/arrow_files/pciSeq_without_adj/arrow_spots/gene_dict.json"
+        arrowSpotsManifest: "./data/pciSeq/arrow_spots/manifest.json",
+        arrowCellsManifest: "./data/pciSeq/arrow_cells/manifest.json",
+        arrowBoundariesManifest: "./data/pciSeq/arrow_boundaries/manifest.json",
+        arrowSpotsGeneDict: "./data/pciSeq/arrow_spots/gene_dict.json"
     };
 }
 
