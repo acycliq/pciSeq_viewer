@@ -201,9 +201,24 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
 
     // === CONTROLS DRAWER MANAGEMENT ===
 
-    // Toggle controls panel via gutter rail click
+    // Toggle controls panel via gutter rail click with transient cursor lock
     if (elements.controlsRail) {
         elements.controlsRail.addEventListener('click', () => {
+            try {
+                const panel = elements.controlsPanel;
+                if (panel) {
+                    panel.classList.add('transiting');
+                    // Remove on transform transition end (single-use handler)
+                    const onEnd = (e) => {
+                        if (e && e.propertyName && e.propertyName !== 'transform') return;
+                        panel.classList.remove('transiting');
+                        panel.removeEventListener('transitionend', onEnd);
+                    };
+                    panel.addEventListener('transitionend', onEnd);
+                    // Fallback removal in case transitionend doesn't fire
+                    setTimeout(() => panel.classList.remove('transiting'), 400);
+                }
+            } catch {}
             window.toggleControlsPanel();
         });
     }
