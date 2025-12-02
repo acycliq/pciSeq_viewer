@@ -4,6 +4,9 @@
  */
 
 function config() {
+    // Detect if running in Electron environment
+    const isElectron = window.electronAPI?.isElectron || false;
+
     return {
 
         // What are the dimensions of your images? (in pixels)
@@ -14,13 +17,28 @@ function config() {
         voxelSize: [0.28, 0.28, 0.7],
 
         // Background image: use {plane}, {z}, {y}, {x} as placeholders
+        // Using remote tiles for now (works in both web and Electron)
+        // Can be made configurable later for local tiles
         backgroundTiles: "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg",
 
         // Arrow manifests
-        arrowSpotsManifest: "https://storage.googleapis.com/arrow_files/pciSeq_without_adj/arrow_spots/manifest.json",
-        arrowCellsManifest: "https://storage.googleapis.com/arrow_files/pciSeq_without_adj/arrow_cells/manifest.json",
-        arrowBoundariesManifest: "https://storage.googleapis.com/arrow_files/pciSeq_without_adj/arrow_boundaries/manifest.json",
-        arrowSpotsGeneDict: "https://storage.googleapis.com/arrow_files/pciSeq_without_adj/arrow_spots/gene_dict.json"
+        // In Electron: data from user-selected folder using app:// protocol
+        // In web: data from local ./data directory
+        arrowSpotsManifest: isElectron
+            ? "app://arrow_spots/manifest.json"
+            : "./data/pciSeq/arrow_spots/manifest.json",
+
+        arrowCellsManifest: isElectron
+            ? "app://arrow_cells/manifest.json"
+            : "./data/pciSeq/arrow_cells/manifest.json",
+
+        arrowBoundariesManifest: isElectron
+            ? "app://arrow_boundaries/manifest.json"
+            : "./data/pciSeq/arrow_boundaries/manifest.json",
+
+        arrowSpotsGeneDict: isElectron
+            ? "app://arrow_spots/gene_dict.json"
+            : "./data/pciSeq/arrow_spots/gene_dict.json"
     };
 }
 

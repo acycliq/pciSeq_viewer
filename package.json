@@ -1,0 +1,60 @@
+{
+  "name": "pciSeq_viewer",
+  "version": "0.0.1",
+  "description": "Desktop transcriptomics viewer for visualizing spatial gene expression data",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:linux": "electron-builder --linux",
+    "build:linux:deb": "electron-builder --linux deb",
+    "build:linux:appimage": "electron-builder --linux AppImage"
+  },
+  "build": {
+    "appId": "com.pciseq.viewer",
+    "productName": "pciSeq_viewer",
+    "files": [
+      "index.html",
+      "styles.css",
+      "config.js",
+      "advanced-config.js",
+      "src/**/*",
+      "modules/**/*",
+      "arrow-loader/**/*",
+      "config/**/*",
+      "utils/**/*",
+      "electron/**/*",
+      "!data/**",
+      "!docs/**",
+      "!examples/**",
+      "!python_converters/**",
+      "!voxel-viewer/**",
+      "!.git/**",
+      "!.idea/**",
+      "!*.md"
+    ],
+    "linux": {
+      "target": ["deb", "AppImage"],
+      "category": "Science",
+      "icon": "icon.png"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "keywords": [
+    "transcriptomics",
+    "spatial",
+    "gene-expression",
+    "visualization",
+    "deck.gl"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "electron-store": "^8.1.0"
+  },
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.0"
+  }
+}

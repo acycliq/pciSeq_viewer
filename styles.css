@@ -931,6 +931,7 @@ body {
     align-items: flex-start; /* align content to top */
     justify-content: center;
     padding-top: 14px; /* move grip slightly lower for visibility */
+    outline: none; /* Remove browser default focus outline */
 }
 .controls-panel.collapsed .controls-rail { left: auto; right: 0; }
 .controls-rail:hover { background: #1f1f1f; box-shadow: inset 0 0 0 1px var(--drawer-accent-weak); }

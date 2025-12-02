@@ -764,6 +764,25 @@ async function init() {
     const userConfig = window.config();
     const advancedConfig = window.advancedConfig();
 
+    // In Electron, check if data path is configured
+    if (window.electronAPI?.isElectron) {
+        const paths = await window.electronAPI.getPaths();
+        if (!paths.dataPath) {
+            // Hide loading curtain and show message
+            const curtain = document.getElementById('appCurtain');
+            if (curtain) {
+                curtain.classList.add('hidden');
+            }
+            const loadingIndicator = elements.loadingIndicator;
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'none';
+            }
+            console.warn('⚠️  Data folder not configured. Please select Data folder using the button above.');
+            // Don't proceed with initialization
+            return;
+        }
+    }
+
     // Performance optimization info
     if (advancedConfig.performance.enablePerformanceMode) {
         console.log('Performance optimizations enabled:');
