@@ -972,12 +972,6 @@ body {
     transform: translateX(calc(-1 * (var(--drawer-width) - var(--rail-width))));
 }
 
-/* During drawer transition, keep pointer cursor to avoid flicker after rail click */
-.controls-panel.transiting,
-.controls-panel.transiting * {
-    cursor: pointer !important;
-}
-
 .controls-header { display: none; }
 
 .controls-title {
