@@ -71,7 +71,10 @@
                 </h3>
                 <div class="section-content" id="genesContent">
                     <div class="cell-class-controls">
-                        <button class="show-all-btn" id="showAllGenesBtn">Show All</button>
+                        <div class="toggle-all-group" id="genesToggleAllGroup">
+                            <label for="genesToggleAll" class="toggle-all-label">Show All</label>
+                            <input type="checkbox" id="genesToggleAll" class="toggle-all-checkbox" aria-checked="false">
+                        </div>
                         <button class="hide-all-btn" id="hideAllGenesBtn">Hide All</button>
                     </div>
                     <div class="cell-class-filter-container" id="geneFilterContainer">
@@ -119,7 +122,10 @@
                 </h3>
                 <div class="section-content" id="cellClassesContent">
                     <div class="cell-class-controls">
-                        <button class="show-all-btn" id="showAllCellClassesBtn">Show All</button>
+                        <div class="toggle-all-group" id="classesToggleAllGroup">
+                            <label for="classesToggleAll" class="toggle-all-label">Show All</label>
+                            <input type="checkbox" id="classesToggleAll" class="toggle-all-checkbox" aria-checked="false">
+                        </div>
                         <button class="hide-all-btn" id="hideAllCellClassesBtn">Hide All</button>
                     </div>
                     <!-- Sticky filter container (pciSeq_3d pattern) -->
