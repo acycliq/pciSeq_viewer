@@ -240,6 +240,9 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
         e.target.value = '';
     });
 
+    // Setup resizable regions list
+    setupRegionsListResize();
+
     // Z-Projection overlay toggle (ghost boundaries from all planes)
     const zProjectionToggle = document.getElementById('zProjectionToggle');
     const zProjectionControls = document.getElementById('zProjectionControls');
@@ -644,5 +647,58 @@ export function setupAdvancedKeyboardShortcuts(state, updatePlaneCallback, updat
 
             // Gene toggle removed - genes are always visible
         }
+    });
+}
+
+/**
+ * Setup resizable regions list with drag handle
+ * Matches the pattern used for genes and cell classes lists
+ */
+function setupRegionsListResize() {
+    const listEl = document.getElementById('regionsList');
+    const handleEl = document.getElementById('regionsResizeHandle');
+    if (!listEl || !handleEl) return;
+
+    const minHeight = 100;
+    const maxHeight = 1200;
+
+    // Load saved height from localStorage
+    try {
+        const saved = window.localStorage && window.localStorage.getItem('regionsListHeight');
+        if (saved) {
+            const h = parseInt(saved, 10);
+            if (!Number.isNaN(h)) listEl.style.maxHeight = h + 'px';
+        }
+    } catch {}
+
+    let isResizing = false;
+    let startY = 0;
+    let startHeight = 0;
+
+    handleEl.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = listEl.offsetHeight;
+        document.body.style.cursor = 'ns-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const deltaY = e.clientY - startY;
+        const newHeight = Math.max(minHeight, Math.min(maxHeight, startHeight + deltaY));
+        listEl.style.maxHeight = newHeight + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!isResizing) return;
+        isResizing = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        try {
+            const h = listEl.offsetHeight;
+            window.localStorage && window.localStorage.setItem('regionsListHeight', String(h));
+        } catch {}
     });
 }
