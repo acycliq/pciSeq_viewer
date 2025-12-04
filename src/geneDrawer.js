@@ -138,7 +138,11 @@ export function initGeneDrawer() {
     const fileInput = document.getElementById('geneColorFileInput');
     const statusEl = document.getElementById('geneColorFileStatus');
     if (importBtn && fileInput) {
-        importBtn.addEventListener('click', () => fileInput.click());
+        importBtn.addEventListener('click', (e) => {
+            // Store ctrl/cmd state for file upload handler
+            fileInput.dataset.replaceMode = (e.ctrlKey || e.metaKey) ? 'true' : 'false';
+            fileInput.click();
+        });
         fileInput.addEventListener('change', (e) => handleGeneColorFileUpload(e, statusEl));
     }
 

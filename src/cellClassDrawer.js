@@ -309,16 +309,25 @@ export function initCellClassDrawer() {
     const fileInput = document.getElementById('classColorFileInput');
     const statusEl = document.getElementById('classColorFileStatus');
     if (importBtn && fileInput) {
-        importBtn.addEventListener('click', () => fileInput.click());
+        importBtn.addEventListener('click', (e) => {
+            // Store ctrl/cmd state for file upload handler
+            fileInput.dataset.replaceMode = (e.ctrlKey || e.metaKey) ? 'true' : 'false';
+            fileInput.click();
+        });
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
+
+            // Read replace mode flag
+            const replaceMode = e.target.dataset.replaceMode === 'true';
+
             const reader = new FileReader();
             if (statusEl) { statusEl.textContent = 'Loading…'; statusEl.className = 'file-status'; }
             reader.onload = () => {
                 try {
                     const json = JSON.parse(reader.result);
-                    const { appliedCount, notFoundClasses, pending } = applyClassColorScheme(json);
+                    const { appliedCount, notFoundClasses, pending } = applyClassColorScheme(json, replaceMode);
+                    const mode = replaceMode ? 'replaced' : 'merged';
                     if (pending) {
                         if (statusEl) {
                             statusEl.textContent = `Colour scheme loaded (${Object.keys(json).length}). Will apply when classes are available.`;
