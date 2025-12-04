@@ -71,15 +71,20 @@
                 </h3>
                 <div class="section-content" id="genesContent">
                     <div class="cell-class-controls">
-                        <button class="show-all-btn" id="showAllGenesBtn">Show All</button>
-                        <button class="hide-all-btn" id="hideAllGenesBtn">Hide All</button>
+                        <div class="toggle-all-group" id="genesToggleAllGroup">
+                            <label for="genesToggleAll" class="toggle-all-label">Show All</label>
+                            <input type="checkbox" id="genesToggleAll" class="toggle-all-checkbox" aria-checked="false">
+                        </div>
+                        <button class="hide-all-btn" id="importGeneColorsBtn" title="Import gene colours and glyphs (Ctrl+click to replace all)">Import colours</button>
                     </div>
+                    <input type="file" id="geneColorFileInput" accept=".json" style="display:none" />
                     <div class="cell-class-filter-container" id="geneFilterContainer">
                         <input type="text" class="filter-input" id="geneFilter" placeholder="Filter genes…" autocomplete="off" spellcheck="false">
                     </div>
                     <div class="cell-class-list" id="genesList">
                         <div class="loading-message">Loading genes...</div>
                     </div>
+                    <div id="geneColorFileStatus" class="file-status" aria-live="polite"></div>
                     <div class="legend-resize-handle" id="genesResizeHandle" title="Drag to resize"></div>
                 </div>
             </div>
@@ -119,9 +124,14 @@
                 </h3>
                 <div class="section-content" id="cellClassesContent">
                     <div class="cell-class-controls">
-                        <button class="show-all-btn" id="showAllCellClassesBtn">Show All</button>
-                        <button class="hide-all-btn" id="hideAllCellClassesBtn">Hide All</button>
+                        <div class="toggle-all-group" id="classesToggleAllGroup">
+                            <label for="classesToggleAll" class="toggle-all-label">Show All</label>
+                            <input type="checkbox" id="classesToggleAll" class="toggle-all-checkbox" aria-checked="false">
+                        </div>
+                        <button class="hide-all-btn" id="importClassColorsBtn" title="Import class colours (Ctrl+click to replace all)">Import colours</button>
                     </div>
+                    <!-- Hidden file input for importing class colour schemes -->
+                    <input type="file" id="classColorFileInput" accept=".json" style="display:none" />
                     <!-- Sticky filter container (pciSeq_3d pattern) -->
                     <div class="cell-class-filter-container" id="cellClassFilterContainer">
                         <input type="text" class="filter-input" id="cellClassFilter" placeholder="Filter classes…" autocomplete="off" spellcheck="false">
@@ -130,6 +140,8 @@
                         <!-- Cell classes will be populated here, ranked by count -->
                         <div class="loading-message">Loading cell classes...</div>
                     </div>
+                    <!-- Import status message placed below the list so it doesn't push the filter -->
+                    <div id="classColorFileStatus" class="file-status" aria-live="polite"></div>
                     <!-- Drag handle to resize list height (pciSeq_3d pattern) -->
                     <div class="legend-resize-handle" id="cellClassesResizeHandle" title="Drag to resize"></div>
                 </div>

@@ -308,7 +308,7 @@ export async function loadCellData(cellDataMap) {
  * @param {string[]} genes - Array of gene names
  * @returns {Object} Canvas atlas and coordinate mapping
  */
-function buildGeneIconAtlas(genes) {
+export function buildGeneIconAtlas(genes) {
     const settings = glyphSettings();
     const configMap = new Map(settings.map(s => [s.gene, {glyphName: s.glyphName, color: s.color}]));
     const defaultConfig = {glyphName: 'circle', color: '#ffffff'};

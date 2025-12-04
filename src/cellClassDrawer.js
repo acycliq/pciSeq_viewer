@@ -6,6 +6,7 @@
 
 import { state } from './stateManager.js';
 import { debounce } from './utils.js';
+import { applyClassColorScheme } from './classColorImport.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG } from './icons.js';
 
 /**
@@ -101,6 +102,9 @@ export function populateCellClassDrawer() {
 
         listContainer.appendChild(item);
     });
+
+    // Update tri-state master checkbox state after population
+    try { updateClassesToggleAllCheckboxState(); } catch {}
 }
 
 /**
@@ -126,6 +130,9 @@ function toggleCellClassVisibility(className) {
             if (isVisible) item.classList.add('dim'); else item.classList.remove('dim');
         }
     }
+
+    // Update tri-state master checkbox state
+    try { updateClassesToggleAllCheckboxState(); } catch {}
 
     // Update layers
     if (typeof window.updateAllLayers === 'function') {
@@ -171,6 +178,9 @@ function showAllCellClasses() {
         });
     }
 
+    // Sync master checkbox
+    try { updateClassesToggleAllCheckboxState(); } catch {}
+
     // Update layers
     if (typeof window.updateAllLayers === 'function') {
         window.updateAllLayers();
@@ -193,6 +203,9 @@ function hideAllCellClasses() {
             item.classList.add('dim');
         });
     }
+
+    // Sync master checkbox
+    try { updateClassesToggleAllCheckboxState(); } catch {}
 
     // Update layers
     if (typeof window.updateAllLayers === 'function') {
@@ -269,16 +282,90 @@ export function initCellClassDrawer() {
         });
     } catch {}
 
-    // Setup Show All button (pciSeq_3d style)
-    const showAllBtn = document.getElementById('showAllCellClassesBtn');
-    if (showAllBtn) {
-        showAllBtn.addEventListener('click', showAllCellClasses);
+    // Master tri-state checkbox (GitHub-style)
+    const toggleAll = document.getElementById('classesToggleAll');
+    if (toggleAll) {
+        // Initialize state
+        try { updateClassesToggleAllCheckboxState(); } catch {}
+
+        toggleAll.addEventListener('change', () => {
+            const listContainer = document.getElementById('cellClassesList');
+            const selectAll = Boolean(toggleAll.checked);
+            if (selectAll) {
+                state.allCellClasses.forEach(c => state.selectedCellClasses.add(c));
+                if (listContainer) listContainer.querySelectorAll('.cell-class-item').forEach(it => it.classList.remove('dim'));
+            } else {
+                state.selectedCellClasses.clear();
+                if (listContainer) listContainer.querySelectorAll('.cell-class-item').forEach(it => it.classList.add('dim'));
+            }
+
+            updateClassesToggleAllCheckboxState();
+            if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
+        });
     }
 
-    // Setup Hide All button (pciSeq_3d style)
-    const hideAllBtn = document.getElementById('hideAllCellClassesBtn');
-    if (hideAllBtn) {
-        hideAllBtn.addEventListener('click', hideAllCellClasses);
+    // Repurpose: Import Colour Scheme button
+    const importBtn = document.getElementById('importClassColorsBtn');
+    const fileInput = document.getElementById('classColorFileInput');
+    const statusEl = document.getElementById('classColorFileStatus');
+    if (importBtn && fileInput) {
+        importBtn.addEventListener('click', (e) => {
+            // Store ctrl/cmd state for file upload handler
+            fileInput.dataset.replaceMode = (e.ctrlKey || e.metaKey) ? 'true' : 'false';
+            fileInput.click();
+        });
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+
+            // Read replace mode flag
+            const replaceMode = e.target.dataset.replaceMode === 'true';
+
+            const reader = new FileReader();
+            if (statusEl) { statusEl.textContent = 'Loading…'; statusEl.className = 'file-status'; }
+            reader.onload = () => {
+                try {
+                    const json = JSON.parse(reader.result);
+                    const { appliedCount, notFoundClasses, pending } = applyClassColorScheme(json, replaceMode);
+                    const mode = replaceMode ? 'replaced' : 'merged';
+                    if (pending) {
+                        if (statusEl) {
+                            statusEl.textContent = `Colour scheme loaded (${Object.keys(json).length}). Will apply when classes are available.`;
+                            statusEl.className = 'file-status success';
+                        }
+                    } else if (appliedCount > 0) {
+                        if (statusEl) {
+                            statusEl.textContent = `Imported ${appliedCount} custom colours`;
+                            statusEl.className = 'file-status success';
+                        }
+                        // Refresh UI and layers
+                        try { populateCellClassDrawer(); } catch {}
+                        if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
+                        if (notFoundClasses && notFoundClasses.length) {
+                            console.warn('Classes not found in data:', notFoundClasses);
+                        }
+                    } else {
+                        if (statusEl) {
+                            statusEl.textContent = 'No matching classes found';
+                            statusEl.className = 'file-status error';
+                        }
+                    }
+                } catch (err) {
+                    if (statusEl) {
+                        statusEl.textContent = `Error: ${err.message || 'Invalid JSON'}`;
+                        statusEl.className = 'file-status error';
+                    }
+                    console.error('Failed to load colour scheme:', err);
+                } finally {
+                    try { e.target.value = ''; } catch {}
+                    if (statusEl) setTimeout(() => { statusEl.textContent = ''; statusEl.className = 'file-status'; }, 5000);
+                }
+            };
+            reader.onerror = () => {
+                if (statusEl) { statusEl.textContent = 'Failed to read file'; statusEl.className = 'file-status error'; }
+            };
+            reader.readAsText(file);
+        });
     }
 
     // Setup filter input with debouncing (pciSeq_3d style)
@@ -362,4 +449,18 @@ function setupCellClassListResize() {
             window.localStorage && window.localStorage.setItem('cellClassesListHeight', String(h));
         } catch {}
     });
+}
+
+function updateClassesToggleAllCheckboxState() {
+    const cb = document.getElementById('classesToggleAll');
+    if (!cb) return;
+    const total = state.allCellClasses ? state.allCellClasses.size : 0;
+    const selected = state.selectedCellClasses ? state.selectedCellClasses.size : 0;
+    const all = total > 0 && selected === total;
+    const none = selected === 0;
+
+    cb.indeterminate = !all && !none;
+    cb.checked = all;
+    cb.setAttribute('aria-checked', cb.indeterminate ? 'mixed' : (all ? 'true' : 'false'));
+    cb.disabled = total === 0;
 }

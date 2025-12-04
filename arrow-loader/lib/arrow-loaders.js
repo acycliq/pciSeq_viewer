@@ -71,3 +71,4 @@ export async function buildSpotsScatterCache({ manifestUrl, img, geneIdColors })
   const { positions, colors, planes, geneIds, scores, intensities, filterPairs, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity } = await call('buildSpotsScatterCache', { manifestUrl, img, geneIdColors });
   return { positions, colors, planes, geneIds, scores, intensities, filterPairs, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity };
 }
+
