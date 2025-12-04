@@ -1055,6 +1055,16 @@ body {
     display: inline-block;
     position: relative;
 }
+
+/* Import status message (match live viewer styling) */
+.file-status {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--drawer-muted);
+    text-align: center;
+}
+.file-status.success { color: var(--drawer-accent); }
+.file-status.error { color: #ff4444; }
 .toggle-all-checkbox:focus { outline: none; box-shadow: 0 0 0 2px var(--drawer-accent); }
 .toggle-all-checkbox:hover { border-color: var(--drawer-accent); }
 .toggle-all-checkbox:checked { background: var(--drawer-accent); border-color: var(--drawer-accent); }

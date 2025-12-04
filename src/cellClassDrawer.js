@@ -6,6 +6,7 @@
 
 import { state } from './stateManager.js';
 import { debounce } from './utils.js';
+import { applyClassColorScheme } from './classColorImport.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG } from './icons.js';
 
 /**
@@ -303,10 +304,59 @@ export function initCellClassDrawer() {
         });
     }
 
-    // Setup Hide All button (pciSeq_3d style)
-    const hideAllBtn = document.getElementById('hideAllCellClassesBtn');
-    if (hideAllBtn) {
-        hideAllBtn.addEventListener('click', hideAllCellClasses);
+    // Repurpose: Import Colour Scheme button
+    const importBtn = document.getElementById('importClassColorsBtn');
+    const fileInput = document.getElementById('classColorFileInput');
+    const statusEl = document.getElementById('classColorFileStatus');
+    if (importBtn && fileInput) {
+        importBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            if (statusEl) { statusEl.textContent = 'Loading…'; statusEl.className = 'file-status'; }
+            reader.onload = () => {
+                try {
+                    const json = JSON.parse(reader.result);
+                    const { appliedCount, notFoundClasses, pending } = applyClassColorScheme(json);
+                    if (pending) {
+                        if (statusEl) {
+                            statusEl.textContent = `Colour scheme loaded (${Object.keys(json).length}). Will apply when classes are available.`;
+                            statusEl.className = 'file-status success';
+                        }
+                    } else if (appliedCount > 0) {
+                        if (statusEl) {
+                            statusEl.textContent = `Imported ${appliedCount} custom colours`;
+                            statusEl.className = 'file-status success';
+                        }
+                        // Refresh UI and layers
+                        try { populateCellClassDrawer(); } catch {}
+                        if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
+                        if (notFoundClasses && notFoundClasses.length) {
+                            console.warn('Classes not found in data:', notFoundClasses);
+                        }
+                    } else {
+                        if (statusEl) {
+                            statusEl.textContent = 'No matching classes found';
+                            statusEl.className = 'file-status error';
+                        }
+                    }
+                } catch (err) {
+                    if (statusEl) {
+                        statusEl.textContent = `Error: ${err.message || 'Invalid JSON'}`;
+                        statusEl.className = 'file-status error';
+                    }
+                    console.error('Failed to load colour scheme:', err);
+                } finally {
+                    try { e.target.value = ''; } catch {}
+                    if (statusEl) setTimeout(() => { statusEl.textContent = ''; statusEl.className = 'file-status'; }, 5000);
+                }
+            };
+            reader.onerror = () => {
+                if (statusEl) { statusEl.textContent = 'Failed to read file'; statusEl.className = 'file-status error'; }
+            };
+            reader.readAsText(file);
+        });
     }
 
     // Setup filter input with debouncing (pciSeq_3d style)

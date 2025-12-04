@@ -20,6 +20,7 @@ import { debounce } from './utils.js';
 
 // Import cell class drawer functions
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
+import { applyPendingClassColorSchemeIfAny } from './classColorImport.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
 
 // Import data loading functions
@@ -906,6 +907,14 @@ async function init() {
             }
         });
         assignColorsToCellClasses(state.allCellClasses, state.cellClassColors);
+        try {
+            const res = applyPendingClassColorSchemeIfAny();
+            if (res && res.appliedCount > 0) {
+                console.log(`Applied pending colour scheme: ${res.appliedCount} classes`);
+                try { populateCellClassDrawer(); } catch {}
+                if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
+            }
+        } catch {}
         if (state.selectedCellClasses.size === 0) {
             state.allCellClasses.forEach(c => state.selectedCellClasses.add(c));
         }
