@@ -53,8 +53,14 @@ function formatRegionName(filename) {
 function parseCSV(csvText) {
     const parsedData = d3.csvParse(csvText);
 
-    if (!parsedData.columns || !parsedData.columns.includes('x') || !parsedData.columns.includes('y')) {
-        console.warn('CSV file is missing "x" or "y" columns. Please ensure your CSV has an "x" and a "y" header.');
+    // Find x/y columns with normalization: trim + case-insensitive
+    const columns = Array.isArray(parsedData.columns) ? parsedData.columns : [];
+    const normalized = columns.map(c => ({ orig: c, norm: String(c).trim().toLowerCase() }));
+    const xCol = (normalized.find(c => c.norm === 'x') || {}).orig;
+    const yCol = (normalized.find(c => c.norm === 'y') || {}).orig;
+
+    if (!xCol || !yCol) {
+        console.warn('CSV file is missing "x" or "y" columns (case-insensitive, whitespace trimmed). Headers must include x and y.');
         return [];
     }
 
@@ -62,8 +68,8 @@ function parseCSV(csvText) {
     // so legitimate 0 values remain valid but blanks don’t become 0.
     return parsedData
         .map(row => {
-            const sx = row.x != null ? String(row.x).trim() : '';
-            const sy = row.y != null ? String(row.y).trim() : '';
+            const sx = row[xCol] != null ? String(row[xCol]).trim() : '';
+            const sy = row[yCol] != null ? String(row[yCol]).trim() : '';
 
             // Skip rows with missing/blank fields
             if (sx === '' || sy === '') return null;
