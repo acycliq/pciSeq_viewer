@@ -1093,7 +1093,7 @@ body {
 
 /* Filter input - pciSeq_3d style */
 .cell-class-filter-container { position: sticky; top: 0; background: transparent; padding-bottom: 0; margin-bottom: 8px; z-index: 1; }
-.filter-input { width: 100%; padding: 6px 8px; background: var(--drawer-bg); border: 1px solid var(--drawer-border); border-radius: 6px; color: var(--drawer-text); font-size: 12px; font-family: inherit; }
+.filter-input { width: 100%; padding: 6px 8px; background: var(--drawer-bg); border: 1px solid var(--drawer-border); border-radius: 6px; color: var(--drawer-text); font-size: 12px; font-family: inherit; box-sizing: border-box; }
 
 .filter-input::placeholder {
     color: var(--drawer-muted);
