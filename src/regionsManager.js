@@ -58,11 +58,21 @@ function parseCSV(csvText) {
         return [];
     }
 
-    return parsedData.map(row => {
-        const x = +row.x;
-        const y = +row.y;
-        return (Number.isFinite(x) && Number.isFinite(y)) ? [x, y] : null;
-    }).filter(d => d !== null);
+    // Trim and ignore empty/whitespace-only cells before number conversion
+    // so legitimate 0 values remain valid but blanks don’t become 0.
+    return parsedData
+        .map(row => {
+            const sx = row.x != null ? String(row.x).trim() : '';
+            const sy = row.y != null ? String(row.y).trim() : '';
+
+            // Skip rows with missing/blank fields
+            if (sx === '' || sy === '') return null;
+
+            const x = Number(sx);
+            const y = Number(sy);
+            return (Number.isFinite(x) && Number.isFinite(y)) ? [x, y] : null;
+        })
+        .filter(d => d !== null);
 }
 
 /**
