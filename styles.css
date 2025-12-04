@@ -1063,6 +1063,7 @@ body {
     color: var(--drawer-muted);
     text-align: center;
 }
+.file-status:empty { display: none; }
 .file-status.success { color: var(--drawer-accent); }
 .file-status.error { color: #ff4444; }
 .toggle-all-checkbox:focus { outline: none; box-shadow: 0 0 0 2px var(--drawer-accent); }
@@ -1091,7 +1092,7 @@ body {
 }
 
 /* Filter input - pciSeq_3d style */
-.cell-class-filter-container { position: sticky; top: 0; background: var(--drawer-surface); padding-bottom: 6px; margin-bottom: 8px; z-index: 1; }
+.cell-class-filter-container { position: sticky; top: 0; background: transparent; padding-bottom: 0; margin-bottom: 8px; z-index: 1; }
 .filter-input { width: 100%; padding: 6px 8px; background: var(--drawer-bg); border: 1px solid var(--drawer-border); border-radius: 6px; color: var(--drawer-text); font-size: 12px; font-family: inherit; }
 
 .filter-input::placeholder {
