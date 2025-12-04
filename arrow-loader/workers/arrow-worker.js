@@ -52,6 +52,24 @@ function uniqueTransferList(list) {
   return out;
 }
 
+// Keep a local copy of geneIds for fast recoloring without retransfers
+let __cacheGeneIds = null;
+let __cacheLength = 0;
+
+function recolorFromCache(geneIdColors) {
+  if (!__cacheGeneIds || !__cacheLength) throw new Error('Scatter cache not initialized for recoloring');
+  const colors = new Uint8Array(__cacheLength * 4);
+  for (let i = 0; i < __cacheLength; i++) {
+    const gid = __cacheGeneIds[i] | 0;
+    const col = (geneIdColors && geneIdColors[gid] && geneIdColors[gid].length === 3) ? geneIdColors[gid] : [255,255,255];
+    colors[4*i + 0] = col[0] | 0;
+    colors[4*i + 1] = col[1] | 0;
+    colors[4*i + 2] = col[2] | 0;
+    colors[4*i + 3] = 255;
+  }
+  return colors;
+}
+
 function resolveShardUrls(manifestUrl, manifest) {
   const base = new URL(manifestUrl, self.location.href);
   const baseDir = base.href.substring(0, base.href.lastIndexOf('/') + 1);
@@ -345,7 +363,13 @@ self.onmessage = async (e) => {
       if (!Number.isFinite(scoreMax)) scoreMax = 1;
       if (!Number.isFinite(intensityMin)) intensityMin = 0;
       if (!Number.isFinite(intensityMax)) intensityMax = 1;
+      // Keep a local copy of geneIds for recoloring requests
+      try { __cacheGeneIds = geneIds.slice(0); __cacheLength = __cacheGeneIds.length; } catch {}
       self.postMessage({ id, ok: true, type, positions, colors, geneIds, planes, scores, hasIntensity, intensities: hasIntensity ? intensities : undefined, filterPairs: hasIntensity ? filterPairs : undefined, scoreMin, scoreMax, intensityMin, intensityMax }, transfers);
+    } else if (type === 'recolorSpotsCache') {
+      const { geneIdColors } = payload || {};
+      const colors = recolorFromCache(geneIdColors || {});
+      self.postMessage({ id, ok: true, type, colors }, [colors.buffer]);
     } else {
       throw new Error(`Unknown message type: ${type}`);
     }

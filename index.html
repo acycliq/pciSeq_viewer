@@ -75,14 +75,16 @@
                             <label for="genesToggleAll" class="toggle-all-label">Show All</label>
                             <input type="checkbox" id="genesToggleAll" class="toggle-all-checkbox" aria-checked="false">
                         </div>
-                        <button class="hide-all-btn" id="hideAllGenesBtn">Hide All</button>
+                        <button class="hide-all-btn" id="importGeneColorsBtn" title="Import a JSON array of gene colours and glyphs">Import colours</button>
                     </div>
+                    <input type="file" id="geneColorFileInput" accept=".json" style="display:none" />
                     <div class="cell-class-filter-container" id="geneFilterContainer">
                         <input type="text" class="filter-input" id="geneFilter" placeholder="Filter genes…" autocomplete="off" spellcheck="false">
                     </div>
                     <div class="cell-class-list" id="genesList">
                         <div class="loading-message">Loading genes...</div>
                     </div>
+                    <div id="geneColorFileStatus" class="file-status" aria-live="polite"></div>
                     <div class="legend-resize-handle" id="genesResizeHandle" title="Drag to resize"></div>
                 </div>
             </div>

@@ -6,6 +6,7 @@
 import { state } from './stateManager.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG } from './icons.js';
 import { debounce } from './utils.js';
+import { handleGeneColorFileUpload } from './geneColorImport.js';
 
 export function populateGeneDrawer() {
     const listEl = document.getElementById('genesList');
@@ -132,14 +133,13 @@ export function initGeneDrawer() {
         });
     }
 
-    const hideAllBtn = document.getElementById('hideAllGenesBtn');
-    if (hideAllBtn) {
-        hideAllBtn.addEventListener('click', () => {
-            state.selectedGenes.clear();
-            const listEl = document.getElementById('genesList');
-            if (listEl) listEl.querySelectorAll('.cell-class-item').forEach(it => it.classList.add('dim'));
-            if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
-        });
+    // Repurposed: Import gene colours + glyphs
+    const importBtn = document.getElementById('importGeneColorsBtn');
+    const fileInput = document.getElementById('geneColorFileInput');
+    const statusEl = document.getElementById('geneColorFileStatus');
+    if (importBtn && fileInput) {
+        importBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleGeneColorFileUpload(e, statusEl));
     }
 
     const filterInput = document.getElementById('geneFilter');
