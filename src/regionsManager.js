@@ -350,9 +350,8 @@ function renderRegionsList() {
         deleteBtn.innerHTML = TRASH_SVG;
         const handleDelete = (e) => {
             e.stopPropagation();
-            if (confirm(`Delete region "${name}"?`)) {
-                deleteRegion(name);
-            }
+            // Delete immediately without confirmation
+            deleteRegion(name);
         };
         deleteBtn.addEventListener('click', handleDelete);
         deleteBtn.addEventListener('keydown', (e) => {
