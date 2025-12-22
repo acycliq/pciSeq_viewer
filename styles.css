@@ -1041,9 +1041,60 @@ body {
     border-color: var(--drawer-accent);
 }
 
+/* Toggle-all (GitHub-style tri-state checkbox) */
+.toggle-all-group { display: inline-flex; align-items: center; gap: 8px; padding: 0 4px; }
+.toggle-all-label { font-size: 12px; color: var(--drawer-text); user-select: none; }
+.toggle-all-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid var(--drawer-border);
+    border-radius: 4px;
+    background: var(--drawer-bg);
+    display: inline-block;
+    position: relative;
+}
+
+/* Import status message (match live viewer styling) */
+.file-status {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--drawer-muted);
+    text-align: center;
+}
+.file-status:empty { display: none; }
+.file-status.success { color: var(--drawer-accent); }
+.file-status.error { color: #ff4444; }
+.toggle-all-checkbox:focus { outline: none; box-shadow: 0 0 0 2px var(--drawer-accent); }
+.toggle-all-checkbox:hover { border-color: var(--drawer-accent); }
+.toggle-all-checkbox:checked { background: var(--drawer-accent); border-color: var(--drawer-accent); }
+.toggle-all-checkbox:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 4px;
+    height: 8px;
+    border: solid #0b0b0b;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+.toggle-all-checkbox:indeterminate { background: var(--drawer-accent-weak); border-color: var(--drawer-accent); }
+.toggle-all-checkbox:indeterminate::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 6px;
+    width: 8px;
+    height: 2px;
+    background: var(--drawer-accent);
+}
+
 /* Filter input - pciSeq_3d style */
-.cell-class-filter-container { position: sticky; top: 0; background: var(--drawer-surface); padding-bottom: 6px; margin-bottom: 8px; z-index: 1; }
-.filter-input { width: 100%; padding: 6px 8px; background: var(--drawer-bg); border: 1px solid var(--drawer-border); border-radius: 6px; color: var(--drawer-text); font-size: 12px; font-family: inherit; }
+.cell-class-filter-container { position: sticky; top: 0; background: transparent; padding-bottom: 0; margin-bottom: 8px; z-index: 1; }
+.filter-input { width: 100%; padding: 6px 8px; background: var(--drawer-bg); border: 1px solid var(--drawer-border); border-radius: 6px; color: var(--drawer-text); font-size: 12px; font-family: inherit; box-sizing: border-box; }
 
 .filter-input::placeholder {
     color: var(--drawer-muted);

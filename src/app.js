@@ -21,6 +21,7 @@ import { debounce } from './utils.js';
 // Import cell class drawer functions
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
+import { applyPendingClassColorSchemeIfAny } from './classColorImport.js';
 
 // Import data loading functions
 import {
@@ -940,6 +941,8 @@ async function init() {
 
     // Populate the cell class drawer with ranked list
     populateCellClassDrawer();
+    // Apply any pending colour scheme that was loaded before classes were discovered
+    applyPendingClassColorSchemeIfAny();
     // Populate the gene drawer
     populateGeneDrawer();
 

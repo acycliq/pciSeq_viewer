@@ -41,6 +41,7 @@ const state = {
     cellClassColors: new Map(),
     allCellClasses: new Set(),
     selectedCellClasses: new Set(), // For filtering visibility
+    pendingClassColorScheme: null, // Stashed colour scheme loaded before classes discovered
 
     // Gene data
     selectedGenes: new Set(),

@@ -417,6 +417,61 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
                 break;
         }
     });
+
+    // Setup regions list resize handle
+    setupRegionsListResize();
+}
+
+/**
+ * Setup resize handle for regions list (like genes/cell classes drawers)
+ */
+function setupRegionsListResize() {
+    const handle = document.getElementById('regionsResizeHandle');
+    const listEl = document.getElementById('regionsList');
+    if (!handle || !listEl) return;
+
+    let isResizing = false;
+    let startY = 0;
+    let startHeight = 0;
+
+    handle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = listEl.offsetHeight;
+        document.body.style.cursor = 'ns-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const dy = e.clientY - startY;
+        const newHeight = Math.max(50, Math.min(startHeight + dy, 400));
+        listEl.style.height = newHeight + 'px';
+        listEl.style.maxHeight = newHeight + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!isResizing) return;
+        isResizing = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        try {
+            window.localStorage && window.localStorage.setItem('regionsListHeight', String(listEl.offsetHeight));
+        } catch {}
+    });
+
+    // Restore height from localStorage
+    try {
+        const savedHeight = window.localStorage && window.localStorage.getItem('regionsListHeight');
+        if (savedHeight) {
+            const h = parseInt(savedHeight, 10);
+            if (h > 0) {
+                listEl.style.height = h + 'px';
+                listEl.style.maxHeight = h + 'px';
+            }
+        }
+    } catch {}
 }
 
 /**

@@ -6,6 +6,7 @@
 
 import { state } from './stateManager.js';
 import { debounce } from './utils.js';
+import { applyClassColorScheme } from './classColorImport.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG } from './icons.js';
 
 /**
@@ -101,6 +102,9 @@ export function populateCellClassDrawer() {
 
         listContainer.appendChild(item);
     });
+
+    // Update tri-state master checkbox state after population
+    try { updateClassesToggleAllCheckboxState(); } catch {}
 }
 
 /**
@@ -126,6 +130,9 @@ function toggleCellClassVisibility(className) {
             if (isVisible) item.classList.add('dim'); else item.classList.remove('dim');
         }
     }
+
+    // Update tri-state master checkbox state
+    try { updateClassesToggleAllCheckboxState(); } catch {}
 
     // Update layers
     if (typeof window.updateAllLayers === 'function') {
@@ -171,6 +178,9 @@ function showAllCellClasses() {
         });
     }
 
+    // Update tri-state master checkbox state
+    try { updateClassesToggleAllCheckboxState(); } catch {}
+
     // Update layers
     if (typeof window.updateAllLayers === 'function') {
         window.updateAllLayers();
@@ -193,6 +203,9 @@ function hideAllCellClasses() {
             item.classList.add('dim');
         });
     }
+
+    // Update tri-state master checkbox state
+    try { updateClassesToggleAllCheckboxState(); } catch {}
 
     // Update layers
     if (typeof window.updateAllLayers === 'function') {
@@ -269,16 +282,69 @@ export function initCellClassDrawer() {
         });
     } catch {}
 
-    // Setup Show All button (pciSeq_3d style)
-    const showAllBtn = document.getElementById('showAllCellClassesBtn');
-    if (showAllBtn) {
-        showAllBtn.addEventListener('click', showAllCellClasses);
+    // Master tri-state checkbox (GitHub-style)
+    const toggleAll = document.getElementById('classesToggleAll');
+    if (toggleAll) {
+        // Initialize state
+        try { updateClassesToggleAllCheckboxState(); } catch {}
+
+        toggleAll.addEventListener('change', () => {
+            const selectAll = Boolean(toggleAll.checked);
+
+            if (selectAll) {
+                showAllCellClasses();
+            } else {
+                hideAllCellClasses();
+            }
+
+            // After bulk action, clear indeterminate and sync aria
+            updateClassesToggleAllCheckboxState();
+        });
     }
 
-    // Setup Hide All button (pciSeq_3d style)
-    const hideAllBtn = document.getElementById('hideAllCellClassesBtn');
-    if (hideAllBtn) {
-        hideAllBtn.addEventListener('click', hideAllCellClasses);
+    // Repurposed: Import class colour scheme
+    const importBtn = document.getElementById('importClassColorsBtn');
+    const fileInput = document.getElementById('classColorFileInput');
+    const statusEl = document.getElementById('classColorFileStatus');
+    if (importBtn && fileInput) {
+        importBtn.addEventListener('click', (e) => {
+            // Store ctrl/cmd state for file upload handler
+            fileInput.dataset.replaceMode = (e.ctrlKey || e.metaKey) ? 'true' : 'false';
+            fileInput.click();
+        });
+        fileInput.addEventListener('change', (ev) => {
+            const file = ev?.target?.files?.[0];
+            if (!file) return;
+            const replaceMode = ev.target.dataset.replaceMode === 'true';
+            if (statusEl) { statusEl.textContent = 'Loading...'; statusEl.className = 'file-status'; }
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const scheme = JSON.parse(reader.result);
+                    const { appliedCount, notFoundClasses, pending } = applyClassColorScheme(scheme, replaceMode);
+                    if (pending) {
+                        if (statusEl) { statusEl.textContent = 'Scheme queued (classes loading)'; statusEl.className = 'file-status'; }
+                    } else if (appliedCount > 0) {
+                        const mode = replaceMode ? 'replaced' : 'merged';
+                        const msg = notFoundClasses.length ? `${appliedCount} applied (${mode}), ${notFoundClasses.length} not found` : `${appliedCount} applied (${mode})`;
+                        if (statusEl) { statusEl.textContent = msg; statusEl.className = 'file-status success'; }
+                        // Repopulate drawer with new colours
+                        populateCellClassDrawer();
+                        if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
+                    } else {
+                        if (statusEl) { statusEl.textContent = 'No matching classes found'; statusEl.className = 'file-status error'; }
+                    }
+                } catch (e) {
+                    if (statusEl) { statusEl.textContent = `Error: ${e.message || 'Invalid JSON'}`; statusEl.className = 'file-status error'; }
+                    console.error('Failed to import class colour scheme:', e);
+                } finally {
+                    try { ev.target.value = ''; } catch {}
+                    if (statusEl) setTimeout(() => { statusEl.textContent = ''; statusEl.className = 'file-status'; }, 5000);
+                }
+            };
+            reader.onerror = () => { if (statusEl) { statusEl.textContent = 'Failed to read file'; statusEl.className = 'file-status error'; } };
+            reader.readAsText(file);
+        });
     }
 
     // Setup filter input with debouncing (pciSeq_3d style)
@@ -362,4 +428,19 @@ function setupCellClassListResize() {
             window.localStorage && window.localStorage.setItem('cellClassesListHeight', String(h));
         } catch {}
     });
+}
+
+function updateClassesToggleAllCheckboxState() {
+    const cb = document.getElementById('classesToggleAll');
+    if (!cb) return;
+    const total = state.allCellClasses ? state.allCellClasses.size : 0;
+    const selected = state.selectedCellClasses ? state.selectedCellClasses.size : 0;
+    const all = total > 0 && selected === total;
+    const none = selected === 0;
+
+    cb.indeterminate = !all && !none;
+    cb.checked = all;
+    cb.setAttribute('aria-checked', cb.indeterminate ? 'mixed' : (all ? 'true' : 'false'));
+    // Enable/disable if no data
+    cb.disabled = total === 0;
 }

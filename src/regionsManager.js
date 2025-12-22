@@ -53,14 +53,24 @@ function formatRegionName(filename) {
 function parseCSV(csvText) {
     const parsedData = d3.csvParse(csvText);
 
-    if (!parsedData.columns || !parsedData.columns.includes('x') || !parsedData.columns.includes('y')) {
+    // Case-insensitive column matching (handle 'X', 'x', 'Y', 'y' and whitespace)
+    const cols = parsedData.columns || [];
+    const normalize = (s) => (s || '').trim().toLowerCase();
+    const xCol = cols.find(c => normalize(c) === 'x');
+    const yCol = cols.find(c => normalize(c) === 'y');
+
+    if (!xCol || !yCol) {
         console.warn('CSV file is missing "x" or "y" columns. Please ensure your CSV has an "x" and a "y" header.');
         return [];
     }
 
     return parsedData.map(row => {
-        const x = +row.x;
-        const y = +row.y;
+        // Skip rows with blank cells
+        const rawX = row[xCol];
+        const rawY = row[yCol];
+        if (rawX == null || rawX === '' || rawY == null || rawY === '') return null;
+        const x = +rawX;
+        const y = +rawY;
         return (Number.isFinite(x) && Number.isFinite(y)) ? [x, y] : null;
     }).filter(d => d !== null);
 }
@@ -334,9 +344,7 @@ function renderRegionsList() {
         deleteBtn.innerHTML = TRASH_SVG;
         const handleDelete = (e) => {
             e.stopPropagation();
-            if (confirm(`Delete region "${name}"?`)) {
-                deleteRegion(name);
-            }
+            deleteRegion(name);
         };
         deleteBtn.addEventListener('click', handleDelete);
         deleteBtn.addEventListener('keydown', (e) => {
