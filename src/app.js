@@ -769,7 +769,7 @@ async function init() {
     if (window.electronAPI?.isElectron) {
         const paths = await window.electronAPI.getPaths();
         if (!paths.dataPath) {
-            // Hide loading curtain and show message
+            // Hide loading curtain and show empty state
             const curtain = document.getElementById('appCurtain');
             if (curtain) {
                 curtain.classList.add('hidden');
@@ -778,7 +778,25 @@ async function init() {
             if (loadingIndicator) {
                 loadingIndicator.style.display = 'none';
             }
-            console.warn('⚠️  Data folder not configured. Please select Data folder using the button above.');
+            
+            // Show empty state screen
+            const emptyState = document.getElementById('emptyState');
+            const emptyStateBtn = document.getElementById('emptyStateBtn');
+            if (emptyState) {
+                emptyState.classList.remove('hidden');
+                
+                if (emptyStateBtn) {
+                    emptyStateBtn.addEventListener('click', async () => {
+                        const result = await window.electronAPI.selectDataFolder();
+                        if (result.success) {
+                            // Reload to apply new data path
+                            window.location.reload();
+                        }
+                    });
+                }
+            }
+            
+            console.warn('⚠️  Data folder not configured. Waiting for user selection.');
             // Don't proceed with initialization
             return;
         }

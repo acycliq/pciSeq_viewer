@@ -34,6 +34,18 @@
 <body>
     <!-- Initial loading curtain overlay (blocks and hides controls) -->
     <div id="appCurtain" class="app-curtain"></div>
+    
+    <!-- Empty State / Welcome Screen (Electron only) -->
+    <div id="emptyState" class="empty-state hidden">
+        <div class="empty-state-content">
+            <div class="empty-state-icon">📂</div>
+            <h2>No Dataset Loaded</h2>
+            <p>Please select a data folder to begin.</p>
+            <p class="empty-state-hint">The folder should contain <code>arrow_spots</code>, <code>arrow_cells</code>, <code>arrow_boundaries</code>, and optionally an <code>.mbtiles</code> file.</p>
+            <button id="emptyStateBtn" class="accent-btn empty-state-btn">Open Data Folder</button>
+        </div>
+    </div>
+
     <div id="map"></div>
     <div id="tooltip"></div>
 

@@ -288,12 +288,7 @@ ipcMain.handle('select-data-folder', async () => {
         
         if (openDatabase(autoMbtilesPath)) {
             store.set('mbtilesPath', autoMbtilesPath);
-            dialog.showMessageBox(mainWindow, {
-                type: 'info',
-                title: 'Background Tiles Loaded',
-                message: 'Found and loaded background tiles database:',
-                detail: path.basename(autoMbtilesPath)
-            });
+            // Silent load - no popup
         }
       }
     } catch (e) {
@@ -471,12 +466,7 @@ function createMenu() {
                     const autoMbtilesPath = path.join(selectedPath, mbtilesFiles[0]);
                     if (openDatabase(autoMbtilesPath)) {
                         store.set('mbtilesPath', autoMbtilesPath);
-                        dialog.showMessageBox(mainWindow, {
-                            type: 'info',
-                            title: 'Background Tiles Loaded',
-                            message: 'Found and loaded background tiles database:',
-                            detail: path.basename(autoMbtilesPath)
-                        });
+                        // Silent load
                     }
                   }
               } catch(e) {}
@@ -485,6 +475,22 @@ function createMenu() {
               if (mainWindow) {
                 mainWindow.reload();
               }
+            }
+          }
+        },
+        {
+          label: 'Close Dataset',
+          click: () => {
+            store.delete('dataPath');
+            store.delete('tilesPath');
+            store.delete('mbtilesPath');
+            if (mbtilesDb) {
+                try { mbtilesDb.close(); } catch(e) {}
+                mbtilesDb = null;
+            }
+            console.log('Dataset closed, paths cleared.');
+            if (mainWindow) {
+              mainWindow.reload();
             }
           }
         },
@@ -589,6 +595,11 @@ function createMenu() {
 
 // App lifecycle
 app.whenReady().then(async () => {
+  // Clear stored paths to ensure we start on the welcome screen
+  store.delete('dataPath');
+  store.delete('tilesPath');
+  store.delete('mbtilesPath');
+
   registerCustomProtocol();
   registerMBTilesProtocol();
 
