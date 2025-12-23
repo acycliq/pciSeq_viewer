@@ -1,16 +1,29 @@
 const { app, BrowserWindow, protocol, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const Store = require('electron-store');
+const Database = require('better-sqlite3'); // Disk-based SQLite
 
 // Initialize persistent storage for user paths
 const store = new Store();
 
 let mainWindow;
+let mbtilesDb = null;  // Active Database instance
 
-// Register custom protocol as privileged before app is ready
+// Register custom protocols as privileged before app is ready
 protocol.registerSchemesAsPrivileged([
   {
     scheme: 'app',
+    privileges: {
+      standard: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      secure: true,
+      bypassCSP: false
+    }
+  },
+  {
+    scheme: 'mbtiles',
     privileges: {
       standard: true,
       supportFetchAPI: true,
@@ -57,6 +70,88 @@ function createWindow() {
   });
 }
 
+// Open MBTiles database using better-sqlite3
+function openDatabase(mbtilesPath) {
+  if (mbtilesDb) {
+    try { mbtilesDb.close(); } catch (e) {}
+    mbtilesDb = null;
+  }
+
+  try {
+    // Open in read-only mode, verbose logging if needed
+    mbtilesDb = new Database(mbtilesPath, { readonly: true, fileMustExist: true });
+    console.log('Opened MBTiles database (disk-based):', mbtilesPath);
+    return true;
+  } catch (e) {
+    console.error('Failed to open MBTiles database:', e);
+    return false;
+  }
+}
+
+// Get tile from MBTiles database
+function getTileFromMBTiles(planeId, z, x, y) {
+  if (!mbtilesDb) {
+    // Attempt to lazy-load if path is stored
+    const storedPath = store.get('mbtilesPath', '');
+    if (storedPath && fs.existsSync(storedPath)) {
+        if (!openDatabase(storedPath)) return null;
+    } else {
+        return null;
+    }
+  }
+
+  try {
+    // Standard MBTiles uses (zoom_level, tile_column, tile_row)
+    // Our schema adds plane_id
+    const stmt = mbtilesDb.prepare(
+      'SELECT tile_data FROM tiles WHERE plane_id = ? AND zoom_level = ? AND tile_column = ? AND tile_row = ?'
+    );
+    
+    const row = stmt.get(planeId, z, x, y);
+    return row ? row.tile_data : null;
+  } catch (e) {
+    console.error('Error fetching tile from MBTiles:', e);
+    return null;
+  }
+}
+
+// MBTiles protocol handler
+function registerMBTilesProtocol() {
+  protocol.registerBufferProtocol('mbtiles', (request, callback) => {
+    // URL format: mbtiles://tiles/{plane}/{z}/{y}/{x}.jpg
+    // The "tiles" is a dummy hostname to avoid URL parsing issues with plane numbers
+    const url = request.url.replace('mbtiles://', '');
+    const parts = url.split('/');
+
+    // Expected parts: ["tiles", plane, z, y, "x.jpg"]
+    if (parts.length < 5) {
+      console.error('Invalid mbtiles URL format:', request.url);
+      callback({ error: -6 }); // FILE_NOT_FOUND
+      return;
+    }
+
+    // Skip parts[0] which is the dummy hostname "tiles"
+    const planeId = parseInt(parts[1]);
+    const z = parseInt(parts[2]);
+    const y = parseInt(parts[3]);
+    const x = parseInt(parts[4].replace(/\.(jpg|jpeg|png)$/i, ''));
+
+    // console.log(`Fetch tile: plane=${planeId}, z=${z}, x=${x}, y=${y}`);
+
+    const tileData = getTileFromMBTiles(planeId, z, x, y);
+
+    if (tileData) {
+      callback({
+        mimeType: 'image/jpeg',
+        data: Buffer.from(tileData)
+      });
+    } else {
+    //   console.warn(`Tile not found in DB: plane=${planeId}, z=${z}, x=${x}, y=${y}`);
+      callback({ error: -6 }); // FILE_NOT_FOUND
+    }
+  });
+}
+
 // Custom protocol handler
 function registerCustomProtocol() {
   protocol.registerFileProtocol('app', (request, callback) => {
@@ -95,6 +190,34 @@ function registerCustomProtocol() {
         return;
       }
       filePath = path.join(dataPath, url);
+    }
+    // Route tile requests (Unified handler for Loose Files and MBTiles)
+    else if (url.startsWith('tiles/')) {
+      // Strategy 1: MBTiles (Priority if loaded)
+      // Note: Protocol 'mbtiles://' is preferred, but this handles 'app://tiles/' fallback
+      // which shouldn't happen with correct config.js, but good for safety.
+      // We'll skip complex logic here and assume mbtiles protocol handles the DB.
+      
+      if (tilesPath) {
+         const cleanUrl = url.replace('tiles/', '');
+         // Try "tiles_{plane}" convention
+         const parts = cleanUrl.split('/');
+         if (parts.length >= 4) {
+             const plane = parts[0];
+             const rest = parts.slice(1).join(path.sep);
+             const standardPath = path.join(tilesPath, `tiles_${plane}`, rest);
+             if (fs.existsSync(standardPath)) {
+                 filePath = standardPath;
+             } else {
+                 filePath = path.join(tilesPath, cleanUrl);
+             }
+         } else {
+             filePath = path.join(tilesPath, cleanUrl);
+         }
+      } else {
+          callback({ error: -6 });
+          return;
+      }
     }
     // Route app files to bundled application directory
     else {
@@ -153,6 +276,30 @@ ipcMain.handle('select-data-folder', async () => {
     }
 
     store.set('dataPath', selectedPath);
+    
+    // Auto-discover MBTiles file in the data folder
+    try {
+      const files = fs.readdirSync(selectedPath);
+      const mbtilesFiles = files.filter(f => f.endsWith('.mbtiles'));
+      
+      if (mbtilesFiles.length > 0) {
+        const autoMbtilesPath = path.join(selectedPath, mbtilesFiles[0]);
+        console.log('Auto-discovered MBTiles file:', autoMbtilesPath);
+        
+        if (openDatabase(autoMbtilesPath)) {
+            store.set('mbtilesPath', autoMbtilesPath);
+            dialog.showMessageBox(mainWindow, {
+                type: 'info',
+                title: 'Background Tiles Loaded',
+                message: 'Found and loaded background tiles database:',
+                detail: path.basename(autoMbtilesPath)
+            });
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to auto-discover MBTiles:', e);
+    }
+
     return { success: true, path: selectedPath };
   }
 
@@ -194,8 +341,89 @@ ipcMain.handle('select-tiles-folder', async () => {
 ipcMain.handle('get-paths', () => {
   return {
     dataPath: store.get('dataPath', ''),
-    tilesPath: store.get('tilesPath', '')
+    tilesPath: store.get('tilesPath', ''),
+    mbtilesPath: store.get('mbtilesPath', '')
   };
+});
+
+// IPC Handler for selecting MBTiles file
+ipcMain.handle('select-mbtiles-file', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    title: 'Select MBTiles File',
+    message: 'Choose the .mbtiles file containing background tiles',
+    filters: [
+      { name: 'MBTiles', extensions: ['mbtiles'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  });
+
+  if (!result.canceled && result.filePaths.length > 0) {
+    const selectedPath = result.filePaths[0];
+
+    // Validate using better-sqlite3
+    try {
+      const testDb = new Database(selectedPath, { readonly: true, fileMustExist: true });
+      
+      // Check for tiles table
+      const stmt = testDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND (name='tiles' OR name='map')");
+      const hasTable = stmt.get();
+      testDb.close();
+
+      if (!hasTable) {
+        dialog.showErrorBox(
+          'Invalid MBTiles File',
+          'The selected file does not appear to be a valid MBTiles database (missing tiles table).'
+        );
+        return { success: false, error: 'Invalid MBTiles structure' };
+      }
+
+      store.set('mbtilesPath', selectedPath);
+      console.log('MBTiles path set to:', selectedPath);
+
+      // Open the database
+      openDatabase(selectedPath);
+
+      return { success: true, path: selectedPath };
+    } catch (e) {
+      dialog.showErrorBox(
+        'Invalid MBTiles File',
+        `Failed to open file: ${e.message}`
+      );
+      return { success: false, error: e.message };
+    }
+  }
+
+  return { success: false };
+});
+
+// IPC Handler for getting MBTiles metadata
+ipcMain.handle('get-mbtiles-metadata', async () => {
+  const mbtilesPath = store.get('mbtilesPath', '');
+  if (!mbtilesPath) {
+    return { success: false, error: 'No MBTiles file configured' };
+  }
+
+  try {
+    if (!mbtilesDb) {
+      if (!openDatabase(mbtilesPath)) {
+          return { success: false, error: 'Failed to open database' };
+      }
+    }
+
+    const stmt = mbtilesDb.prepare('SELECT name, value FROM metadata');
+    const rows = stmt.all();
+    
+    const metadata = {};
+    rows.forEach(row => {
+        metadata[row.name] = row.value;
+    });
+
+    return { success: true, metadata };
+  } catch (e) {
+    console.error('Error reading MBTiles metadata:', e);
+    return { success: false, error: e.message };
+  }
 });
 
 // Create application menu
@@ -216,8 +444,8 @@ function createMenu() {
 
             if (!result.canceled && result.filePaths.length > 0) {
               const selectedPath = result.filePaths[0];
-
-              // Validate that the folder has the expected structure
+              // ... validation (same as ipcMain logic) ...
+               // Validate that the folder has the expected structure
               const fs = require('fs');
               const expectedSubdirs = ['arrow_spots', 'arrow_cells', 'arrow_boundaries'];
               const hasValidStructure = expectedSubdirs.some(subdir =>
@@ -234,10 +462,76 @@ function createMenu() {
 
               store.set('dataPath', selectedPath);
               console.log('Data path set to:', selectedPath);
+              
+              // Auto-discovery logic (duplicate logic, simplified for menu)
+              try {
+                  const files = fs.readdirSync(selectedPath);
+                  const mbtilesFiles = files.filter(f => f.endsWith('.mbtiles'));
+                  if (mbtilesFiles.length > 0) {
+                    const autoMbtilesPath = path.join(selectedPath, mbtilesFiles[0]);
+                    if (openDatabase(autoMbtilesPath)) {
+                        store.set('mbtilesPath', autoMbtilesPath);
+                        dialog.showMessageBox(mainWindow, {
+                            type: 'info',
+                            title: 'Background Tiles Loaded',
+                            message: 'Found and loaded background tiles database:',
+                            detail: path.basename(autoMbtilesPath)
+                        });
+                    }
+                  }
+              } catch(e) {}
 
               // Reload the window to use new data
               if (mainWindow) {
                 mainWindow.reload();
+              }
+            }
+          }
+        },
+        {
+          label: 'Open Background Tiles...',
+          accelerator: 'CmdOrCtrl+Shift+O',
+          click: async () => {
+            const result = await dialog.showOpenDialog(mainWindow, {
+              properties: ['openFile'],
+              title: 'Select MBTiles File',
+              message: 'Choose the .mbtiles file containing background tiles',
+              filters: [
+                { name: 'MBTiles', extensions: ['mbtiles'] },
+                { name: 'All Files', extensions: ['*'] }
+              ]
+            });
+
+            if (!result.canceled && result.filePaths.length > 0) {
+              const selectedPath = result.filePaths[0];
+
+              try {
+                // Validate using better-sqlite3
+                const testDb = new Database(selectedPath, { readonly: true, fileMustExist: true });
+                const stmt = testDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND (name='tiles' OR name='map')");
+                const hasTable = stmt.get();
+                testDb.close();
+
+                if (!hasTable) {
+                  dialog.showErrorBox(
+                    'Invalid MBTiles File',
+                    'The selected file does not appear to be a valid MBTiles database (missing tiles table).'
+                  );
+                  return;
+                }
+
+                store.set('mbtilesPath', selectedPath);
+                openDatabase(selectedPath);
+
+                // Reload the window to use new tiles
+                if (mainWindow) {
+                  mainWindow.reload();
+                }
+              } catch (e) {
+                dialog.showErrorBox(
+                  'Invalid MBTiles File',
+                  `Failed to open file: ${e.message}`
+                );
               }
             }
           }
@@ -294,8 +588,16 @@ function createMenu() {
 }
 
 // App lifecycle
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   registerCustomProtocol();
+  registerMBTilesProtocol();
+
+  // Pre-load MBTiles database if configured
+  const mbtilesPath = store.get('mbtilesPath', '');
+  if (mbtilesPath && fs.existsSync(mbtilesPath)) {
+    openDatabase(mbtilesPath);
+  }
+
   createWindow();
   createMenu();
 
@@ -318,3 +620,4 @@ console.log('App path:', app.getAppPath());
 console.log('User data:', app.getPath('userData'));
 console.log('Stored data path:', store.get('dataPath', 'not set'));
 console.log('Stored tiles path:', store.get('tilesPath', 'not set'));
+console.log('Stored mbtiles path:', store.get('mbtilesPath', 'not set'));

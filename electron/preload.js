@@ -7,6 +7,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectDataFolder: () => ipcRenderer.invoke('select-data-folder'),
   selectTilesFolder: () => ipcRenderer.invoke('select-tiles-folder'),
 
+  // MBTiles file selection
+  selectMBTilesFile: () => ipcRenderer.invoke('select-mbtiles-file'),
+  getMBTilesMetadata: () => ipcRenderer.invoke('get-mbtiles-metadata'),
+
   // Get currently configured paths
   getPaths: () => ipcRenderer.invoke('get-paths'),
 

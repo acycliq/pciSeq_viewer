@@ -33,7 +33,10 @@
       "!*.md"
     ],
     "linux": {
-      "target": ["deb", "AppImage"],
+      "target": [
+        "deb",
+        "AppImage"
+      ],
       "category": "Science",
       "icon": "icon.png"
     },
@@ -51,9 +54,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "electron-store": "^8.1.0"
+    "better-sqlite3": "^12.5.0",
+    "electron-store": "^8.1.0",
+    "sql.js": "^1.11.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.2",
     "electron": "^27.0.0",
     "electron-builder": "^24.6.0"
   }

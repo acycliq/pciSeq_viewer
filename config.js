@@ -7,6 +7,11 @@ function config() {
     // Detect if running in Electron environment
     const isElectron = window.electronAPI?.isElectron || false;
 
+    // Check if MBTiles is configured (set via electron-store)
+    // When using MBTiles, tiles are served via mbtiles:// protocol
+    // URL format: mbtiles://tiles/{plane}/{z}/{y}/{x}.jpg (needs dummy host to avoid URL parsing issues)
+    const useMBTiles = isElectron; // Will use mbtiles:// protocol in Electron
+
     return {
 
         // What are the dimensions of your images? (in pixels)
@@ -17,9 +22,11 @@ function config() {
         voxelSize: [0.28, 0.28, 0.7],
 
         // Background image: use {plane}, {z}, {y}, {x} as placeholders
-        // Using remote tiles for now (works in both web and Electron)
-        // Can be made configurable later for local tiles
-        backgroundTiles: "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg",
+        // In Electron with MBTiles: uses mbtiles:// protocol to read from SQLite
+        // In web mode: uses remote tiles URL
+        backgroundTiles: useMBTiles
+            ? "mbtiles://tiles/{plane}/{z}/{y}/{x}.jpg"
+            : "https://storage.googleapis.com/christina_silver_hc/tiles_hc/tiles_{plane}/{z}/{y}/{x}.jpg",
 
         // Arrow manifests
         // In Electron: data from user-selected folder using app:// protocol
