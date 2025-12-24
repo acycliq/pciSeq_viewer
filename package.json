@@ -1,6 +1,6 @@
 {
   "name": "pciSeq_viewer",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "Desktop transcriptomics viewer for visualizing spatial gene expression data",
   "main": "electron/main.js",
   "scripts": {
@@ -37,6 +37,7 @@
         "deb",
         "AppImage"
       ],
+      "maintainer": "Dimitris Nicoloutsopoulos <dimitris.nicoloutsopoulos@gmail.com>",
       "category": "Science",
       "icon": "icon.png"
     },
@@ -51,8 +52,8 @@
     "visualization",
     "deck.gl"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Dimitris Nicoloutsopoulos <dimitris.nicoloutsopoulos@gmail.com>",
+  "license": "MIT",
   "dependencies": {
     "better-sqlite3": "^12.5.0",
     "electron-store": "^8.1.0",
