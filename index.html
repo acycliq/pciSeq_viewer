@@ -41,7 +41,27 @@
             <div class="empty-state-icon">📂</div>
             <h2>No Dataset Loaded</h2>
             <p>Please select a data folder to begin.</p>
-            <p class="empty-state-hint">The folder should contain <code>arrow_spots</code>, <code>arrow_cells</code>, <code>arrow_boundaries</code>, and optionally an <code>.mbtiles</code> file.</p>
+            <p class="empty-state-hint">The folder should contain <code>arrow_spots</code>, <code>arrow_cells</code>, <code>arrow_boundaries</code>, and an <code>.mbtiles</code> file.</p>
+
+            <div class="voxel-size-section">
+                <h4>Voxel Size <span class="voxel-size-unit">(microns per pixel)</span></h4>
+                <div class="voxel-size-inputs">
+                    <div class="voxel-input-group">
+                        <label for="voxelSizeX">X</label>
+                        <input type="number" id="voxelSizeX" step="0.01" min="0.01" value="0.28" placeholder="0.28">
+                    </div>
+                    <div class="voxel-input-group">
+                        <label for="voxelSizeY">Y</label>
+                        <input type="number" id="voxelSizeY" step="0.01" min="0.01" value="0.28" placeholder="0.28">
+                    </div>
+                    <div class="voxel-input-group">
+                        <label for="voxelSizeZ">Z</label>
+                        <input type="number" id="voxelSizeZ" step="0.01" min="0.01" value="0.70" placeholder="0.70">
+                    </div>
+                </div>
+                <p class="voxel-size-note">These values are used for scale bar and coordinate display.</p>
+            </div>
+
             <button id="emptyStateBtn" class="accent-btn empty-state-btn">Open Data Folder</button>
         </div>
     </div>

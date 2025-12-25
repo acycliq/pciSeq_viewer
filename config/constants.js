@@ -5,30 +5,56 @@
  * that the application modules expect. Users should modify config.js, not this file.
  */
 
-// Get the user configuration
-const userConfig = window.config ? window.config() : null;
+// Get advanced config (always available - static defaults)
 const advancedUserConfig = window.advancedConfig ? window.advancedConfig() : null;
-
-if (!userConfig) {
-    throw new Error('Configuration not found. Make sure config.js is loaded before this file.');
-}
 
 if (!advancedUserConfig) {
     throw new Error('Advanced configuration not found. Make sure advanced-config.js is loaded before this file.');
 }
 
-// Transform user config into application constants (Arrow-only runtime)
-
+// IMG_DIMENSIONS is computed lazily because imageWidth/imageHeight
+// may not be available until metadata is loaded in Electron mode
+let _imgDimensions = null;
 export const IMG_DIMENSIONS = {
-    width: userConfig.imageWidth,
-    height: userConfig.imageHeight,
+    get width() {
+        if (_imgDimensions === null) {
+            const cfg = window.config ? window.config() : null;
+            _imgDimensions = {
+                width: cfg?.imageWidth || 6411,
+                height: cfg?.imageHeight || 4412
+            };
+        }
+        return _imgDimensions.width;
+    },
+    get height() {
+        if (_imgDimensions === null) {
+            const cfg = window.config ? window.config() : null;
+            _imgDimensions = {
+                width: cfg?.imageWidth || 6411,
+                height: cfg?.imageHeight || 4412
+            };
+        }
+        return _imgDimensions.height;
+    },
     // Depth (number of planes) is derived from Arrow manifests at runtime
     depth: 0,
     tileSize: 256
 };
 
+// INITIAL_VIEW_STATE is also computed lazily
+let _initialViewState = null;
 export const INITIAL_VIEW_STATE = {
-    target: [256 * 0.5, 256 * 0.5 * userConfig.imageHeight / userConfig.imageWidth, 0],
+    get target() {
+        if (_initialViewState === null) {
+            const cfg = window.config ? window.config() : null;
+            const w = cfg?.imageWidth || 6411;
+            const h = cfg?.imageHeight || 4412;
+            _initialViewState = {
+                target: [256 * 0.5, 256 * 0.5 * h / w, 0]
+            };
+        }
+        return _initialViewState.target;
+    },
     zoom: 4,
     minZoom: 0,
     maxZoom: 8
@@ -56,13 +82,74 @@ export function getTotalPlanes() {
 
 // Feature flags removed: Arrow-only runtime
 
-// Arrow manifests and related paths (optional)
+// Arrow manifests and related paths (optional) - computed lazily
+let _arrowManifests = null;
 export const ARROW_MANIFESTS = {
-    spotsManifest: userConfig.arrowSpotsManifest || './data/arrow_spots/manifest.json',
-    cellsManifest: userConfig.arrowCellsManifest || './data/arrow_cells/manifest.json',
-    boundariesManifest: userConfig.arrowBoundariesManifest,
-    cellsClassDict: userConfig.arrowCellsClassDict || './data/arrow_cells/class_dict.json',
-    spotsGeneDict: userConfig.arrowSpotsGeneDict || './data/arrow_spots/gene_dict.json'
+    get spotsManifest() {
+        if (_arrowManifests === null) {
+            const cfg = window.config ? window.config() : null;
+            _arrowManifests = {
+                spotsManifest: cfg?.arrowSpotsManifest || './data/arrow_spots/manifest.json',
+                cellsManifest: cfg?.arrowCellsManifest || './data/arrow_cells/manifest.json',
+                boundariesManifest: cfg?.arrowBoundariesManifest,
+                cellsClassDict: cfg?.arrowCellsClassDict || './data/arrow_cells/class_dict.json',
+                spotsGeneDict: cfg?.arrowSpotsGeneDict || './data/arrow_spots/gene_dict.json'
+            };
+        }
+        return _arrowManifests.spotsManifest;
+    },
+    get cellsManifest() {
+        if (_arrowManifests === null) {
+            const cfg = window.config ? window.config() : null;
+            _arrowManifests = {
+                spotsManifest: cfg?.arrowSpotsManifest || './data/arrow_spots/manifest.json',
+                cellsManifest: cfg?.arrowCellsManifest || './data/arrow_cells/manifest.json',
+                boundariesManifest: cfg?.arrowBoundariesManifest,
+                cellsClassDict: cfg?.arrowCellsClassDict || './data/arrow_cells/class_dict.json',
+                spotsGeneDict: cfg?.arrowSpotsGeneDict || './data/arrow_spots/gene_dict.json'
+            };
+        }
+        return _arrowManifests.cellsManifest;
+    },
+    get boundariesManifest() {
+        if (_arrowManifests === null) {
+            const cfg = window.config ? window.config() : null;
+            _arrowManifests = {
+                spotsManifest: cfg?.arrowSpotsManifest || './data/arrow_spots/manifest.json',
+                cellsManifest: cfg?.arrowCellsManifest || './data/arrow_cells/manifest.json',
+                boundariesManifest: cfg?.arrowBoundariesManifest,
+                cellsClassDict: cfg?.arrowCellsClassDict || './data/arrow_cells/class_dict.json',
+                spotsGeneDict: cfg?.arrowSpotsGeneDict || './data/arrow_spots/gene_dict.json'
+            };
+        }
+        return _arrowManifests.boundariesManifest;
+    },
+    get cellsClassDict() {
+        if (_arrowManifests === null) {
+            const cfg = window.config ? window.config() : null;
+            _arrowManifests = {
+                spotsManifest: cfg?.arrowSpotsManifest || './data/arrow_spots/manifest.json',
+                cellsManifest: cfg?.arrowCellsManifest || './data/arrow_cells/manifest.json',
+                boundariesManifest: cfg?.arrowBoundariesManifest,
+                cellsClassDict: cfg?.arrowCellsClassDict || './data/arrow_cells/class_dict.json',
+                spotsGeneDict: cfg?.arrowSpotsGeneDict || './data/arrow_spots/gene_dict.json'
+            };
+        }
+        return _arrowManifests.cellsClassDict;
+    },
+    get spotsGeneDict() {
+        if (_arrowManifests === null) {
+            const cfg = window.config ? window.config() : null;
+            _arrowManifests = {
+                spotsManifest: cfg?.arrowSpotsManifest || './data/arrow_spots/manifest.json',
+                cellsManifest: cfg?.arrowCellsManifest || './data/arrow_cells/manifest.json',
+                boundariesManifest: cfg?.arrowBoundariesManifest,
+                cellsClassDict: cfg?.arrowCellsClassDict || './data/arrow_cells/class_dict.json',
+                spotsGeneDict: cfg?.arrowSpotsGeneDict || './data/arrow_spots/gene_dict.json'
+            };
+        }
+        return _arrowManifests.spotsGeneDict;
+    }
 };
 
 // Color palette for different polygon aliases
@@ -105,5 +192,6 @@ export const GENE_SIZE_CONFIG = {
 
 // Helper function to get tile URL pattern
 export function getTileUrlPattern() {
-    return userConfig.backgroundTiles;
+    const cfg = window.config ? window.config() : null;
+    return cfg?.backgroundTiles;
 }

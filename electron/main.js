@@ -341,6 +341,22 @@ ipcMain.handle('get-paths', () => {
   };
 });
 
+// IPC Handler for saving voxel size to electron-store
+ipcMain.handle('set-voxel-size', (event, voxelSize) => {
+  if (Array.isArray(voxelSize) && voxelSize.length === 3) {
+    store.set('voxelSize', voxelSize);
+    console.log('Voxel size saved:', voxelSize);
+    return { success: true };
+  }
+  return { success: false, error: 'Invalid voxel size format. Expected [x, y, z] array.' };
+});
+
+// IPC Handler for getting stored voxel size
+ipcMain.handle('get-voxel-size', () => {
+  const voxelSize = store.get('voxelSize', null);
+  return { success: voxelSize !== null, voxelSize };
+});
+
 // IPC Handler for selecting MBTiles file
 ipcMain.handle('select-mbtiles-file', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -489,12 +505,22 @@ ipcMain.handle('get-dataset-metadata', async () => {
     };
   }
 
-  // Check required fields (width, height, plane_count) - voxelSize is optional for now
-  const hasRequired = result.imageWidth && result.imageHeight && result.planeCount;
+  // If voxelSize not in MBTiles, use stored voxel size from electron-store
+  if (!result.voxelSize) {
+    const storedVoxelSize = store.get('voxelSize', null);
+    if (storedVoxelSize && Array.isArray(storedVoxelSize) && storedVoxelSize.length === 3) {
+      result.voxelSize = storedVoxelSize;
+      result.source = 'mbtiles+store';
+      console.log('Using stored voxel size:', storedVoxelSize);
+    }
+  }
+
+  // Check required fields - all four are now required
+  const hasRequired = result.imageWidth && result.imageHeight && result.planeCount && result.voxelSize;
   return {
     success: hasRequired,
     ...result,
-    error: hasRequired ? null : 'Missing required metadata in MBTiles: width, height, and plane_count are required'
+    error: hasRequired ? null : 'Missing required metadata: width, height, plane_count (from MBTiles), and voxel_size (from MBTiles or user input) are required'
   };
 });
 

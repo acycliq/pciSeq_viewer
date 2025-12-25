@@ -15,6 +15,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getDatasetMetadata: () => ipcRenderer.invoke('get-dataset-metadata'),
   getMetadataJson: () => ipcRenderer.invoke('get-metadata-json'),
 
+  // Voxel size
+  setVoxelSize: (voxelSize) => ipcRenderer.invoke('set-voxel-size', voxelSize),
+  getVoxelSize: () => ipcRenderer.invoke('get-voxel-size'),
+
   // Get currently configured paths
   getPaths: () => ipcRenderer.invoke('get-paths'),
 

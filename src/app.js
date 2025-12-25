@@ -862,6 +862,17 @@ async function init() {
 
                 if (emptyStateBtn) {
                     emptyStateBtn.addEventListener('click', async () => {
+                        // Read voxel size from input fields before opening folder
+                        const voxelX = parseFloat(document.getElementById('voxelSizeX')?.value) || 0.28;
+                        const voxelY = parseFloat(document.getElementById('voxelSizeY')?.value) || 0.28;
+                        const voxelZ = parseFloat(document.getElementById('voxelSizeZ')?.value) || 0.70;
+
+                        // Save voxel size to electron-store
+                        if (window.electronAPI?.setVoxelSize) {
+                            await window.electronAPI.setVoxelSize([voxelX, voxelY, voxelZ]);
+                            console.log('Voxel size saved:', [voxelX, voxelY, voxelZ]);
+                        }
+
                         const result = await window.electronAPI.selectDataFolder();
                         if (result.success) {
                             // Reload to apply new data path

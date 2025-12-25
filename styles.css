@@ -335,6 +335,84 @@ body {
     min-width: 160px;
 }
 
+/* Voxel Size Section in Welcome Screen */
+.voxel-size-section {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 24px 0;
+    text-align: left;
+}
+
+.voxel-size-section h4 {
+    margin: 0 0 14px 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: #e5e5e5;
+    text-align: center;
+}
+
+.voxel-size-unit {
+    font-weight: 400;
+    color: #888;
+    font-size: 12px;
+}
+
+.voxel-size-inputs {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+
+.voxel-input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.voxel-input-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #9aa0a6;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.voxel-input-group input {
+    width: 80px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: #fff;
+    transition: all 0.2s ease;
+}
+
+.voxel-input-group input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.voxel-input-group input::-webkit-inner-spin-button,
+.voxel-input-group input::-webkit-outer-spin-button {
+    opacity: 0.5;
+}
+
+.voxel-size-note {
+    margin: 14px 0 0 0;
+    font-size: 11px;
+    color: #6b7280;
+    text-align: center;
+    font-style: italic;
+}
+
 /* Metadata Error State */
 .metadata-error-state {
     position: fixed;
