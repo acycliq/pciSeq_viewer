@@ -46,6 +46,39 @@
         </div>
     </div>
 
+    <!-- Metadata Error State -->
+    <div id="metadataErrorState" class="metadata-error-state hidden">
+        <div class="metadata-error-content">
+            <div class="metadata-error-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <circle cx="12" cy="16" r="0.5" fill="currentColor"/>
+                </svg>
+            </div>
+            <h2>Missing Dataset Metadata</h2>
+            <p class="metadata-error-subtitle">The MBTiles file is missing required information</p>
+            <div class="metadata-error-details" id="metadataErrorDetails">
+                <!-- Filled dynamically -->
+            </div>
+            <div class="metadata-error-help">
+                <h4>How to fix this:</h4>
+                <p>Regenerate your MBTiles file using <code>stage_image()</code> with proper parameters:</p>
+                <pre><code>from pciSeq.src.viewer.stage_image import stage_image
+
+stage_image(
+    your_image_stack,
+    voxel_size=[0.28, 0.28, 0.7]  # microns per pixel [x, y, z]
+)</code></pre>
+                <p class="metadata-error-note">The width, height, and plane count are automatically detected from your image.</p>
+            </div>
+            <div class="metadata-error-actions">
+                <button id="metadataErrorOpenBtn" class="accent-btn">Open Different Dataset</button>
+                <button id="metadataErrorCloseBtn" class="secondary-btn">Close Dataset</button>
+            </div>
+        </div>
+    </div>
+
     <div id="map"></div>
     <div id="tooltip"></div>
 

@@ -408,7 +408,7 @@ ipcMain.handle('get-mbtiles-metadata', async () => {
 
     const stmt = mbtilesDb.prepare('SELECT name, value FROM metadata');
     const rows = stmt.all();
-    
+
     const metadata = {};
     rows.forEach(row => {
         metadata[row.name] = row.value;
@@ -419,6 +419,83 @@ ipcMain.handle('get-mbtiles-metadata', async () => {
     console.error('Error reading MBTiles metadata:', e);
     return { success: false, error: e.message };
   }
+});
+
+// IPC Handler for reading metadata.json from data folder
+ipcMain.handle('get-metadata-json', async () => {
+  const dataPath = store.get('dataPath', '');
+  if (!dataPath) {
+    return { success: false, error: 'No data path configured' };
+  }
+
+  const metadataPath = path.join(dataPath, 'metadata.json');
+
+  try {
+    if (!fs.existsSync(metadataPath)) {
+      return { success: false, error: 'metadata.json not found' };
+    }
+
+    const content = fs.readFileSync(metadataPath, 'utf8');
+    const metadata = JSON.parse(content);
+
+    return { success: true, metadata };
+  } catch (e) {
+    console.error('Error reading metadata.json:', e);
+    return { success: false, error: e.message };
+  }
+});
+
+// IPC Handler for getting dataset metadata from MBTiles (no fallback)
+ipcMain.handle('get-dataset-metadata', async () => {
+  const result = {
+    imageWidth: null,
+    imageHeight: null,
+    voxelSize: null,
+    planeCount: null,
+    source: null
+  };
+
+  // Read from MBTiles ONLY - no fallback
+  const mbtilesPath = store.get('mbtilesPath', '');
+  if (!mbtilesPath || !mbtilesDb) {
+    return {
+      success: false,
+      ...result,
+      error: 'No MBTiles file loaded. Please ensure your dataset includes an MBTiles file with metadata.'
+    };
+  }
+
+  try {
+    const stmt = mbtilesDb.prepare('SELECT name, value FROM metadata');
+    const rows = stmt.all();
+
+    rows.forEach(row => {
+      if (row.name === 'width') result.imageWidth = parseInt(row.value);
+      if (row.name === 'height') result.imageHeight = parseInt(row.value);
+      if (row.name === 'plane_count') result.planeCount = parseInt(row.value);
+      if (row.name === 'voxel_size') {
+        // Parse comma-separated voxel size: "0.28,0.28,0.7"
+        const parts = row.value.split(',').map(parseFloat);
+        if (parts.length === 3) result.voxelSize = parts;
+      }
+    });
+
+    result.source = 'mbtiles';
+  } catch (e) {
+    return {
+      success: false,
+      ...result,
+      error: `Failed to read MBTiles metadata: ${e.message}`
+    };
+  }
+
+  // Check required fields (width, height, plane_count) - voxelSize is optional for now
+  const hasRequired = result.imageWidth && result.imageHeight && result.planeCount;
+  return {
+    success: hasRequired,
+    ...result,
+    error: hasRequired ? null : 'Missing required metadata in MBTiles: width, height, and plane_count are required'
+  };
 });
 
 // Create application menu
@@ -577,10 +654,11 @@ function createMenu() {
         {
           label: 'About pciSeq Viewer',
           click: () => {
+            const packageJson = require('../package.json');
             dialog.showMessageBox(mainWindow, {
               type: 'info',
               title: 'About pciSeq Viewer',
-              message: 'pciSeq Viewer v0.0.1',
+              message: `pciSeq Viewer v${packageJson.version}`,
               detail: 'Desktop transcriptomics viewer for visualizing spatial gene expression data.'
             });
           }

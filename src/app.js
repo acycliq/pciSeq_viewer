@@ -152,6 +152,84 @@ window.toggleRegionVisibility = toggleRegionVisibility;
 window.getRegionBoundaries = getRegionBoundaries;
 window.getVisibleRegions = getVisibleRegions;
 
+// === METADATA ERROR DISPLAY ===
+function showMetadataError(metadataResult, errorMessage) {
+    // Hide loading curtain
+    const curtain = document.getElementById('appCurtain');
+    if (curtain) {
+        curtain.classList.add('hidden');
+    }
+
+    // Hide loading indicator
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+    }
+
+    // Show metadata error screen
+    const errorScreen = document.getElementById('metadataErrorState');
+    const errorDetails = document.getElementById('metadataErrorDetails');
+
+    if (errorScreen) {
+        errorScreen.classList.remove('hidden');
+
+        // Build details table showing which fields are present/missing
+        if (errorDetails) {
+            const fields = [
+                { name: 'width', label: 'Image Width', value: metadataResult?.imageWidth },
+                { name: 'height', label: 'Image Height', value: metadataResult?.imageHeight },
+                { name: 'plane_count', label: 'Plane Count', value: metadataResult?.planeCount },
+                { name: 'voxel_size', label: 'Voxel Size', value: metadataResult?.voxelSize ? JSON.stringify(metadataResult.voxelSize) : null }
+            ];
+
+            let html = '';
+            fields.forEach(field => {
+                const isOk = field.value !== null && field.value !== undefined;
+                const statusClass = isOk ? 'ok' : 'missing';
+                const statusIcon = isOk ? 'OK' : 'X';
+                const valueDisplay = isOk ? field.value : 'missing';
+
+                html += `
+                    <div class="error-field">
+                        <span class="field-status ${statusClass}">${statusIcon}</span>
+                        <span class="field-name">${field.label}</span>
+                        <span class="field-value">${valueDisplay}</span>
+                    </div>
+                `;
+            });
+
+            errorDetails.innerHTML = html;
+        }
+
+        // Setup button handlers
+        const openBtn = document.getElementById('metadataErrorOpenBtn');
+        const closeBtn = document.getElementById('metadataErrorCloseBtn');
+
+        if (openBtn) {
+            openBtn.addEventListener('click', async () => {
+                if (window.electronAPI?.selectDataFolder) {
+                    const result = await window.electronAPI.selectDataFolder();
+                    if (result.success) {
+                        window.location.reload();
+                    }
+                }
+            });
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', async () => {
+                // Close the dataset and reload to welcome screen
+                if (window.electronAPI?.getPaths) {
+                    // Clear stored paths by reloading - main.js clears on startup
+                    window.location.reload();
+                }
+            });
+        }
+    }
+
+    console.error('Metadata error displayed:', errorMessage);
+}
+
 // === SCALE BAR FUNCTIONS ===
 function calculateScaleBar(viewState) {
     const config = window.config();
@@ -762,10 +840,7 @@ function initializeDeckGL() {
 async function init() {
     showLoading(state, elements.loadingIndicator);
 
-    const userConfig = window.config();
-    const advancedConfig = window.advancedConfig();
-
-    // In Electron, check if data path is configured
+    // In Electron, check if data path is configured first
     if (window.electronAPI?.isElectron) {
         const paths = await window.electronAPI.getPaths();
         if (!paths.dataPath) {
@@ -778,13 +853,13 @@ async function init() {
             if (loadingIndicator) {
                 loadingIndicator.style.display = 'none';
             }
-            
+
             // Show empty state screen
             const emptyState = document.getElementById('emptyState');
             const emptyStateBtn = document.getElementById('emptyStateBtn');
             if (emptyState) {
                 emptyState.classList.remove('hidden');
-                
+
                 if (emptyStateBtn) {
                     emptyStateBtn.addEventListener('click', async () => {
                         const result = await window.electronAPI.selectDataFolder();
@@ -795,12 +870,31 @@ async function init() {
                     });
                 }
             }
-            
-            console.warn('⚠️  Data folder not configured. Waiting for user selection.');
+
+            console.warn('Data folder not configured. Waiting for user selection.');
             // Don't proceed with initialization
             return;
         }
     }
+
+    // In Electron, load dataset metadata from MBTiles before config()
+    // This populates the cache that config() uses for imageWidth, imageHeight, planeCount
+    let metadataResult = null;
+    if (window.electronAPI?.isElectron && window.loadDatasetMetadata) {
+        metadataResult = await window.loadDatasetMetadata();
+    }
+
+    // Try to get config - catch errors for missing metadata
+    let userConfig;
+    try {
+        userConfig = window.config();
+    } catch (error) {
+        console.error('Configuration error:', error.message);
+        showMetadataError(metadataResult, error.message);
+        return;
+    }
+
+    const advancedConfig = window.advancedConfig();
 
     // Performance optimization info
     if (advancedConfig.performance.enablePerformanceMode) {

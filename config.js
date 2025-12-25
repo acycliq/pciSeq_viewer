@@ -3,6 +3,48 @@
  * when adapting the viewer to their own dataset.
  */
 
+// Cache for dataset metadata loaded from MBTiles/metadata.json
+// This is populated by loadDatasetMetadata() before config() is called
+window._datasetMetadataCache = null;
+
+/**
+ * Load dataset metadata from MBTiles or metadata.json (Electron only)
+ * Call this before using config() to get dynamic values
+ * @returns {Promise<object>} The metadata object
+ */
+async function loadDatasetMetadata() {
+    const isElectron = window.electronAPI?.isElectron || false;
+
+    if (!isElectron) {
+        // In web mode, use defaults (no dynamic loading)
+        return null;
+    }
+
+    try {
+        const result = await window.electronAPI.getDatasetMetadata();
+        if (result.success) {
+            window._datasetMetadataCache = {
+                imageWidth: result.imageWidth,
+                imageHeight: result.imageHeight,
+                voxelSize: result.voxelSize,
+                planeCount: result.planeCount,
+                source: result.source
+            };
+            console.log('Dataset metadata loaded from', result.source + ':', window._datasetMetadataCache);
+            return window._datasetMetadataCache;
+        } else {
+            console.warn('Failed to load dataset metadata:', result.error);
+            return null;
+        }
+    } catch (e) {
+        console.error('Error loading dataset metadata:', e);
+        return null;
+    }
+}
+
+// Make loadDatasetMetadata available globally
+window.loadDatasetMetadata = loadDatasetMetadata;
+
 function config() {
     // Detect if running in Electron environment
     const isElectron = window.electronAPI?.isElectron || false;
@@ -12,14 +54,36 @@ function config() {
     // URL format: mbtiles://tiles/{plane}/{z}/{y}/{x}.jpg (needs dummy host to avoid URL parsing issues)
     const useMBTiles = isElectron; // Will use mbtiles:// protocol in Electron
 
+    // Get cached metadata - REQUIRED in Electron mode
+    const meta = window._datasetMetadataCache;
+
+    // In Electron mode, metadata is REQUIRED from MBTiles (no fallback)
+    if (isElectron && meta !== null) {
+        // Only validate if we have a data path configured (meta will be null on welcome screen)
+        if (!meta.imageWidth || !meta.imageHeight) {
+            throw new Error('Missing required metadata: width and height must be provided in MBTiles file');
+        }
+        if (!meta.planeCount || meta.planeCount < 1) {
+            throw new Error('Missing required metadata: plane_count must be provided in MBTiles file');
+        }
+        if (!meta.voxelSize || !Array.isArray(meta.voxelSize) || meta.voxelSize.length !== 3) {
+            throw new Error('Missing required metadata: voxel_size must be provided in MBTiles file as [x, y, z] values in microns');
+        }
+    }
+
     return {
 
         // What are the dimensions of your images? (in pixels)
-        imageWidth: 6411,
-        imageHeight: 4412,
+        // In Electron: loaded from MBTiles metadata (REQUIRED)
+        imageWidth: meta?.imageWidth,
+        imageHeight: meta?.imageHeight,
 
-        // Size of a cubic pixel in microns (x, y, z)
-        voxelSize: [0.28, 0.28, 0.7],
+        // Number of z-planes in the image stack
+        // In Electron: loaded from MBTiles metadata (REQUIRED)
+        planeCount: meta?.planeCount,
+
+        // Size of a voxel in microns (x, y, z) - to be configured separately
+        voxelSize: meta?.voxelSize,
 
         // Background image: use {plane}, {z}, {y}, {x} as placeholders
         // In Electron with MBTiles: uses mbtiles:// protocol to read from SQLite

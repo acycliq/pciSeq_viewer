@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectMBTilesFile: () => ipcRenderer.invoke('select-mbtiles-file'),
   getMBTilesMetadata: () => ipcRenderer.invoke('get-mbtiles-metadata'),
 
+  // Dataset metadata (combined MBTiles + metadata.json)
+  getDatasetMetadata: () => ipcRenderer.invoke('get-dataset-metadata'),
+  getMetadataJson: () => ipcRenderer.invoke('get-metadata-json'),
+
   // Get currently configured paths
   getPaths: () => ipcRenderer.invoke('get-paths'),
 

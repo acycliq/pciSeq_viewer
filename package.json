@@ -27,7 +27,7 @@
       "!docs/**",
       "!examples/**",
       "!python_converters/**",
-      "!voxel-viewer/**",
+      "voxel-viewer/**/*",
       "!.git/**",
       "!.idea/**",
       "!*.md"

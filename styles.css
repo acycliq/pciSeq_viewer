@@ -335,6 +335,197 @@ body {
     min-width: 160px;
 }
 
+/* Metadata Error State */
+.metadata-error-state {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #0b0f19 0%, #1a1f2e 100%);
+    z-index: 2400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #e5e5e5;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.metadata-error-state.hidden {
+    display: none;
+}
+
+.metadata-error-content {
+    text-align: center;
+    max-width: 520px;
+    padding: 48px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.metadata-error-icon {
+    margin-bottom: 24px;
+    color: #f59e0b;
+    opacity: 0.9;
+}
+
+.metadata-error-icon svg {
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.3));
+}
+
+.metadata-error-state h2 {
+    margin: 0 0 8px 0;
+    font-size: 22px;
+    font-weight: 500;
+    color: #fff;
+    letter-spacing: -0.3px;
+}
+
+.metadata-error-subtitle {
+    color: #9aa0a6;
+    margin: 0 0 24px 0;
+    font-size: 14px;
+}
+
+.metadata-error-details {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+    text-align: left;
+}
+
+.metadata-error-details .error-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.metadata-error-details .error-field:last-child {
+    border-bottom: none;
+}
+
+.metadata-error-details .field-status {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+}
+
+.metadata-error-details .field-status.ok {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.metadata-error-details .field-status.missing {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.metadata-error-details .field-name {
+    color: #ccc;
+    flex: 1;
+}
+
+.metadata-error-details .field-value {
+    color: #888;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+    font-size: 12px;
+}
+
+.metadata-error-help {
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 28px;
+    text-align: left;
+}
+
+.metadata-error-help h4 {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #93c5fd;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metadata-error-help p {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #9aa0a6;
+}
+
+.metadata-error-help pre {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+    padding: 14px;
+    margin: 12px 0;
+    overflow-x: auto;
+}
+
+.metadata-error-help code {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+    font-size: 12px;
+    color: #a5d6ff;
+    line-height: 1.6;
+}
+
+.metadata-error-note {
+    font-size: 12px;
+    color: #6b7280;
+    font-style: italic;
+    margin-top: 8px;
+}
+
+.metadata-error-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.metadata-error-actions .accent-btn,
+.metadata-error-actions .secondary-btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.metadata-error-actions .accent-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.metadata-error-actions .accent-btn:hover {
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    transform: translateY(-1px);
+}
+
+.metadata-error-actions .secondary-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: #9aa0a6;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.metadata-error-actions .secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #e5e5e5;
+}
+
 #map {
     width: 100vw;
     height: 100vh;
