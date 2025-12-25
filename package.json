@@ -17,6 +17,8 @@
       "styles.css",
       "config.js",
       "advanced-config.js",
+      "icon.png",
+      "selection_tool.png",
       "src/**/*",
       "modules/**/*",
       "arrow-loader/**/*",
@@ -32,6 +34,12 @@
       "!.idea/**",
       "!*.md"
     ],
+    "extraResources": [
+      {
+        "from": "build/icons",
+        "to": "icons"
+      }
+    ],
     "linux": {
       "target": [
         "deb",
@@ -39,7 +47,7 @@
       ],
       "maintainer": "Dimitris Nicoloutsopoulos <dimitris.nicoloutsopoulos@gmail.com>",
       "category": "Science",
-      "icon": "icon.png"
+      "icon": "build/icons"
     },
     "directories": {
       "output": "dist"
