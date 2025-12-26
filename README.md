@@ -213,7 +213,6 @@ pciSeq.fit(
 pciSeq.stage_image(
     img=dapi,
     out_dir=f'{output_folder}/pciSeq/data',
-    zoom_levels=8,
     name='WT Mouse', # short description, identifier
     description='Mouse cortex, 102 z-planes', # long description
 )
