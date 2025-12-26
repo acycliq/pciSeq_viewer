@@ -188,17 +188,17 @@ import pandas as pd
 import numpy as np
 from scipy.sparse import coo_matrix
 
-# === Load your data ===
+# Load your data 
 spots = pd.read_csv('spots.csv')           # x, y, z_plane, gene_name
 masks = np.load('segmentation.npy')        # (Z, H, W) segmentation masks
 coo = [coo_matrix(m) for m in masks]       # Convert to sparse format
 scRNAseq = pd.read_csv('reference.csv')    # Single-cell reference
 dapi = np.load('dapi.npy')                 # (Z, H, W) background image
 
-# === Configuration ===
+
 output_folder = '/home/user/my_experiment'
 
-# === Step 1: Run pciSeq ===
+#1. Run pciSeq
 pciSeq.fit(
     spots=spots,
     coo=coo,
@@ -209,21 +209,14 @@ pciSeq.fit(
     }
 )
 
-# === Step 2: Create MBTiles ===
+# 2. Create MBTiles
 pciSeq.stage_image(
     img=dapi,
     out_dir=f'{output_folder}/pciSeq/data',
     zoom_levels=8,
-    name='My Experiment',
-    description='Mouse cortex, 84 z-planes',
+    name='WT Mouse', # short description, identifier
+    description='Mouse cortex, 102 z-planes', # long description
 )
 
 print(f'Done! Open this folder in the viewer: {output_folder}/pciSeq/data')
 ```
-
----
-
-## Support
-
-- **Issues:** [GitHub Issues](https://github.com/acycliq/pciSeq_viewer/issues)
-- **pciSeq Documentation:** [pciSeq GitHub](https://github.com/acycliq/pciSeq)
