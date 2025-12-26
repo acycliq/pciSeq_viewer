@@ -38,44 +38,30 @@
     <!-- Empty State / Welcome Screen (Electron only) -->
     <div id="emptyState" class="empty-state hidden">
         <div class="empty-state-content">
-            <div class="empty-state-icon">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                    <line x1="12" y1="11" x2="12" y2="17"></line>
-                    <line x1="9" y1="14" x2="15" y2="14"></line>
-                </svg>
-            </div>
-            <h2>Load Dataset</h2>
-            <p class="empty-state-subtext">Select a folder containing your pciSeq analysis results</p>
-            
-            <div class="voxel-config-container">
-                <div class="voxel-label-row">
-                    <span class="voxel-title">Voxel Size</span>
-                    <span class="voxel-unit">μm / pixel</span>
-                </div>
-                <div class="voxel-inputs-row">
-                    <div class="voxel-field">
+            <div class="empty-state-icon">📂</div>
+            <h2>No Dataset Loaded</h2>
+            <p>Please select a data folder to begin.</p>
+            <p class="empty-state-hint">The folder should contain <code>arrow_spots</code>, <code>arrow_cells</code>, <code>arrow_boundaries</code>, and an <code>.mbtiles</code> file.</p>
+
+            <div class="voxel-size-section">
+                <h4>Voxel Size <span class="voxel-size-unit">(microns per pixel)</span></h4>
+                <div class="voxel-size-inputs">
+                    <div class="voxel-input-group">
                         <label for="voxelSizeX">X</label>
                         <input type="number" id="voxelSizeX" step="0.01" min="0.01" value="0.28">
                     </div>
-                    <div class="voxel-field">
+                    <div class="voxel-input-group">
                         <label for="voxelSizeY">Y</label>
                         <input type="number" id="voxelSizeY" step="0.01" min="0.01" value="0.28">
                     </div>
-                    <div class="voxel-field">
+                    <div class="voxel-input-group">
                         <label for="voxelSizeZ">Z</label>
                         <input type="number" id="voxelSizeZ" step="0.01" min="0.01" value="0.70">
                     </div>
                 </div>
             </div>
 
-            <button id="emptyStateBtn" class="primary-action-btn">
-                <span>Select Data Folder</span>
-            </button>
-            
-            <div class="empty-state-footer">
-                <p>Required: <code>arrow_spots</code>, <code>arrow_cells</code>, <code>arrow_boundaries</code>, <code>.mbtiles</code></p>
-            </div>
+            <button id="emptyStateBtn" class="accent-btn empty-state-btn">Open Data Folder</button>
         </div>
     </div>
 
