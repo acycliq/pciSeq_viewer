@@ -1,103 +1,225 @@
-https://acycliq.github.io/pciSeq_viewer/
+# pciSeq Viewer
 
-[//]: # ()
-[//]: # ()
-[//]: # ()
-[//]: # (# Counts per Class)
+A desktop application for visualizing spatial transcriptomics data from pciSeq analysis.
 
-[//]: # ()
-[//]: # ([View interactive charts]&#40;https://acycliq.github.io/deckgl_viewer/counts_per_class.html&#41;)
-[//]: # ()
-[//]: # (---)
+## Installation
 
-## Setting Up Your Own Data
+### Linux (Ubuntu/Debian)
 
-### Prerequisites
+1. Download `pciSeq_viewer_X.X.X_amd64.deb` from [Releases](https://github.com/acycliq/pciSeq_viewer/releases/latest)
+2. Install:
+   ```bash
+   sudo dpkg -i pciSeq_viewer_*.deb
+   ```
+3. Launch from your applications menu or run `pciSeq_viewer` in terminal
 
-1. Run pciSeq analysis on your dataset to generate Arrow files
-2. A local web server to serve the viewer (e.g., Python's `http.server`)
+---
 
-### Step 1: Run pciSeq
+## Preparing Your Data
 
-Run function `pciSeq.fit()` with `save_data=True`:
+Before using the viewer, you need to prepare your data using Python. This involves two steps:
+
+1. **Run pciSeq analysis** - generates cell typing results (Arrow files)
+2. **Create background tiles** - converts your microscopy image to viewable format (MBTiles)
+
+### Requirements
+
+Install the pciSeq Python package:
+
+```bash
+pip install pciSeq
+```
+
+For background image processing, you also need libvips:
+
+```bash
+# Ubuntu/Debian
+sudo apt install libvips
+```
+
+---
+
+### Step 1: Run pciSeq Analysis
+
+This step performs cell typing and generates the data files needed by the viewer.
 
 ```python
 import pciSeq
 
-opts = {
-    'save_data': True,
-    'output_path': '/path/to/output',  # Optional: defaults to system temp dir
-    # ... other options
-}
+# Your input data
+spots = ...       # DataFrame with columns: x, y, z_plane, gene_name
+coo = ...         # List of sparse matrices (cell segmentation masks)
+scRNAseq = ...    # Single-cell reference data
 
-pciSeq.fit(spots=spots_df, coo=coo_matrices, scRNAseq=scrna_df, opts=opts)
+# Run the analysis
+pciSeq.fit(
+    spots=spots,
+    coo=coo,
+    scRNAseq=scRNAseq,
+    opts={
+        'save_data': True,
+        'output_path': '/path/to/my_dataset',  # Where to save results
+    }
+)
 ```
 
-This generates Arrow files in: `/path/to/output/pciSeq/data/arrow/`
+This creates a folder with your results:
 
-**Note:** If `output_path` is not specified, pciSeq saves to the system temp directory:
-- Linux: `/tmp/pciSeq/data/arrow/`
-- macOS: `/tmp/pciSeq/data/arrow/`
-- Windows: `%TEMP%\pciSeq\data\arrow\`
+```
+/path/to/my_dataset/
+└── pciSeq/
+    └── data/
+        └── arrow/
+            ├── arrow_spots/       # Gene spot locations
+            ├── arrow_cells/       # Cell information
+            └── arrow_boundaries/  # Cell boundary polygons
+```
 
-### Step 2: Copy Arrow Files to Viewer
+---
 
-Copy the generated Arrow directories to your viewer's data folder:
+### Step 2: Create Background Tiles (MBTiles)
+
+Convert your microscopy image (e.g., DAPI) into a format the viewer can display.
+
+```python
+import pciSeq
+import numpy as np
+
+# Load your background image
+# This should be a numpy array with shape (Z, H, W) for 3D data
+# or (H, W) for 2D data
+dapi_image = np.load('/path/to/dapi_image.npy')
+
+# Create the MBTiles file
+pciSeq.stage_image(
+    img=dapi_image,
+    out_dir='/path/to/my_dataset/pciSeq/data',  # Same folder as Arrow files
+    zoom_levels=8,
+    name='My Dataset',                           # Short identifier
+    description='DAPI staining, mouse cortex',   # Detailed description
+)
+```
+
+This creates `output.mbtiles` in the specified directory.
+
+---
+
+### Final Data Structure
+
+After both steps, your data folder should look like this:
+
+```
+/path/to/my_dataset/
+└── pciSeq/
+    └── data/
+        ├── output.mbtiles           # Background image tiles
+        └── arrow/
+            ├── arrow_spots/         # Gene spots
+            │   ├── manifest.json
+            │   ├── gene_dict.json
+            │   └── spots_shard_*.feather
+            ├── arrow_cells/         # Cell data
+            │   ├── manifest.json
+            │   └── cells_shard_*.feather
+            └── arrow_boundaries/    # Cell boundaries
+                ├── manifest.json
+                └── boundaries_plane_*.feather
+```
+
+---
+
+## Loading Data in the Viewer
+
+1. **Launch the application**
+
+2. **Select your data folder**
+   - Go to `File > Open Data Folder`
+   - Navigate to your data folder (e.g., `/path/to/my_dataset/pciSeq/data`)
+   - Click "Select Folder"
+
+3. **Enter voxel size**
+   - The app will prompt you to enter the voxel size (microns per pixel)
+   - Enter values for X, Y, and Z dimensions (e.g., 0.147, 0.147, 0.9)
+
+4. **The viewer will automatically load:**
+   - Background image from `output.mbtiles`
+   - Gene spots from `arrow_spots/`
+   - Cell boundaries from `arrow_boundaries/`
+   - Cell information from `arrow_cells/`
+
+---
+
+## Troubleshooting
+
+### "Missing required metadata" error
+
+Your MBTiles file is missing image dimensions. Re-run `pciSeq.stage_image()` to regenerate the file.
+
+### Background image doesn't appear
+
+- Check that `output.mbtiles` exists in your data folder
+- Ensure the MBTiles file was created with the correct `zoom_levels` (default: 8)
+
+### libvips not found
+
+Install libvips before running `stage_image()`:
 
 ```bash
-cp -r /path/to/output/pciSeq/data/arrow/arrow_spots ./data/
-cp -r /path/to/output/pciSeq/data/arrow/arrow_cells ./data/
-cp -r /path/to/output/pciSeq/data/arrow/arrow_boundaries ./data/
+# Ubuntu/Debian
+sudo apt install libvips
+
+# Then reinstall pyvips
+pip install --force-reinstall pyvips
 ```
 
-Your data structure should look like:
-```
-pciSeq_viewer/
-├── data/
-│   ├── arrow_spots/
-│   │   ├── manifest.json
-│   │   ├── gene_dict.json
-│   │   └── spots_shard_*.feather
-│   ├── arrow_cells/
-│   │   ├── manifest.json
-│   │   └── cells_shard_*.feather
-│   └── arrow_boundaries/
-│       ├── manifest.json
-│       └── boundaries_plane_*.feather
-```
+---
 
-### Step 3: Update config.js
+## Complete Example
 
-Edit `config.js` to point to your Arrow files:
+Here's a full workflow from raw data to visualization:
 
-```javascript
-function config() {
-    return {
-        imageWidth: 6411,           // Your image dimensions
-        imageHeight: 4412,
+```python
+import pciSeq
+import pandas as pd
+import numpy as np
+from scipy.sparse import coo_matrix
 
-        // Point to your Arrow manifests
-        arrowSpotsManifest: "./data/arrow_spots/manifest.json",
-        arrowCellsManifest: "./data/arrow_cells/manifest.json",
-        arrowBoundariesManifest: "./data/arrow_boundaries/manifest.json",
-        arrowSpotsGeneDict: "./data/arrow_spots/gene_dict.json",
+# === Load your data ===
+spots = pd.read_csv('spots.csv')           # x, y, z_plane, gene_name
+masks = np.load('segmentation.npy')        # (Z, H, W) segmentation masks
+coo = [coo_matrix(m) for m in masks]       # Convert to sparse format
+scRNAseq = pd.read_csv('reference.csv')    # Single-cell reference
+dapi = np.load('dapi.npy')                 # (Z, H, W) background image
 
-        // Optional: background tiles
-        backgroundTiles: "path/to/tiles/{plane}/{z}/{y}/{x}.jpg",
-    };
-}
-```
+# === Configuration ===
+output_folder = '/home/user/my_experiment'
 
-### Step 4: Launch Viewer
+# === Step 1: Run pciSeq ===
+pciSeq.fit(
+    spots=spots,
+    coo=coo,
+    scRNAseq=scRNAseq,
+    opts={
+        'save_data': True,
+        'output_path': output_folder,
+    }
+)
 
-Start a local web server:
+# === Step 2: Create MBTiles ===
+pciSeq.stage_image(
+    img=dapi,
+    out_dir=f'{output_folder}/pciSeq/data',
+    zoom_levels=8,
+    name='My Experiment',
+    description='Mouse cortex, 84 z-planes',
+)
 
-```bash
-# Python 3
-python -m http.server 8000
-
-# Or use any other local server
+print(f'Done! Open this folder in the viewer: {output_folder}/pciSeq/data')
 ```
 
-Open browser to: `http://localhost:8000`
+---
 
+## Support
+
+- **Issues:** [GitHub Issues](https://github.com/acycliq/pciSeq_viewer/issues)
+- **pciSeq Documentation:** [pciSeq GitHub](https://github.com/acycliq/pciSeq)
