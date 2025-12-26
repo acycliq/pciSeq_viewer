@@ -143,7 +143,7 @@ After both steps, your data folder should look like this:
 
 3. **Enter voxel size**
    - The app will prompt you to enter the voxel size (microns per pixel)
-   - Enter values for X, Y, and Z dimensions (e.g., 0.147, 0.147, 0.9)
+   - Enter values for X, Y, and Z dimensions (e.g., 0.28, 0.28, 0.7)
 
 4. **The viewer will automatically load:**
    - Background image from `output.mbtiles`
