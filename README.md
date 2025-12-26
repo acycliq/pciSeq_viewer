@@ -28,10 +28,10 @@ Before using the viewer, you need to prepare your data using Python. This involv
 
 ### Requirements
 
-Install the pciSeq Python package:
+Install the pciSeq Python package (version > 0.0.65 required):
 
 ```bash
-pip install pciSeq
+pip install git+https://github.com/acycliq/pciSeq.git@dev_3d
 ```
 
 For background image processing, you also need libvips:
