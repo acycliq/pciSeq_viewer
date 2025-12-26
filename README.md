@@ -43,7 +43,7 @@ sudo apt install libvips
 
 ---
 
-### Step 1: Run pciSeq Analysis
+### Step 1: Run pciSeq
 
 This step performs cell typing and generates the data files needed by the viewer.
 
@@ -154,15 +154,6 @@ After both steps, your data folder should look like this:
 ---
 
 ## Troubleshooting
-
-### "Missing required metadata" error
-
-Your MBTiles file is missing image dimensions. Re-run `pciSeq.stage_image()` to regenerate the file.
-
-### Background image doesn't appear
-
-- Check that `output.mbtiles` exists in your data folder
-- Ensure the MBTiles file was created with the correct `zoom_levels` (default: 8)
 
 ### libvips not found
 
