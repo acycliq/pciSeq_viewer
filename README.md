@@ -216,6 +216,7 @@ pciSeq.stage_image(
     name='WT Mouse', # short description, identifier
     description='Mouse cortex, 102 z-planes', # long description
 )
+# Note: Note: if out_dir is not set, the output.mbtiles file is created in the system temp directory (/tmp on Linux)
 
 print(f'Done! Open this folder in the viewer: {output_folder}/pciSeq/data')
 ```
