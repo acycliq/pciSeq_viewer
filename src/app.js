@@ -207,11 +207,9 @@ function showMetadataError(metadataResult, errorMessage) {
 
         if (openBtn) {
             openBtn.addEventListener('click', async () => {
-                if (window.electronAPI?.selectDataFolder) {
-                    const result = await window.electronAPI.selectDataFolder();
-                    if (result.success) {
-                        window.location.reload();
-                    }
+                const result = await window.electronAPI.selectDataFolder();
+                if (result.success) {
+                    window.location.reload();
                 }
             });
         }
@@ -219,10 +217,7 @@ function showMetadataError(metadataResult, errorMessage) {
         if (closeBtn) {
             closeBtn.addEventListener('click', async () => {
                 // Close the dataset and reload to welcome screen
-                if (window.electronAPI?.getPaths) {
-                    // Clear stored paths by reloading - main.js clears on startup
-                    window.location.reload();
-                }
+                window.location.reload();
             });
         }
     }
@@ -840,60 +835,53 @@ function initializeDeckGL() {
 async function init() {
     showLoading(state, elements.loadingIndicator);
 
-    // In Electron, check if data path is configured first
-    if (window.electronAPI?.isElectron) {
-        const paths = await window.electronAPI.getPaths();
-        if (!paths.dataPath) {
-            // Hide loading curtain and show empty state
-            const curtain = document.getElementById('appCurtain');
-            if (curtain) {
-                curtain.classList.add('hidden');
-            }
-            const loadingIndicator = elements.loadingIndicator;
-            if (loadingIndicator) {
-                loadingIndicator.style.display = 'none';
-            }
-
-            // Show empty state screen
-            const emptyState = document.getElementById('emptyState');
-            const emptyStateBtn = document.getElementById('emptyStateBtn');
-            if (emptyState) {
-                emptyState.classList.remove('hidden');
-
-                if (emptyStateBtn) {
-                    emptyStateBtn.addEventListener('click', async () => {
-                        // Read voxel size from input fields before opening folder
-                        const voxelX = parseFloat(document.getElementById('voxelSizeX')?.value) || 0.28;
-                        const voxelY = parseFloat(document.getElementById('voxelSizeY')?.value) || 0.28;
-                        const voxelZ = parseFloat(document.getElementById('voxelSizeZ')?.value) || 0.70;
-
-                        // Save voxel size to electron-store
-                        if (window.electronAPI?.setVoxelSize) {
-                            await window.electronAPI.setVoxelSize([voxelX, voxelY, voxelZ]);
-                            console.log('Voxel size saved:', [voxelX, voxelY, voxelZ]);
-                        }
-
-                        const result = await window.electronAPI.selectDataFolder();
-                        if (result.success) {
-                            // Reload to apply new data path
-                            window.location.reload();
-                        }
-                    });
-                }
-            }
-
-            console.warn('Data folder not configured. Waiting for user selection.');
-            // Don't proceed with initialization
-            return;
+    // Check if data path is configured first
+    const paths = await window.electronAPI.getPaths();
+    if (!paths.dataPath) {
+        // Hide loading curtain and show empty state
+        const curtain = document.getElementById('appCurtain');
+        if (curtain) {
+            curtain.classList.add('hidden');
         }
+        const loadingIndicator = elements.loadingIndicator;
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'none';
+        }
+
+        // Show empty state screen
+        const emptyState = document.getElementById('emptyState');
+        const emptyStateBtn = document.getElementById('emptyStateBtn');
+        if (emptyState) {
+            emptyState.classList.remove('hidden');
+
+            if (emptyStateBtn) {
+                emptyStateBtn.addEventListener('click', async () => {
+                    // Read voxel size from input fields before opening folder
+                    const voxelX = parseFloat(document.getElementById('voxelSizeX')?.value) || 0.28;
+                    const voxelY = parseFloat(document.getElementById('voxelSizeY')?.value) || 0.28;
+                    const voxelZ = parseFloat(document.getElementById('voxelSizeZ')?.value) || 0.70;
+
+                    // Save voxel size to electron-store
+                    await window.electronAPI.setVoxelSize([voxelX, voxelY, voxelZ]);
+                    console.log('Voxel size saved:', [voxelX, voxelY, voxelZ]);
+
+                    const result = await window.electronAPI.selectDataFolder();
+                    if (result.success) {
+                        // Reload to apply new data path
+                        window.location.reload();
+                    }
+                });
+            }
+        }
+
+        console.warn('Data folder not configured. Waiting for user selection.');
+        // Don't proceed with initialization
+        return;
     }
 
-    // In Electron, load dataset metadata from MBTiles before config()
+    // Load dataset metadata from MBTiles before config()
     // This populates the cache that config() uses for imageWidth, imageHeight, planeCount
-    let metadataResult = null;
-    if (window.electronAPI?.isElectron && window.loadDatasetMetadata) {
-        metadataResult = await window.loadDatasetMetadata();
-    }
+    const metadataResult = await window.loadDatasetMetadata();
 
     // Try to get config - catch errors for missing metadata
     let userConfig;

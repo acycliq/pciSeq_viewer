@@ -51,8 +51,8 @@ function createWindow() {
   // Load the index.html using app:// protocol
   mainWindow.loadURL('app://index.html');
 
-  // Open DevTools in development
-  mainWindow.webContents.openDevTools();
+  // Open DevTools in development (uncomment for debugging)
+  // mainWindow.webContents.openDevTools();
 
   // Log any loading errors
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {

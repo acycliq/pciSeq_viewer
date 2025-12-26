@@ -20,10 +20,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVoxelSize: () => ipcRenderer.invoke('get-voxel-size'),
 
   // Get currently configured paths
-  getPaths: () => ipcRenderer.invoke('get-paths'),
-
-  // Flag to detect Electron environment
-  isElectron: true
+  getPaths: () => ipcRenderer.invoke('get-paths')
 });
 
 console.log('Preload script loaded - electronAPI exposed to renderer');
