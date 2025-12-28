@@ -5,7 +5,7 @@
  * Replicates the Python cell_class_stacked_bar functionality
  */
 
-import { state } from './stateManager.js';
+import { state } from './state/stateManager.js';
 import { widgetManager } from './widgetManager.js';
 
 // Chart widget elements

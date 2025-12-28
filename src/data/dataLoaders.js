@@ -8,8 +8,8 @@
 import {
     IMG_DIMENSIONS,
     ARROW_MANIFESTS
-} from '../config/constants.js';
-import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
+} from '../../config/constants.js';
+import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
 // Note: classColorsCodes is loaded globally from color scheme files
 
 /**
@@ -44,7 +44,7 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
 
     try {
         {
-            const { initArrow, loadSpots } = await import('../arrow-loader/lib/arrow-loaders.js');
+            const { initArrow, loadSpots } = await import('../../arrow-loader/lib/arrow-loaders.js');
             initArrow({
                 spotsManifest: ARROW_MANIFESTS.spotsManifest,
                 cellsManifest: ARROW_MANIFESTS.cellsManifest,
@@ -99,7 +99,7 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
             // Prebuild scatter (binary) cache in worker to eliminate main-thread freeze on first render
             let hasIntensityFlag = false;
             try {
-                const { buildSpotsScatterCache } = await import('../arrow-loader/lib/arrow-loaders.js');
+                const { buildSpotsScatterCache } = await import('../../arrow-loader/lib/arrow-loaders.js');
                 const cfg = window.config();
                 const settings = glyphSettings();
                 const colorByGene = new Map(settings.map(s => [s.gene, s.color]));
@@ -212,7 +212,7 @@ export async function loadCellData(cellDataMap) {
 
     try {
         {
-            const { initArrow, loadCells } = await import('../arrow-loader/lib/arrow-loaders.js');
+            const { initArrow, loadCells } = await import('../../arrow-loader/lib/arrow-loaders.js');
             initArrow({
                 spotsManifest: ARROW_MANIFESTS.spotsManifest,
                 cellsManifest: ARROW_MANIFESTS.cellsManifest,
@@ -512,7 +512,7 @@ export async function loadPolygonData(planeNum, polygonCache, allCellClasses, ce
             return cached;
         }
         try {
-            const { initArrow, loadBoundariesPlane } = await import('../arrow-loader/lib/arrow-loaders.js');
+            const { initArrow, loadBoundariesPlane } = await import('../../arrow-loader/lib/arrow-loaders.js');
             initArrow({
                 spotsManifest: ARROW_MANIFESTS.spotsManifest,
                 cellsManifest: ARROW_MANIFESTS.cellsManifest,

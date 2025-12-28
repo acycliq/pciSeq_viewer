@@ -4,7 +4,7 @@
  */
 
 // Import the shared coordinate transformation function
-import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
+import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
 
 // Global cell data storage
 let cellLookupData = new Map(); // cellId -> { x, y, z, bounds }

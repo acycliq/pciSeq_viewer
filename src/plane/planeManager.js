@@ -5,9 +5,9 @@
  * Provides optimized plane switching with immediate visual feedback.
  */
 
-import { clamp } from '../utils/coordinateTransform.js';
-import { showLoading, hideLoading } from './uiHelpers.js';
-import { loadPolygonData, assignColorsToCellClasses } from './dataLoaders.js';
+import { clamp } from '../../utils/coordinateTransform.js';
+import { showLoading, hideLoading } from '../ui/uiHelpers.js';
+import { loadPolygonData, assignColorsToCellClasses } from '../data/dataLoaders.js';
 
 /**
  * Fast update for immediate visual feedback (tiles and genes only)

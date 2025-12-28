@@ -1,5 +1,5 @@
 // Import configuration constants
-import { DEFAULT_STATE } from '../config/constants.js';
+import { DEFAULT_STATE } from '../../config/constants.js';
 
 // Application state
 const state = {

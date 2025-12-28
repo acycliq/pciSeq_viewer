@@ -11,15 +11,15 @@ import {
     GENE_SIZE_CONFIG,
     getTileUrlPattern,
     ARROW_MANIFESTS
-} from '../config/constants.js';
+} from '../../config/constants.js';
 import {
     clamp,
     transformToTileCoordinates,
     transformFromTileCoordinates
-} from '../utils/coordinateTransform.js';
-import { loadImage } from './dataLoaders.js';
-import { handleCellHover } from './cellHoverHandler.js';
-import { getMostProbableClass, ensureClassColors } from '../utils/cellClassUtils.js';
+} from '../../utils/coordinateTransform.js';
+import { loadImage } from '../data/dataLoaders.js';
+import { handleCellHover } from '../ui/cellHoverHandler.js';
+import { getMostProbableClass, ensureClassColors } from '../../utils/cellClassUtils.js';
 import {
     getOrComputeRadiusFactors,
     getOrComputeMaskedColors,
@@ -39,7 +39,7 @@ export let arrowGeojsonCache = new Map();
 let arrowInitialized = false;
 async function ensureArrowInitialized() {
     if (arrowInitialized) return;
-    const { initArrow } = await import('../arrow-loader/lib/arrow-loaders.js');
+    const { initArrow } = await import('../../arrow-loader/lib/arrow-loaders.js');
     initArrow({
         spotsManifest: ARROW_MANIFESTS.spotsManifest,
         cellsManifest: ARROW_MANIFESTS.cellsManifest,
@@ -403,7 +403,7 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
             try {
                 await ensureArrowInitialized();
                 if (!arrowBoundaryCache.has(planeNum)) {
-                    const { loadBoundariesPlane } = await import('../arrow-loader/lib/arrow-loaders.js');
+                    const { loadBoundariesPlane } = await import('../../arrow-loader/lib/arrow-loaders.js');
                     const { buffers, timings } = await loadBoundariesPlane(planeNum);
                     arrowBoundaryCache.set(planeNum, buffers);
                     try {

@@ -4,8 +4,8 @@
  * with ranking by count and eye icon toggles (pciSeq_3d style)
  */
 
-import { state } from './stateManager.js';
-import { debounce } from './utils.js';
+import { state } from './state/stateManager.js';
+import { debounce } from '../utils/common.js';
 import { applyClassColorScheme } from './classColorImport.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG } from './icons.js';
 

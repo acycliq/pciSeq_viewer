@@ -1,8 +1,8 @@
 // Import dependencies
-import { state } from './stateManager.js';
+import { state } from './state/stateManager.js';
 import { elements } from './domElements.js';
 import { widgetManager } from './widgetManager.js';
-import { debounce } from './utils.js';
+import { debounce } from '../utils/common.js';
 
 // === CELL CLASS WIDGET FUNCTIONS ===
 function populateCellClassWidget() {

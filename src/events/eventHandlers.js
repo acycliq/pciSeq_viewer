@@ -14,8 +14,8 @@ import {
     handleGenePanelMessage,
     openGenePanel,
     toggleLayerControls
-} from './uiHelpers.js';
-import { setupResizableList } from '../utils/resizableList.js';
+} from '../ui/uiHelpers.js';
+import { setupResizableList } from '../../utils/resizableList.js';
 
 // === MAIN SETUP FUNCTION ===
 
@@ -287,7 +287,7 @@ function setupZProjectionToggle(state, updateLayersCallback) {
     if (zProjectionToggle) {
         zProjectionToggle.addEventListener('change', async () => {
             if (zProjectionToggle.checked) {
-                const { isZProjectionReady } = await import('../modules/zProjectionOverlay.js');
+                const { isZProjectionReady } = await import('../layers/zProjectionOverlay.js');
 
                 if (!isZProjectionReady()) {
                     alert('Z-projection overlay is still building. Please wait...');
@@ -389,7 +389,7 @@ async function handleCellProjectionEnable(state, updateLayersCallback) {
     // If caches are already full, skip plane load and only prepare/flatten features
     try {
         const totalPlanes = window.appState.totalPlanes;
-        const { arrowGeojsonCache } = await import('./layerCreators.js');
+        const { arrowGeojsonCache } = await import('../layers/layerCreators.js');
         if (arrowGeojsonCache && arrowGeojsonCache.size >= totalPlanes) {
             await prepareProjectionFromCaches(state);
             updateLayersCallback();
@@ -424,7 +424,7 @@ async function prepareProjectionFromCaches(state) {
     }
 
     try {
-        const { arrowGeojsonCache } = await import('./layerCreators.js');
+        const { arrowGeojsonCache } = await import('../layers/layerCreators.js');
         const flat = [];
         for (const fc of arrowGeojsonCache.values()) {
             if (fc && Array.isArray(fc.features)) flat.push(...fc.features);
@@ -576,10 +576,10 @@ async function loadAllPlanesForProjection(state, updateLayersCallback) {
     }
 
     // Load Arrow boundaries for all planes
-    const { loadBoundariesPlane } = await import('../arrow-loader/lib/arrow-loaders.js');
-    const { arrowBoundaryCache, arrowGeojsonCache } = await import('./layerCreators.js');
-    const { transformToTileCoordinates } = await import('../utils/coordinateTransform.js');
-    const { IMG_DIMENSIONS } = await import('../config/constants.js');
+    const { loadBoundariesPlane } = await import('../../arrow-loader/lib/arrow-loaders.js');
+    const { arrowBoundaryCache, arrowGeojsonCache } = await import('../layers/layerCreators.js');
+    const { transformToTileCoordinates } = await import('../../utils/coordinateTransform.js');
+    const { IMG_DIMENSIONS } = await import('../../config/constants.js');
 
     for (let plane = 0; plane < totalPlanes; plane++) {
         try {

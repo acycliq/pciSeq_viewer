@@ -5,7 +5,7 @@
  * Translates Python counts_per_class_chart functionality to JavaScript
  */
 
-import { state } from './stateManager.js';
+import { state } from './state/stateManager.js';
 import { widgetManager } from './widgetManager.js';
 
 // Chart widget elements

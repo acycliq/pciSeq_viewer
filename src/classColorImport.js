@@ -1,7 +1,7 @@
 // Class Colour Scheme Import Helpers
 // Applies user-provided JSON mapping { className: "#RRGGBB", ... } to state.cellClassColors
 
-import { state } from './stateManager.js';
+import { state } from './state/stateManager.js';
 
 function hexToRgb(hex) {
     try {

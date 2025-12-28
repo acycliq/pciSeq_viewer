@@ -5,7 +5,7 @@
  * Extracts caching code from createArrowPointCloudLayer for better maintainability.
  */
 
-import { GENE_SIZE_CONFIG } from '../config/constants.js';
+import { GENE_SIZE_CONFIG } from '../../config/constants.js';
 
 /**
  * Get or compute cached radius factors for distance-based sizing

@@ -5,25 +5,25 @@
  * Breaks down the large init() function into smaller, focused phases.
  */
 
-import { INITIAL_VIEW_STATE, ARROW_MANIFESTS } from '../config/constants.js';
-import { state } from './stateManager.js';
-import { elements } from './domElements.js';
-import { updateScaleBar } from '../utils/scaleBar.js';
-import { updateCoordinateDisplay } from '../utils/coordinateDisplay.js';
-import { showLoading, hideLoading, showTooltip } from '../modules/uiHelpers.js';
+import { INITIAL_VIEW_STATE, ARROW_MANIFESTS } from '../../config/constants.js';
+import { state } from '../state/stateManager.js';
+import { elements } from '../domElements.js';
+import { updateScaleBar } from '../../utils/scaleBar.js';
+import { updateCoordinateDisplay } from '../../utils/coordinateDisplay.js';
+import { showLoading, hideLoading, showTooltip } from '../ui/uiHelpers.js';
 import {
     loadGeneData,
     loadCellData,
     loadPolygonData,
     assignColorsToCellClasses,
     buildGeneSpotIndexes
-} from '../modules/dataLoaders.js';
-import { PolygonBoundaryHighlighter } from '../modules/polygonInteractions.js';
-import { RectangularSelector } from '../modules/rectangularSelector.js';
-import { applyPendingClassColorSchemeIfAny } from './classColorImport.js';
-import { populateCellClassDrawer } from './cellClassDrawer.js';
-import { populateGeneDrawer } from './geneDrawer.js';
-import Perf from '../utils/runtimePerf.js';
+} from '../data/dataLoaders.js';
+import { PolygonBoundaryHighlighter } from '../ui/polygonInteractions.js';
+import { RectangularSelector } from '../ui/rectangularSelector.js';
+import { applyPendingClassColorSchemeIfAny } from '../classColorImport.js';
+import { populateCellClassDrawer } from '../cellClassDrawer.js';
+import { populateGeneDrawer } from '../geneDrawer.js';
+import Perf from '../../utils/runtimePerf.js';
 
 // Extract deck.gl components
 const { DeckGL, OrthographicView, COORDINATE_SYSTEM } = deck;

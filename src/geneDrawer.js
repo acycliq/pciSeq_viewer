@@ -3,9 +3,9 @@
  * Drawer list of genes with counts and eye toggles
  */
 
-import { state } from './stateManager.js';
+import { state } from './state/stateManager.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG } from './icons.js';
-import { debounce } from './utils.js';
+import { debounce } from '../utils/common.js';
 import { handleGeneColorFileUpload } from './geneColorImport.js';
 
 export function populateGeneDrawer() {

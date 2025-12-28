@@ -1,5 +1,5 @@
 // Import dependencies
-import { state } from './stateManager.js';
+import { state } from './state/stateManager.js';
 import { elements } from './domElements.js';
 import { widgetManager } from './widgetManager.js';
 

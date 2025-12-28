@@ -21,8 +21,8 @@
 */
 
 
-import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
-import { IMG_DIMENSIONS } from '../config/constants.js';
+import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
+import { IMG_DIMENSIONS } from '../../config/constants.js';
 export class PolygonBoundaryHighlighter {
     constructor(deckglInstance, coordinateSystem, cellToSpotsIndex = null, geneToId = null, cellDataMap = null) {
         this.deckglInstance = deckglInstance;

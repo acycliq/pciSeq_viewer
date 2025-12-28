@@ -9,18 +9,18 @@
 import { INITIAL_VIEW_STATE, MAX_PRELOAD, IMG_DIMENSIONS } from '../config/constants.js';
 
 // === STATE AND DOM IMPORTS ===
-import { state } from './stateManager.js';
+import { state } from './state/stateManager.js';
 import { elements } from './domElements.js';
 
 // === UTILITY IMPORTS ===
 import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
 import { updateScaleBar } from '../utils/scaleBar.js';
 import { updateCoordinateDisplay } from '../utils/coordinateDisplay.js';
-import { debounce } from './utils.js';
+import { debounce } from '../utils/common.js';
 import Perf from '../utils/runtimePerf.js';
 
 // === UI IMPORTS ===
-import { showLoading, hideLoading, showTooltip } from '../modules/uiHelpers.js';
+import { showLoading, hideLoading, showTooltip } from './ui/uiHelpers.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
 import { initGeneDrawer } from './geneDrawer.js';
 import { updateCellInfo, setupCellInfoPanel, initCellInfoColorScheme } from './cellInfoPanel.js';
@@ -33,14 +33,14 @@ import {
     buildRegionLayers,
     buildZProjectionLayer,
     logZoomTransitionMetrics
-} from '../modules/layerBuilder.js';
-import { buildGlobalZProjection } from '../modules/zProjectionOverlay.js';
+} from './layers/layerBuilder.js';
+import { buildGlobalZProjection } from './layers/zProjectionOverlay.js';
 
 // === DATA IMPORTS ===
-import { buildGeneSpotIndexes } from '../modules/dataLoaders.js';
+import { buildGeneSpotIndexes } from './data/dataLoaders.js';
 
 // === EVENT HANDLING IMPORTS ===
-import { setupEventHandlers, setupAdvancedKeyboardShortcuts } from '../modules/eventHandlers.js';
+import { setupEventHandlers, setupAdvancedKeyboardShortcuts } from './events/eventHandlers.js';
 
 // === INITIALIZATION IMPORTS ===
 import {
@@ -54,13 +54,13 @@ import {
     preloadAdjacentPlanesInitial,
     finalizeInitialization,
     removeCurtain
-} from './appInitializer.js';
+} from './init/appInitializer.js';
 
 // === PLANE MANAGEMENT IMPORTS ===
-import { updatePlane } from '../modules/planeManager.js';
+import { updatePlane } from './plane/planeManager.js';
 
 // === SPATIAL INDEXING IMPORTS ===
-import { setupBoundariesReadyListener } from '../modules/spatialIndexing.js';
+import { setupBoundariesReadyListener } from './ui/spatialIndexing.js';
 
 // === WIDGET IMPORTS ===
 import {

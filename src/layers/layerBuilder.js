@@ -5,9 +5,9 @@
  * Used by updateAllLayers() to construct the layer stack.
  */
 
-import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
-import { IMG_DIMENSIONS, MAX_PRELOAD, INITIAL_VIEW_STATE } from '../config/constants.js';
-import { showTooltip } from './uiHelpers.js';
+import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
+import { IMG_DIMENSIONS, MAX_PRELOAD, INITIAL_VIEW_STATE } from '../../config/constants.js';
+import { showTooltip } from '../ui/uiHelpers.js';
 import {
     createTileLayer,
     createPolygonLayers,
@@ -15,7 +15,7 @@ import {
     createArrowPointCloudLayer
 } from './layerCreators.js';
 import { createZProjectionLayer, isZProjectionReady } from './zProjectionOverlay.js';
-import { getVisibleRegions, getRegionColorRgb } from '../src/regionsManager.js';
+import { getVisibleRegions, getRegionColorRgb } from '../regionsManager.js';
 
 /**
  * Build tile layers for the current plane and preloaded adjacent planes

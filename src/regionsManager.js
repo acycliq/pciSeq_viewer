@@ -4,7 +4,7 @@
  * Handles importing, storing, and managing anatomical region boundaries
  */
 
-import { state } from './stateManager.js';
+import { state } from './state/stateManager.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG, TRASH_SVG } from './icons.js';
 
 const STORAGE_KEY = 'pciSeq_regions';
