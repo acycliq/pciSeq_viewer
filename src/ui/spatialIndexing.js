@@ -121,7 +121,7 @@ export function startSpatialIndexWorker(updateAllLayers) {
 
     // Use absolute path to ensure correct resolution on GitHub Pages
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
-    const workerUrl = new URL('modules/workers/spatial-index-worker.js', baseUrl);
+    const workerUrl = new URL('src/workers/spatial-index-worker.js', baseUrl);
 
     console.log('Starting spatial index worker:', workerUrl.href);
     console.log('Manifest URL:', manifest);
