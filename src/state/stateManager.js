@@ -1,5 +1,5 @@
 // Import configuration constants
-import { DEFAULT_STATE } from '../config/constants.js';
+import { DEFAULT_STATE } from '../../config/constants.js';
 
 // Application state
 const state = {
@@ -84,7 +84,10 @@ const state = {
     // Transition timing
     zoomTransition: { inProgress: false, from: null, to: null, start: 0 },
     deferredCleanupStart: 0,
-    iconCleanupRemaining: 0
+    iconCleanupRemaining: 0,
+
+    // Pending colour scheme import (applied once classes are known)
+    pendingClassColorScheme: null
 };
 
 // Expose state globally for cell lookup module

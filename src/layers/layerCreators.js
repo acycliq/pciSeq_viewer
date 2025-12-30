@@ -11,13 +11,21 @@ import {
     GENE_SIZE_CONFIG,
     getTileUrlPattern,
     ARROW_MANIFESTS
-} from '../config/constants.js';
+} from '../../config/constants.js';
 import {
     clamp,
     transformToTileCoordinates,
     transformFromTileCoordinates
-} from '../utils/coordinateTransform.js';
-import { loadImage } from './dataLoaders.js';
+} from '../../utils/coordinateTransform.js';
+import { loadImage } from '../data/dataLoaders.js';
+import { handleCellHover } from '../ui/cellHoverHandler.js';
+import { getMostProbableClass, ensureClassColors } from '../../utils/cellClassUtils.js';
+import {
+    getOrComputeRadiusFactors,
+    getOrComputeMaskedColors,
+    getIntensityUpperBound,
+    getBaseScale
+} from './spotLayerCache.js';
 
 // Extract deck.gl components for layer creation
 const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJsonLayer, IconLayer, DataFilterExtension, PolygonLayer, PointCloudLayer, ScatterplotLayer} = deck;
@@ -31,7 +39,7 @@ export let arrowGeojsonCache = new Map();
 let arrowInitialized = false;
 async function ensureArrowInitialized() {
     if (arrowInitialized) return;
-    const { initArrow } = await import('../arrow-loader/lib/arrow-loaders.js');
+    const { initArrow } = await import('../../arrow-loader/lib/arrow-loaders.js');
     initArrow({
         spotsManifest: ARROW_MANIFESTS.spotsManifest,
         cellsManifest: ARROW_MANIFESTS.cellsManifest,
@@ -395,7 +403,7 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
             try {
                 await ensureArrowInitialized();
                 if (!arrowBoundaryCache.has(planeNum)) {
-                    const { loadBoundariesPlane } = await import('../arrow-loader/lib/arrow-loaders.js');
+                    const { loadBoundariesPlane } = await import('../../arrow-loader/lib/arrow-loaders.js');
                     const { buffers, timings } = await loadBoundariesPlane(planeNum);
                     arrowBoundaryCache.set(planeNum, buffers);
                     try {
@@ -578,75 +586,7 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
         stroked: false,
         filled: true,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-        onHover: (info) => {
-            if (info.picked && info.object && info.object.properties) {
-                // Get the cell label from the polygon properties
-                const cellLabel = info.object.properties.label;
-
-                // Look up full cell data from the global state
-                let fullCellData = null;
-                if (window.appState && window.appState.cellDataMap) {
-                    const cellId = parseInt(cellLabel);
-                    fullCellData = window.appState.cellDataMap.get(cellId);
-                }
-
-                if (fullCellData && window.updateCellInfo && typeof window.updateCellInfo === 'function') {
-                    // Convert to the format expected by donut chart and data tables
-                    const cx = Number(fullCellData.position?.x || 0);
-                    const cy = Number(fullCellData.position?.y || 0);
-                    const names = Array.isArray(fullCellData.classification?.className) ? fullCellData.classification.className : [];
-                    const probs = Array.isArray(fullCellData.classification?.probability) ? fullCellData.classification.probability : [];
-                    // Determine top class
-                    let topIdx = -1, topVal = -Infinity;
-                    for (let i = 0; i < probs.length; i++) { const v = probs[i]; if (typeof v === 'number' && v > topVal) { topVal = v; topIdx = i; } }
-                    const topClass = (topIdx >= 0 && names[topIdx]) ? names[topIdx] : (names[0] || 'Unknown');
-                    // Sum gene counts
-                    const geneCounts = Array.isArray(fullCellData.geneExpression?.geneCounts) ? fullCellData.geneExpression.geneCounts : [];
-                    const geneTotal = geneCounts.reduce((a, b) => a + (Number(b) || 0), 0);
-                    // Resolve a color for the top class if available
-                    let topColor = '#C0C0C0';
-                    try {
-                        const scheme = (window.currentColorScheme && window.currentColorScheme.cellClasses) ? window.currentColorScheme.cellClasses : [];
-                        const entry = scheme.find(e => e.className === topClass);
-                        if (entry && entry.color) topColor = entry.color;
-                    } catch {}
-
-                    const cellData = {
-                        cell_id: fullCellData.cellNum || Number(cellLabel),
-                        id: Number(cellLabel),
-                        centroid: [cx, cy],
-                        X: cx,
-                        Y: cy,
-                        ClassName: names,
-                        Prob: probs,
-                        Genenames: Array.isArray(fullCellData.geneExpression?.geneNames) ? fullCellData.geneExpression.geneNames : [],
-                        CellGeneCount: geneCounts,
-                        topClass: topClass,
-                        agg: {
-                            X: cx,
-                            Y: cy,
-                            GeneCountTotal: geneTotal,
-                            IdentifiedType: topClass,
-                            color: topColor
-                        }
-                    };
-
-                    window.updateCellInfo(cellData);
-                    const panel = document.getElementById('cellInfoPanel');
-                    if (panel) {
-                        panel.style.display = 'block';
-                    }
-                } else {
-                    console.warn('No full cell data found for cell:', cellLabel);
-                }
-            } else {
-                // Hide cell info panel when not hovering over a cell
-                const panel = document.getElementById('cellInfoPanel');
-                if (panel) {
-                    panel.style.display = 'none';
-                }
-            }
-        },
+        onHover: handleCellHover,
         getFillColor: d => {
             const cellClass = d.properties.cellClass;
             const alpha = Math.round(polygonOpacity * 255);
@@ -695,65 +635,7 @@ function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOp
         filterRange: [geneCountThreshold, 1e9],
         filterEnabled: true,
 
-        onHover: (info) => {
-            if (info.picked && info.object && info.object.properties) {
-                const cellLabel = info.object.properties.label;
-                let fullCellData = null;
-                if (window.appState && window.appState.cellDataMap) {
-                    const cellId = parseInt(cellLabel);
-                    fullCellData = window.appState.cellDataMap.get(cellId);
-                }
-
-                if (fullCellData && window.updateCellInfo && typeof window.updateCellInfo === 'function') {
-                    const cx = Number(fullCellData.position?.x || 0);
-                    const cy = Number(fullCellData.position?.y || 0);
-                    const names = Array.isArray(fullCellData.classification?.className) ? fullCellData.classification.className : [];
-                    const probs = Array.isArray(fullCellData.classification?.probability) ? fullCellData.classification.probability : [];
-                    let topIdx = -1, topVal = -Infinity;
-                    for (let i = 0; i < probs.length; i++) { const v = probs[i]; if (typeof v === 'number' && v > topVal) { topVal = v; topIdx = i; } }
-                    const topClass = (topIdx >= 0 && names[topIdx]) ? names[topIdx] : (names[0] || 'Unknown');
-                    const geneCounts = Array.isArray(fullCellData.geneExpression?.geneCounts) ? fullCellData.geneExpression.geneCounts : [];
-                    const geneTotal = geneCounts.reduce((a, b) => a + (Number(b) || 0), 0);
-                    let topColor = '#C0C0C0';
-                    try {
-                        const scheme = (window.currentColorScheme && window.currentColorScheme.cellClasses) ? window.currentColorScheme.cellClasses : [];
-                        const entry = scheme.find(e => e.className === topClass);
-                        if (entry && entry.color) topColor = entry.color;
-                    } catch {}
-
-                    const cellData = {
-                        cell_id: fullCellData.cellNum || Number(cellLabel),
-                        id: Number(cellLabel),
-                        centroid: [cx, cy],
-                        X: cx,
-                        Y: cy,
-                        ClassName: names,
-                        Prob: probs,
-                        Genenames: Array.isArray(fullCellData.geneExpression?.geneNames) ? fullCellData.geneExpression.geneNames : [],
-                        CellGeneCount: geneCounts,
-                        topClass: topClass,
-                        agg: {
-                            X: cx,
-                            Y: cy,
-                            GeneCountTotal: geneTotal,
-                            IdentifiedType: topClass,
-                            color: topColor
-                        }
-                    };
-
-                    window.updateCellInfo(cellData);
-                    const panel = document.getElementById('cellInfoPanel');
-                    if (panel) {
-                        panel.style.display = 'block';
-                    }
-                }
-            } else {
-                const panel = document.getElementById('cellInfoPanel');
-                if (panel) {
-                    panel.style.display = 'none';
-                }
-            }
-        },
+        onHover: handleCellHover,
         getFillColor: d => {
             const rgb = d.properties.colorRGB || [192, 192, 192];
             const alpha = Math.round(polygonOpacity * 255);

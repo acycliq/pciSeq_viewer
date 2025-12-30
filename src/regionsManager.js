@@ -4,7 +4,7 @@
  * Handles importing, storing, and managing anatomical region boundaries
  */
 
-import { state } from './stateManager.js';
+import { state } from './state/stateManager.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG, TRASH_SVG } from './icons.js';
 
 const STORAGE_KEY = 'pciSeq_regions';
@@ -53,26 +53,32 @@ function formatRegionName(filename) {
 function parseCSV(csvText) {
     const parsedData = d3.csvParse(csvText);
 
-    // Case-insensitive column matching (handle 'X', 'x', 'Y', 'y' and whitespace)
-    const cols = parsedData.columns || [];
-    const normalize = (s) => (s || '').trim().toLowerCase();
-    const xCol = cols.find(c => normalize(c) === 'x');
-    const yCol = cols.find(c => normalize(c) === 'y');
+    // Find x/y columns with normalization: trim + case-insensitive
+    const columns = Array.isArray(parsedData.columns) ? parsedData.columns : [];
+    const normalized = columns.map(c => ({ orig: c, norm: String(c).trim().toLowerCase() }));
+    const xCol = (normalized.find(c => c.norm === 'x') || {}).orig;
+    const yCol = (normalized.find(c => c.norm === 'y') || {}).orig;
 
     if (!xCol || !yCol) {
-        console.warn('CSV file is missing "x" or "y" columns. Please ensure your CSV has an "x" and a "y" header.');
+        console.warn('CSV file is missing "x" or "y" columns (case-insensitive, whitespace trimmed). Headers must include x and y.');
         return [];
     }
 
-    return parsedData.map(row => {
-        // Skip rows with blank cells
-        const rawX = row[xCol];
-        const rawY = row[yCol];
-        if (rawX == null || rawX === '' || rawY == null || rawY === '') return null;
-        const x = +rawX;
-        const y = +rawY;
-        return (Number.isFinite(x) && Number.isFinite(y)) ? [x, y] : null;
-    }).filter(d => d !== null);
+    // Trim and ignore empty/whitespace-only cells before number conversion
+    // so legitimate 0 values remain valid but blanks don't become 0.
+    return parsedData
+        .map(row => {
+            const sx = row[xCol] != null ? String(row[xCol]).trim() : '';
+            const sy = row[yCol] != null ? String(row[yCol]).trim() : '';
+
+            // Skip rows with missing/blank fields
+            if (sx === '' || sy === '') return null;
+
+            const x = Number(sx);
+            const y = Number(sy);
+            return (Number.isFinite(x) && Number.isFinite(y)) ? [x, y] : null;
+        })
+        .filter(d => d !== null);
 }
 
 /**

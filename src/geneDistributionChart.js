@@ -4,7 +4,7 @@
  * Creates interactive bar charts showing gene spot distribution across planes
  */
 
-import { state } from './stateManager.js';
+import { state } from './state/stateManager.js';
 import { elements } from './domElements.js';
 import { widgetManager } from './widgetManager.js';
 

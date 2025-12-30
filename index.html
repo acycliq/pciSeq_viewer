@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Load configuration first -->
     <script src="config.js"></script>
-    <script src="advanced-config.js"></script>
+    <script src="config/advanced.js"></script>
     <script src="https://unpkg.com/deck.gl@8.8.27/dist.min.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <!-- d3-dsv removed; Arrow-only runtime does not parse TSV -->
@@ -18,18 +18,18 @@
     <script src="https://unpkg.com/rbush@3.0.1/rbush.min.js"></script>
 
     <!-- Import glyph helpers -->
-    <script src="modules/glyphPaths.js"></script>
-    <script src="modules/glyphConfig.js"></script>
+    <script src="src/glyphs/glyphPaths.js"></script>
+    <script src="src/glyphs/glyphConfig.js"></script>
     <!-- Color schemes (one file per dataset) -->
     <script src="config/colorSchemes/hippocampus.js"></script>
     <script src="config/colorSchemes/zeisel.js"></script>
     <script src="config/colorSchemes/allen.js"></script>
     <script src="config/colorSchemes.js"></script>
     <!-- Import cell lookup module -->
-    <script type="module" src="modules/cellLookup.js"></script>
-    <!-- Cell info components -->
-    <script src="modules/donut.js"></script>
-    <script src="modules/class-table.js"></script>
+    <script type="module" src="src/data/cellLookup.js"></script>
+    <!-- Cell info components (legacy D3 scripts) -->
+    <script src="lib/donut.js"></script>
+    <script src="lib/class-table.js"></script>
 </head>
 <body>
     <!-- Initial loading curtain overlay (blocks and hides controls) -->

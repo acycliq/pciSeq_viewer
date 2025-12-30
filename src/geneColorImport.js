@@ -1,8 +1,8 @@
 // Gene colour + glyph importer
 // Accepts JSON array: [{ gene, color: '#RRGGBB', glyphName }]
 
-import { state } from './stateManager.js';
-import { buildGeneIconAtlas } from '../modules/dataLoaders.js';
+import { state } from './state/stateManager.js';
+import { buildGeneIconAtlas } from './data/dataLoaders.js';
 
 const VALID_GLYPHS = new Set([
   'star6','star5','diamond','square','triangleUp','triangleDown','triangleRight','triangleLeft','cross','plus','asterisk','circle','point'

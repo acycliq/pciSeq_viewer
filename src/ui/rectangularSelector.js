@@ -14,8 +14,8 @@
  * The 3D nature of the dataset requires cross-plane analysis capabilities.
  */
 
-import { transformToTileCoordinates, transformFromTileCoordinates } from '../utils/coordinateTransform.js';
-import { IMG_DIMENSIONS } from '../config/constants.js';
+import { transformToTileCoordinates, transformFromTileCoordinates } from '../../utils/coordinateTransform.js';
+import { IMG_DIMENSIONS } from '../../config/constants.js';
 
 /**
  * Get cell class color using the global color scheme
@@ -359,7 +359,7 @@ export class RectangularSelector {
             if (!geojson || !geojson.features) {
                 try {
                     // Load polygon data if not cached
-                    const { loadPolygonData } = await import('./dataLoaders.js');
+                    const { loadPolygonData } = await import('../data/dataLoaders.js');
                     geojson = await loadPolygonData(
                         planeId,
                         this.state.polygonCache,

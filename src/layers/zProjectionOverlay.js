@@ -6,8 +6,8 @@
  */
 
 const { BitmapLayer } = window.deck;
-import { IMG_DIMENSIONS } from '../config/constants.js';
-import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
+import { IMG_DIMENSIONS } from '../../config/constants.js';
+import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
 
 let globalZProjectionTexture = null;
 let isBuilding = false;
@@ -67,7 +67,7 @@ async function getBoundariesForPlane(planeNum, appState) {
 
 async function loadArrowBoundaries(planeNum) {
   try {
-    const { loadBoundariesPlane } = await import('../arrow-loader/lib/arrow-loaders.js');
+    const { loadBoundariesPlane } = await import('../../arrow-loader/lib/arrow-loaders.js');
     const { buffers } = await loadBoundariesPlane(planeNum);
     if (!buffers || !buffers.positions || !buffers.startIndices) return null;
     return convertArrowToGeoJSON(buffers, planeNum);
