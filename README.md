@@ -28,11 +28,15 @@ Before using the viewer, you need to prepare your data using Python. This involv
 
 ### Requirements
 
-Install the pciSeq Python package (version > 0.0.65 required):
+Install the pciSeq Python package:
 
 ```bash
 pip install git+https://github.com/acycliq/pciSeq.git@dev_3d
 ```
+
+> **Note:** If you have already run your cell typing with pciSeq `0.0.65`, your arrow files are fully compatible with the 
+> viewer. You do not need to run `pciSeq.fit()` again. Only the `pciSeq.stage_image()` function (for creating 
+> background tiles) requires the newer version above.
 
 For background image processing, you also need libvips:
 
