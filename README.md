@@ -102,7 +102,6 @@ dapi_image = np.load('/path/to/dapi_image.npy')
 pciSeq.stage_image(
     img=dapi_image,
     out_dir='/path/to/my_dataset/pciSeq/data',  # Same folder as Arrow files
-    zoom_levels=8,
     name='My Dataset',                           # Short identifier
     description='DAPI staining, mouse cortex',   # Detailed description
 )
