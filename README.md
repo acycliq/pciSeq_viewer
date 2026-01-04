@@ -1,6 +1,6 @@
 # pciSeq Viewer
 
-A desktop application for visualizing spatial transcriptomics data from pciSeq analysis.
+A desktop application for visualizing spatial transcriptomics data from pciSeq.
 
 ## Installation
 
@@ -23,7 +23,7 @@ A desktop application for visualizing spatial transcriptomics data from pciSeq a
 
 Before using the viewer, you need to prepare your data using Python. This involves two steps:
 
-1. **Run pciSeq analysis** - generates cell typing results (Arrow files)
+1. **Run pciSeq** - generates cell typing results (Arrow files)
 2. **Create background tiles** - converts your microscopy image to viewable format (MBTiles)
 
 ### Requirements
@@ -34,9 +34,9 @@ Install the pciSeq Python package:
 pip install git+https://github.com/acycliq/pciSeq.git@dev_3d
 ```
 
-> **Note:** If you have already run your cell typing with pciSeq `0.0.65`, your arrow files are fully compatible with the 
-> viewer. You do not need to run `pciSeq.fit()` again. Only the `pciSeq.stage_image()` function (for creating 
-> background tiles) requires the newer version above.
+> **Note:** If you have already run your cell typing with pciSeq `0.0.65`, your Arrow files are fully compatible with the
+> viewer. You can **skip Step 1 entirely** and jump straight to [Step 2: Create Background Tiles](#step-2-create-background-tiles-mbtiles).
+> Only `pciSeq.stage_image()` requires the newer version above.
 
 For background image processing, you also need libvips:
 
@@ -59,7 +59,7 @@ spots = ...       # DataFrame with columns: x, y, z_plane, gene_name
 coo = ...         # List of sparse matrices (cell segmentation masks)
 scRNAseq = ...    # Single-cell reference data
 
-# Run the analysis
+# celltyping
 pciSeq.fit(
     spots=spots,
     coo=coo,
