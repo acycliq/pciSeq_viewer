@@ -35,8 +35,8 @@ pip install git+https://github.com/acycliq/pciSeq.git@dev_3d
 ```
 
 > **Note:** If you have already run your cell typing with pciSeq `0.0.65`, your Arrow files are fully compatible with the
-> viewer. You can **skip Step 1 entirely** and jump straight to [Step 2: Create Background Tiles](#step-2-create-background-tiles-mbtiles).
-> Only `pciSeq.stage_image()` requires the newer version above.
+> viewer. You can **skip Step 1** and jump straight to [Step 2: Create Background Tiles](#step-2-create-background-tiles-mbtiles),
+> but make sure libvips is installed (see below).
 
 For background image processing, you also need libvips:
 
@@ -101,9 +101,9 @@ dapi_image = np.load('/path/to/dapi_image.npy')
 # Create the MBTiles file
 pciSeq.stage_image(
     img=dapi_image,
-    out_dir='/path/to/my_dataset/pciSeq/data',  # Same folder as Arrow files
-    name='My Dataset',                           # Short identifier
-    description='DAPI staining, mouse cortex',   # Detailed description
+    out_dir='/path/to/my_dataset/pciSeq/data/arrow',  # Same folder as Arrow files
+    name='My Dataset',                                 # Short identifier
+    description='DAPI staining, mouse cortex',         # Detailed description
 )
 ```
 
@@ -119,14 +119,15 @@ After both steps, your data folder should look like this:
 /path/to/my_dataset/
 └── pciSeq/
     └── data/
-        ├── output.mbtiles           # Background image tiles
         └── arrow/
+            ├── output.mbtiles       # Background image tiles
             ├── arrow_spots/         # Gene spots
             │   ├── manifest.json
             │   ├── gene_dict.json
             │   └── spots_shard_*.feather
             ├── arrow_cells/         # Cell data
             │   ├── manifest.json
+            │   ├── class_dict.json
             │   └── cells_shard_*.feather
             └── arrow_boundaries/    # Cell boundaries
                 ├── manifest.json
@@ -140,8 +141,8 @@ After both steps, your data folder should look like this:
 1. **Launch the application**
 
 2. **Select your data folder**
-   - Go to `File > Open Data Folder`
-   - Navigate to your data folder (e.g., `/path/to/my_dataset/pciSeq/data`)
+   - Go to `File > Open Dataset...`
+   - Navigate to your data folder (e.g., `/path/to/my_dataset/pciSeq/data/arrow`)
    - Click "Select Folder"
 
 3. **Enter voxel size**
@@ -206,11 +207,11 @@ pciSeq.fit(
 # 2. Create MBTiles
 pciSeq.stage_image(
     img=dapi,
-    out_dir=f'{output_folder}/pciSeq/data',
+    out_dir=f'{output_folder}/pciSeq/data/arrow',
     name='WT Mouse', # short description, identifier
     description='Mouse cortex, 102 z-planes', # long description
 )
-# Note: Note: if out_dir is not set, the output.mbtiles file is created in the system temp directory (/tmp on Linux)
+# Note: if out_dir is not set, the output.mbtiles file is created in the system temp directory (/tmp on Linux)
 
-print(f'Done! Open this folder in the viewer: {output_folder}/pciSeq/data')
+print(f'Done! Open this folder in the viewer: {output_folder}/pciSeq/data/arrow')
 ```
