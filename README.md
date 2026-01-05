@@ -142,7 +142,7 @@ After both steps, your data folder should look like this:
 
 2. **Select your data folder**
    - Go to `File > Open Dataset...`
-   - Navigate to your data folder (e.g., `/path/to/my_dataset/pciSeq/data/arrow`)
+   - Navigate to your arrow folder (e.g., `/path/to/my_dataset/pciSeq/data/arrow`)
    - Click "Select Folder"
 
 3. **Enter voxel size**
