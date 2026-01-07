@@ -169,6 +169,7 @@ After both steps, your data folder should look like this:
 
 ---
 
+<!--
 ## Troubleshooting
 
 ### libvips not found
@@ -194,15 +195,11 @@ If macOS blocks the app from opening:
 2. Select "Open" from the menu
 3. Click "Open" in the security dialog
 
-[//]: # (Or remove the quarantine attribute:)
-
-[//]: # (```bash)
-
-[//]: # (xattr -cr /Applications/pciSeq_viewer.app)
-
-[//]: # (```)
-
----
+Or remove the quarantine attribute:
+```bash
+xattr -cr /Applications/pciSeq_viewer.app
+```
+-->
 
 ## Complete Example
 
