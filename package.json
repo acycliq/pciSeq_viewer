@@ -7,7 +7,9 @@
     "start": "electron .",
     "build:linux": "electron-builder --linux",
     "build:linux:deb": "electron-builder --linux deb",
-    "build:linux:appimage": "electron-builder --linux AppImage"
+    "build:linux:appimage": "electron-builder --linux AppImage",
+    "build:mac": "electron-builder --mac",
+    "build:mac:dmg": "electron-builder --mac dmg"
   },
   "build": {
     "appId": "com.pciseq.viewer",
@@ -48,6 +50,38 @@
       "maintainer": "Dimitris Nicoloutsopoulos <dimitris.nicoloutsopoulos@gmail.com>",
       "category": "Science",
       "icon": "build/icons"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.education",
+      "icon": "icon.png",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "dmg": {
+      "title": "pciSeq Viewer ${version}",
+      "icon": "icon.png",
+      "background": null,
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "contents": [
+        {
+          "x": 144,
+          "y": 200
+        },
+        {
+          "x": 396,
+          "y": 200,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
     },
     "directories": {
       "output": "dist"

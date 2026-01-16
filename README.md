@@ -4,16 +4,25 @@ A desktop application for visualizing spatial transcriptomics data from pciSeq.
 
 ## Installation
 
+### macOS (Apple Silicon)
+
+1. Download `pciSeq_viewer-0.0.0-arm64.dmg` from [Releases](https://github.com/acycliq/pciSeq_viewer/releases/latest)
+2. Open the `.dmg` file
+3. Drag **pciSeq_viewer** to your **Applications** folder
+4. Launch from Applications or Spotlight search
+
+> **Note:** On first launch, macOS may show a security warning. Right-click the app and select "Open" to bypass Gatekeeper.
+
 ### Linux (Ubuntu/Debian)
 
-1. Download `pciSeq_viewer_X.X.X_amd64.deb` from [Releases](https://github.com/acycliq/pciSeq_viewer/releases/latest)
+1. Download `pciSeq_viewer_0.0.0_amd64.deb` from [Releases](https://github.com/acycliq/pciSeq_viewer/releases/latest)
 2. Install:
    ```bash
-   sudo apt install ./pciSeq_viewer_*.deb
+   sudo apt install ./pciSeq_viewer_0.0.0_amd64.deb
    ```
    Or if reinstalling/upgrading:
    ```bash
-   sudo apt install --reinstall ./pciSeq_viewer_*.deb
+   sudo apt install --reinstall ./pciSeq_viewer_0.0.0_amd64.deb
    ```
 3. Launch from your applications menu or run `pciSeq_viewer` in terminal
 
@@ -41,6 +50,9 @@ pip install git+https://github.com/acycliq/pciSeq.git@dev_3d
 For background image processing, you also need libvips:
 
 ```bash
+# macOS
+brew install vips
+
 # Ubuntu/Debian
 sudo apt install libvips
 ```
@@ -157,6 +169,7 @@ After both steps, your data folder should look like this:
 
 ---
 
+<!--
 ## Troubleshooting
 
 ### libvips not found
@@ -164,6 +177,9 @@ After both steps, your data folder should look like this:
 Install libvips before running `stage_image()`:
 
 ```bash
+# macOS
+brew install vips
+
 # Ubuntu/Debian
 sudo apt install libvips
 
@@ -171,7 +187,19 @@ sudo apt install libvips
 pip install --force-reinstall pyvips
 ```
 
----
+### macOS Security Warning
+
+If macOS blocks the app from opening:
+
+1. Right-click (or Control-click) on pciSeq_viewer in Applications
+2. Select "Open" from the menu
+3. Click "Open" in the security dialog
+
+Or remove the quarantine attribute:
+```bash
+xattr -cr /Applications/pciSeq_viewer.app
+```
+-->
 
 ## Complete Example
 
@@ -191,7 +219,7 @@ scRNAseq = pd.read_csv('reference.csv')    # Single-cell reference
 dapi = np.load('dapi.npy')                 # (Z, H, W) background image
 
 
-output_folder = '/home/user/my_experiment'
+output_folder = '/path/to/my_experiment'  # e.g., '/home/user/my_experiment' on Linux, '/Users/user/my_experiment' on macOS
 
 #1. Run pciSeq
 pciSeq.fit(
@@ -211,7 +239,7 @@ pciSeq.stage_image(
     name='WT Mouse', # short description, identifier
     description='Mouse cortex, 102 z-planes', # long description
 )
-# Note: if out_dir is not set, the output.mbtiles file is created in the system temp directory (/tmp on Linux)
+# Note: if out_dir is not set, output.mbtiles is created in the system temp directory (/tmp on Linux, /var/folders/... on macOS)
 
 print(f'Done! Open this folder in the viewer: {output_folder}/pciSeq/data/arrow')
 ```
