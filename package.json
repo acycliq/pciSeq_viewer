@@ -1,6 +1,6 @@
 {
   "name": "pciSeq_viewer",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Desktop viewer for visualizing spatial transcriptomics data",
   "main": "electron/main.js",
   "scripts": {
