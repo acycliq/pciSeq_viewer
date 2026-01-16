@@ -23,6 +23,7 @@
       "selection_tool.png",
       "src/**/*",
       "modules/**/*",
+      "lib/**/*",
       "arrow-loader/**/*",
       "config/**/*",
       "utils/**/*",
