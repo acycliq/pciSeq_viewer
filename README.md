@@ -4,25 +4,30 @@ A desktop application for visualizing spatial transcriptomics data from pciSeq.
 
 ## Installation
 
-### macOS (Apple Silicon)
+[//]: # (### macOS &#40;Apple Silicon&#41;)
 
-1. Download `pciSeq_viewer-0.0.0-arm64.dmg` from [Releases](https://github.com/acycliq/pciSeq_viewer/releases/latest)
-2. Open the `.dmg` file
-3. Drag **pciSeq_viewer** to your **Applications** folder
-4. Launch from Applications or Spotlight search
+[//]: # ()
+[//]: # (1. Download `pciSeq_viewer-0.0.0-arm64.dmg` from [Releases]&#40;https://github.com/acycliq/pciSeq_viewer/releases/latest&#41;)
 
-> **Note:** On first launch, macOS may show a security warning. Right-click the app and select "Open" to bypass Gatekeeper.
+[//]: # (2. Open the `.dmg` file)
+
+[//]: # (3. Drag **pciSeq_viewer** to your **Applications** folder)
+
+[//]: # (4. Launch from Applications or Spotlight search)
+
+[//]: # ()
+[//]: # (> **Note:** On first launch, macOS may show a security warning. Right-click the app and select "Open" to bypass Gatekeeper.)
 
 ### Linux (Ubuntu/Debian)
 
 1. Download `pciSeq_viewer_0.0.0_amd64.deb` from [Releases](https://github.com/acycliq/pciSeq_viewer/releases/latest)
 2. Install:
    ```bash
-   sudo apt install ./pciSeq_viewer_0.0.0_amd64.deb
+   sudo apt install ./pciSeq_viewer_0.0.1_amd64.deb
    ```
    Or if reinstalling/upgrading:
    ```bash
-   sudo apt install --reinstall ./pciSeq_viewer_0.0.0_amd64.deb
+   sudo apt install --reinstall ./pciSeq_viewer_0.0.1_amd64.deb
    ```
 3. Launch from your applications menu or run `pciSeq_viewer` in terminal
 
