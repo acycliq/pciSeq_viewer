@@ -402,7 +402,7 @@ function initializeDeckGL() {
         container: 'map',
         views: new OrthographicView({
             id: 'ortho',
-            flipY: false,
+            flipY: true,
             controller: true
         }),
         initialViewState: INITIAL_VIEW_STATE,
