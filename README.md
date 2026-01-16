@@ -20,7 +20,7 @@ A desktop application for visualizing spatial transcriptomics data from pciSeq.
 
 ### Linux (Ubuntu/Debian)
 
-1. Download `pciSeq_viewer_0.0.0_amd64.deb` from [Releases](https://github.com/acycliq/pciSeq_viewer/releases/latest)
+1. Download `pciSeq_viewer_0.0.1_amd64.deb` from [Releases](https://github.com/acycliq/pciSeq_viewer/releases/latest)
 2. Install:
    ```bash
    sudo apt install ./pciSeq_viewer_0.0.1_amd64.deb
