@@ -5,11 +5,16 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
+    "build:all": "electron-builder --linux --mac --win",
     "build:linux": "electron-builder --linux",
     "build:linux:deb": "electron-builder --linux deb",
     "build:linux:appimage": "electron-builder --linux AppImage",
     "build:mac": "electron-builder --mac",
-    "build:mac:dmg": "electron-builder --mac dmg"
+    "build:mac:dmg": "electron-builder --mac dmg",
+    "build:mac:portable": "electron-builder --mac zip",
+    "build:win": "electron-builder --win",
+    "build:win:nsis": "electron-builder --win nsis",
+    "build:win:portable": "electron-builder --win portable"
   },
   "build": {
     "appId": "com.pciseq.viewer",
@@ -54,7 +59,8 @@
     },
     "mac": {
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
       "category": "public.app-category.education",
       "icon": "icon.png",
@@ -83,6 +89,19 @@
           "path": "/Applications"
         }
       ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icons/icon.ico",
+      "uninstallerIcon": "build/icons/icon.ico"
     },
     "directories": {
       "output": "dist"
