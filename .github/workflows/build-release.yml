@@ -30,7 +30,7 @@ jobs:
         run: npx @electron/rebuild
 
       - name: Build Linux
-        run: npm run build:linux
+        run: npx electron-builder --linux -p never
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
@@ -61,7 +61,7 @@ jobs:
         run: npx @electron/rebuild
 
       - name: Build macOS
-        run: npm run build:mac
+        run: npx electron-builder --mac -p never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
@@ -101,7 +101,7 @@ jobs:
           npx png-to-ico build/icons/256x256.png > build/icons/icon.ico
 
       - name: Build Windows
-        run: npm run build:win
+        run: npx electron-builder --win -p never
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
