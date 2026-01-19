@@ -1,8 +1,60 @@
-const { app, BrowserWindow, protocol, ipcMain, dialog, Menu } = require('electron');
+const { app, BrowserWindow, protocol, ipcMain, dialog, Menu, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
 const Store = require('electron-store');
 const Database = require('better-sqlite3'); // Disk-based SQLite
+
+// GitHub repo for update checks
+const GITHUB_REPO = 'acycliq/pciSeq_viewer';
+const RELEASES_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+
+// Check for updates from GitHub releases
+function checkForUpdates() {
+  const packageJson = require('../package.json');
+  const currentVersion = packageJson.version;
+
+  const options = {
+    hostname: 'api.github.com',
+    path: `/repos/${GITHUB_REPO}/releases/latest`,
+    headers: { 'User-Agent': 'pciSeq_viewer' }
+  };
+
+  https.get(options, (res) => {
+    let data = '';
+    res.on('data', chunk => data += chunk);
+    res.on('end', () => {
+      try {
+        const release = JSON.parse(data);
+        const latestVersion = release.tag_name.replace(/^v/, '');
+
+        if (latestVersion !== currentVersion) {
+          dialog.showMessageBox(mainWindow, {
+            type: 'info',
+            title: 'Update Available',
+            message: `Version ${latestVersion} available`,
+            detail: `Current version: ${currentVersion}`,
+            buttons: ['Download', 'Later']
+          }).then(result => {
+            if (result.response === 0) {
+              shell.openExternal(release.html_url);
+            }
+          });
+        } else {
+          dialog.showMessageBox(mainWindow, {
+            type: 'info',
+            title: 'No Updates',
+            message: 'pciSeq Viewer is up to date.'
+          });
+        }
+      } catch (e) {
+        dialog.showErrorBox('Update Check Failed', 'Could not parse update information.');
+      }
+    });
+  }).on('error', (e) => {
+    dialog.showErrorBox('Update Check Failed', `Could not connect to GitHub: ${e.message}`);
+  });
+}
 
 // Initialize persistent storage for user paths
 const store = new Store();
@@ -677,6 +729,13 @@ function createMenu() {
     {
       label: 'Help',
       submenu: [
+        {
+          label: 'Check for Updates...',
+          click: () => {
+            checkForUpdates();
+          }
+        },
+        { type: 'separator' },
         {
           label: 'About pciSeq Viewer',
           click: () => {
