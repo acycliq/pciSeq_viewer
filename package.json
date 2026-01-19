@@ -4,6 +4,7 @@
   "description": "Desktop viewer for visualizing spatial transcriptomics data",
   "main": "electron/main.js",
   "scripts": {
+    "postinstall": "electron-rebuild",
     "start": "electron .",
     "build:all": "electron-builder --linux --mac --win",
     "build:linux": "electron-builder --linux",
