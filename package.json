@@ -64,7 +64,7 @@
         "zip"
       ],
       "category": "public.app-category.education",
-      "icon": "icon.png",
+      "icon": "build/icons",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
@@ -72,7 +72,7 @@
     },
     "dmg": {
       "title": "pciSeq Viewer ${version}",
-      "icon": "icon.png",
+      "icon": "build/icons",
       "background": null,
       "window": {
         "width": 540,
