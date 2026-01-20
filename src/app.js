@@ -643,6 +643,13 @@ async function init() {
     // Update layers
     updateAllLayers();
 
+    // Build Z-projection overlay in background
+    buildGlobalZProjection(state).then(() => {
+        console.log('Z-projection overlay ready');
+    }).catch(err => {
+        console.warn('Failed to build Z-projection overlay:', err);
+    });
+
     // Setup boundaries ready listener
     try {
         setupBoundariesReadyListener(updateAllLayers, state);
