@@ -2,6 +2,10 @@
 
 A desktop application for visualizing spatial transcriptomics data from pciSeq.
 
+## Demo
+
+![pciSeq Viewer Demo](https://github.com/user-attachments/assets/f67a473a-0f84-48e7-9b4f-27be841778aa)
+
 ## Installation
 
 [//]: # (### macOS &#40;Apple Silicon&#41;)
