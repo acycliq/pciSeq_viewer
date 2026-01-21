@@ -2,38 +2,35 @@
 
 A desktop application for visualizing spatial transcriptomics data from pciSeq.
 
-## Demo
-
 ![pciSeq Viewer Demo](https://github.com/user-attachments/assets/f67a473a-0f84-48e7-9b4f-27be841778aa)
 
 ## Installation
 
-[//]: # (### macOS &#40;Apple Silicon&#41;)
+Download the latest release from [GitHub Releases](https://github.com/acycliq/pciSeq_viewer/releases/latest).
 
-[//]: # ()
-[//]: # (1. Download `pciSeq_viewer-0.0.0-arm64.dmg` from [Releases]&#40;https://github.com/acycliq/pciSeq_viewer/releases/latest&#41;)
+### Windows
 
-[//]: # (2. Open the `.dmg` file)
+- **Installer:** `pciSeq_viewer-Setup-x.x.x.exe` - Standard installer
+- Run the installer and follow the prompts
 
-[//]: # (3. Drag **pciSeq_viewer** to your **Applications** folder)
+### macOS
 
-[//]: # (4. Launch from Applications or Spotlight search)
+- **Installer:** `pciSeq_viewer-x.x.x.dmg` - Drag to Applications
+- **Portable:** `pciSeq_viewer-x.x.x-mac.zip` - Extract and run
 
-[//]: # ()
-[//]: # (> **Note:** On first launch, macOS may show a security warning. Right-click the app and select "Open" to bypass Gatekeeper.)
+> **Note:** On first launch, macOS may show a security warning. Right-click the app and select "Open" to bypass Gatekeeper.
 
 ### Linux (Ubuntu/Debian)
 
-1. Download `pciSeq_viewer_0.0.1_amd64.deb` from [Releases](https://github.com/acycliq/pciSeq_viewer/releases/latest)
-2. Install:
-   ```bash
-   sudo apt install ./pciSeq_viewer_0.0.1_amd64.deb
-   ```
-   Or if reinstalling/upgrading:
-   ```bash
-   sudo apt install --reinstall ./pciSeq_viewer_0.0.1_amd64.deb
-   ```
-3. Launch from your applications menu or run `pciSeq_viewer` in terminal
+- **Installer:** `pciSeq_viewer_x.x.x_amd64.deb`
+  ```bash
+  sudo apt install ./pciSeq_viewer_x.x.x_amd64.deb
+  ```
+- **Portable:** `pciSeq_viewer-x.x.x.AppImage` - Make executable and run
+  ```bash
+  chmod +x pciSeq_viewer-x.x.x.AppImage
+  ./pciSeq_viewer-x.x.x.AppImage
+  ```
 
 ---
 
@@ -53,8 +50,8 @@ pip install git+https://github.com/acycliq/pciSeq.git@dev_3d
 ```
 
 > **Note:** If you have already run your cell typing with pciSeq `0.0.65`, your Arrow files are fully compatible with the
-> viewer. You can **skip Step 1** and jump straight to [Step 2: Create Background Tiles](#step-2-create-background-tiles-mbtiles),
-> but make sure libvips is installed (see below).
+> viewer. You can **skip Step 1** and jump straight to [Step 2: Create Background Tiles](#step-2-create-background-tiles-mbtiles).
+> However, `stage_image()` was added after `0.0.65`, so you still need to install the latest version for Step 2.
 
 For background image processing, you also need libvips:
 
@@ -119,7 +116,7 @@ import numpy as np
 # or (H, W) for 2D data
 dapi_image = np.load('/path/to/dapi_image.npy')
 
-# Create the MBTiles file
+# Create the MBTiles file (requires pciSeq > 0.0.65)
 pciSeq.stage_image(
     img=dapi_image,
     out_dir='/path/to/my_dataset/pciSeq/data/arrow',  # Same folder as Arrow files
