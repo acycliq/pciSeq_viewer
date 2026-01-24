@@ -23,6 +23,12 @@
 
 import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
 import { IMG_DIMENSIONS } from '../../config/constants.js';
+// Track Ctrl key state globally (deck.gl Deck-level onClick doesn't reliably expose srcEvent)
+let _ctrlKeyDown = false;
+document.addEventListener('keydown', (e) => { if (e.key === 'Control') _ctrlKeyDown = true; });
+document.addEventListener('keyup', (e) => { if (e.key === 'Control') _ctrlKeyDown = false; });
+window.addEventListener('blur', () => { _ctrlKeyDown = false; }); // Reset on window blur
+
 export class PolygonBoundaryHighlighter {
     constructor(deckglInstance, coordinateSystem, cellToSpotsIndex = null, geneToId = null, cellDataMap = null) {
         this.deckglInstance = deckglInstance;
@@ -357,6 +363,14 @@ export class PolygonBoundaryHighlighter {
         // Only handle polygon clicks
         if (info.layer && info.layer.id.includes('polygons-') && info.object) {
             const cellLabel = info.object.properties.label;
+
+            // Ctrl+click: open check_cell modal (if connected)
+            if (_ctrlKeyDown) {
+                if (window.appState && window.appState.checkCellConnected) {
+                    window.openCheckCellModal(cellLabel);
+                }
+                return;
+            }
 
             if (this.pinnedCell === cellLabel) {
                 // Unpin if clicking the same cell

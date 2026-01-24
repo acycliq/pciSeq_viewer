@@ -76,8 +76,13 @@ const state = {
 
     // Interactions
     polygonHighlighter: null,
-    genePanelWin: null
-    ,
+    genePanelWin: null,
+
+    // check_cell bridge
+    checkCellConnected: false,
+    checkCellClasses: [],
+    checkCellApiUrl: 'http://127.0.0.1:8765',
+
     // Cache of last IconLayers to avoid blocking destruction when switching to pointcloud
     lastIconLayers: [],
     iconCleanupPending: false,

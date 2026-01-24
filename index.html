@@ -294,6 +294,10 @@ stage_image(
                         <img src="selection_tool.png" alt="Selection">
                         <span>Selection</span>
                     </button>
+                    <button id="checkCellConnectBtn" class="accent-btn" title="Connect to check_cell server (Ctrl+click a cell to query)">
+                        <span id="checkCellConnectIcon">&#x25CB;</span>
+                        <span>check_cell</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -405,6 +409,39 @@ stage_image(
     <div id="coordinateDisplay" class="coordinate-display" style="display: none;">
         <span id="pixelCoords">---, ---</span> px |
         <span id="micronCoords">---, ---</span> μm
+    </div>
+
+    <!-- check_cell Results Modal -->
+    <div id="checkCellModal" class="check-cell-modal" style="display: none;">
+        <div class="check-cell-dialog">
+            <div class="check-cell-header">
+                <span id="checkCellTitle">check_cell</span>
+                <button id="checkCellClose" class="widget-close-btn">&times;</button>
+            </div>
+            <div class="check-cell-content">
+                <div id="checkCellSelectPhase">
+                    <p id="checkCellAssigned" class="check-cell-assigned">Assigned: --</p>
+                    <div class="check-cell-compare-row">
+                        <label for="checkCellClassSelect">Compare against:</label>
+                        <select id="checkCellClassSelect"></select>
+                        <button id="checkCellCompareBtn" class="accent-btn">Compare</button>
+                    </div>
+                </div>
+                <div id="checkCellResultsPhase" style="display: none;">
+                    <p id="checkCellSummary" class="check-cell-summary"></p>
+                    <img id="checkCellPlot" alt="check_cell plot" style="max-width: 100%; display: none;" />
+                    <details><summary>Gene Expression</summary>
+                        <div id="checkCellExprTable" class="check-cell-table-wrap"></div>
+                    </details>
+                    <details><summary>Contribution</summary>
+                        <div id="checkCellContrTable" class="check-cell-table-wrap"></div>
+                    </details>
+                </div>
+                <div id="checkCellLoading" style="display: none; text-align: center; padding: 20px; color: #94a3b8;">
+                    Querying server...
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- About (Info) Button and Modal -->
