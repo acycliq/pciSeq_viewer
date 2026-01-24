@@ -38,7 +38,7 @@ export function setupCheckCellBridge() {
 
 async function toggleConnection() {
     if (state.checkCellConnected) {
-        disconnect();
+        await disconnect();
     } else {
         await connect();
     }
@@ -48,29 +48,63 @@ async function connect() {
     const btn = document.getElementById('checkCellConnectBtn');
     const icon = document.getElementById('checkCellConnectIcon');
 
-    try {
-        const resp = await fetch(state.checkCellApiUrl + '/health');
-        if (!resp.ok) throw new Error('Server returned ' + resp.status);
-
-        const data = await resp.json();
-        state.checkCellConnected = true;
-        state.checkCellClasses = data.classes || [];
-
-        if (icon) icon.textContent = '\u25CF'; // filled circle
-        if (btn) btn.classList.add('check-cell-connected');
-
-        showNotification('Connected (' + state.checkCellClasses.length + ' classes)', 'success');
-        console.log('check_cell bridge connected. Classes:', state.checkCellClasses.length);
-    } catch (err) {
-        state.checkCellConnected = false;
-        showNotification('Server not found. Start with: pciSeq.serve("path/to/pciSeq.pickle")', 'error');
-        console.warn('check_cell connect failed:', err.message);
+    // Start the server via Electron (uses stored Python + pickle paths)
+    if (window.electronAPI && window.electronAPI.startCheckCellServer) {
+        const result = await window.electronAPI.startCheckCellServer();
+        if (!result.success) {
+            showNotification(result.error || 'Failed to start server', 'error');
+            console.warn('check_cell server failed:', result.error);
+            return;
+        }
+        // Update API URL with the configured port
+        if (result.port) {
+            state.checkCellApiUrl = 'http://127.0.0.1:' + result.port;
+        }
+        console.log('check_cell server spawned on port', result.port || 8765, ', polling health...');
     }
+
+    // Poll /health until server is ready
+    const connected = await pollHealth(10, 1000);
+    if (!connected) {
+        showNotification('Server not responding. Check pciSeq > check_cell Setup.', 'error');
+        if (window.electronAPI && window.electronAPI.stopCheckCellServer) {
+            await window.electronAPI.stopCheckCellServer();
+        }
+        return;
+    }
+
+    if (icon) icon.textContent = '\u25CF'; // filled circle
+    if (btn) btn.classList.add('check-cell-connected');
+
+    showNotification('Connected (' + state.checkCellClasses.length + ' classes)', 'success');
+    console.log('check_cell bridge connected. Classes:', state.checkCellClasses.length);
 }
 
-function disconnect() {
+async function pollHealth(retries, intervalMs) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const resp = await fetch(state.checkCellApiUrl + '/health');
+            if (resp.ok) {
+                const data = await resp.json();
+                state.checkCellConnected = true;
+                state.checkCellClasses = data.classes || [];
+                return true;
+            }
+        } catch (_) {
+            // Server not ready yet
+        }
+        await new Promise(r => setTimeout(r, intervalMs));
+    }
+    return false;
+}
+
+async function disconnect() {
     state.checkCellConnected = false;
     state.checkCellClasses = [];
+
+    if (window.electronAPI && window.electronAPI.stopCheckCellServer) {
+        await window.electronAPI.stopCheckCellServer();
+    }
 
     const btn = document.getElementById('checkCellConnectBtn');
     const icon = document.getElementById('checkCellConnectIcon');

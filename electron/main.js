@@ -118,6 +118,7 @@ function createWindow() {
   });
 
   mainWindow.on('closed', () => {
+    killCheckCellProcess();
     mainWindow = null;
   });
 }
@@ -576,6 +577,189 @@ ipcMain.handle('get-dataset-metadata', async () => {
   };
 });
 
+// === check_cell Setup & Server ===
+let checkCellSetupWindow = null;
+let checkCellProcess = null;
+
+function killCheckCellProcess() {
+  if (!checkCellProcess) return;
+  const pid = checkCellProcess.pid;
+  checkCellProcess = null;
+  if (!pid) return;
+  try {
+    // Kill the entire process group (negative PID) to ensure Flask child is also killed
+    process.kill(-pid, 'SIGTERM');
+  } catch (e) {
+    // Process may have already exited
+  }
+  // Fallback: SIGKILL after 2s in case SIGTERM is ignored
+  setTimeout(() => {
+    try { process.kill(-pid, 'SIGKILL'); } catch (_) {}
+  }, 2000);
+}
+
+function openCheckCellSetup() {
+  if (checkCellSetupWindow) {
+    checkCellSetupWindow.focus();
+    return;
+  }
+
+  checkCellSetupWindow = new BrowserWindow({
+    width: 480,
+    height: 280,
+    parent: mainWindow,
+    resizable: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'check-cell-preload.js')
+    },
+    title: 'check_cell Setup',
+    autoHideMenuBar: true
+  });
+
+  checkCellSetupWindow.loadFile(path.join(__dirname, 'check-cell-setup.html'));
+  checkCellSetupWindow.webContents.openDevTools({ mode: 'detach' });
+  checkCellSetupWindow.on('closed', () => { checkCellSetupWindow = null; });
+}
+
+ipcMain.handle('check-cell-get-config', () => {
+  return {
+    pythonPath: store.get('checkCellPython', ''),
+    picklePath: store.get('checkCellPickle', ''),
+    port: store.get('checkCellPort', 8765)
+  };
+});
+
+ipcMain.handle('check-cell-save-config', (event, config) => {
+  if (config.pythonPath) store.set('checkCellPython', config.pythonPath);
+  if (config.picklePath) store.set('checkCellPickle', config.picklePath);
+  if (config.port) store.set('checkCellPort', config.port);
+  return { success: true };
+});
+
+ipcMain.handle('check-cell-browse-python', async () => {
+  // No parent window - avoids dialog appearing behind modal on Linux
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    title: 'Select Python Interpreter',
+    defaultPath: path.join(require('os').homedir(), 'miniconda3', 'envs')
+  });
+  if (!result.canceled && result.filePaths.length > 0) {
+    return result.filePaths[0];
+  }
+  return null;
+});
+
+ipcMain.handle('check-cell-browse-pickle', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    title: 'Select pciSeq Pickle File',
+    filters: [
+      { name: 'Pickle', extensions: ['pickle', 'pkl'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  });
+  if (!result.canceled && result.filePaths.length > 0) {
+    return result.filePaths[0];
+  }
+  return null;
+});
+
+ipcMain.handle('check-cell-close-setup', () => {
+  if (checkCellSetupWindow) {
+    checkCellSetupWindow.close();
+  }
+});
+
+ipcMain.handle('start-check-cell-server', async () => {
+  const { spawn } = require('child_process');
+  const pythonPath = store.get('checkCellPython', '');
+  const picklePath = store.get('checkCellPickle', '');
+  const port = store.get('checkCellPort', 8765);
+
+  if (!pythonPath || !picklePath) {
+    return { success: false, error: 'Not configured. Use pciSeq > check_cell Setup first.' };
+  }
+
+  // Kill existing process
+  killCheckCellProcess();
+
+  return new Promise((resolve) => {
+    console.log('Spawning check_cell server:', pythonPath, picklePath, 'port:', port);
+    const proc = spawn(pythonPath, [
+      '-c',
+      `import pciSeq; pciSeq.serve("${picklePath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}", port=${port})`
+    ], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: true  // Own process group so we can kill all children
+    });
+
+    checkCellProcess = proc;
+    let started = false;
+    let stderrOutput = '';
+
+    proc.stdout.on('data', (data) => {
+      const msg = data.toString();
+      console.log('check_cell server:', msg.trim());
+      if (!started && msg.includes('Running on')) {
+        started = true;
+        resolve({ success: true, port });
+      }
+    });
+
+    proc.stderr.on('data', (data) => {
+      const msg = data.toString();
+      stderrOutput += msg;
+      console.log('check_cell server:', msg.trim());
+      if (!started && msg.includes('Running on')) {
+        started = true;
+        resolve({ success: true, port });
+      }
+    });
+
+    proc.on('error', (err) => {
+      console.error('check_cell server spawn error:', err.message);
+      checkCellProcess = null;
+      if (!started) {
+        resolve({ success: false, error: 'Failed to start: ' + err.message });
+      }
+    });
+
+    proc.on('exit', (code) => {
+      console.log('check_cell server exited with code', code);
+      checkCellProcess = null;
+      if (!started) {
+        let error;
+        if (stderrOutput.includes('Address already in use')) {
+          error = 'Port ' + port + ' is already in use. A previous server may still be running. Kill it or restart your computer.';
+        } else {
+          const detail = stderrOutput.trim().split('\n').pop() || '';
+          error = 'Server exited (code ' + code + '): ' + detail;
+        }
+        resolve({ success: false, error });
+      }
+    });
+
+    // Timeout - assume ready after 15s even without expected output
+    setTimeout(() => {
+      if (!started) {
+        started = true;
+        resolve({ success: true, port });
+      }
+    }, 15000);
+  });
+});
+
+ipcMain.handle('stop-check-cell-server', () => {
+  killCheckCellProcess();
+  return { success: true };
+});
+
+app.on('before-quit', () => {
+  killCheckCellProcess();
+});
+
 // Create application menu
 function createMenu() {
   const template = [
@@ -724,6 +908,17 @@ function createMenu() {
         { role: 'zoomOut' },
         { type: 'separator' },
         { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'pciSeq',
+      submenu: [
+        {
+          label: 'check_cell Setup...',
+          click: () => {
+            openCheckCellSetup();
+          }
+        }
       ]
     },
     {

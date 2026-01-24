@@ -20,7 +20,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVoxelSize: () => ipcRenderer.invoke('get-voxel-size'),
 
   // Get currently configured paths
-  getPaths: () => ipcRenderer.invoke('get-paths')
+  getPaths: () => ipcRenderer.invoke('get-paths'),
+
+  // check_cell server
+  startCheckCellServer: () => ipcRenderer.invoke('start-check-cell-server'),
+  stopCheckCellServer: () => ipcRenderer.invoke('stop-check-cell-server')
 });
 
 console.log('Preload script loaded - electronAPI exposed to renderer');
