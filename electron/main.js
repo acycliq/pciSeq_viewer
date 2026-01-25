@@ -761,6 +761,18 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
       meanUser: mean_gene_reads_per_class[g][userIdx]
     }));
 
+    // All genes sorted by diff (descending) for the full tables
+    // Include individual log-likelihood contributions for each class
+    const allData = indices.map(g => ({
+      gene: gene_panel[g],
+      diff: diff[g],
+      geneCount: geneCount[g],
+      meanAssigned: mean_gene_reads_per_class[g][assignedIdx],
+      meanUser: mean_gene_reads_per_class[g][userIdx],
+      contrAssigned: contr[g * nK + assignedIdx],
+      contrUser: contr[g * nK + userIdx]
+    }));
+
     return {
       success: true,
       cellId,
@@ -768,6 +780,7 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
       userClass,
       topData,
       bottomData,
+      allData,
       topSum,
       bottomSum,
       topN

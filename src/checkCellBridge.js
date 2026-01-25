@@ -161,10 +161,11 @@ async function handleCompare() {
             throw new Error(result.error || 'Query failed');
         }
 
-        renderResults(result);
-
         if (loading) loading.style.display = 'none';
         if (resultsPhase) resultsPhase.style.display = 'block';
+
+        // Render after DOM reflow so container has dimensions
+        requestAnimationFrame(() => renderResults(result));
     } catch (err) {
         if (loading) loading.style.display = 'none';
         if (selectPhase) selectPhase.style.display = 'block';
@@ -176,28 +177,19 @@ async function handleCompare() {
 // --- Results Rendering ---
 
 function renderResults(data) {
-    // Summary line
+    // Main title with cell ID
     const summary = document.getElementById('checkCellSummary');
     if (summary) {
-        summary.textContent = 'pciSeq assigned: ' + (data.assignedClass || '?') +
-            ' | Comparing against: ' + (data.userClass || '?');
+        summary.innerHTML = 'Cell ' + data.cellId + ': ' +
+            '<span style="color:#87CEEB;font-weight:600;">' + escapeHtml(data.assignedClass) +
+            '</span> <span style="color:#6b7280;margin:0 8px;">vs</span> ' +
+            '<span style="color:#c65d57;font-weight:600;">' + escapeHtml(data.userClass) + '</span>';
     }
 
-    // Render bar charts on canvas
+    // Render D3 diverging bar chart
     const plotContainer = document.getElementById('checkCellPlot');
     if (plotContainer) {
-        // Replace img with canvas if needed
-        if (plotContainer.tagName === 'IMG') {
-            const canvas = document.createElement('canvas');
-            canvas.id = 'checkCellPlot';
-            canvas.width = 700;
-            canvas.height = 300;
-            canvas.style.maxWidth = '100%';
-            plotContainer.replaceWith(canvas);
-            renderBarCharts(canvas, data);
-        } else {
-            renderBarCharts(plotContainer, data);
-        }
+        renderDivergingChart(plotContainer, data);
     }
 
     // Gene expression table
@@ -213,112 +205,227 @@ function renderResults(data) {
     }
 }
 
-function renderBarCharts(canvas, data) {
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
+/**
+ * Render two side-by-side bar charts using D3.js
+ * Left chart: Top genes favoring assigned class
+ * Right chart: Top genes favoring user class
+ */
+function renderDivergingChart(container, data) {
+    const d3 = window.d3;
+    if (!d3) {
+        container.innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444;">D3.js not loaded</div>';
+        return;
+    }
 
-    // Clear canvas
-    ctx.fillStyle = '#1f2937';
-    ctx.fillRect(0, 0, width, height);
+    // Clear previous content
+    container.innerHTML = '';
 
-    const padding = { top: 40, bottom: 60, left: 60, right: 20 };
-    const chartWidth = (width - padding.left - padding.right - 40) / 2;
-    const chartHeight = height - padding.top - padding.bottom;
+    // Create tooltip (reuse if exists)
+    let tooltip = d3.select('#checkCellTooltip');
+    if (tooltip.empty()) {
+        tooltip = d3.select('body').append('div')
+            .attr('id', 'checkCellTooltip')
+            .style('position', 'absolute')
+            .style('background', 'rgba(17, 24, 39, 0.95)')
+            .style('border', '1px solid #374151')
+            .style('border-radius', '6px')
+            .style('padding', '10px 14px')
+            .style('font-size', '12px')
+            .style('color', '#e5e7eb')
+            .style('pointer-events', 'none')
+            .style('z-index', '10002')
+            .style('box-shadow', '0 4px 12px rgba(0,0,0,0.4)')
+            .style('opacity', 0);
+    }
 
-    // Left chart: Top genes (favoring assigned class)
-    drawBarChart(ctx, {
-        x: padding.left,
-        y: padding.top,
-        width: chartWidth,
-        height: chartHeight,
+    // Container for two charts side by side
+    const wrapper = d3.select(container)
+        .append('div')
+        .style('display', 'flex')
+        .style('gap', '20px')
+        .style('width', '100%');
+
+    // Left chart: genes favoring assigned class (positive diff)
+    const leftDiv = wrapper.append('div').style('flex', '1');
+    renderSingleBarChart(leftDiv, {
         data: data.topData,
-        color: '#7dd3fc', // skyblue
-        title: `Top ${data.topN} for ${data.assignedClass} (Sum: ${data.topSum.toFixed(2)})`
+        title: 'Top ' + data.topN + ' contr for class: ' + data.assignedClass,
+        subtitle: '(Sum: ' + data.topSum.toFixed(2) + ')',
+        color: '#87CEEB',  // skyblue
+        tooltip: tooltip,
+        fullData: data
     });
 
-    // Right chart: Bottom genes (favoring user class)
-    drawBarChart(ctx, {
-        x: padding.left + chartWidth + 40,
-        y: padding.top,
-        width: chartWidth,
-        height: chartHeight,
+    // Right chart: genes favoring user class (negative diff)
+    const rightDiv = wrapper.append('div').style('flex', '1');
+    renderSingleBarChart(rightDiv, {
         data: data.bottomData,
-        color: '#fca5a5', // lightcoral
-        title: `Top ${data.topN} for ${data.userClass} (Sum: ${data.bottomSum.toFixed(2)})`
+        title: 'Top ' + data.topN + ' contr for class: ' + data.userClass,
+        subtitle: '(Sum: ' + data.bottomSum.toFixed(2) + ')',
+        color: '#c65d57',  // Moderate red
+        tooltip: tooltip,
+        fullData: data
     });
 }
 
-function drawBarChart(ctx, opts) {
-    const { x, y, width, height, data, color, title } = opts;
+function renderSingleBarChart(container, opts) {
+    const { data, title, subtitle, color, tooltip, fullData } = opts;
+    const d3 = window.d3;
 
-    // Find max absolute value for scaling
-    const maxVal = Math.max(...data.map(d => Math.abs(d.diff)), 0.001);
-    const barWidth = width / data.length - 4;
+    const margin = { top: 50, right: 20, bottom: 70, left: 60 };
+    const width = 340;
+    const height = 300;
+    const chartWidth = width - margin.left - margin.right;
+    const chartHeight = height - margin.top - margin.bottom;
+
+    const svg = container.append('svg')
+        .attr('width', width)
+        .attr('height', height);
 
     // Title
-    ctx.fillStyle = '#e5e7eb';
-    ctx.font = '11px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(title, x + width / 2, y - 10);
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 16)
+        .attr('text-anchor', 'middle')
+        .style('fill', '#e5e7eb')
+        .style('font-size', '11px')
+        .style('font-weight', '500')
+        .text(truncate(title, 50));
 
-    // Y-axis
-    ctx.strokeStyle = '#4b5563';
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x, y + height);
-    ctx.stroke();
+    // Subtitle (sum)
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 32)
+        .attr('text-anchor', 'middle')
+        .style('fill', '#9ca3af')
+        .style('font-size', '10px')
+        .text(subtitle);
 
-    // X-axis (at y=0 if we have negative values, otherwise at bottom)
-    const hasNegative = data.some(d => d.diff < 0);
-    const zeroY = hasNegative ? y + height / 2 : y + height;
+    const g = svg.append('g')
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
 
-    ctx.beginPath();
-    ctx.moveTo(x, zeroY);
-    ctx.lineTo(x + width, zeroY);
-    ctx.stroke();
+    // Scales - handle both positive and negative values
+    const minVal = d3.min(data, d => d.diff) || 0;
+    const maxVal = d3.max(data, d => d.diff) || 0;
+    const yMin = Math.min(0, minVal * 1.1);
+    const yMax = Math.max(0, maxVal * 1.1);
 
-    // Bars
-    ctx.fillStyle = color;
-    data.forEach((d, i) => {
-        const barX = x + i * (barWidth + 4) + 2;
-        const barHeight = (Math.abs(d.diff) / maxVal) * (height / 2 - 10);
-        const barY = d.diff >= 0 ? zeroY - barHeight : zeroY;
+    const x = d3.scaleBand()
+        .domain(data.map(d => d.gene))
+        .range([0, chartWidth])
+        .padding(0.15);
 
-        ctx.fillRect(barX, barY, barWidth, barHeight);
+    const y = d3.scaleLinear()
+        .domain([yMin, yMax])
+        .range([chartHeight, 0]);
 
-        // Gene label (rotated)
-        ctx.save();
-        ctx.fillStyle = '#9ca3af';
-        ctx.font = '9px Arial';
-        ctx.translate(barX + barWidth / 2, y + height + 8);
-        ctx.rotate(-Math.PI / 4);
-        ctx.textAlign = 'right';
-        ctx.fillText(d.gene.substring(0, 8), 0, 0);
-        ctx.restore();
-    });
+    // Y-axis with gridlines
+    const yAxis = d3.axisLeft(y).ticks(5);
+    g.append('g')
+        .attr('class', 'y-axis')
+        .call(yAxis)
+        .selectAll('text')
+        .style('fill', '#9ca3af')
+        .style('font-size', '9px');
 
-    // Y-axis labels
-    ctx.fillStyle = '#9ca3af';
-    ctx.font = '9px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText(maxVal.toFixed(1), x - 5, y + 10);
-    if (hasNegative) {
-        ctx.fillText('0', x - 5, zeroY + 3);
-        ctx.fillText((-maxVal).toFixed(1), x - 5, y + height);
-    } else {
-        ctx.fillText('0', x - 5, y + height);
+    g.selectAll('.y-axis line').attr('stroke', '#4b5563');
+    g.selectAll('.y-axis path').attr('stroke', '#4b5563');
+
+    // Gridlines
+    g.append('g')
+        .selectAll('line')
+        .data(y.ticks(5))
+        .enter()
+        .append('line')
+        .attr('x1', 0)
+        .attr('x2', chartWidth)
+        .attr('y1', d => y(d))
+        .attr('y2', d => y(d))
+        .attr('stroke', '#374151')
+        .attr('stroke-dasharray', '2,2');
+
+    // Zero line if we have both positive and negative values
+    if (yMin < 0 && yMax > 0) {
+        g.append('line')
+            .attr('x1', 0)
+            .attr('x2', chartWidth)
+            .attr('y1', y(0))
+            .attr('y2', y(0))
+            .attr('stroke', '#6b7280')
+            .attr('stroke-width', 1);
     }
+
+    // Bars - handle positive (up from zero) and negative (down from zero)
+    g.selectAll('.bar')
+        .data(data)
+        .enter()
+        .append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => x(d.gene))
+        .attr('y', d => d.diff >= 0 ? y(d.diff) : y(0))
+        .attr('width', x.bandwidth())
+        .attr('height', d => Math.abs(y(d.diff) - y(0)))
+        .attr('fill', color)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this).attr('fill-opacity', 0.7);
+            tooltip.html(
+                '<div style="font-weight:600;">' + escapeHtml(d.gene) + '</div>' +
+                '<div>' + d.diff.toFixed(3) + '</div>'
+            )
+            .style('left', (event.pageX + 12) + 'px')
+            .style('top', (event.pageY - 10) + 'px')
+            .style('opacity', 1);
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 12) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this).attr('fill-opacity', 1);
+            tooltip.style('opacity', 0);
+        });
+
+    // Gene labels (rotated)
+    g.selectAll('.gene-label')
+        .data(data)
+        .enter()
+        .append('text')
+        .attr('class', 'gene-label')
+        .attr('x', d => x(d.gene) + x.bandwidth() / 2)
+        .attr('y', chartHeight + 8)
+        .attr('text-anchor', 'end')
+        .attr('transform', d => 'rotate(-45,' + (x(d.gene) + x.bandwidth() / 2) + ',' + (chartHeight + 8) + ')')
+        .style('fill', '#d1d5db')
+        .style('font-size', '9px')
+        .text(d => d.gene);
+
+    // Y-axis label
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -(margin.top + chartHeight / 2))
+        .attr('y', 14)
+        .attr('text-anchor', 'middle')
+        .style('fill', '#9ca3af')
+        .style('font-size', '10px')
+        .text('Log-Likelihood Difference');
+}
+
+function truncate(str, max) {
+    return str.length > max ? str.substring(0, max - 2) + '...' : str;
 }
 
 function buildExpressionTable(data) {
-    const allGenes = [...data.topData, ...data.bottomData];
+    // Use allData (all genes sorted by diff) if available, otherwise fall back to top+bottom
+    const allGenes = data.allData || [...data.topData, ...data.bottomData];
+    const tableId = 'exprTable_' + Date.now();
 
-    let html = '<table><thead><tr>';
-    html += '<th>Gene</th>';
-    html += '<th>Mean (' + escapeHtml(data.assignedClass) + ')</th>';
-    html += '<th>Mean (' + escapeHtml(data.userClass) + ')</th>';
-    html += '<th>This Cell</th>';
+    let html = '<table id="' + tableId + '" class="sortable-table"><thead><tr>';
+    html += '<th data-sort="string">Gene</th>';
+    html += '<th data-sort="number">Mean counts<br><small>across all cells that pciSeq typed as<br>' + escapeHtml(data.assignedClass) + '</small></th>';
+    html += '<th data-sort="number">Mean counts<br><small>across all cells that pciSeq typed as<br>' + escapeHtml(data.userClass) + '</small></th>';
+    html += '<th data-sort="number">This Cell</th>';
     html += '</tr></thead><tbody>';
 
     allGenes.forEach(g => {
@@ -331,26 +438,93 @@ function buildExpressionTable(data) {
     });
 
     html += '</tbody></table>';
+
+    // Initialize sorting after a brief delay to ensure DOM is ready
+    setTimeout(() => initSortableTable(tableId), 10);
+
     return html;
 }
 
 function buildContributionTable(data) {
-    const allGenes = [...data.topData, ...data.bottomData];
+    // Use allData (all genes sorted by diff) if available, otherwise fall back to top+bottom
+    const allGenes = data.allData || [...data.topData, ...data.bottomData];
+    const tableId = 'contrTable_' + Date.now();
 
-    let html = '<table><thead><tr>';
-    html += '<th>Gene</th>';
-    html += '<th>Log-Likelihood Diff</th>';
+    let html = '<table id="' + tableId + '" class="sortable-table"><thead><tr>';
+    html += '<th data-sort="string">Gene</th>';
+    html += '<th data-sort="number">Log-lik<br><small>' + escapeHtml(data.assignedClass) + '</small></th>';
+    html += '<th data-sort="number">Log-lik<br><small>' + escapeHtml(data.userClass) + '</small></th>';
+    html += '<th data-sort="number">Diff</th>';
     html += '</tr></thead><tbody>';
 
     allGenes.forEach(g => {
+        const contrAssigned = g.contrAssigned !== undefined ? g.contrAssigned.toFixed(3) : '-';
+        const contrUser = g.contrUser !== undefined ? g.contrUser.toFixed(3) : '-';
         html += '<tr>';
         html += '<td>' + escapeHtml(g.gene) + '</td>';
+        html += '<td>' + contrAssigned + '</td>';
+        html += '<td>' + contrUser + '</td>';
         html += '<td>' + g.diff.toFixed(3) + '</td>';
         html += '</tr>';
     });
 
     html += '</tbody></table>';
+
+    // Initialize sorting after a brief delay to ensure DOM is ready
+    setTimeout(() => initSortableTable(tableId), 10);
+
     return html;
+}
+
+function initSortableTable(tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    const headers = table.querySelectorAll('th[data-sort]');
+    headers.forEach((header, colIndex) => {
+        header.style.cursor = 'pointer';
+        header.title = 'Click to sort';
+        header.addEventListener('click', () => {
+            sortTable(table, colIndex, header.dataset.sort);
+        });
+    });
+}
+
+function sortTable(table, colIndex, sortType) {
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const header = table.querySelectorAll('th')[colIndex];
+
+    // Determine sort direction
+    const currentDir = header.dataset.sortDir || 'none';
+    const newDir = currentDir === 'asc' ? 'desc' : 'asc';
+
+    // Clear other headers' sort indicators
+    table.querySelectorAll('th').forEach(th => {
+        th.dataset.sortDir = 'none';
+        th.classList.remove('sort-asc', 'sort-desc');
+    });
+
+    header.dataset.sortDir = newDir;
+    header.classList.add(newDir === 'asc' ? 'sort-asc' : 'sort-desc');
+
+    rows.sort((a, b) => {
+        const aVal = a.cells[colIndex].textContent.trim();
+        const bVal = b.cells[colIndex].textContent.trim();
+
+        let comparison;
+        if (sortType === 'number') {
+            const aNum = parseFloat(aVal) || 0;
+            const bNum = parseFloat(bVal) || 0;
+            comparison = aNum - bNum;
+        } else {
+            comparison = aVal.localeCompare(bVal);
+        }
+
+        return newDir === 'asc' ? comparison : -comparison;
+    });
+
+    rows.forEach(row => tbody.appendChild(row));
 }
 
 // --- Helpers ---
