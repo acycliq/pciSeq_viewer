@@ -118,7 +118,6 @@ function createWindow() {
   });
 
   mainWindow.on('closed', () => {
-    killCheckCellProcess();
     mainWindow = null;
   });
 }
@@ -577,26 +576,8 @@ ipcMain.handle('get-dataset-metadata', async () => {
   };
 });
 
-// === check_cell Setup & Server ===
+// === check_cell Setup ===
 let checkCellSetupWindow = null;
-let checkCellProcess = null;
-
-function killCheckCellProcess() {
-  if (!checkCellProcess) return;
-  const pid = checkCellProcess.pid;
-  checkCellProcess = null;
-  if (!pid) return;
-  try {
-    // Kill the entire process group (negative PID) to ensure Flask child is also killed
-    process.kill(-pid, 'SIGTERM');
-  } catch (e) {
-    // Process may have already exited
-  }
-  // Fallback: SIGKILL after 2s in case SIGTERM is ignored
-  setTimeout(() => {
-    try { process.kill(-pid, 'SIGKILL'); } catch (_) {}
-  }, 2000);
-}
 
 function openCheckCellSetup() {
   if (checkCellSetupWindow) {
@@ -625,40 +606,27 @@ function openCheckCellSetup() {
 
 ipcMain.handle('check-cell-get-config', () => {
   return {
-    pythonPath: store.get('checkCellPython', ''),
-    picklePath: store.get('checkCellPickle', ''),
-    port: store.get('checkCellPort', 8765)
+    checkCellPath: store.get('checkCellPath', '')
   };
 });
 
 ipcMain.handle('check-cell-save-config', (event, config) => {
-  if (config.pythonPath) store.set('checkCellPython', config.pythonPath);
-  if (config.picklePath) store.set('checkCellPickle', config.picklePath);
-  if (config.port) store.set('checkCellPort', config.port);
+  if (!config.checkCellPath) {
+    return { success: false, error: 'Path is required' };
+  }
+  // Validate that the folder contains the required files
+  const metaPath = path.join(config.checkCellPath, 'check_cell_meta.json');
+  if (!fs.existsSync(metaPath)) {
+    return { success: false, error: 'check_cell_meta.json not found in selected folder' };
+  }
+  store.set('checkCellPath', config.checkCellPath);
   return { success: true };
 });
 
-ipcMain.handle('check-cell-browse-python', async () => {
-  // No parent window - avoids dialog appearing behind modal on Linux
+ipcMain.handle('check-cell-browse-folder', async () => {
   const result = await dialog.showOpenDialog({
-    properties: ['openFile'],
-    title: 'Select Python Interpreter',
-    defaultPath: path.join(require('os').homedir(), 'miniconda3', 'envs')
-  });
-  if (!result.canceled && result.filePaths.length > 0) {
-    return result.filePaths[0];
-  }
-  return null;
-});
-
-ipcMain.handle('check-cell-browse-pickle', async () => {
-  const result = await dialog.showOpenDialog({
-    properties: ['openFile'],
-    title: 'Select pciSeq Pickle File',
-    filters: [
-      { name: 'Pickle', extensions: ['pickle', 'pkl'] },
-      { name: 'All Files', extensions: ['*'] }
-    ]
+    properties: ['openDirectory'],
+    title: 'Select check_cell Data Folder'
   });
   if (!result.canceled && result.filePaths.length > 0) {
     return result.filePaths[0];
@@ -672,93 +640,150 @@ ipcMain.handle('check-cell-close-setup', () => {
   }
 });
 
-ipcMain.handle('start-check-cell-server', async () => {
-  const { spawn } = require('child_process');
-  const pythonPath = store.get('checkCellPython', '');
-  const picklePath = store.get('checkCellPickle', '');
-  const port = store.get('checkCellPort', 8765);
+// === check_cell Binary Data ===
+// Reads pre-computed binary files exported by pciSeq (no Python required at runtime)
 
-  if (!pythonPath || !picklePath) {
+let checkCellMeta = null;  // Cached metadata
+
+ipcMain.handle('check-cell-load-binary-data', async () => {
+  const checkCellDir = store.get('checkCellPath', '');
+  if (!checkCellDir) {
     return { success: false, error: 'Not configured. Use pciSeq > check_cell Setup first.' };
   }
 
-  // Kill existing process
-  killCheckCellProcess();
+  const metaPath = path.join(checkCellDir, 'check_cell_meta.json');
 
-  return new Promise((resolve) => {
-    console.log('Spawning check_cell server:', pythonPath, picklePath, 'port:', port);
-    const proc = spawn(pythonPath, [
-      '-c',
-      `import pciSeq; pciSeq.serve("${picklePath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}", port=${port})`
-    ], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: true  // Own process group so we can kill all children
-    });
+  if (!fs.existsSync(metaPath)) {
+    return { success: false, error: 'check_cell data not found at: ' + checkCellDir };
+  }
 
-    checkCellProcess = proc;
-    let started = false;
-    let stderrOutput = '';
-
-    proc.stdout.on('data', (data) => {
-      const msg = data.toString();
-      console.log('check_cell server:', msg.trim());
-      if (!started && msg.includes('Running on')) {
-        started = true;
-        resolve({ success: true, port });
-      }
-    });
-
-    proc.stderr.on('data', (data) => {
-      const msg = data.toString();
-      stderrOutput += msg;
-      console.log('check_cell server:', msg.trim());
-      if (!started && msg.includes('Running on')) {
-        started = true;
-        resolve({ success: true, port });
-      }
-    });
-
-    proc.on('error', (err) => {
-      console.error('check_cell server spawn error:', err.message);
-      checkCellProcess = null;
-      if (!started) {
-        resolve({ success: false, error: 'Failed to start: ' + err.message });
-      }
-    });
-
-    proc.on('exit', (code) => {
-      console.log('check_cell server exited with code', code);
-      checkCellProcess = null;
-      if (!started) {
-        let error;
-        if (stderrOutput.includes('Address already in use')) {
-          error = 'Port ' + port + ' is already in use. A previous server may still be running. Kill it or restart your computer.';
-        } else {
-          const detail = stderrOutput.trim().split('\n').pop() || '';
-          error = 'Server exited (code ' + code + '): ' + detail;
-        }
-        resolve({ success: false, error });
-      }
-    });
-
-    // Timeout - assume ready after 15s even without expected output
-    setTimeout(() => {
-      if (!started) {
-        started = true;
-        resolve({ success: true, port });
-      }
-    }, 15000);
-  });
+  try {
+    const content = fs.readFileSync(metaPath, 'utf8');
+    checkCellMeta = JSON.parse(content);
+    checkCellMeta._dir = checkCellDir;  // Store path for later queries
+    console.log('check_cell binary data loaded: nC=%d, nG=%d, nK=%d',
+                checkCellMeta.nC, checkCellMeta.nG, checkCellMeta.nK);
+    return {
+      success: true,
+      classes: checkCellMeta.class_names,
+      nC: checkCellMeta.nC,
+      nG: checkCellMeta.nG,
+      nK: checkCellMeta.nK
+    };
+  } catch (err) {
+    return { success: false, error: 'Failed to load check_cell metadata: ' + err.message };
+  }
 });
 
-ipcMain.handle('stop-check-cell-server', () => {
-  killCheckCellProcess();
-  return { success: true };
+ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, topN = 10 }) => {
+  if (!checkCellMeta) {
+    return { success: false, error: 'check_cell data not loaded' };
+  }
+
+  const { nC, nG, nK, rSpot, SpotReg, class_names, gene_panel, label_map, eta_bar, mean_gene_reads_per_class } = checkCellMeta;
+  const checkCellDir = checkCellMeta._dir;
+
+  // Map external cell ID to internal index
+  let c = cellId;
+  if (label_map && Object.keys(label_map).length > 0) {
+    const mapped = label_map[String(cellId)];
+    if (mapped === undefined) {
+      return { success: false, error: 'Cell ID not found: ' + cellId };
+    }
+    c = mapped;
+  }
+
+  if (c < 0 || c >= nC) {
+    return { success: false, error: 'Cell index out of range: ' + c };
+  }
+
+  const userIdx = class_names.indexOf(userClass);
+  if (userIdx === -1) {
+    return { success: false, error: 'Unknown class: ' + userClass };
+  }
+
+  try {
+    // Read binary slices for this cell
+    const scaledMeans = readFloat32Slice(path.join(checkCellDir, 'scaled_means.bin'), c * nG * nK, nG * nK);
+    const thetaBar = readFloat32Slice(path.join(checkCellDir, 'theta_bar.bin'), c * nK, nK);
+    const geneCount = readFloat32Slice(path.join(checkCellDir, 'gene_count.bin'), c * nG, nG);
+    const classProb = readFloat32Slice(path.join(checkCellDir, 'class_prob.bin'), c * nK, nK);
+
+    // Find assigned class (argmax of classProb)
+    let assignedIdx = 0;
+    for (let k = 1; k < nK; k++) {
+      if (classProb[k] > classProb[assignedIdx]) assignedIdx = k;
+    }
+    const assignedClass = class_names[assignedIdx];
+
+    // Compute log-likelihood contributions
+    const contr = new Float32Array(nG * nK);
+    for (let g = 0; g < nG; g++) {
+      for (let k = 0; k < nK; k++) {
+        const idx = g * nK + k;
+        const scaledExp = scaledMeans[idx] * eta_bar[g] * thetaBar[k] + SpotReg;
+        const pNegBin = scaledExp / (rSpot + scaledExp);
+        contr[idx] = geneCount[g] * Math.log(pNegBin) + rSpot * Math.log(1 - pNegBin);
+      }
+    }
+
+    // Compute difference between assigned and user class
+    const diff = new Float32Array(nG);
+    for (let g = 0; g < nG; g++) {
+      diff[g] = contr[g * nK + assignedIdx] - contr[g * nK + userIdx];
+    }
+
+    // Find top N and bottom N genes by difference
+    const indices = Array.from({ length: nG }, (_, i) => i);
+    indices.sort((a, b) => diff[b] - diff[a]);
+    const topGenes = indices.slice(0, topN);
+    const bottomGenes = indices.slice(-topN).reverse();
+
+    // Calculate sums for display
+    let topSum = 0, bottomSum = 0;
+    topGenes.forEach(g => topSum += diff[g]);
+    bottomGenes.forEach(g => bottomSum += diff[g]);
+
+    // Build result data for the charts and tables
+    const topData = topGenes.map(g => ({
+      gene: gene_panel[g],
+      diff: diff[g],
+      geneCount: geneCount[g],
+      meanAssigned: mean_gene_reads_per_class[g][assignedIdx],
+      meanUser: mean_gene_reads_per_class[g][userIdx]
+    }));
+
+    const bottomData = bottomGenes.map(g => ({
+      gene: gene_panel[g],
+      diff: diff[g],
+      geneCount: geneCount[g],
+      meanAssigned: mean_gene_reads_per_class[g][assignedIdx],
+      meanUser: mean_gene_reads_per_class[g][userIdx]
+    }));
+
+    return {
+      success: true,
+      cellId,
+      assignedClass,
+      userClass,
+      topData,
+      bottomData,
+      topSum,
+      bottomSum,
+      topN
+    };
+  } catch (err) {
+    return { success: false, error: 'Query failed: ' + err.message };
+  }
 });
 
-app.on('before-quit', () => {
-  killCheckCellProcess();
-});
+function readFloat32Slice(filePath, offsetFloats, count) {
+  const buffer = Buffer.alloc(count * 4);
+  const fd = fs.openSync(filePath, 'r');
+  fs.readSync(fd, buffer, 0, count * 4, offsetFloats * 4);
+  fs.closeSync(fd);
+  return new Float32Array(buffer.buffer, buffer.byteOffset, count);
+}
 
 // Create application menu
 function createMenu() {

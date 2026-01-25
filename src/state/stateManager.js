@@ -81,7 +81,6 @@ const state = {
     // check_cell bridge
     checkCellConnected: false,
     checkCellClasses: [],
-    checkCellApiUrl: 'http://127.0.0.1:8765',
 
     // Cache of last IconLayers to avoid blocking destruction when switching to pointcloud
     lastIconLayers: [],

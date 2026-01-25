@@ -22,9 +22,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Get currently configured paths
   getPaths: () => ipcRenderer.invoke('get-paths'),
 
-  // check_cell server
-  startCheckCellServer: () => ipcRenderer.invoke('start-check-cell-server'),
-  stopCheckCellServer: () => ipcRenderer.invoke('stop-check-cell-server')
+  // check_cell (binary data, no Python required)
+  loadCheckCellData: () => ipcRenderer.invoke('check-cell-load-binary-data'),
+  checkCellQuery: (params) => ipcRenderer.invoke('check-cell-binary-query', params)
 });
 
 console.log('Preload script loaded - electronAPI exposed to renderer');

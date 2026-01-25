@@ -1,8 +1,8 @@
 /**
  * check_cell Bridge Module
  *
- * Connects the viewer to a local pciSeq check_cell server (localhost:8765).
- * Provides: Connect button toggle, Ctrl+click modal, and results display.
+ * Provides cell type comparison diagnostics using pre-computed binary data.
+ * No Python server required - data is read directly from binary files.
  */
 
 import { state } from './state/stateManager.js';
@@ -38,7 +38,7 @@ export function setupCheckCellBridge() {
 
 async function toggleConnection() {
     if (state.checkCellConnected) {
-        await disconnect();
+        disconnect();
     } else {
         await connect();
     }
@@ -48,70 +48,38 @@ async function connect() {
     const btn = document.getElementById('checkCellConnectBtn');
     const icon = document.getElementById('checkCellConnectIcon');
 
-    // Start the server via Electron (uses stored Python + pickle paths)
-    if (window.electronAPI && window.electronAPI.startCheckCellServer) {
-        const result = await window.electronAPI.startCheckCellServer();
+    // Load binary data via Electron IPC
+    if (window.electronAPI && window.electronAPI.loadCheckCellData) {
+        const result = await window.electronAPI.loadCheckCellData();
         if (!result.success) {
-            showNotification(result.error || 'Failed to start server', 'error');
-            console.warn('check_cell server failed:', result.error);
+            showNotification(result.error || 'Failed to load check_cell data', 'error');
+            console.warn('check_cell load failed:', result.error);
             return;
         }
-        // Update API URL with the configured port
-        if (result.port) {
-            state.checkCellApiUrl = 'http://127.0.0.1:' + result.port;
-        }
-        console.log('check_cell server spawned on port', result.port || 8765, ', polling health...');
+
+        state.checkCellConnected = true;
+        state.checkCellClasses = result.classes || [];
+
+        if (icon) icon.textContent = '\u25CF'; // filled circle
+        if (btn) btn.classList.add('check-cell-connected');
+
+        showNotification('Connected (' + state.checkCellClasses.length + ' classes)', 'success');
+        console.log('check_cell data loaded. Classes:', state.checkCellClasses.length);
+    } else {
+        showNotification('check_cell requires Electron app', 'error');
     }
-
-    // Poll /health until server is ready
-    const connected = await pollHealth(10, 1000);
-    if (!connected) {
-        showNotification('Server not responding. Check pciSeq > check_cell Setup.', 'error');
-        if (window.electronAPI && window.electronAPI.stopCheckCellServer) {
-            await window.electronAPI.stopCheckCellServer();
-        }
-        return;
-    }
-
-    if (icon) icon.textContent = '\u25CF'; // filled circle
-    if (btn) btn.classList.add('check-cell-connected');
-
-    showNotification('Connected (' + state.checkCellClasses.length + ' classes)', 'success');
-    console.log('check_cell bridge connected. Classes:', state.checkCellClasses.length);
 }
 
-async function pollHealth(retries, intervalMs) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            const resp = await fetch(state.checkCellApiUrl + '/health');
-            if (resp.ok) {
-                const data = await resp.json();
-                state.checkCellConnected = true;
-                state.checkCellClasses = data.classes || [];
-                return true;
-            }
-        } catch (_) {
-            // Server not ready yet
-        }
-        await new Promise(r => setTimeout(r, intervalMs));
-    }
-    return false;
-}
-
-async function disconnect() {
+function disconnect() {
     state.checkCellConnected = false;
     state.checkCellClasses = [];
-
-    if (window.electronAPI && window.electronAPI.stopCheckCellServer) {
-        await window.electronAPI.stopCheckCellServer();
-    }
 
     const btn = document.getElementById('checkCellConnectBtn');
     const icon = document.getElementById('checkCellConnectIcon');
     if (icon) icon.textContent = '\u25CB'; // hollow circle
     if (btn) btn.classList.remove('check-cell-connected');
 
-    console.log('check_cell bridge disconnected');
+    console.log('check_cell disconnected');
 }
 
 // --- Modal ---
@@ -182,19 +150,18 @@ async function handleCompare() {
     if (loading) loading.style.display = 'block';
 
     try {
-        const resp = await fetch(state.checkCellApiUrl + '/check_cell', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cell_id: Number(cellLabel), user_class: userClass, top_n: 10 })
+        // Query via Electron IPC (binary file read + computation)
+        const result = await window.electronAPI.checkCellQuery({
+            cellId: Number(cellLabel),
+            userClass: userClass,
+            topN: 10
         });
 
-        if (!resp.ok) {
-            const errData = await resp.json().catch(() => ({}));
-            throw new Error(errData.error || 'Server returned ' + resp.status);
+        if (!result.success) {
+            throw new Error(result.error || 'Query failed');
         }
 
-        const data = await resp.json();
-        renderResults(data, userClass);
+        renderResults(result);
 
         if (loading) loading.style.display = 'none';
         if (resultsPhase) resultsPhase.style.display = 'block';
@@ -208,51 +175,177 @@ async function handleCompare() {
 
 // --- Results Rendering ---
 
-function renderResults(data, userClass) {
+function renderResults(data) {
     // Summary line
     const summary = document.getElementById('checkCellSummary');
     if (summary) {
-        summary.textContent = 'pciSeq assigned: ' + (data.assigned_class || '?') +
-            ' | Comparing against: ' + (userClass || '?');
+        summary.textContent = 'pciSeq assigned: ' + (data.assignedClass || '?') +
+            ' | Comparing against: ' + (data.userClass || '?');
     }
 
-    // Plot image
-    const plotImg = document.getElementById('checkCellPlot');
-    if (plotImg && data.plot_base64) {
-        plotImg.src = 'data:image/png;base64,' + data.plot_base64;
-        plotImg.style.display = 'block';
-    } else if (plotImg) {
-        plotImg.style.display = 'none';
+    // Render bar charts on canvas
+    const plotContainer = document.getElementById('checkCellPlot');
+    if (plotContainer) {
+        // Replace img with canvas if needed
+        if (plotContainer.tagName === 'IMG') {
+            const canvas = document.createElement('canvas');
+            canvas.id = 'checkCellPlot';
+            canvas.width = 700;
+            canvas.height = 300;
+            canvas.style.maxWidth = '100%';
+            plotContainer.replaceWith(canvas);
+            renderBarCharts(canvas, data);
+        } else {
+            renderBarCharts(plotContainer, data);
+        }
     }
 
     // Gene expression table
     const exprWrap = document.getElementById('checkCellExprTable');
-    if (exprWrap && data.gene_expression) {
-        exprWrap.innerHTML = buildTable(data.gene_expression);
+    if (exprWrap) {
+        exprWrap.innerHTML = buildExpressionTable(data);
     }
 
     // Contribution table
     const contrWrap = document.getElementById('checkCellContrTable');
-    if (contrWrap && data.contribution) {
-        contrWrap.innerHTML = buildTable(data.contribution);
+    if (contrWrap) {
+        contrWrap.innerHTML = buildContributionTable(data);
     }
 }
 
-function buildTable(df) {
-    // df has {columns, index, data} (pandas orient='split' format)
-    if (!df || !df.columns || !df.data) return '';
+function renderBarCharts(canvas, data) {
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
 
-    let html = '<table><thead><tr><th></th>';
-    df.columns.forEach(col => { html += '<th>' + escapeHtml(String(col)) + '</th>'; });
+    // Clear canvas
+    ctx.fillStyle = '#1f2937';
+    ctx.fillRect(0, 0, width, height);
+
+    const padding = { top: 40, bottom: 60, left: 60, right: 20 };
+    const chartWidth = (width - padding.left - padding.right - 40) / 2;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    // Left chart: Top genes (favoring assigned class)
+    drawBarChart(ctx, {
+        x: padding.left,
+        y: padding.top,
+        width: chartWidth,
+        height: chartHeight,
+        data: data.topData,
+        color: '#7dd3fc', // skyblue
+        title: `Top ${data.topN} for ${data.assignedClass} (Sum: ${data.topSum.toFixed(2)})`
+    });
+
+    // Right chart: Bottom genes (favoring user class)
+    drawBarChart(ctx, {
+        x: padding.left + chartWidth + 40,
+        y: padding.top,
+        width: chartWidth,
+        height: chartHeight,
+        data: data.bottomData,
+        color: '#fca5a5', // lightcoral
+        title: `Top ${data.topN} for ${data.userClass} (Sum: ${data.bottomSum.toFixed(2)})`
+    });
+}
+
+function drawBarChart(ctx, opts) {
+    const { x, y, width, height, data, color, title } = opts;
+
+    // Find max absolute value for scaling
+    const maxVal = Math.max(...data.map(d => Math.abs(d.diff)), 0.001);
+    const barWidth = width / data.length - 4;
+
+    // Title
+    ctx.fillStyle = '#e5e7eb';
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(title, x + width / 2, y - 10);
+
+    // Y-axis
+    ctx.strokeStyle = '#4b5563';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + height);
+    ctx.stroke();
+
+    // X-axis (at y=0 if we have negative values, otherwise at bottom)
+    const hasNegative = data.some(d => d.diff < 0);
+    const zeroY = hasNegative ? y + height / 2 : y + height;
+
+    ctx.beginPath();
+    ctx.moveTo(x, zeroY);
+    ctx.lineTo(x + width, zeroY);
+    ctx.stroke();
+
+    // Bars
+    ctx.fillStyle = color;
+    data.forEach((d, i) => {
+        const barX = x + i * (barWidth + 4) + 2;
+        const barHeight = (Math.abs(d.diff) / maxVal) * (height / 2 - 10);
+        const barY = d.diff >= 0 ? zeroY - barHeight : zeroY;
+
+        ctx.fillRect(barX, barY, barWidth, barHeight);
+
+        // Gene label (rotated)
+        ctx.save();
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '9px Arial';
+        ctx.translate(barX + barWidth / 2, y + height + 8);
+        ctx.rotate(-Math.PI / 4);
+        ctx.textAlign = 'right';
+        ctx.fillText(d.gene.substring(0, 8), 0, 0);
+        ctx.restore();
+    });
+
+    // Y-axis labels
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '9px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText(maxVal.toFixed(1), x - 5, y + 10);
+    if (hasNegative) {
+        ctx.fillText('0', x - 5, zeroY + 3);
+        ctx.fillText((-maxVal).toFixed(1), x - 5, y + height);
+    } else {
+        ctx.fillText('0', x - 5, y + height);
+    }
+}
+
+function buildExpressionTable(data) {
+    const allGenes = [...data.topData, ...data.bottomData];
+
+    let html = '<table><thead><tr>';
+    html += '<th>Gene</th>';
+    html += '<th>Mean (' + escapeHtml(data.assignedClass) + ')</th>';
+    html += '<th>Mean (' + escapeHtml(data.userClass) + ')</th>';
+    html += '<th>This Cell</th>';
     html += '</tr></thead><tbody>';
 
-    df.data.forEach((row, i) => {
-        const label = df.index ? df.index[i] : i;
-        html += '<tr><td>' + escapeHtml(String(label)) + '</td>';
-        row.forEach(val => {
-            const display = typeof val === 'number' ? val.toFixed(3) : String(val);
-            html += '<td>' + escapeHtml(display) + '</td>';
-        });
+    allGenes.forEach(g => {
+        html += '<tr>';
+        html += '<td>' + escapeHtml(g.gene) + '</td>';
+        html += '<td>' + g.meanAssigned.toFixed(3) + '</td>';
+        html += '<td>' + g.meanUser.toFixed(3) + '</td>';
+        html += '<td>' + g.geneCount.toFixed(3) + '</td>';
+        html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    return html;
+}
+
+function buildContributionTable(data) {
+    const allGenes = [...data.topData, ...data.bottomData];
+
+    let html = '<table><thead><tr>';
+    html += '<th>Gene</th>';
+    html += '<th>Log-Likelihood Diff</th>';
+    html += '</tr></thead><tbody>';
+
+    allGenes.forEach(g => {
+        html += '<tr>';
+        html += '<td>' + escapeHtml(g.gene) + '</td>';
+        html += '<td>' + g.diff.toFixed(3) + '</td>';
         html += '</tr>';
     });
 
