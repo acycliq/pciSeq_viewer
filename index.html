@@ -407,6 +407,39 @@ stage_image(
         <span id="micronCoords">---, ---</span> μm
     </div>
 
+    <!-- check_cell Results Modal -->
+    <div id="checkCellModal" class="check-cell-modal" style="display: none;">
+        <div class="check-cell-dialog">
+            <div class="check-cell-header">
+                <span id="checkCellTitle">check_cell</span>
+                <button id="checkCellClose" class="widget-close-btn">&times;</button>
+            </div>
+            <div class="check-cell-content">
+                <div id="checkCellSelectPhase">
+                    <p id="checkCellAssigned" class="check-cell-assigned">Assigned: --</p>
+                    <div class="check-cell-compare-row">
+                        <label for="checkCellClassSelect">Compare against:</label>
+                        <select id="checkCellClassSelect"></select>
+                        <button id="checkCellCompareBtn" class="accent-btn">Compare</button>
+                    </div>
+                </div>
+                <div id="checkCellResultsPhase" style="display: none;">
+                    <p id="checkCellSummary" class="check-cell-summary"></p>
+                    <div id="checkCellPlot" class="check-cell-chart"></div>
+                    <details><summary>Gene Expression</summary>
+                        <div id="checkCellExprTable" class="check-cell-table-wrap"></div>
+                    </details>
+                    <details><summary>Contribution</summary>
+                        <div id="checkCellContrTable" class="check-cell-table-wrap"></div>
+                    </details>
+                </div>
+                <div id="checkCellLoading" style="display: none; text-align: center; padding: 20px; color: #94a3b8;">
+                    Computing...
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- About (Info) Button and Modal -->
     <div id="aboutBtn" class="about-btn" aria-label="About this viewer" title="About">i</div>
     <div id="aboutModal" class="about-modal-bg" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">

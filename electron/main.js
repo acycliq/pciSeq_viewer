@@ -328,16 +328,16 @@ ipcMain.handle('select-data-folder', async () => {
     }
 
     store.set('dataPath', selectedPath);
-    
+
     // Auto-discover MBTiles file in the data folder
     try {
       const files = fs.readdirSync(selectedPath);
       const mbtilesFiles = files.filter(f => f.endsWith('.mbtiles'));
-      
+
       if (mbtilesFiles.length > 0) {
         const autoMbtilesPath = path.join(selectedPath, mbtilesFiles[0]);
         console.log('Auto-discovered MBTiles file:', autoMbtilesPath);
-        
+
         if (openDatabase(autoMbtilesPath)) {
             store.set('mbtilesPath', autoMbtilesPath);
             // Silent load - no popup
@@ -345,6 +345,20 @@ ipcMain.handle('select-data-folder', async () => {
       }
     } catch (e) {
       console.warn('Failed to auto-discover MBTiles:', e);
+    }
+
+    // Auto-discover check_cell database in diagnostics folder
+    try {
+      const checkCellDbPath = path.join(selectedPath, 'diagnostics', 'check_cell.db');
+      if (fs.existsSync(checkCellDbPath)) {
+        console.log('Auto-discovered check_cell database:', checkCellDbPath);
+        openCheckCellDatabase(checkCellDbPath);
+        store.set('checkCellPath', path.join(selectedPath, 'diagnostics'));
+        store.set('checkCellEnabled', true);
+        broadcastCheckCellState(true);
+      }
+    } catch (e) {
+      console.warn('Failed to auto-discover check_cell database:', e);
     }
 
     return { success: true, path: selectedPath };
@@ -576,6 +590,295 @@ ipcMain.handle('get-dataset-metadata', async () => {
   };
 });
 
+// === check_cell Setup ===
+let checkCellSetupWindow = null;
+
+function openCheckCellSetup() {
+  if (checkCellSetupWindow) {
+    checkCellSetupWindow.focus();
+    return;
+  }
+
+  checkCellSetupWindow = new BrowserWindow({
+    width: 480,
+    height: 280,
+    parent: mainWindow,
+    resizable: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'check-cell-preload.js')
+    },
+    title: 'check_cell Setup',
+    autoHideMenuBar: true
+  });
+
+  checkCellSetupWindow.loadFile(path.join(__dirname, 'check-cell-setup.html'));
+  checkCellSetupWindow.on('closed', () => { checkCellSetupWindow = null; });
+}
+
+ipcMain.handle('check-cell-get-config', () => {
+  return {
+    checkCellPath: store.get('checkCellPath', ''),
+    // Return actual connection state, not stored preference
+    checkCellEnabled: !!(checkCellDb && checkCellMeta)
+  };
+});
+
+ipcMain.handle('check-cell-save-config', (event, config) => {
+  if (!config.checkCellPath) {
+    return { success: false, error: 'Path is required' };
+  }
+  const dbPath = path.join(config.checkCellPath, 'check_cell.db');
+  if (!fs.existsSync(dbPath)) {
+    return { success: false, error: 'check_cell.db not found in selected folder' };
+  }
+  try {
+    openCheckCellDatabase(dbPath);
+    store.set('checkCellPath', config.checkCellPath);
+    store.set('checkCellEnabled', true);
+    broadcastCheckCellState(true);
+    return { success: true };
+  } catch (e) {
+    closeCheckCellDatabase();
+    return { success: false, error: 'Failed to open check_cell.db: ' + e.message };
+  }
+});
+
+// Enable/disable check_cell diagnostics (toggle in setup dialog)
+ipcMain.handle('check-cell-set-enabled', (event, enabled) => {
+  try {
+    if (enabled) {
+      const dir = store.get('checkCellPath', '');
+      if (!dir) return { success: false, error: 'No check_cell path configured' };
+      const dbPath = path.join(dir, 'check_cell.db');
+      if (!fs.existsSync(dbPath)) return { success: false, error: 'check_cell.db not found at configured path' };
+      if (!checkCellDb) {
+        openCheckCellDatabase(dbPath);
+      }
+      store.set('checkCellEnabled', true);
+      broadcastCheckCellState(true);
+    } else {
+      closeCheckCellDatabase();
+      store.set('checkCellEnabled', false);
+      broadcastCheckCellState(false);
+    }
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('check-cell-browse-folder', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory'],
+    title: 'Select check_cell Data Folder'
+  });
+  if (!result.canceled && result.filePaths.length > 0) {
+    return result.filePaths[0];
+  }
+  return null;
+});
+
+ipcMain.handle('check-cell-close-setup', () => {
+  if (checkCellSetupWindow) {
+    checkCellSetupWindow.close();
+  }
+});
+
+// === check_cell SQLite Data ===
+// Reads pre-computed SQLite database exported by pciSeq (no Python required at runtime)
+
+let checkCellMeta = null;  // Cached metadata
+let checkCellDb = null;    // SQLite database connection
+
+// Helper: Parse metadata value (JSON array, number, or string)
+function parseMetadataValue(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    const num = Number(value);
+    return isNaN(num) ? value : num;
+  }
+}
+
+// Helper: Open check_cell database and load metadata
+function openCheckCellDatabase(dbPath) {
+  if (checkCellDb) {
+    try { checkCellDb.close(); } catch {}
+  }
+  checkCellDb = new Database(dbPath, { readonly: true, fileMustExist: true });
+
+  const metaRows = checkCellDb.prepare('SELECT key, value FROM metadata').all();
+  checkCellMeta = {};
+  for (const row of metaRows) {
+    checkCellMeta[row.key] = parseMetadataValue(row.value);
+  }
+
+  console.log('check_cell database loaded: nC=%d, nG=%d, nK=%d',
+              checkCellMeta.nC, checkCellMeta.nG, checkCellMeta.nK);
+  return checkCellMeta;
+}
+
+// Helper: Close check_cell database
+function closeCheckCellDatabase() {
+  if (checkCellDb) {
+    try { checkCellDb.close(); } catch {}
+    checkCellDb = null;
+  }
+  checkCellMeta = null;
+}
+
+// Helper: Broadcast check_cell state to renderer
+function broadcastCheckCellState(enabled) {
+  if (!mainWindow) return;
+  if (enabled && checkCellMeta) {
+    mainWindow.webContents.send('check-cell-state', {
+      enabled: true,
+      classes: checkCellMeta.class_names || [],
+      nC: checkCellMeta.nC,
+      nG: checkCellMeta.nG,
+      nK: checkCellMeta.nK
+    });
+  } else {
+    mainWindow.webContents.send('check-cell-state', { enabled: false });
+  }
+}
+
+// Get current check_cell state (called by renderer on startup)
+ipcMain.handle('check-cell-get-state', () => {
+  if (checkCellDb && checkCellMeta) {
+    return {
+      enabled: true,
+      classes: checkCellMeta.class_names || [],
+      nC: checkCellMeta.nC,
+      nG: checkCellMeta.nG,
+      nK: checkCellMeta.nK
+    };
+  }
+  return { enabled: false };
+});
+
+ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, topN = 10 }) => {
+  if (!checkCellMeta || !checkCellDb) {
+    return { success: false, error: 'check_cell data not loaded' };
+  }
+
+  const { nC, nG, nK, rSpot, SpotReg, class_names, gene_panel, label_map, eta_bar, mean_gene_reads_per_class } = checkCellMeta;
+
+  // Map external cell ID to internal index
+  let c = cellId;
+  if (label_map && Object.keys(label_map).length > 0) {
+    const mapped = label_map[String(cellId)];
+    if (mapped === undefined) {
+      return { success: false, error: 'Cell ID not found: ' + cellId };
+    }
+    c = mapped;
+  }
+
+  if (c < 0 || c >= nC) {
+    return { success: false, error: 'Cell index out of range: ' + c };
+  }
+
+  const userIdx = class_names.indexOf(userClass);
+  if (userIdx === -1) {
+    return { success: false, error: 'Unknown class: ' + userClass };
+  }
+
+  try {
+    // Query SQLite for this cell's data
+    const row = checkCellDb.prepare('SELECT scaled_means, theta_bar, gene_count, class_prob FROM cells WHERE cell_id = ?').get(c);
+    if (!row) {
+      return { success: false, error: 'Cell not found in database: ' + c };
+    }
+
+    // Convert BLOBs to Float32Arrays
+    const scaledMeans = new Float32Array(row.scaled_means.buffer, row.scaled_means.byteOffset, nG * nK);
+    const thetaBar = new Float32Array(row.theta_bar.buffer, row.theta_bar.byteOffset, nK);
+    const geneCount = new Float32Array(row.gene_count.buffer, row.gene_count.byteOffset, nG);
+    const classProb = new Float32Array(row.class_prob.buffer, row.class_prob.byteOffset, nK);
+
+    // Find assigned class (argmax of classProb)
+    let assignedIdx = 0;
+    for (let k = 1; k < nK; k++) {
+      if (classProb[k] > classProb[assignedIdx]) assignedIdx = k;
+    }
+    const assignedClass = class_names[assignedIdx];
+
+    // Compute log-likelihood contributions
+    const contr = new Float32Array(nG * nK);
+    for (let g = 0; g < nG; g++) {
+      for (let k = 0; k < nK; k++) {
+        const idx = g * nK + k;
+        const scaledExp = scaledMeans[idx] * eta_bar[g] * thetaBar[k] + SpotReg;
+        const pNegBin = scaledExp / (rSpot + scaledExp);
+        contr[idx] = geneCount[g] * Math.log(pNegBin) + rSpot * Math.log(1 - pNegBin);
+      }
+    }
+
+    // Compute difference between assigned and user class
+    const diff = new Float32Array(nG);
+    for (let g = 0; g < nG; g++) {
+      diff[g] = contr[g * nK + assignedIdx] - contr[g * nK + userIdx];
+    }
+
+    // Find top N and bottom N genes by difference
+    const indices = Array.from({ length: nG }, (_, i) => i);
+    indices.sort((a, b) => diff[b] - diff[a]);
+    const topGenes = indices.slice(0, topN);
+    const bottomGenes = indices.slice(-topN).reverse();
+
+    // Calculate sums for display
+    let topSum = 0, bottomSum = 0;
+    topGenes.forEach(g => topSum += diff[g]);
+    bottomGenes.forEach(g => bottomSum += diff[g]);
+
+    // Build result data for the charts and tables
+    const topData = topGenes.map(g => ({
+      gene: gene_panel[g],
+      diff: diff[g],
+      geneCount: geneCount[g],
+      meanAssigned: mean_gene_reads_per_class[g][assignedIdx],
+      meanUser: mean_gene_reads_per_class[g][userIdx]
+    }));
+
+    const bottomData = bottomGenes.map(g => ({
+      gene: gene_panel[g],
+      diff: diff[g],
+      geneCount: geneCount[g],
+      meanAssigned: mean_gene_reads_per_class[g][assignedIdx],
+      meanUser: mean_gene_reads_per_class[g][userIdx]
+    }));
+
+    // All genes sorted by diff (descending) for the full tables
+    // Include individual log-likelihood contributions for each class
+    const allData = indices.map(g => ({
+      gene: gene_panel[g],
+      diff: diff[g],
+      geneCount: geneCount[g],
+      meanAssigned: mean_gene_reads_per_class[g][assignedIdx],
+      meanUser: mean_gene_reads_per_class[g][userIdx],
+      contrAssigned: contr[g * nK + assignedIdx],
+      contrUser: contr[g * nK + userIdx]
+    }));
+
+    return {
+      success: true,
+      cellId,
+      assignedClass,
+      userClass,
+      topData,
+      bottomData,
+      allData,
+      topSum,
+      bottomSum,
+      topN
+    };
+  } catch (err) {
+    return { success: false, error: 'Query failed: ' + err.message };
+  }
+});
+
 // Create application menu
 function createMenu() {
   const template = [
@@ -626,6 +929,18 @@ function createMenu() {
                   }
               } catch(e) {}
 
+              // Auto-discover check_cell database
+              try {
+                  const checkCellDbPath = path.join(selectedPath, 'diagnostics', 'check_cell.db');
+                  if (fs.existsSync(checkCellDbPath)) {
+                    console.log('Auto-discovered check_cell database:', checkCellDbPath);
+                    openCheckCellDatabase(checkCellDbPath);
+                    store.set('checkCellPath', path.join(selectedPath, 'diagnostics'));
+                    store.set('checkCellEnabled', true);
+                    broadcastCheckCellState(true);
+                  }
+              } catch(e) { console.warn('Failed to auto-discover check_cell:', e); }
+
               // Reload the window to use new data
               if (mainWindow) {
                 mainWindow.reload();
@@ -639,10 +954,14 @@ function createMenu() {
             store.delete('dataPath');
             store.delete('tilesPath');
             store.delete('mbtilesPath');
+            store.delete('checkCellEnabled');
+            store.delete('checkCellPath');
             if (mbtilesDb) {
                 try { mbtilesDb.close(); } catch(e) {}
                 mbtilesDb = null;
             }
+            closeCheckCellDatabase();
+            broadcastCheckCellState(false);
             console.log('Dataset closed, paths cleared.');
             if (mainWindow) {
               mainWindow.reload();
@@ -724,6 +1043,17 @@ function createMenu() {
         { role: 'zoomOut' },
         { type: 'separator' },
         { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Diagnostics',
+      submenu: [
+        {
+          label: 'check_cell Setup...',
+          click: () => {
+            openCheckCellSetup();
+          }
+        }
       ]
     },
     {

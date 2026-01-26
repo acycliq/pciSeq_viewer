@@ -20,7 +20,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVoxelSize: () => ipcRenderer.invoke('get-voxel-size'),
 
   // Get currently configured paths
-  getPaths: () => ipcRenderer.invoke('get-paths')
+  getPaths: () => ipcRenderer.invoke('get-paths'),
+
+  // check_cell (SQLite data, no Python required)
+  getCheckCellState: () => ipcRenderer.invoke('check-cell-get-state'),
+  checkCellQuery: (params) => ipcRenderer.invoke('check-cell-binary-query', params),
+  onCheckCellState: (handler) => ipcRenderer.on('check-cell-state', (_e, state) => handler(state))
 });
 
 console.log('Preload script loaded - electronAPI exposed to renderer');

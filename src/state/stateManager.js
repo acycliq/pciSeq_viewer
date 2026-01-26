@@ -76,8 +76,12 @@ const state = {
 
     // Interactions
     polygonHighlighter: null,
-    genePanelWin: null
-    ,
+    genePanelWin: null,
+
+    // check_cell bridge
+    checkCellConnected: false,
+    checkCellClasses: [],
+
     // Cache of last IconLayers to avoid blocking destruction when switching to pointcloud
     lastIconLayers: [],
     iconCleanupPending: false,

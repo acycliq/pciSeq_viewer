@@ -48,6 +48,7 @@ import {
 
 // === EVENT HANDLING IMPORTS ===
 import { setupEventHandlers, setupAdvancedKeyboardShortcuts } from './events/eventHandlers.js';
+import { setupCheckCellBridge, openCheckCellModal } from './checkCellBridge.js';
 
 // === UI INTERACTION IMPORTS ===
 import { PolygonBoundaryHighlighter } from './ui/polygonInteractions.js';
@@ -126,6 +127,9 @@ window.deleteRegion = deleteRegion;
 window.toggleRegionVisibility = toggleRegionVisibility;
 window.getRegionBoundaries = getRegionBoundaries;
 window.getVisibleRegions = getVisibleRegions;
+
+// check_cell bridge
+window.openCheckCellModal = openCheckCellModal;
 
 // Coordinate transformation for child windows
 window.transformToTileCoordinates = transformToTileCoordinates;
@@ -517,6 +521,7 @@ async function init() {
     // Setup all UI event listeners
     setupEventHandlers(elements, state, updatePlane, updateAllLayers);
     setupAdvancedKeyboardShortcuts(state, updatePlane, updateAllLayers);
+    setupCheckCellBridge();
 
     // Derive totalPlanes and startingPlane from Arrow boundaries manifest
     try {
