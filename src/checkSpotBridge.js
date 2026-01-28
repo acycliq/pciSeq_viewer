@@ -154,7 +154,7 @@ function renderScores(container, data) {
 
   // Chart Dimensions - Sidebar Friendly
   const containerWidth = container.clientWidth || 400;
-  const margin = { top: 60, right: 20, bottom: 140, left: 50 }; // Large bottom margin for legend
+  const margin = { top: 60, right: 20, bottom: 160, left: 50 }; // Large bottom margin for legend
   const width = containerWidth;
   const height = 450; // Taller to fit legend
   const w = width - margin.left - margin.right;
@@ -279,7 +279,7 @@ function renderScores(container, data) {
 
   // Legend (Bottom - Flow Layout)
   const legend = svg.append('g')
-      .attr('transform', `translate(${margin.left}, ${h + margin.top + 50})`);
+      .attr('transform', `translate(${margin.left}, ${h + margin.top + 70})`);
 
   const legendItems = [
       { label: 'MVN (Spatial)', color: colors.mvn },
@@ -414,15 +414,6 @@ function renderProbs(container, data) {
           .attr('dy', '0.5em')
           .style('fill', '#d1d5db')
           .style('font-size', '12px');
-
-  // X-Axis Label
-  g.append('text')
-      .attr('x', w / 2)
-      .attr('y', h + 60)
-      .attr('text-anchor', 'middle')
-      .style('fill', '#9ca3af')
-      .style('font-size', '12px')
-      .text('Candidate');
 
   // Colors
   const colors = {
