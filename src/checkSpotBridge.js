@@ -178,7 +178,7 @@ function renderScores(container, data) {
   svg.append('text')
       .attr('x', margin.left)
       .attr('y', 42)
-      .style('font-size', '11px')
+      .style('font-size', '13px')
       .style('fill', '#9ca3af')
       .text('Score Decomposition (Higher is better)');
 
@@ -211,7 +211,7 @@ function renderScores(container, data) {
   g.append('g')
       .call(d3.axisLeft(y).ticks(5))
       .call(g => g.select('.domain').remove())
-      .selectAll('text').style('fill', '#9ca3af').style('font-size', '10px');
+      .selectAll('text').style('fill', '#9ca3af').style('font-size', '11px');
 
   // Y-Axis Label
   g.append('text')
@@ -220,7 +220,14 @@ function renderScores(container, data) {
       .attr('x', -h / 2)
       .attr('text-anchor', 'middle')
       .style('fill', '#9ca3af')
-      .style('font-size', '11px')
+      .style('font-size', '12px')
+      .text('Log-Likelihood');
+
+  // X-Axis
+  g.append('g')
+      .attr('transform', `translate(0,${h})`)
+      .call(d3.axisBottom(x))
+      .call(g => g.select('.domain').attr('stroke', '#4b5563'))
       .selectAll('text')
           .attr('transform', 'rotate(-45)')
           .style('text-anchor', 'end')
@@ -289,7 +296,7 @@ function renderScores(container, data) {
       
       lg.append('rect').attr('width', 10).attr('height', 10).attr('rx', 2).attr('fill', item.color);
       lg.append('text').attr('x', 16).attr('y', 9).text(item.label)
-        .style('font-size', '10px').style('fill', '#d1d5db');
+        .style('font-size', '12px').style('fill', '#d1d5db');
   });
 }
 
@@ -392,7 +399,7 @@ function renderProbs(container, data) {
       .attr('x', -h / 2)
       .attr('text-anchor', 'middle')
       .style('fill', '#9ca3af')
-      .style('font-size', '11px')
+      .style('font-size', '12px')
       .text('Probability');
 
   // X-Axis
@@ -414,7 +421,7 @@ function renderProbs(container, data) {
       .attr('y', h + 60)
       .attr('text-anchor', 'middle')
       .style('fill', '#9ca3af')
-      .style('font-size', '11px')
+      .style('font-size', '12px')
       .text('Candidate');
 
   // Colors

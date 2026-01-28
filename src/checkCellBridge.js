@@ -271,7 +271,7 @@ function renderSingleBarChart(container, opts) {
         .attr('y', 16)
         .attr('text-anchor', 'middle')
         .style('fill', '#e5e7eb')
-        .style('font-size', '11px')
+        .style('font-size', '14px')
         .style('font-weight', '500')
         .text(truncate(title, 50));
 
@@ -281,7 +281,7 @@ function renderSingleBarChart(container, opts) {
         .attr('y', 32)
         .attr('text-anchor', 'middle')
         .style('fill', '#9ca3af')
-        .style('font-size', '10px')
+        .style('font-size', '13px')
         .text(subtitle);
 
     const g = svg.append('g')
@@ -309,7 +309,7 @@ function renderSingleBarChart(container, opts) {
         .call(yAxis)
         .selectAll('text')
         .style('fill', '#9ca3af')
-        .style('font-size', '9px');
+        .style('font-size', '11px');
 
     g.selectAll('.y-axis line').attr('stroke', '#4b5563');
     g.selectAll('.y-axis path').attr('stroke', '#4b5563');
@@ -391,7 +391,7 @@ function renderSingleBarChart(container, opts) {
         .attr('y', 14)
         .attr('text-anchor', 'middle')
         .style('fill', '#9ca3af')
-        .style('font-size', '10px')
+        .style('font-size', '12px')
         .text('Log-Likelihood Difference');
 }
 
