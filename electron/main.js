@@ -61,6 +61,8 @@ const store = new Store();
 
 let mainWindow;
 let mbtilesDb = null;  // Active Database instance
+let diagnosticsDb = null;
+let diagnosticsMeta = null;
 
 // Register custom protocols as privileged before app is ready
 protocol.registerSchemesAsPrivileged([
@@ -347,18 +349,22 @@ ipcMain.handle('select-data-folder', async () => {
       console.warn('Failed to auto-discover MBTiles:', e);
     }
 
-    // Auto-discover check_cell database in diagnostics folder
+    // Auto-discover diagnostics database in diagnostics folder
     try {
-      const checkCellDbPath = path.join(selectedPath, 'diagnostics', 'check_cell.db');
-      if (fs.existsSync(checkCellDbPath)) {
-        console.log('Auto-discovered check_cell database:', checkCellDbPath);
-        openCheckCellDatabase(checkCellDbPath);
-        store.set('checkCellPath', path.join(selectedPath, 'diagnostics'));
-        store.set('checkCellEnabled', true);
-        broadcastCheckCellState(true);
+      const diagnosticsDir = path.join(selectedPath, 'diagnostics');
+      const unifiedDbPath = path.join(diagnosticsDir, 'diagnostics.db');
+
+      if (fs.existsSync(unifiedDbPath)) {
+        console.log('Auto-discovered unified diagnostics database:', unifiedDbPath);
+        openDiagnosticsDatabase(unifiedDbPath);
+        store.set('checkCellPath', diagnosticsDir); // Keep for legacy compatibility if needed
+        store.set('checkSpotPath', diagnosticsDir);
+        store.set('diagnosticsPath', diagnosticsDir);
+        
+        broadcastDiagnosticsState(true);
       }
     } catch (e) {
-      console.warn('Failed to auto-discover check_cell database:', e);
+      console.warn('Failed to auto-discover diagnostics databases:', e);
     }
 
     return { success: true, path: selectedPath };
@@ -590,16 +596,16 @@ ipcMain.handle('get-dataset-metadata', async () => {
   };
 });
 
-// === check_cell Setup ===
-let checkCellSetupWindow = null;
+// === Diagnostics Setup ===
+let diagnosticsSetupWindow = null;
 
-function openCheckCellSetup() {
-  if (checkCellSetupWindow) {
-    checkCellSetupWindow.focus();
+function openDiagnosticsSetup() {
+  if (diagnosticsSetupWindow) {
+    diagnosticsSetupWindow.focus();
     return;
   }
 
-  checkCellSetupWindow = new BrowserWindow({
+  diagnosticsSetupWindow = new BrowserWindow({
     width: 480,
     height: 280,
     parent: mainWindow,
@@ -607,61 +613,53 @@ function openCheckCellSetup() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'check-cell-preload.js')
+      preload: path.join(__dirname, 'diagnostics-preload.js')
     },
-    title: 'check_cell Setup',
+    title: 'Diagnostics Setup',
     autoHideMenuBar: true
   });
 
-  checkCellSetupWindow.loadFile(path.join(__dirname, 'check-cell-setup.html'));
-  checkCellSetupWindow.on('closed', () => { checkCellSetupWindow = null; });
+  diagnosticsSetupWindow.loadFile(path.join(__dirname, 'diagnostics-setup.html'));
+  diagnosticsSetupWindow.on('closed', () => { diagnosticsSetupWindow = null; });
 }
 
-ipcMain.handle('check-cell-get-config', () => {
+ipcMain.handle('diagnostics-get-config', () => {
   return {
-    checkCellPath: store.get('checkCellPath', ''),
-    // Return actual connection state, not stored preference
-    checkCellEnabled: !!(checkCellDb && checkCellMeta)
+    path: store.get('diagnosticsPath', store.get('checkCellPath', '')),
+    enabled: !!(diagnosticsDb && diagnosticsMeta)
   };
 });
 
-ipcMain.handle('check-cell-save-config', (event, config) => {
-  if (!config.checkCellPath) {
-    return { success: false, error: 'Path is required' };
-  }
-  const dbPath = path.join(config.checkCellPath, 'check_cell.db');
-  if (!fs.existsSync(dbPath)) {
-    return { success: false, error: 'check_cell.db not found in selected folder' };
-  }
+ipcMain.handle('diagnostics-save-config', (event, config) => {
+  if (!config.path) return { success: false, error: 'Path is required' };
+  const dbPath = path.join(config.path, 'diagnostics.db');
+  if (!fs.existsSync(dbPath)) return { success: false, error: 'diagnostics.db not found' };
+
   try {
-    openCheckCellDatabase(dbPath);
-    store.set('checkCellPath', config.checkCellPath);
-    store.set('checkCellEnabled', true);
-    broadcastCheckCellState(true);
+    openDiagnosticsDatabase(dbPath);
+    store.set('diagnosticsPath', config.path);
+    store.set('checkCellPath', config.path);
+    store.set('checkSpotPath', config.path);
+    broadcastDiagnosticsState(true);
     return { success: true };
   } catch (e) {
-    closeCheckCellDatabase();
-    return { success: false, error: 'Failed to open check_cell.db: ' + e.message };
+    return { success: false, error: 'Failed to open database: ' + e.message };
   }
 });
 
-// Enable/disable check_cell diagnostics (toggle in setup dialog)
-ipcMain.handle('check-cell-set-enabled', (event, enabled) => {
+ipcMain.handle('diagnostics-set-enabled', (event, enabled) => {
   try {
     if (enabled) {
-      const dir = store.get('checkCellPath', '');
-      if (!dir) return { success: false, error: 'No check_cell path configured' };
-      const dbPath = path.join(dir, 'check_cell.db');
-      if (!fs.existsSync(dbPath)) return { success: false, error: 'check_cell.db not found at configured path' };
-      if (!checkCellDb) {
-        openCheckCellDatabase(dbPath);
-      }
-      store.set('checkCellEnabled', true);
-      broadcastCheckCellState(true);
+      const dir = store.get('diagnosticsPath', store.get('checkCellPath', ''));
+      if (!dir) return { success: false, error: 'No diagnostics path configured' };
+      const dbPath = path.join(dir, 'diagnostics.db');
+      if (!fs.existsSync(dbPath)) return { success: false, error: 'diagnostics.db not found' };
+      
+      openDiagnosticsDatabase(dbPath);
+      broadcastDiagnosticsState(true);
     } else {
-      closeCheckCellDatabase();
-      store.set('checkCellEnabled', false);
-      broadcastCheckCellState(false);
+      closeDiagnosticsDatabase();
+      broadcastDiagnosticsState(false);
     }
     return { success: true };
   } catch (e) {
@@ -669,102 +667,104 @@ ipcMain.handle('check-cell-set-enabled', (event, enabled) => {
   }
 });
 
-ipcMain.handle('check-cell-browse-folder', async () => {
-  const result = await dialog.showOpenDialog({
-    properties: ['openDirectory'],
-    title: 'Select check_cell Data Folder'
-  });
-  if (!result.canceled && result.filePaths.length > 0) {
-    return result.filePaths[0];
-  }
-  return null;
+ipcMain.handle('diagnostics-browse-folder', async () => {
+  const result = await dialog.showOpenDialog({ properties: ['openDirectory'], title: 'Select Diagnostics Folder' });
+  return (!result.canceled && result.filePaths.length > 0) ? result.filePaths[0] : null;
 });
 
-ipcMain.handle('check-cell-close-setup', () => {
-  if (checkCellSetupWindow) {
-    checkCellSetupWindow.close();
-  }
+ipcMain.handle('diagnostics-close-setup', () => {
+  if (diagnosticsSetupWindow) diagnosticsSetupWindow.close();
 });
 
-// === check_cell SQLite Data ===
-// Reads pre-computed SQLite database exported by pciSeq (no Python required at runtime)
+function softmaxJS(arr) {
+  const max = Math.max(...arr);
+  const exps = arr.map(v => Math.exp(v - max));
+  const sum = exps.reduce((a, b) => a + b, 0);
+  return exps.map(v => v / sum);
+}
 
-let checkCellMeta = null;  // Cached metadata
-let checkCellDb = null;    // SQLite database connection
-
-// Helper: Parse metadata value (JSON array, number, or string)
-function parseMetadataValue(value) {
+ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
+  if (!diagnosticsMeta || !diagnosticsDb) {
+    return { success: false, error: 'diagnostics data not loaded' };
+  }
   try {
-    return JSON.parse(value);
-  } catch {
-    const num = Number(value);
-    return isNaN(num) ? value : num;
-  }
-}
+    const { gene_panel, label_map, misread_density, nN } = diagnosticsMeta;
+    const row = diagnosticsDb.prepare('SELECT gene_idx, x, y, z, neighbor_cell_ids, mvn_loglik, attention, expr_fluct FROM spots WHERE spot_id = ?').get(spotId);
+    if (!row) return { success: false, error: 'Spot not found in database: ' + spotId };
 
-// Helper: Open check_cell database and load metadata
-function openCheckCellDatabase(dbPath) {
-  if (checkCellDb) {
-    try { checkCellDb.close(); } catch {}
-  }
-  checkCellDb = new Database(dbPath, { readonly: true, fileMustExist: true });
+    // 1. Strict Gene Resolution
+    if (!Array.isArray(gene_panel)) throw new Error('Incomplete database: gene_panel metadata missing');
+    const geneIdx = row.gene_idx;
+    if (geneIdx < 0 || geneIdx >= gene_panel.length) throw new Error(`Invalid gene index ${geneIdx} for spot ${spotId}`);
+    const geneName = gene_panel[geneIdx];
 
-  const metaRows = checkCellDb.prepare('SELECT key, value FROM metadata').all();
-  checkCellMeta = {};
-  for (const row of metaRows) {
-    checkCellMeta[row.key] = parseMetadataValue(row.value);
-  }
+    // 2. Strict Neighbor Data
+    const neighIdsFull = JSON.parse(row.neighbor_cell_ids || '[]');
+    if (!neighIdsFull.length) throw new Error(`No neighbors found for spot ${spotId}`);
+    
+    // Excludes the last entry (corresponds to the background).
+    // Safe to remove the last element as the background is always at the end.
+    const n = neighIdsFull.length - 1;
+    if (n < 0) throw new Error(`Malformed neighbor data for spot ${spotId}`);
+    const neighIds = neighIdsFull.slice(0, n);
 
-  console.log('check_cell database loaded: nC=%d, nG=%d, nK=%d',
-              checkCellMeta.nC, checkCellMeta.nG, checkCellMeta.nK);
-  return checkCellMeta;
-}
+    // 3. Strict Buffer Decoding
+    if (!row.mvn_loglik || !row.attention || !row.expr_fluct) throw new Error(`Missing score buffers for spot ${spotId}`);
+    const mvn = new Float32Array(row.mvn_loglik.buffer, row.mvn_loglik.byteOffset, n);
+    const attn = new Float32Array(row.attention.buffer, row.attention.byteOffset, n);
+    const expr = new Float32Array(row.expr_fluct.buffer, row.expr_fluct.byteOffset, n);
 
-// Helper: Close check_cell database
-function closeCheckCellDatabase() {
-  if (checkCellDb) {
-    try { checkCellDb.close(); } catch {}
-    checkCellDb = null;
-  }
-  checkCellMeta = null;
-}
+    // 4. Strict Label Mapping
+    let neighborLabels = neighIds.map(id => id);
+    if (label_map && Object.keys(label_map).length > 0) {
+      const reverse = {};
+      for (const [ext, inter] of Object.entries(label_map)) reverse[inter] = ext;
+      
+      neighborLabels = neighIds.map(id => {
+          if (reverse[id] === undefined) throw new Error(`Data inconsistency: Internal cell ID ${id} not found in label_map`);
+          return Number(reverse[id]);
+      });
+    }
 
-// Helper: Broadcast check_cell state to renderer
-function broadcastCheckCellState(enabled) {
-  if (!mainWindow) return;
-  if (enabled && checkCellMeta) {
-    mainWindow.webContents.send('check-cell-state', {
-      enabled: true,
-      classes: checkCellMeta.class_names || [],
-      nC: checkCellMeta.nC,
-      nG: checkCellMeta.nG,
-      nK: checkCellMeta.nK
-    });
-  } else {
-    mainWindow.webContents.send('check-cell-state', { enabled: false });
-  }
-}
+    // 5. Strict Misread Density
+    if (!misread_density || !(geneName in misread_density)) {
+        throw new Error(`Statistical parameter missing: misread_density for gene '${geneName}' not found`);
+    }
+    const misreadVal = Math.log(misread_density[geneName]);
 
-// Get current check_cell state (called by renderer on startup)
-ipcMain.handle('check-cell-get-state', () => {
-  if (checkCellDb && checkCellMeta) {
+    // 6. Probability Calculation
+    const scores = new Array(n + 1);
+    for (let i = 0; i < n; i++) scores[i] = mvn[i] + attn[i] + expr[i];
+    scores[n] = misreadVal;
+    
+    const probabilities = softmaxJS(scores);
+
+    const labels = neighborLabels.map(cid => `Cell ${cid}`).concat(['Misread']);
     return {
-      enabled: true,
-      classes: checkCellMeta.class_names || [],
-      nC: checkCellMeta.nC,
-      nG: checkCellMeta.nG,
-      nK: checkCellMeta.nK
+      success: true,
+      spotId,
+      geneName,
+      x: row.x, y: row.y, z: row.z,
+      neighborLabels: labels,
+      mvn: Array.from(mvn),
+      attention: Array.from(attn),
+      exprFluct: Array.from(expr),
+      misread: misreadVal,
+      scores,
+      probabilities
     };
+  } catch (e) {
+    console.error('check_spot query failed:', e.message);
+    return { success: false, error: e.message };
   }
-  return { enabled: false };
 });
 
 ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, topN = 10 }) => {
-  if (!checkCellMeta || !checkCellDb) {
-    return { success: false, error: 'check_cell data not loaded' };
+  if (!diagnosticsMeta || !diagnosticsDb) {
+    return { success: false, error: 'diagnostics data not loaded' };
   }
 
-  const { nC, nG, nK, rSpot, SpotReg, class_names, gene_panel, label_map, eta_bar, mean_gene_reads_per_class } = checkCellMeta;
+  const { nC, nG, nK, rSpot, SpotReg, class_names, gene_panel, label_map, eta_bar, mean_gene_reads_per_class } = diagnosticsMeta;
 
   // Map external cell ID to internal index
   let c = cellId;
@@ -787,7 +787,7 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
 
   try {
     // Query SQLite for this cell's data
-    const row = checkCellDb.prepare('SELECT scaled_means, theta_bar, gene_count, class_prob FROM cells WHERE cell_id = ?').get(c);
+    const row = diagnosticsDb.prepare('SELECT scaled_means, theta_bar, gene_count, class_prob FROM cells WHERE cell_id = ?').get(c);
     if (!row) {
       return { success: false, error: 'Cell not found in database: ' + c };
     }
@@ -879,6 +879,87 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
   }
 });
 
+// Helper: Parse metadata value (JSON array, number, or string)
+function parseMetadataValue(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    const num = Number(value);
+    return isNaN(num) ? value : num;
+  }
+}
+
+function openDiagnosticsDatabase(dbPath) {
+  if (diagnosticsDb) {
+    try { diagnosticsDb.close(); } catch {}
+  }
+  diagnosticsDb = new Database(dbPath, { readonly: true, fileMustExist: true });
+
+  const metaRows = diagnosticsDb.prepare('SELECT key, value FROM metadata').all();
+  diagnosticsMeta = {};
+  for (const row of metaRows) {
+    diagnosticsMeta[row.key] = parseMetadataValue(row.value);
+  }
+
+  console.log('Diagnostics DB loaded. nC=%d, nS=%d', diagnosticsMeta.nC, diagnosticsMeta.nS);
+  return diagnosticsMeta;
+}
+
+function closeDiagnosticsDatabase() {
+  if (diagnosticsDb) {
+    try { diagnosticsDb.close(); } catch {}
+    diagnosticsDb = null;
+  }
+  diagnosticsMeta = null;
+}
+
+function broadcastDiagnosticsState(enabled) {
+  if (!mainWindow) return;
+  
+  if (enabled && diagnosticsMeta) {
+    // Send state for check_cell
+    mainWindow.webContents.send('check-cell-state', {
+      enabled: true,
+      classes: diagnosticsMeta.class_names || [],
+      nC: diagnosticsMeta.nC,
+      nG: diagnosticsMeta.nG,
+      nK: diagnosticsMeta.nK
+    });
+    
+    // Send state for check_spot
+    mainWindow.webContents.send('check-spot-state', {
+      enabled: true,
+      nS: diagnosticsMeta.nS,
+      nN: diagnosticsMeta.nN
+    });
+  } else {
+    mainWindow.webContents.send('check-cell-state', { enabled: false });
+    mainWindow.webContents.send('check-spot-state', { enabled: false });
+  }
+}
+
+// Get current check_cell state (called by renderer on startup)
+ipcMain.handle('check-cell-get-state', () => {
+  if (diagnosticsDb && diagnosticsMeta) {
+    return {
+      enabled: true,
+      classes: diagnosticsMeta.class_names || [],
+      nC: diagnosticsMeta.nC,
+      nG: diagnosticsMeta.nG,
+      nK: diagnosticsMeta.nK
+    };
+  }
+  return { enabled: false };
+});
+
+// Get current check_spot state (called by renderer on startup)
+ipcMain.handle('check-spot-get-state', () => {
+  if (diagnosticsDb && diagnosticsMeta) {
+    return { enabled: true, nS: diagnosticsMeta.nS, nN: diagnosticsMeta.nN };
+  }
+  return { enabled: false };
+});
+
 // Create application menu
 function createMenu() {
   const template = [
@@ -929,17 +1010,20 @@ function createMenu() {
                   }
               } catch(e) {}
 
-              // Auto-discover check_cell database
+              // Auto-discover diagnostics database
               try {
-                  const checkCellDbPath = path.join(selectedPath, 'diagnostics', 'check_cell.db');
-                  if (fs.existsSync(checkCellDbPath)) {
-                    console.log('Auto-discovered check_cell database:', checkCellDbPath);
-                    openCheckCellDatabase(checkCellDbPath);
-                    store.set('checkCellPath', path.join(selectedPath, 'diagnostics'));
-                    store.set('checkCellEnabled', true);
-                    broadcastCheckCellState(true);
+                  const diagnosticsDir = path.join(selectedPath, 'diagnostics');
+                  const unifiedDbPath = path.join(diagnosticsDir, 'diagnostics.db');
+
+                  if (fs.existsSync(unifiedDbPath)) {
+                    console.log('Auto-discovered unified diagnostics database:', unifiedDbPath);
+                    openDiagnosticsDatabase(unifiedDbPath);
+                    store.set('checkCellPath', diagnosticsDir);
+                    store.set('checkSpotPath', diagnosticsDir);
+                    store.set('diagnosticsPath', diagnosticsDir);
+                    broadcastDiagnosticsState(true);
                   }
-              } catch(e) { console.warn('Failed to auto-discover check_cell:', e); }
+              } catch(e) { console.warn('Failed to auto-discover diagnostics:', e); }
 
               // Reload the window to use new data
               if (mainWindow) {
@@ -956,12 +1040,16 @@ function createMenu() {
             store.delete('mbtilesPath');
             store.delete('checkCellEnabled');
             store.delete('checkCellPath');
+            store.delete('checkSpotEnabled');
+            store.delete('checkSpotPath');
             if (mbtilesDb) {
                 try { mbtilesDb.close(); } catch(e) {}
                 mbtilesDb = null;
             }
             closeCheckCellDatabase();
             broadcastCheckCellState(false);
+            closeCheckSpotDatabase();
+            broadcastCheckSpotState(false);
             console.log('Dataset closed, paths cleared.');
             if (mainWindow) {
               mainWindow.reload();
@@ -1049,9 +1137,9 @@ function createMenu() {
       label: 'Diagnostics',
       submenu: [
         {
-          label: 'check_cell Setup...',
+          label: 'Setup...',
           click: () => {
-            openCheckCellSetup();
+            openDiagnosticsSetup();
           }
         }
       ]

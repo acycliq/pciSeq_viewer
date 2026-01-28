@@ -33,6 +33,12 @@ const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJ
 // Reusable DataFilterExtension instance (avoid allocating on every render)
 const CELL_FILTER_EXTENSION = new DataFilterExtension({ filterSize: 1 });
 
+// Track Ctrl/Meta state reliably (deck.gl onClick may omit sourceEvent)
+let _modifierDown = false;
+document.addEventListener('keydown', (e) => { if (e.ctrlKey || e.metaKey) _modifierDown = true; });
+document.addEventListener('keyup', (e) => { if (!e.ctrlKey && !e.metaKey) _modifierDown = false; });
+window.addEventListener('blur', () => { _modifierDown = false; });
+
 // Arrow boundary buffers cache (per plane) and lazy init for worker facade
 export let arrowBoundaryCache = new Map();
 export let arrowGeojsonCache = new Map();
@@ -736,6 +742,19 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
                 visible: true,
                 pickable: true,
                 onHover: showTooltip,
+                onClick: (info) => {
+                    if (!info || !info.object) return;
+                    const evt = info.srcEvent || info.sourceEvent;
+                    const ctrl = evt ? !!(evt.ctrlKey || evt.metaKey) : _modifierDown;
+                    if (ctrl && window.appState && window.appState.checkSpotConnected && typeof window.openCheckSpotModal === 'function') {
+                        const d = info.object;
+                        const spotId = d && (d.spot_id != null ? d.spot_id : d.spotId);
+                        if (spotId != null) { window.openCheckSpotModal(spotId); }
+                        else { try { console.warn('check_spot: missing spot_id on data object', d); } catch {} }
+                    } else {
+                        try { console.debug('IconLayer click ignored (modifierDown=%s, connected=%s)', ctrl, !!(window.appState && window.appState.checkSpotConnected)); } catch {}
+                    }
+                },
                 coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
                 iconAtlas: geneIconAtlas,
                 iconMapping: geneIconMapping,
@@ -796,6 +815,19 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             visible: selectedGenes.has(gene),
             pickable: true, // Enable gene picking
             onHover: showTooltip, // Gene hover handler
+            onClick: (info) => {
+                if (!info || !info.object) return;
+                const evt = info.srcEvent || info.sourceEvent;
+                const ctrl = evt ? !!(evt.ctrlKey || evt.metaKey) : _modifierDown;
+                if (ctrl && window.appState && window.appState.checkSpotConnected && typeof window.openCheckSpotModal === 'function') {
+                    const d = info.object;
+                    const spotId = d && (d.spot_id != null ? d.spot_id : d.spotId);
+                    if (spotId != null) { window.openCheckSpotModal(spotId); }
+                    else { try { console.warn('check_spot: missing spot_id on data object', d); } catch {} }
+                } else {
+                    try { console.debug('IconLayer click ignored (modifierDown=%s, connected=%s)', ctrl, !!(window.appState && window.appState.checkSpotConnected)); } catch {}
+                }
+            },
             coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
             iconAtlas: geneIconAtlas,
             iconMapping: geneIconMapping,

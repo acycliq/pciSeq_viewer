@@ -407,36 +407,52 @@ stage_image(
         <span id="micronCoords">---, ---</span> μm
     </div>
 
-    <!-- check_cell Results Modal -->
-    <div id="checkCellModal" class="check-cell-modal" style="display: none;">
-        <div class="check-cell-dialog">
-            <div class="check-cell-header">
-                <span id="checkCellTitle">check_cell</span>
-                <button id="checkCellClose" class="widget-close-btn">&times;</button>
-            </div>
-            <div class="check-cell-content">
-                <div id="checkCellSelectPhase">
-                    <p id="checkCellAssigned" class="check-cell-assigned">Assigned: --</p>
-                    <div class="check-cell-compare-row">
-                        <label for="checkCellClassSelect">Compare against:</label>
-                        <select id="checkCellClassSelect"></select>
-                        <button id="checkCellCompareBtn" class="accent-btn">Compare</button>
-                    </div>
-                </div>
-                <div id="checkCellResultsPhase" style="display: none;">
-                    <p id="checkCellSummary" class="check-cell-summary"></p>
-                    <div id="checkCellPlot" class="check-cell-chart"></div>
-                    <details><summary>Gene Expression</summary>
-                        <div id="checkCellExprTable" class="check-cell-table-wrap"></div>
-                    </details>
-                    <details><summary>Contribution</summary>
-                        <div id="checkCellContrTable" class="check-cell-table-wrap"></div>
-                    </details>
-                </div>
-                <div id="checkCellLoading" style="display: none; text-align: center; padding: 20px; color: #94a3b8;">
-                    Computing...
+    <!-- check_cell Side Inspector Panel -->
+    <div id="checkCellPanel" class="check-cell-panel collapsed">
+        <div class="check-cell-header">
+            <span id="checkCellTitle">Cell Inspector</span>
+            <button id="checkCellClose" class="widget-close-btn">&times;</button>
+        </div>
+        <div class="check-cell-content">
+            <div id="checkCellSelectPhase">
+                <p id="checkCellAssigned" class="check-cell-assigned">Assigned: --</p>
+                <div class="check-cell-compare-row">
+                    <label for="checkCellClassSelect">Compare against:</label>
+                    <select id="checkCellClassSelect"></select>
+                    <button id="checkCellCompareBtn" class="accent-btn">Compare</button>
                 </div>
             </div>
+            <div id="checkCellResultsPhase" style="display: none;">
+                <p id="checkCellSummary" class="check-cell-summary"></p>
+                <div id="checkCellPlot" class="check-cell-chart"></div>
+                <details><summary>Gene Expression</summary>
+                    <div id="checkCellExprTable" class="check-cell-table-wrap"></div>
+                </details>
+                <details><summary>Contribution</summary>
+                    <div id="checkCellContrTable" class="check-cell-table-wrap"></div>
+                </details>
+            </div>
+            <div id="checkCellLoading" style="display: none; text-align: center; padding: 20px; color: #94a3b8;">
+                Computing...
+            </div>
+        </div>
+    </div>
+
+    <!-- check_spot Side Inspector Panel -->
+    <div id="checkSpotPanel" class="check-spot-panel collapsed">
+        <div class="check-spot-header">
+            <span id="checkSpotTitle">Spot Inspector</span>
+            <button id="checkSpotClose" class="widget-close-btn">&times;</button>
+        </div>
+        <div id="checkSpotTooltip" class="check-spot-tooltip" style="display: none;"></div>
+        <div class="check-spot-content">
+            <div id="checkSpotInfo" class="check-spot-summary"></div>
+            <div id="checkSpotProbs" class="check-spot-chart"></div>
+            <div id="checkSpotScores" class="check-spot-chart"></div>
+            <details open><summary>Score Breakdown</summary>
+                <div id="checkSpotTable" class="check-cell-table-wrap"></div>
+            </details>
+            <div id="checkSpotLoading" style="display:none; text-align:center; padding: 20px; color:#94a3b8;">Computing...</div>
         </div>
     </div>
 

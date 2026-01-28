@@ -82,6 +82,9 @@ const state = {
     checkCellConnected: false,
     checkCellClasses: [],
 
+    // check_spot bridge
+    checkSpotConnected: false,
+
     // Cache of last IconLayers to avoid blocking destruction when switching to pointcloud
     lastIconLayers: [],
     iconCleanupPending: false,

@@ -25,7 +25,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // check_cell (SQLite data, no Python required)
   getCheckCellState: () => ipcRenderer.invoke('check-cell-get-state'),
   checkCellQuery: (params) => ipcRenderer.invoke('check-cell-binary-query', params),
-  onCheckCellState: (handler) => ipcRenderer.on('check-cell-state', (_e, state) => handler(state))
+  onCheckCellState: (handler) => ipcRenderer.on('check-cell-state', (_e, state) => handler(state)),
+
+  // check_spot (SQLite data, no Python required)
+  getCheckSpotState: () => ipcRenderer.invoke('check-spot-get-state'),
+  checkSpotQuery: (spotId) => ipcRenderer.invoke('check-spot-binary-query', { spotId }),
+  onCheckSpotState: (handler) => ipcRenderer.on('check-spot-state', (_e, state) => handler(state))
 });
 
 console.log('Preload script loaded - electronAPI exposed to renderer');

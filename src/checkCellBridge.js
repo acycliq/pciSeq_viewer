@@ -20,14 +20,6 @@ export async function setupCheckCellBridge() {
     const compareBtn = document.getElementById('checkCellCompareBtn');
     if (compareBtn) compareBtn.addEventListener('click', handleCompare);
 
-    // Click outside modal to close
-    const modal = document.getElementById('checkCellModal');
-    if (modal) {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal();
-        });
-    }
-
     // Subscribe to state changes from main process
     if (window.electronAPI?.onCheckCellState) {
         window.electronAPI.onCheckCellState((stateData) => {
@@ -76,8 +68,8 @@ function applyCheckCellState(stateData, notify) {
  * Called by polygonInteractions.js on Ctrl+click.
  */
 export function openCheckCellModal(cellLabel) {
-    const modal = document.getElementById('checkCellModal');
-    if (!modal) return;
+    const panel = document.getElementById('checkCellPanel');
+    if (!panel) return;
 
     // Reset phases
     const selectPhase = document.getElementById('checkCellSelectPhase');
@@ -87,8 +79,8 @@ export function openCheckCellModal(cellLabel) {
     if (resultsPhase) resultsPhase.style.display = 'none';
     if (loading) loading.style.display = 'none';
 
-    // Store current cell label on the modal
-    modal.dataset.cellLabel = cellLabel;
+    // Store current cell label on the panel
+    panel.dataset.cellLabel = cellLabel;
 
     // Show assigned class from cellDataMap
     const assignedEl = document.getElementById('checkCellAssigned');
@@ -109,21 +101,22 @@ export function openCheckCellModal(cellLabel) {
 
     // Update title
     const title = document.getElementById('checkCellTitle');
-    if (title) title.textContent = 'check_cell - Cell ' + cellLabel;
+    if (title) title.textContent = 'Cell ' + cellLabel;
 
-    modal.style.display = 'flex';
+    // Slide in
+    panel.classList.remove('collapsed');
 }
 
 function closeModal() {
-    const modal = document.getElementById('checkCellModal');
-    if (modal) modal.style.display = 'none';
+    const panel = document.getElementById('checkCellPanel');
+    if (panel) panel.classList.add('collapsed');
 }
 
 async function handleCompare() {
-    const modal = document.getElementById('checkCellModal');
-    if (!modal) return;
+    const panel = document.getElementById('checkCellPanel');
+    if (!panel) return;
 
-    const cellLabel = modal.dataset.cellLabel;
+    const cellLabel = panel.dataset.cellLabel;
     const select = document.getElementById('checkCellClassSelect');
     const userClass = select ? select.value : null;
     if (!cellLabel || !userClass) return;
@@ -225,16 +218,17 @@ function renderDivergingChart(container, data) {
             .style('opacity', 0);
     }
 
-    // Container for two charts side by side
+    // Container for two charts stacked vertically
     const wrapper = d3.select(container)
         .append('div')
         .style('display', 'flex')
+        .style('flex-direction', 'column') // Stack vertically
         .style('gap', '20px')
         .style('width', '100%');
 
-    // Left chart: genes favoring assigned class (positive diff)
-    const leftDiv = wrapper.append('div').style('flex', '1');
-    renderSingleBarChart(leftDiv, {
+    // Top chart: genes favoring assigned class (positive diff)
+    const topDiv = wrapper.append('div').style('width', '100%');
+    renderSingleBarChart(topDiv, {
         data: data.topData,
         title: 'Top ' + data.topN + ' contr for class: ' + data.assignedClass,
         subtitle: '(Sum: ' + data.topSum.toFixed(2) + ')',
@@ -243,9 +237,9 @@ function renderDivergingChart(container, data) {
         fullData: data
     });
 
-    // Right chart: genes favoring user class (negative diff)
-    const rightDiv = wrapper.append('div').style('flex', '1');
-    renderSingleBarChart(rightDiv, {
+    // Bottom chart: genes favoring user class (negative diff)
+    const bottomDiv = wrapper.append('div').style('width', '100%');
+    renderSingleBarChart(bottomDiv, {
         data: data.bottomData,
         title: 'Top ' + data.topN + ' contr for class: ' + data.userClass,
         subtitle: '(Sum: ' + data.bottomSum.toFixed(2) + ')',
@@ -259,9 +253,11 @@ function renderSingleBarChart(container, opts) {
     const { data, title, subtitle, color, tooltip, fullData } = opts;
     const d3 = window.d3;
 
-    const margin = { top: 50, right: 20, bottom: 70, left: 60 };
-    const width = 340;
+    // Responsive width for sidebar
+    const containerNode = container.node();
+    const width = containerNode ? containerNode.clientWidth : 400;
     const height = 300;
+    const margin = { top: 50, right: 20, bottom: 70, left: 60 };
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
 
