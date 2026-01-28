@@ -141,7 +141,7 @@ function renderTable(container, data) {
 
 function renderScores(container, data) {
   const d3 = window.d3;
-  if (!d3) { container.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444;">D3.js not loaded</div>'; return; }
+  if (!d3) { container.innerHTML = '<div style="padding:20px;text-align:center;color:#db5c5c;">D3.js not loaded</div>'; return; }
   container.innerHTML = '';
   
   // Data prep
@@ -237,7 +237,7 @@ function renderScores(container, data) {
           .style('font-size', '12px');
 
   // Colors
-  const colors = { mvn: '#1f77b4', attn: '#ff7f0e', expr: '#2ca02c', misread: '#ef4444' };
+  const colors = { mvn: '#1f77b4', attn: '#ff7f0e', expr: '#2ca02c', misread: '#db5c5c' };
 
   // Helper to draw a rect segment
   const drawSegment = (dataArray, bottomArray, colorClass, colorHex) => {
@@ -328,7 +328,7 @@ function hideTooltip() {
 
 function renderProbs(container, data) {
   const d3 = window.d3;
-  if (!d3) { container.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444;">D3.js not loaded</div>'; return; }
+  if (!d3) { container.innerHTML = '<div style="padding:20px;text-align:center;color:#db5c5c;">D3.js not loaded</div>'; return; }
   container.innerHTML = '';
   
   const labels = data.neighborLabels;
@@ -418,7 +418,7 @@ function renderProbs(container, data) {
   // Colors
   const colors = {
       cell: '#1f77b4',   // Blue
-      misread: '#ef4444' // Red
+      misread: '#db5c5c' // Red
   };
 
   // Bind data with labels for easy tooltip access
