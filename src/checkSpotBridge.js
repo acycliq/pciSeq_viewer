@@ -221,20 +221,13 @@ function renderScores(container, data) {
       .attr('text-anchor', 'middle')
       .style('fill', '#9ca3af')
       .style('font-size', '11px')
-      .text('Log-Likelihood');
-
-  // X-Axis
-  g.append('g')
-      .attr('transform', `translate(0,${h})`)
-      .call(d3.axisBottom(x))
-      .call(g => g.select('.domain').attr('stroke', '#4b5563'))
       .selectAll('text')
           .attr('transform', 'rotate(-45)')
           .style('text-anchor', 'end')
           .attr('dx', '-0.5em')
           .attr('dy', '0.5em')
           .style('fill', '#d1d5db')
-          .style('font-size', '10px');
+          .style('font-size', '12px');
 
   // Colors
   const colors = { mvn: '#1f77b4', attn: '#ff7f0e', expr: '#2ca02c', misread: '#d62728' };
@@ -413,7 +406,7 @@ function renderProbs(container, data) {
           .attr('dx', '-0.5em')
           .attr('dy', '0.5em')
           .style('fill', '#d1d5db')
-          .style('font-size', '10px');
+          .style('font-size', '12px');
 
   // X-Axis Label
   g.append('text')

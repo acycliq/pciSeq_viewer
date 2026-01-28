@@ -377,11 +377,11 @@ function renderSingleBarChart(container, opts) {
         .append('text')
         .attr('class', 'gene-label')
         .attr('x', d => x(d.gene) + x.bandwidth() / 2)
-        .attr('y', chartHeight + 8)
+        .attr('y', chartHeight + 10) // Slightly more spacing
         .attr('text-anchor', 'end')
-        .attr('transform', d => 'rotate(-45,' + (x(d.gene) + x.bandwidth() / 2) + ',' + (chartHeight + 8) + ')')
+        .attr('transform', d => 'rotate(-45,' + (x(d.gene) + x.bandwidth() / 2) + ',' + (chartHeight + 10) + ')')
         .style('fill', '#d1d5db')
-        .style('font-size', '9px')
+        .style('font-size', '12px')
         .text(d => d.gene);
 
     // Y-axis label
