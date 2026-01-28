@@ -237,7 +237,7 @@ function renderScores(container, data) {
           .style('font-size', '12px');
 
   // Colors
-  const colors = { mvn: '#1f77b4', attn: '#ff7f0e', expr: '#2ca02c', misread: '#d62728' };
+  const colors = { mvn: '#1f77b4', attn: '#ff7f0e', expr: '#2ca02c', misread: '#ef4444' };
 
   // Helper to draw a rect segment
   const drawSegment = (dataArray, bottomArray, colorClass, colorHex) => {
@@ -418,7 +418,7 @@ function renderProbs(container, data) {
   // Colors
   const colors = {
       cell: '#1f77b4',   // Blue
-      misread: '#d62728' // Red
+      misread: '#ef4444' // Red
   };
 
   // Bind data with labels for easy tooltip access

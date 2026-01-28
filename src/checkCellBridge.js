@@ -163,7 +163,7 @@ function renderResults(data) {
         summary.innerHTML = 'Cell ' + data.cellId + ': ' +
             '<span style="color:#87CEEB;font-weight:600;">' + escapeHtml(data.assignedClass) +
             '</span> <span style="color:#6b7280;margin:0 8px;">vs</span> ' +
-            '<span style="color:#c65d57;font-weight:600;">' + escapeHtml(data.userClass) + '</span>';
+            '<span style="color:#ef4444;font-weight:600;">' + escapeHtml(data.userClass) + '</span>';
     }
 
     // Render D3 diverging bar chart
@@ -243,7 +243,7 @@ function renderDivergingChart(container, data) {
         data: data.bottomData,
         title: 'Top ' + data.topN + ' contr for class: ' + data.userClass,
         subtitle: '(Sum: ' + data.bottomSum.toFixed(2) + ')',
-        color: '#c65d57',  // Moderate red
+        color: '#ef4444',  // Vibrant red
         tooltip: tooltip,
         fullData: data
     });
