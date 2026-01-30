@@ -24,11 +24,9 @@
       "index.html",
       "styles.css",
       "config.js",
-      "advanced-config.js",
       "icon.png",
       "selection_tool.png",
       "src/**/*",
-      "modules/**/*",
       "lib/**/*",
       "arrow-loader/**/*",
       "config/**/*",
@@ -119,8 +117,7 @@
   "license": "MIT",
   "dependencies": {
     "better-sqlite3": "^12.5.0",
-    "electron-store": "^8.1.0",
-    "sql.js": "^1.11.0"
+    "electron-store": "^8.1.0"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.2",
