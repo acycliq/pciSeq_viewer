@@ -1,10 +1,11 @@
-const { app, BrowserWindow, protocol, ipcMain, dialog, Menu, shell } = require('electron');
+const { app, BrowserWindow, protocol, dialog, Menu, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const Store = require('electron-store');
 const Database = require('better-sqlite3'); // Disk-based SQLite
 const diagnostics = require('./diagnostics');
+const dataLoader = require('./data-loader');
 
 // GitHub repo for update checks
 const GITHUB_REPO = 'acycliq/pciSeq_viewer';
@@ -61,7 +62,6 @@ function checkForUpdates() {
 const store = new Store();
 
 let mainWindow;
-let mbtilesDb = null;  // Active Database instance
 
 // Register custom protocols as privileged before app is ready
 protocol.registerSchemesAsPrivileged([
@@ -122,37 +122,22 @@ function createWindow() {
     mainWindow = null;
   });
 
-  // Initialize diagnostics module
+  // Initialize modules
   diagnostics.init(mainWindow, store);
-}
-
-// Open MBTiles database using better-sqlite3
-function openDatabase(mbtilesPath) {
-  if (mbtilesDb) {
-    try { mbtilesDb.close(); } catch (e) {}
-    mbtilesDb = null;
-  }
-
-  try {
-    // Open in read-only mode, verbose logging if needed
-    mbtilesDb = new Database(mbtilesPath, { readonly: true, fileMustExist: true });
-    console.log('Opened MBTiles database (disk-based):', mbtilesPath);
-    return true;
-  } catch (e) {
-    console.error('Failed to open MBTiles database:', e);
-    return false;
-  }
+  dataLoader.init(mainWindow, store, diagnostics);
 }
 
 // Get tile from MBTiles database
 function getTileFromMBTiles(planeId, z, x, y) {
+  let mbtilesDb = dataLoader.getDatabase();
   if (!mbtilesDb) {
     // Attempt to lazy-load if path is stored
     const storedPath = store.get('mbtilesPath', '');
     if (storedPath && fs.existsSync(storedPath)) {
-        if (!openDatabase(storedPath)) return null;
+      if (!dataLoader.openDatabase(storedPath)) return null;
+      mbtilesDb = dataLoader.getDatabase();
     } else {
-        return null;
+      return null;
     }
   }
 
@@ -162,7 +147,7 @@ function getTileFromMBTiles(planeId, z, x, y) {
     const stmt = mbtilesDb.prepare(
       'SELECT tile_data FROM tiles WHERE plane_id = ? AND zoom_level = ? AND tile_column = ? AND tile_row = ?'
     );
-    
+
     const row = stmt.get(planeId, z, x, y);
     return row ? row.tile_data : null;
   } catch (e) {
@@ -305,299 +290,6 @@ function registerCustomProtocol() {
   });
 }
 
-// IPC Handlers for folder selection
-ipcMain.handle('select-data-folder', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openDirectory'],
-    title: 'Select Data Folder',
-    message: 'Choose the folder containing arrow_spots, arrow_cells, and arrow_boundaries subdirectories'
-  });
-
-  if (!result.canceled && result.filePaths.length > 0) {
-    const selectedPath = result.filePaths[0];
-
-    // Validate that the folder has the expected structure
-    const fs = require('fs');
-    const expectedSubdirs = ['arrow_spots', 'arrow_cells', 'arrow_boundaries'];
-    const hasValidStructure = expectedSubdirs.some(subdir =>
-      fs.existsSync(path.join(selectedPath, subdir))
-    );
-
-    if (!hasValidStructure) {
-      dialog.showErrorBox(
-        'Invalid Data Folder',
-        'The selected folder does not contain the expected subdirectories (arrow_spots, arrow_cells, or arrow_boundaries).'
-      );
-      return { success: false, error: 'Invalid folder structure' };
-    }
-
-    store.set('dataPath', selectedPath);
-
-    // Auto-discover MBTiles file in the data folder
-    try {
-      const files = fs.readdirSync(selectedPath);
-      const mbtilesFiles = files.filter(f => f.endsWith('.mbtiles'));
-
-      if (mbtilesFiles.length > 0) {
-        const autoMbtilesPath = path.join(selectedPath, mbtilesFiles[0]);
-        console.log('Auto-discovered MBTiles file:', autoMbtilesPath);
-
-        if (openDatabase(autoMbtilesPath)) {
-            store.set('mbtilesPath', autoMbtilesPath);
-            // Silent load - no popup
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to auto-discover MBTiles:', e);
-    }
-
-    // Auto-discover diagnostics database in diagnostics folder
-    try {
-      const diagnosticsDir = path.join(selectedPath, 'diagnostics');
-      const unifiedDbPath = path.join(diagnosticsDir, 'diagnostics.db');
-
-      if (fs.existsSync(unifiedDbPath)) {
-        console.log('Auto-discovered unified diagnostics database:', unifiedDbPath);
-        diagnostics.openDiagnosticsDatabase(unifiedDbPath);
-        store.set('checkCellPath', diagnosticsDir); // Keep for legacy compatibility if needed
-        store.set('checkSpotPath', diagnosticsDir);
-        store.set('diagnosticsPath', diagnosticsDir);
-
-        diagnostics.broadcastDiagnosticsState(true);
-      }
-    } catch (e) {
-      console.warn('Failed to auto-discover diagnostics databases:', e);
-    }
-
-    return { success: true, path: selectedPath };
-  }
-
-  return { success: false };
-});
-
-ipcMain.handle('select-tiles-folder', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openDirectory'],
-    title: 'Select Tiles Folder',
-    message: 'Choose the folder containing tiles_XX subdirectories'
-  });
-
-  if (!result.canceled && result.filePaths.length > 0) {
-    const selectedPath = result.filePaths[0];
-
-    // Validate that the folder contains tile directories
-    const fs = require('fs');
-    const contents = fs.readdirSync(selectedPath);
-    const hasTileDirs = contents.some(item =>
-      item.startsWith('tiles_') && fs.statSync(path.join(selectedPath, item)).isDirectory()
-    );
-
-    if (!hasTileDirs) {
-      dialog.showErrorBox(
-        'Invalid Tiles Folder',
-        'The selected folder does not contain any tiles_XX subdirectories.'
-      );
-      return { success: false, error: 'Invalid folder structure' };
-    }
-
-    store.set('tilesPath', selectedPath);
-    return { success: true, path: selectedPath };
-  }
-
-  return { success: false };
-});
-
-ipcMain.handle('get-paths', () => {
-  return {
-    dataPath: store.get('dataPath', ''),
-    tilesPath: store.get('tilesPath', ''),
-    mbtilesPath: store.get('mbtilesPath', '')
-  };
-});
-
-// IPC Handler for saving voxel size to electron-store
-ipcMain.handle('set-voxel-size', (event, voxelSize) => {
-  if (Array.isArray(voxelSize) && voxelSize.length === 3) {
-    store.set('voxelSize', voxelSize);
-    console.log('Voxel size saved:', voxelSize);
-    return { success: true };
-  }
-  return { success: false, error: 'Invalid voxel size format. Expected [x, y, z] array.' };
-});
-
-// IPC Handler for getting stored voxel size
-ipcMain.handle('get-voxel-size', () => {
-  const voxelSize = store.get('voxelSize', null);
-  return { success: voxelSize !== null, voxelSize };
-});
-
-// IPC Handler for selecting MBTiles file
-ipcMain.handle('select-mbtiles-file', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openFile'],
-    title: 'Select MBTiles File',
-    message: 'Choose the .mbtiles file containing background tiles',
-    filters: [
-      { name: 'MBTiles', extensions: ['mbtiles'] },
-      { name: 'All Files', extensions: ['*'] }
-    ]
-  });
-
-  if (!result.canceled && result.filePaths.length > 0) {
-    const selectedPath = result.filePaths[0];
-
-    // Validate using better-sqlite3
-    try {
-      const testDb = new Database(selectedPath, { readonly: true, fileMustExist: true });
-      
-      // Check for tiles table
-      const stmt = testDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND (name='tiles' OR name='map')");
-      const hasTable = stmt.get();
-      testDb.close();
-
-      if (!hasTable) {
-        dialog.showErrorBox(
-          'Invalid MBTiles File',
-          'The selected file does not appear to be a valid MBTiles database (missing tiles table).'
-        );
-        return { success: false, error: 'Invalid MBTiles structure' };
-      }
-
-      store.set('mbtilesPath', selectedPath);
-      console.log('MBTiles path set to:', selectedPath);
-
-      // Open the database
-      openDatabase(selectedPath);
-
-      return { success: true, path: selectedPath };
-    } catch (e) {
-      dialog.showErrorBox(
-        'Invalid MBTiles File',
-        `Failed to open file: ${e.message}`
-      );
-      return { success: false, error: e.message };
-    }
-  }
-
-  return { success: false };
-});
-
-// IPC Handler for getting MBTiles metadata
-ipcMain.handle('get-mbtiles-metadata', async () => {
-  const mbtilesPath = store.get('mbtilesPath', '');
-  if (!mbtilesPath) {
-    return { success: false, error: 'No MBTiles file configured' };
-  }
-
-  try {
-    if (!mbtilesDb) {
-      if (!openDatabase(mbtilesPath)) {
-          return { success: false, error: 'Failed to open database' };
-      }
-    }
-
-    const stmt = mbtilesDb.prepare('SELECT name, value FROM metadata');
-    const rows = stmt.all();
-
-    const metadata = {};
-    rows.forEach(row => {
-        metadata[row.name] = row.value;
-    });
-
-    return { success: true, metadata };
-  } catch (e) {
-    console.error('Error reading MBTiles metadata:', e);
-    return { success: false, error: e.message };
-  }
-});
-
-// IPC Handler for reading metadata.json from data folder
-ipcMain.handle('get-metadata-json', async () => {
-  const dataPath = store.get('dataPath', '');
-  if (!dataPath) {
-    return { success: false, error: 'No data path configured' };
-  }
-
-  const metadataPath = path.join(dataPath, 'metadata.json');
-
-  try {
-    if (!fs.existsSync(metadataPath)) {
-      return { success: false, error: 'metadata.json not found' };
-    }
-
-    const content = fs.readFileSync(metadataPath, 'utf8');
-    const metadata = JSON.parse(content);
-
-    return { success: true, metadata };
-  } catch (e) {
-    console.error('Error reading metadata.json:', e);
-    return { success: false, error: e.message };
-  }
-});
-
-// IPC Handler for getting dataset metadata from MBTiles (no fallback)
-ipcMain.handle('get-dataset-metadata', async () => {
-  const result = {
-    imageWidth: null,
-    imageHeight: null,
-    voxelSize: null,
-    planeCount: null,
-    source: null
-  };
-
-  // Read from MBTiles ONLY - no fallback
-  const mbtilesPath = store.get('mbtilesPath', '');
-  if (!mbtilesPath || !mbtilesDb) {
-    return {
-      success: false,
-      ...result,
-      error: 'No MBTiles file loaded. Please ensure your dataset includes an MBTiles file with metadata.'
-    };
-  }
-
-  try {
-    const stmt = mbtilesDb.prepare('SELECT name, value FROM metadata');
-    const rows = stmt.all();
-
-    rows.forEach(row => {
-      if (row.name === 'width') result.imageWidth = parseInt(row.value);
-      if (row.name === 'height') result.imageHeight = parseInt(row.value);
-      if (row.name === 'plane_count') result.planeCount = parseInt(row.value);
-      if (row.name === 'voxel_size') {
-        // Parse comma-separated voxel size: "0.28,0.28,0.7"
-        const parts = row.value.split(',').map(parseFloat);
-        if (parts.length === 3) result.voxelSize = parts;
-      }
-    });
-
-    result.source = 'mbtiles';
-  } catch (e) {
-    return {
-      success: false,
-      ...result,
-      error: `Failed to read MBTiles metadata: ${e.message}`
-    };
-  }
-
-  // If voxelSize not in MBTiles, use stored voxel size from electron-store
-  if (!result.voxelSize) {
-    const storedVoxelSize = store.get('voxelSize', null);
-    if (storedVoxelSize && Array.isArray(storedVoxelSize) && storedVoxelSize.length === 3) {
-      result.voxelSize = storedVoxelSize;
-      result.source = 'mbtiles+store';
-      console.log('Using stored voxel size:', storedVoxelSize);
-    }
-  }
-
-  // Check required fields - all four are now required
-  const hasRequired = result.imageWidth && result.imageHeight && result.planeCount && result.voxelSize;
-  return {
-    success: hasRequired,
-    ...result,
-    error: hasRequired ? null : 'Missing required metadata: width, height, plane_count (from MBTiles), and voxel_size (from MBTiles or user input) are required'
-  };
-});
-
 // Create application menu
 function createMenu() {
   const template = [
@@ -641,7 +333,7 @@ function createMenu() {
                   const mbtilesFiles = files.filter(f => f.endsWith('.mbtiles'));
                   if (mbtilesFiles.length > 0) {
                     const autoMbtilesPath = path.join(selectedPath, mbtilesFiles[0]);
-                    if (openDatabase(autoMbtilesPath)) {
+                    if (dataLoader.openDatabase(autoMbtilesPath)) {
                         store.set('mbtilesPath', autoMbtilesPath);
                         // Silent load
                     }
@@ -680,10 +372,7 @@ function createMenu() {
             store.delete('checkCellPath');
             store.delete('checkSpotEnabled');
             store.delete('checkSpotPath');
-            if (mbtilesDb) {
-                try { mbtilesDb.close(); } catch(e) {}
-                mbtilesDb = null;
-            }
+            dataLoader.closeDatabase();
             diagnostics.closeDiagnosticsDatabase();
             diagnostics.broadcastDiagnosticsState(false);
             console.log('Dataset closed, paths cleared.');
@@ -725,7 +414,7 @@ function createMenu() {
                 }
 
                 store.set('mbtilesPath', selectedPath);
-                openDatabase(selectedPath);
+                dataLoader.openDatabase(selectedPath);
 
                 // Reload the window to use new tiles
                 if (mainWindow) {
@@ -823,7 +512,7 @@ app.whenReady().then(async () => {
   // Pre-load MBTiles database if configured
   const mbtilesPath = store.get('mbtilesPath', '');
   if (mbtilesPath && fs.existsSync(mbtilesPath)) {
-    openDatabase(mbtilesPath);
+    dataLoader.openDatabase(mbtilesPath);
   }
 
   createWindow();
