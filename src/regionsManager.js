@@ -87,6 +87,10 @@ function parseCSV(csvText) {
 function updateUIAfterRegionChange() {
     renderRegionsList();
     updateChartDropdowns();
+    
+    // Notify decoupled widgets (Zen Charts)
+    window.dispatchEvent(new CustomEvent('regions-updated'));
+
     if (window.updateAllLayers) {
         window.updateAllLayers();
     }
