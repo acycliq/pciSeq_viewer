@@ -186,10 +186,16 @@ class CellClassDistributionWidget extends WidgetBase {
 
         // Prepare Stack Data
         const cumulative_data = {};
+        const plane_totals = {}; // Store total cells per plane for % calc
         let maxTotal = 0;
 
         z_values.forEach(z => {
             const z_counts = z_class_counts[z] || {};
+            
+            // Calculate total for this plane
+            const total = Object.values(z_counts).reduce((a, b) => a + b, 0);
+            plane_totals[z] = total;
+
             // Sort classes for this plane by count desc
             const sorted = Object.entries(z_counts).sort(([,a], [,b]) => b - a);
             
@@ -240,7 +246,13 @@ class CellClassDistributionWidget extends WidgetBase {
         classes_by_total.forEach(cls => {
             const barData = z_values.map(z => {
                 const d = cumulative_data[z][cls];
-                return { z, cls, h: d ? d.height : 0, b: d ? d.bottom : 0 };
+                return { 
+                    z, 
+                    cls, 
+                    h: d ? d.height : 0, 
+                    b: d ? d.bottom : 0,
+                    total: plane_totals[z] || 0 
+                };
             }).filter(d => d.h > 0);
 
             g.selectAll(`.bar-${sanitize(cls)}`)
@@ -255,10 +267,14 @@ class CellClassDistributionWidget extends WidgetBase {
                 .attr('opacity', 0.9)
                 .on('mouseenter', function(e, d) {
                     d3.select(this).attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 1);
+                    
+                    const pct = d.total > 0 ? ((d.h / d.total) * 100).toFixed(1) : '0.0';
+                    
                     tooltip.innerHTML = `
                         <div style="font-weight:600;margin-bottom:2px">${d.cls}</div>
                         <div style="color:#aaa">Plane ${d.z}</div>
                         <div>Count: ${d.h}</div>
+                        <div style="color:#aaa;font-size:11px;margin-top:2px">$Perc: {pct}%</div>
                     `;
                     tooltip.style.opacity = 1;
                     tooltip.style.left = (e.pageX + 10) + 'px';

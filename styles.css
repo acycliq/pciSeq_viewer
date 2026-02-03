@@ -2118,6 +2118,7 @@ body {
 
 /* Chart Tooltip */
 .chart-tooltip {
+    position: fixed;
     background: rgba(20, 20, 20, 0.95) !important;
     border: 1px solid rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(4px);
@@ -2128,4 +2129,6 @@ body {
     border-radius: 6px !important;
     pointer-events: none;
     z-index: 10000;
+    transition: opacity 0.15s ease;
+    opacity: 0;
 }
