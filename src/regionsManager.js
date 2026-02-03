@@ -153,11 +153,10 @@ function buildRegionColorIndexMap() {
 }
 
 function getRegionColorHex(name) {
-    try {
-        const mapping = buildRegionColorIndexMap();
-        const idx = mapping.get(name);
-        if (typeof idx === 'number') return REGION_COLOR_SET2[idx];
-    } catch {}
+    const mapping = buildRegionColorIndexMap();
+    const idx = mapping.get(name);
+    if (typeof idx === 'number') return REGION_COLOR_SET2[idx];
+
     // Fallback to pure hash if something goes wrong
     const key = String(name || 'region');
     return REGION_COLOR_SET2[djb2Hash(key) % REGION_COLOR_SET2.length];
@@ -314,7 +313,7 @@ function renderRegionsList() {
         // Color swatch (use region color from curated d3.schemeSet2 subset)
         const swatch = document.createElement('div');
         swatch.className = 'cell-class-color';
-        try { swatch.style.background = getRegionColorHex(name); } catch { swatch.style.background = 'var(--drawer-accent)'; }
+        swatch.style.background = getRegionColorHex(name);
 
         // Name
         const label = document.createElement('span');
