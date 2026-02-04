@@ -274,7 +274,7 @@ class CellClassDistributionWidget extends WidgetBase {
                         <div style="font-weight:600;margin-bottom:2px">${d.cls}</div>
                         <div style="color:#aaa">Plane ${d.z}</div>
                         <div>Count: ${d.h}</div>
-                        <div style="color:#aaa;font-size:11px;margin-top:2px">$Perc: {pct}%</div>
+                        <div style="color:#aaa;font-size:11px;margin-top:2px">${pct}% of plane</div>
                     `;
                     tooltip.style.opacity = 1;
                     tooltip.style.left = (e.pageX + 10) + 'px';
