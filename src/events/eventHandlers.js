@@ -213,9 +213,7 @@ function setupWidgetControls(elements) {
         window.toggleAllCellClasses();
     });
 
-    elements.cellClassViewerBtn.addEventListener('click', () => {
-        window.openCellClassViewer();
-    });
+
 }
 
 // === CONTROLS DRAWER ===

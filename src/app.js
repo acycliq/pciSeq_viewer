@@ -64,7 +64,7 @@ import {
     toggleAllCellClasses,
     undockCellClassWidget
 } from './cellClassWidget.js';
-import { openCellClassViewer, getCellClassViewerData } from './cellClassViewer.js';
+
 import {
     initGeneDistributionChart,
     showGeneDistributionWidget,
@@ -102,8 +102,7 @@ window.hideCellClassWidget = hideCellClassWidget;
 window.filterCellClasses = filterCellClasses;
 window.toggleAllCellClasses = toggleAllCellClasses;
 window.undockCellClassWidget = undockCellClassWidget;
-window.openCellClassViewer = openCellClassViewer;
-window.getCellClassViewerData = getCellClassViewerData;
+
 
 // Gene distribution chart functions
 window.showGeneDistributionWidget = showGeneDistributionWidget;
