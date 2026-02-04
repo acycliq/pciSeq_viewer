@@ -263,10 +263,12 @@ class CellClassDistributionWidget extends WidgetBase {
                 .attr('height', d => yScale(d.b) - yScale(d.b + d.h))
                 .attr('width', xScale.bandwidth())
                 .attr('fill', getClassColor(cls))
+                .attr('stroke', 'rgba(255, 255, 255, 0.2)')
+                .attr('stroke-width', 0.5)
                 .style('cursor', 'pointer')
                 .attr('opacity', 0.9)
                 .on('mouseenter', function(e, d) {
-                    d3.select(this).attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 1);
+                    d3.select(this).attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 1.5);
                     
                     const pct = d.total > 0 ? ((d.h / d.total) * 100).toFixed(1) : '0.0';
                     
@@ -285,7 +287,10 @@ class CellClassDistributionWidget extends WidgetBase {
                     tooltip.style.top = (e.pageY - 10) + 'px';
                 })
                 .on('mouseleave', function() {
-                    d3.select(this).attr('opacity', 0.9).attr('stroke', 'none');
+                    d3.select(this)
+                        .attr('opacity', 0.9)
+                        .attr('stroke', 'rgba(255, 255, 255, 0.2)')
+                        .attr('stroke-width', 0.5);
                     tooltip.style.opacity = 0;
                 })
                 .on('click', (e, d) => {

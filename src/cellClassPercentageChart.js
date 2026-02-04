@@ -12,8 +12,8 @@ import { getRegionBoundaries } from './regionsManager.js';
 class CellClassPercentageWidget extends WidgetBase {
     constructor() {
         super('cellClassPercentageWidget', 'Class Distribution', {
-            width: 600,
-            height: 450,
+            width: 800,
+            height: 500,
             minWidth: 400,
             minHeight: 300,
             side: 'right'
@@ -194,10 +194,12 @@ class CellClassPercentageWidget extends WidgetBase {
             .attr('y', d => yScale(d.percentage))
             .attr('height', d => height - yScale(d.percentage))
             .attr('fill', d => getClassColor(d.className))
+            .attr('stroke', 'rgba(255, 255, 255, 0.2)')
+            .attr('stroke-width', 0.5)
             .attr('opacity', 0.8)
             .style('cursor', 'pointer')
             .on('mouseenter', function(e, d) {
-                d3.select(this).attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 1);
+                d3.select(this).attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 1.5);
                 tooltip.innerHTML = `
                     <div style="font-weight:600;margin-bottom:2px">${d.className}</div>
                     <div>Count: ${d.count.toLocaleString()}</div>
@@ -212,7 +214,10 @@ class CellClassPercentageWidget extends WidgetBase {
                 tooltip.style.top = (e.pageY - 10) + 'px';
             })
             .on('mouseleave', function() {
-                d3.select(this).attr('opacity', 0.8).attr('stroke', 'none');
+                d3.select(this)
+                    .attr('opacity', 0.8)
+                    .attr('stroke', 'rgba(255, 255, 255, 0.2)')
+                    .attr('stroke-width', 0.5);
                 tooltip.style.opacity = 0;
             });
 
