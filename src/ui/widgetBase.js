@@ -1,7 +1,7 @@
 /**
  * WidgetBase
  *
- * A base class for creating consistent, interactive floating widgets with a "Zen" aesthetic.
+ * A base class for creating consistent, interactive floating widgets with a "Glass" aesthetic.
  * Handles common functionality:
  * - DOM creation/destruction
  * - Drag-and-drop

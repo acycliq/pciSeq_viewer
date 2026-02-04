@@ -88,7 +88,7 @@ function updateUIAfterRegionChange() {
     renderRegionsList();
     updateChartDropdowns();
     
-    // Notify decoupled widgets (Zen Charts)
+    // Notify decoupled widgets (Glass Charts)
     window.dispatchEvent(new CustomEvent('regions-updated'));
 
     if (window.updateAllLayers) {
@@ -102,7 +102,7 @@ function updateUIAfterRegionChange() {
  * Source palette (d3.schemeSet2, 8 colors):
  *   #66c2a5, #fc8d62, #8da0cb, #e78ac3, #a6d854, #ffd92f, #e5c494, #b3b3b3
  * Changes: Dropped #e5c494 (brownish) and #b3b3b3 (gray) to improve contrast
- * on a black/dark background and keep a calmer "zen" mood while remaining legible.
+ * on a black/dark background and keep a calmer mood while remaining legible.
  */
 const REGION_COLOR_SET2 = ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854', '#ffd92f'];
 

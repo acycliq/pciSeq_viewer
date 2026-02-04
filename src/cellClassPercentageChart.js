@@ -1,5 +1,5 @@
 /**
- * Cell Class Percentage Chart (Zen Widget)
+ * Cell Class Percentage Chart (Glass Widget)
  *
  * A modern, interactive bar chart showing overall cell class percentages.
  * Built on WidgetBase for a unified "Glass Cockpit" experience.
