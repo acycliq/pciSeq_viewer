@@ -1,294 +1,218 @@
 /**
- * Gene Distribution Chart Module
+ * Gene Distribution Chart (Glass Widget)
  *
- * Creates interactive bar charts showing gene spot distribution across planes
+ * A modern, interactive bar chart showing gene spot distribution across planes.
+ * Built on WidgetBase for a unified "Glass Cockpit" experience.
  */
 
+import { WidgetBase } from './ui/widgetBase.js';
 import { state } from './state/stateManager.js';
-import { elements } from './domElements.js';
-import { widgetManager } from './widgetManager.js';
 
-// Chart widget elements
-let chartElements = null;
-
-// Initialize chart elements
-function initChartElements() {
-    if (chartElements) return chartElements;
-
-    chartElements = {
-        widget: document.getElementById('geneDistributionWidget'),
-        backdrop: document.getElementById('geneDistributionWidgetBackdrop'),
-        select: document.getElementById('geneDistributionSelect'),
-        chart: document.getElementById('geneDistributionChart'),
-        closeBtn: document.getElementById('geneDistributionWidgetClose'),
-        undockBtn: document.getElementById('geneDistributionWidgetUndock')
-    };
-
-    return chartElements;
-}
-
-/**
- * Calculate spot counts per plane for a given gene
- * @param {string} geneName - Name of the gene to analyze
- * @returns {Array} Array of {plane, count} objects
- */
-function calculateGeneDistribution(geneName) {
-    if (!state.geneDataMap.has(geneName)) {
-        return [];
-    }
-
-    const geneSpots = state.geneDataMap.get(geneName);
-    const planeCounts = new Map();
-
-    // Count spots per plane
-    geneSpots.forEach(spot => {
-        const planeId = spot.plane_id || 0;
-        planeCounts.set(planeId, (planeCounts.get(planeId) || 0) + 1);
-    });
-
-    // Convert to array and sort by plane number
-    const distribution = Array.from(planeCounts.entries())
-        .map(([plane, count]) => ({ plane: +plane, count }))
-        .sort((a, b) => a.plane - b.plane);
-
-    return distribution;
-}
-
-/**
- * Create D3 bar chart
- * @param {Array} data - Distribution data [{plane, count}, ...]
- * @param {string} geneName - Gene name for chart title
- */
-function createBarChart(data, geneName) {
-    const els = initChartElements();
-    const container = els.chart;
-
-    // Clear previous chart
-    container.innerHTML = '';
-
-    if (!data || data.length === 0) {
-        container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #888;">No data available for selected gene</div>';
-        return;
-    }
-
-    const margin = { top: 20, right: 30, bottom: 40, left: 50 };
-    const width = container.clientWidth - margin.left - margin.right;
-    const height = container.clientHeight - margin.top - margin.bottom;
-
-    // Create SVG
-    const svg = d3.select(container)
-        .append('svg')
-        .attr('width', width + margin.left + margin.right)
-        .attr('height', height + margin.top + margin.bottom);
-
-    const g = svg.append('g')
-        .attr('transform', `translate(${margin.left},${margin.top})`);
-
-    // Scales
-    const xScale = d3.scaleBand()
-        .domain(data.map(d => d.plane))
-        .range([0, width])
-        .padding(0.1);
-
-    const yScale = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.count)])
-        .range([height, 0]);
-
-    // Color scale
-    const colorScale = d3.scaleSequential(d3.interpolateBlues)
-        .domain([0, d3.max(data, d => d.count)]);
-
-    // Create bars
-    g.selectAll('.bar')
-        .data(data)
-        .enter().append('rect')
-        .attr('class', 'bar')
-        .attr('x', d => xScale(d.plane))
-        .attr('width', xScale.bandwidth())
-        .attr('y', d => yScale(d.count))
-        .attr('height', d => height - yScale(d.count))
-        .attr('fill', d => colorScale(d.count))
-        .attr('stroke', '#333')
-        .attr('stroke-width', 1)
-        .style('cursor', 'pointer')
-        .on('mouseover', function(event, d) {
-            // Tooltip
-            const tooltip = d3.select('body').append('div')
-                .attr('class', 'chart-tooltip')
-                .style('position', 'absolute')
-                .style('background', 'rgba(0, 0, 0, 0.8)')
-                .style('color', 'white')
-                .style('padding', '8px')
-                .style('border-radius', '4px')
-                .style('font-size', '12px')
-                .style('pointer-events', 'none')
-                .style('z-index', '10000')
-                .style('opacity', 0);
-
-            tooltip.html(`<strong>Plane ${d.plane}</strong><br/>Spots: ${d.count}`)
-                .style('left', (event.pageX + 10) + 'px')
-                .style('top', (event.pageY - 10) + 'px')
-                .transition()
-                .duration(200)
-                .style('opacity', 1);
-
-            // Highlight bar
-            d3.select(this)
-                .attr('stroke-width', 2)
-                .attr('stroke', '#ff6b35');
-        })
-        .on('mouseout', function() {
-            d3.selectAll('.chart-tooltip').remove();
-            d3.select(this)
-                .attr('stroke-width', 1)
-                .attr('stroke', '#333');
-        })
-        .on('click', function(event, d) {
-            // Navigate to clicked plane
-            if (window.navigateToPlane) {
-                window.navigateToPlane(d.plane);
-            }
+class GeneDistributionWidget extends WidgetBase {
+    constructor() {
+        super('geneDistributionWidget', 'Gene Distribution', {
+            width: 600,
+            height: 400,
+            minWidth: 400,
+            minHeight: 300,
+            side: 'left'
         });
 
-    // X axis with filtered tick labels
-    const xAxis = d3.axisBottom(xScale)
-        .tickValues(data.filter((d, i) => i % 5 === 0).map(d => d.plane));
+        this.lastData = null;
+        this.selectedGene = '';
+        this.resizeRaf = null;
 
-    g.append('g')
-        .attr('transform', `translate(0,${height})`)
-        .call(xAxis)
-        .append('text')
-        .attr('x', width / 2)
-        .attr('y', 35)
-        .attr('fill', '#e8e8f0')
-        .style('text-anchor', 'middle')
-        .style('font-size', '12px')
-        .text('Plane');
-
-    // Y axis
-    g.append('g')
-        .call(d3.axisLeft(yScale))
-        .append('text')
-        .attr('transform', 'rotate(-90)')
-        .attr('y', -35)
-        .attr('x', -height / 2)
-        .attr('fill', '#e8e8f0')
-        .style('text-anchor', 'middle')
-        .style('font-size', '12px')
-        .text('Spot Count');
-
-    // Chart title
-    g.append('text')
-        .attr('x', width / 2)
-        .attr('y', -5)
-        .attr('fill', '#e8e8f0')
-        .style('text-anchor', 'middle')
-        .style('font-size', '14px')
-        .style('font-weight', 'bold')
-        .text(`${geneName} - Distribution Across Planes`);
-
-    // Add stats text
-    const totalSpots = data.reduce((sum, d) => sum + d.count, 0);
-    const planeRange = data.length > 0 ? `${d3.min(data, d => d.plane)} - ${d3.max(data, d => d.plane)}` : '0';
-
-    g.append('text')
-        .attr('x', width - 5)
-        .attr('y', 15)
-        .attr('fill', '#888')
-        .style('text-anchor', 'end')
-        .style('font-size', '10px')
-        .text(`Total: ${totalSpots} spots | Planes: ${planeRange}`);
-}
-
-/**
- * Populate gene dropdown with available genes
- */
-function populateGeneSelect() {
-    const els = initChartElements();
-    const select = els.select;
-
-    // Clear existing options (except first)
-    while (select.children.length > 1) {
-        select.removeChild(select.lastChild);
+        // Bind methods
+        this.updateData = this.updateData.bind(this);
+        this.renderChart = this.renderChart.bind(this);
     }
 
-    // Add gene options
-    const genes = Array.from(state.geneDataMap.keys()).sort();
-    genes.forEach(gene => {
-        const option = document.createElement('option');
-        option.value = gene;
-        option.textContent = gene;
-        select.appendChild(option);
-    });
-}
+    create() {
+        super.create();
 
+        // Toolbar: Gene Selector
+        this.geneSelect = document.createElement('select');
+        this.geneSelect.className = 'glass-select';
+        this.geneSelect.innerHTML = '<option value="">Select Gene...</option>';
+        this.geneSelect.addEventListener('change', (e) => {
+            this.selectedGene = e.target.value;
+            this.updateData();
+        });
+        this.addToolbarControl(this.geneSelect);
 
-/**
- * Show gene distribution widget
- */
-export function showGeneDistributionWidget() {
-    const els = initChartElements();
+        this.populateGeneSelect();
+    }
 
-    // Register with widget manager for smart positioning
-    widgetManager.register('geneDistributionWidget', {
-        preferredWidth: 500,
-        preferredHeight: 400,
-        side: 'left'
-    });
+    onShow() {
+        // Ensure dropdown is up to date
+        this.populateGeneSelect();
+        if (this.selectedGene) this.updateData();
+    }
 
-    populateGeneSelect();
+    onResize(width, height) {
+        if (this.resizeRaf) cancelAnimationFrame(this.resizeRaf);
+        this.resizeRaf = requestAnimationFrame(() => {
+            if (this.lastData) this.renderChart(this.lastData, this.selectedGene);
+        });
+    }
 
-    els.widget.classList.remove('hidden');
-    els.backdrop.classList.remove('hidden');
+    populateGeneSelect() {
+        if (!this.geneSelect) return;
+        const current = this.geneSelect.value;
+        this.geneSelect.innerHTML = '<option value="">Select Gene...</option>';
 
-    // Add backdrop click handler
-    els.backdrop.onclick = hideGeneDistributionWidget;
-}
+        const genes = Array.from(state.geneDataMap.keys()).sort();
+        genes.forEach(gene => {
+            const opt = document.createElement('option');
+            opt.value = gene;
+            opt.textContent = gene;
+            this.geneSelect.appendChild(opt);
+        });
 
-/**
- * Hide gene distribution widget
- */
-export function hideGeneDistributionWidget() {
-    const els = initChartElements();
-
-    els.widget.classList.add('hidden');
-    els.backdrop.classList.add('hidden');
-    els.backdrop.onclick = null;
-
-    // Unregister from widget manager
-    widgetManager.unregister('geneDistributionWidget');
-}
-
-/**
- * Initialize gene distribution chart functionality
- */
-export function initGeneDistributionChart() {
-    const els = initChartElements();
-
-    // Close button handler
-    els.closeBtn.onclick = hideGeneDistributionWidget;
-
-    // Gene selection handler
-    els.select.onchange = function() {
-        const selectedGene = this.value;
-        if (selectedGene) {
-            const distribution = calculateGeneDistribution(selectedGene);
-            createBarChart(distribution, selectedGene);
-        } else {
-            els.chart.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #888;">Select a gene to view distribution</div>';
+        if (current && state.geneDataMap.has(current)) {
+            this.geneSelect.value = current;
         }
-    };
+    }
 
+    updateData() {
+        if (!this.selectedGene) {
+            this.contentContainer.innerHTML = '<div class="glass-loader">Select a gene to view distribution</div>';
+            return;
+        }
 
-    // Undock button handler (placeholder)
-    els.undockBtn.onclick = function() {
-        console.log('Undock functionality not implemented yet');
-    };
+        const geneSpots = state.geneDataMap.get(this.selectedGene);
+        const planeCounts = new Map();
 
-    // Initial state
-    els.chart.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #888;">Select a gene to view distribution</div>';
+        geneSpots.forEach(spot => {
+            const planeId = spot.plane_id || 0;
+            planeCounts.set(planeId, (planeCounts.get(planeId) || 0) + 1);
+        });
+
+        this.lastData = Array.from(planeCounts.entries())
+            .map(([plane, count]) => ({ plane: +plane, count }))
+            .sort((a, b) => a.plane - b.plane);
+
+        this.renderChart(this.lastData, this.selectedGene);
+    }
+
+    renderChart(data, geneName) {
+        const container = this.contentContainer;
+        container.innerHTML = '';
+
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div class="glass-loader">No data for selected gene</div>';
+            return;
+        }
+
+        const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+        const width = container.clientWidth - margin.left - margin.right;
+        const height = container.clientHeight - margin.top - margin.bottom;
+
+        const svg = d3.select(container).append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom);
+
+        const g = svg.append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        // Scales
+        const xScale = d3.scaleBand()
+            .domain(data.map(d => d.plane))
+            .range([0, width])
+            .padding(0.15);
+
+        const yScale = d3.scaleLinear()
+            .domain([0, d3.max(data, d => d.count)])
+            .range([height, 0]);
+
+        // Color: Deep Blue to Cyan Interpolation
+        const colorScale = d3.scaleLinear()
+            .domain([0, d3.max(data, d => d.count)])
+            .range(['#333333', '#00d2ff']);
+
+        // Tooltip
+        let tooltip = document.querySelector('.chart-tooltip');
+        if (!tooltip) {
+            tooltip = document.createElement('div');
+            tooltip.className = 'chart-tooltip';
+            document.body.appendChild(tooltip);
+        }
+
+        // Bars
+        g.selectAll('.bar')
+            .data(data)
+            .enter().append('rect')
+            .attr('x', d => xScale(d.plane))
+            .attr('width', xScale.bandwidth())
+            .attr('y', d => yScale(d.count))
+            .attr('height', d => height - yScale(d.count))
+            .attr('fill', d => colorScale(d.count))
+            .attr('stroke', 'rgba(255, 255, 255, 0.2)')
+            .attr('stroke-width', 0.5)
+            .attr('opacity', 0.8)
+            .style('cursor', 'pointer')
+            .on('mouseenter', function(e, d) {
+                d3.select(this).attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 1.5);
+                tooltip.innerHTML = `
+                    <div style="font-weight:600;margin-bottom:2px">Plane ${d.plane}</div>
+                    <div>Spots: ${d.count.toLocaleString()}</div>
+                `;
+                tooltip.style.opacity = 1;
+                tooltip.style.left = (e.pageX + 10) + 'px';
+                tooltip.style.top = (e.pageY - 10) + 'px';
+            })
+            .on('mousemove', (e) => {
+                tooltip.style.left = (e.pageX + 10) + 'px';
+                tooltip.style.top = (e.pageY - 10) + 'px';
+            })
+            .on('mouseleave', function() {
+                d3.select(this).attr('opacity', 0.8).attr('stroke', 'rgba(255, 255, 255, 0.2)').attr('stroke-width', 0.5);
+                tooltip.style.opacity = 0;
+            })
+            .on('click', (e, d) => {
+                if (window.navigateToPlane) window.navigateToPlane(d.plane);
+            });
+
+        // Axes (Glass Style)
+        const xAxis = d3.axisBottom(xScale)
+            .tickValues(xScale.domain().filter((d, i) => !(i % 10))); // Every 10th plane
+        
+        const yAxis = d3.axisLeft(yScale).ticks(5);
+
+        const gx = g.append('g').attr('transform', `translate(0,${height})`).call(xAxis);
+        const gy = g.append('g').call(yAxis);
+
+        // Styling
+        g.selectAll('.domain, .tick line').attr('stroke', 'rgba(255,255,255,0.1)');
+        g.selectAll('.tick text').attr('fill', 'rgba(255,255,255,0.5)').style('font-family', 'inherit');
+
+        // Labels
+        g.append('text').attr('x', width/2).attr('y', height + 35)
+            .attr('fill', 'rgba(255,255,255,0.4)').attr('text-anchor', 'middle')
+            .style('font-size', '11px').text('Z-Plane');
+
+        g.append('text').attr('transform', 'rotate(-90)').attr('x', -height/2).attr('y', -35)
+            .attr('fill', 'rgba(255,255,255,0.4)').attr('text-anchor', 'middle')
+            .style('font-size', '11px').text('Spot Count');
+    }
 }
 
-// Global functions for button handlers
+// Singleton
+let instance = null;
+
+export function showGeneDistributionWidget() {
+    if (!instance) instance = new GeneDistributionWidget();
+    instance.show();
+}
+
+export function hideGeneDistributionWidget() {
+    if (instance) instance.hide();
+}
+
+export function initGeneDistributionChart() {
+    // No-op
+}
+
+// Global Exports
 window.showGeneDistributionWidget = showGeneDistributionWidget;
 window.hideGeneDistributionWidget = hideGeneDistributionWidget;
