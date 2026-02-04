@@ -33,7 +33,7 @@ class CellClassPercentageWidget extends WidgetBase {
 
         // Toolbar: Region Selector
         this.regionSelect = document.createElement('select');
-        this.regionSelect.className = 'zen-select';
+        this.regionSelect.className = 'glass-select';
         this.regionSelect.innerHTML = '<option value="">All Regions</option>';
         this.regionSelect.addEventListener('change', () => this.updateData());
         this.addToolbarControl(this.regionSelect);
@@ -141,7 +141,7 @@ class CellClassPercentageWidget extends WidgetBase {
         container.innerHTML = '';
 
         if (!data || data.classData.length === 0) {
-            container.innerHTML = '<div class="zen-loader">No data available</div>';
+            container.innerHTML = '<div class="glass-loader">No data available</div>';
             return;
         }
 

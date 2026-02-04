@@ -33,7 +33,7 @@ class CellClassDistributionWidget extends WidgetBase {
 
         // Add region selector to toolbar
         this.regionSelect = document.createElement('select');
-        this.regionSelect.className = 'zen-select';
+        this.regionSelect.className = 'glass-select';
         this.regionSelect.innerHTML = '<option value="">All Regions</option>';
         this.regionSelect.addEventListener('change', () => this.updateData());
         this.addToolbarControl(this.regionSelect);
@@ -87,7 +87,7 @@ class CellClassDistributionWidget extends WidgetBase {
         if (!this.contentContainer) return; // Not created yet
 
         // Show loading state if heavy computation expected
-        // this.contentContainer.innerHTML = '<div class="zen-loader">Calculating...</div>';
+        // this.contentContainer.innerHTML = '<div class="glass-loader">Calculating...</div>';
 
         // 1. Determine region filter
         const regionName = this.regionSelect.value;
@@ -167,7 +167,7 @@ class CellClassDistributionWidget extends WidgetBase {
         const z_values = Object.keys(z_class_counts).map(Number).sort((a, b) => a - b);
 
         if (z_values.length === 0) {
-            container.innerHTML = '<div class="zen-loader">No cells found in selection</div>';
+            container.innerHTML = '<div class="glass-loader">No cells found in selection</div>';
             return;
         }
 
@@ -335,27 +335,27 @@ class CellClassDistributionWidget extends WidgetBase {
         `;
         
         // Scrollbar style for legend
-        const styleId = 'zen-legend-style';
+        const styleId = 'glass-legend-style';
         if (!document.getElementById(styleId)) {
             const style = document.createElement('style');
             style.id = styleId;
             style.textContent = `
-                .zen-legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; color: #ccc; cursor: default; }
-                .zen-legend-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
-                .zen-legend-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                .zen-legend-scroll::-webkit-scrollbar { width: 4px; }
-                .zen-legend-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+                .glass-legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; color: #ccc; cursor: default; }
+                .glass-legend-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+                .glass-legend-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .glass-legend-scroll::-webkit-scrollbar { width: 4px; }
+                .glass-legend-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
             `;
             document.head.appendChild(style);
         }
-        legendDiv.className = 'zen-legend-scroll';
+        legendDiv.className = 'glass-legend-scroll';
 
         classes_by_total.forEach(cls => {
             const row = document.createElement('div');
-            row.className = 'zen-legend-item';
+            row.className = 'glass-legend-item';
             row.innerHTML = `
-                <div class="zen-legend-swatch" style="background:${getClassColor(cls)}"></div>
-                <div class="zen-legend-name" title="${cls}">${cls}</div>
+                <div class="glass-legend-swatch" style="background:${getClassColor(cls)}"></div>
+                <div class="glass-legend-name" title="${cls}">${cls}</div>
             `;
             legendDiv.appendChild(row);
         });

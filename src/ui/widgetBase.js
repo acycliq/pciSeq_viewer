@@ -42,33 +42,33 @@ export class WidgetBase {
         // Container
         this.element = document.createElement('div');
         this.element.id = this.id;
-        this.element.className = 'zen-widget hidden';
+        this.element.className = 'glass-widget hidden';
         this.element.style.width = `${this.options.width}px`;
         this.element.style.height = `${this.options.height}px`;
 
         // Inner Structure
         this.element.innerHTML = `
-            <div class="zen-widget-header">
-                <span class="zen-widget-title">${this.title}</span>
-                <div class="zen-widget-controls">
-                    <button class="zen-control-btn close-btn" title="Close">×</button>
+            <div class="glass-widget-header">
+                <span class="glass-widget-title">${this.title}</span>
+                <div class="glass-widget-controls">
+                    <button class="glass-control-btn close-btn" title="Close">×</button>
                 </div>
             </div>
-            <div class="zen-widget-toolbar"></div>
-            <div class="zen-widget-content">
-                <div class="zen-loader">Loading...</div>
+            <div class="glass-widget-toolbar"></div>
+            <div class="glass-widget-content">
+                <div class="glass-loader">Loading...</div>
             </div>
-            <div class="zen-resize-handle"></div>
+            <div class="glass-resize-handle"></div>
         `;
 
         document.body.appendChild(this.element);
 
         // Cache selectors
-        this.header = this.element.querySelector('.zen-widget-header');
-        this.contentContainer = this.element.querySelector('.zen-widget-content');
-        this.toolbar = this.element.querySelector('.zen-widget-toolbar');
+        this.header = this.element.querySelector('.glass-widget-header');
+        this.contentContainer = this.element.querySelector('.glass-widget-content');
+        this.toolbar = this.element.querySelector('.glass-widget-toolbar');
         this.closeBtn = this.element.querySelector('.close-btn');
-        this.resizeHandle = this.element.querySelector('.zen-resize-handle');
+        this.resizeHandle = this.element.querySelector('.glass-resize-handle');
 
         // Event Listeners
         this.closeBtn.addEventListener('click', this.close);
