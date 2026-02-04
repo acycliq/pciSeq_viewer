@@ -125,10 +125,9 @@ class GeneDistributionWidget extends WidgetBase {
             .domain([0, d3.max(data, d => d.count)])
             .range([height, 0]);
 
-        // Color: Deep Blue to Cyan Interpolation
-        const colorScale = d3.scaleLinear()
-            .domain([0, d3.max(data, d => d.count)])
-            .range(['#333333', '#00d2ff']);
+        // Color: Original rich fade
+        const colorScale = d3.scaleSequential(d3.interpolateBlues)
+            .domain([0, d3.max(data, d => d.count)]);
 
         // Tooltip
         let tooltip = document.querySelector('.chart-tooltip');
