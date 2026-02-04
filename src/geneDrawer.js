@@ -6,7 +6,6 @@
 import { state } from './state/stateManager.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG } from './icons.js';
 import { debounce } from '../utils/common.js';
-import { handleGeneColorFileUpload } from './geneColorImport.js';
 
 export function populateGeneDrawer() {
     const listEl = document.getElementById('genesList');
@@ -76,9 +75,6 @@ export function populateGeneDrawer() {
         item.appendChild(eye);
         listEl.appendChild(item);
     }
-
-    // Update tri-state checkbox based on current selection
-    try { updateGenesToggleAllCheckboxState(); } catch {}
 }
 
 function toggleGeneVisibility(gene) {
@@ -98,52 +94,47 @@ function toggleGeneVisibility(gene) {
         if (visible) item.classList.remove('dim'); else item.classList.add('dim');
     }
 
-    // Update master checkbox state (tri-state)
-    try { updateGenesToggleAllCheckboxState(); } catch {}
-
     if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
 }
 
 export function initGeneDrawer() {
     // Collapsible behavior uses same handler as classes (already bound), so just set up local controls
 
-    // Master tri-state checkbox (GitHub-style)
-    const toggleAll = document.getElementById('genesToggleAll');
-    if (toggleAll) {
-        // Initialize state
-        try { updateGenesToggleAllCheckboxState(); } catch {}
-
-        toggleAll.addEventListener('change', () => {
+    // Show All button
+    const showAllBtn = document.getElementById('showAllGenesBtn');
+    if (showAllBtn) {
+        showAllBtn.addEventListener('click', () => {
+            state.selectedGenes.clear();
+            state.geneDataMap.forEach((_, gene) => state.selectedGenes.add(gene));
+            // Update UI
             const listEl = document.getElementById('genesList');
-            const selectAll = Boolean(toggleAll.checked);
-
-            if (selectAll) {
-                state.selectedGenes.clear();
-                state.geneDataMap.forEach((_, gene) => state.selectedGenes.add(gene));
-                if (listEl) listEl.querySelectorAll('.cell-class-item').forEach(it => it.classList.remove('dim'));
-            } else {
-                state.selectedGenes.clear();
-                if (listEl) listEl.querySelectorAll('.cell-class-item').forEach(it => it.classList.add('dim'));
+            if (listEl) {
+                listEl.querySelectorAll('.cell-class-item').forEach(it => {
+                    it.classList.remove('dim');
+                    const eye = it.querySelector('.cell-class-eye');
+                    if (eye) eye.innerHTML = EYE_OPEN_SVG;
+                });
             }
-
-            // After bulk action, clear indeterminate and sync aria
-            updateGenesToggleAllCheckboxState();
-
             if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
         });
     }
 
-    // Repurposed: Import gene colours + glyphs
-    const importBtn = document.getElementById('importGeneColorsBtn');
-    const fileInput = document.getElementById('geneColorFileInput');
-    const statusEl = document.getElementById('geneColorFileStatus');
-    if (importBtn && fileInput) {
-        importBtn.addEventListener('click', (e) => {
-            // Store ctrl/cmd state for file upload handler
-            fileInput.dataset.replaceMode = (e.ctrlKey || e.metaKey) ? 'true' : 'false';
-            fileInput.click();
+    // Hide All button
+    const hideAllBtn = document.getElementById('hideAllGenesBtn');
+    if (hideAllBtn) {
+        hideAllBtn.addEventListener('click', () => {
+            state.selectedGenes.clear();
+            // Update UI
+            const listEl = document.getElementById('genesList');
+            if (listEl) {
+                listEl.querySelectorAll('.cell-class-item').forEach(it => {
+                    it.classList.add('dim');
+                    const eye = it.querySelector('.cell-class-eye');
+                    if (eye) eye.innerHTML = EYE_CLOSED_SVG;
+                });
+            }
+            if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
         });
-        fileInput.addEventListener('change', (e) => handleGeneColorFileUpload(e, statusEl));
     }
 
     const filterInput = document.getElementById('geneFilter');
@@ -190,19 +181,4 @@ export function initGeneDrawer() {
             try { window.localStorage && window.localStorage.setItem('genesListHeight', String(listEl.offsetHeight)); } catch {}
         });
     }
-}
-
-function updateGenesToggleAllCheckboxState() {
-    const cb = document.getElementById('genesToggleAll');
-    if (!cb) return;
-    const total = state.geneDataMap ? state.geneDataMap.size : 0;
-    const selected = state.selectedGenes ? state.selectedGenes.size : 0;
-    const all = total > 0 && selected === total;
-    const none = selected === 0;
-
-    cb.indeterminate = !all && !none;
-    cb.checked = all;
-    cb.setAttribute('aria-checked', cb.indeterminate ? 'mixed' : (all ? 'true' : 'false'));
-    // Enable/disable if no data
-    cb.disabled = total === 0;
 }

@@ -24,7 +24,8 @@ import { showLoading, hideLoading, showTooltip } from './ui/uiHelpers.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
 import { updateCellInfo, setupCellInfoPanel, initCellInfoColorScheme } from './cellInfoPanel.js';
-import { applyPendingClassColorSchemeIfAny } from './classColorImport.js';
+import { applyPendingClassColorSchemeIfAny, applyClassColorScheme } from './classColorImport.js';
+import { applyGeneScheme } from './geneColorImport.js';
 
 // === LAYER IMPORTS ===
 import {
@@ -714,6 +715,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
         cellClassSearchInput.addEventListener('input', (e) => {
             debouncedCellClassSearch(e.target.value);
+        });
+    }
+
+    // Setup IPC listeners for menu-based import (Electron only)
+    if (window.electronAPI) {
+        // Gene colours import from menu
+        window.electronAPI.onImportGeneColors(async (data) => {
+            try {
+                const { appliedCount } = await applyGeneScheme(data, false);
+                console.log('Imported ' + appliedCount + ' gene colour styles via menu');
+            } catch (e) {
+                console.error('Failed to import gene colours:', e);
+            }
+        });
+
+        // Cell class colours import from menu
+        window.electronAPI.onImportClassColors((data) => {
+            try {
+                const { appliedCount, notFoundClasses } = applyClassColorScheme(data, false);
+                if (appliedCount > 0) {
+                    populateCellClassDrawer();
+                    if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
+                }
+                console.log('Imported ' + appliedCount + ' cell class colours via menu');
+                if (notFoundClasses.length > 0) {
+                    console.log('Classes not found:', notFoundClasses.join(', '));
+                }
+            } catch (e) {
+                console.error('Failed to import cell class colours:', e);
+            }
         });
     }
 });

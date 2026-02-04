@@ -459,6 +459,59 @@ function createMenu() {
       ]
     },
     {
+      label: 'Import',
+      submenu: [
+        {
+          label: 'Gene Colours...',
+          click: async () => {
+            const result = await dialog.showOpenDialog(mainWindow, {
+              properties: ['openFile'],
+              title: 'Import Gene Colours',
+              message: 'Select a JSON file with gene colour definitions',
+              filters: [
+                { name: 'JSON Files', extensions: ['json'] },
+                { name: 'All Files', extensions: ['*'] }
+              ]
+            });
+
+            if (!result.canceled && result.filePaths.length > 0) {
+              try {
+                const content = fs.readFileSync(result.filePaths[0], 'utf-8');
+                const data = JSON.parse(content);
+                mainWindow.webContents.send('import-gene-colors', data);
+              } catch (e) {
+                dialog.showErrorBox('Import Error', `Failed to read or parse file: ${e.message}`);
+              }
+            }
+          }
+        },
+        {
+          label: 'Cell Class Colours...',
+          click: async () => {
+            const result = await dialog.showOpenDialog(mainWindow, {
+              properties: ['openFile'],
+              title: 'Import Cell Class Colours',
+              message: 'Select a JSON file with cell class colour definitions',
+              filters: [
+                { name: 'JSON Files', extensions: ['json'] },
+                { name: 'All Files', extensions: ['*'] }
+              ]
+            });
+
+            if (!result.canceled && result.filePaths.length > 0) {
+              try {
+                const content = fs.readFileSync(result.filePaths[0], 'utf-8');
+                const data = JSON.parse(content);
+                mainWindow.webContents.send('import-class-colors', data);
+              } catch (e) {
+                dialog.showErrorBox('Import Error', `Failed to read or parse file: ${e.message}`);
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       label: 'Diagnostics',
       submenu: [
         {
