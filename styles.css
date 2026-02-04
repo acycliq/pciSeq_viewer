@@ -2101,19 +2101,38 @@ body {
 
 /* Zen Dropdown (Custom Select) */
 .zen-select {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #e5e5e5;
-    padding: 4px 8px;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 4px 10px;
     border-radius: 6px;
     font-size: 12px;
+    font-weight: 500;
     outline: none;
-    min-width: 120px;
+    min-width: 140px;
     cursor: pointer;
+    transition: all 0.2s;
+    appearance: none; /* Modern look */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
 }
 
 .zen-select:hover {
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: var(--drawer-accent);
+    background-color: #050505;
+}
+
+.zen-select:focus {
+    border-color: var(--drawer-accent);
+    box-shadow: 0 0 0 2px var(--drawer-accent-weak);
+}
+
+.zen-select option {
+    background: #111;
+    color: #fff;
+    padding: 10px;
 }
 
 /* Chart Tooltip */
