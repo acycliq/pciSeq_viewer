@@ -128,54 +128,6 @@ stage_image(
             </div>
         </div>
             <div class="controls-content">
-            <!-- Genes Section (Collapsible) -->
-            <div class="control-section">
-                <h3 class="section-label collapsible-header" id="genesHeader">
-                    <span class="collapse-icon">▼</span> Genes
-                </h3>
-                <div class="section-content" id="genesContent">
-                    <div class="cell-class-controls">
-                        <button class="show-all-btn" id="showAllGenesBtn">Show All</button>
-                        <button class="hide-all-btn" id="hideAllGenesBtn">Hide All</button>
-                    </div>
-                    <div class="cell-class-filter-container" id="geneFilterContainer">
-                        <input type="text" class="filter-input" id="geneFilter" placeholder="Filter genes…" autocomplete="off" spellcheck="false">
-                    </div>
-                    <div class="cell-class-list" id="genesList">
-                        <div class="loading-message">Loading genes...</div>
-                    </div>
-                    <div class="legend-resize-handle" id="genesResizeHandle" title="Drag to resize"></div>
-                </div>
-            </div>
-            <!-- Gene Controls Section (Collapsible) -->
-            <div class="control-section">
-                <h3 class="section-label collapsible-header" id="geneControlsHeader">
-                    <span class="collapse-icon">▼</span> Gene Controls
-                </h3>
-                <div class="section-content" id="geneControlsContent">
-                    <button id="geneDistributionBtn" title="Gene Distribution Chart">Distribution</button>
-                    <div class="control-item gene-size-item">
-                        <label for="geneSizeSlider">Size</label>
-                        <input type="range" id="geneSizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
-                        <span id="geneSizeValue">1.0</span>
-                    </div>
-                    <div class="control-item score-filter-item">
-                        <label for="scoreFilterSlider">Score Filter</label>
-                        <input type="range" id="scoreFilterSlider" min="0" max="1.0" step="0.01" value="0">
-                        <span id="scoreFilterValue">0.00</span>
-                    </div>
-                    <div class="control-item intensity-filter-item">
-                        <label for="intensityFilterSlider">Intensity Filter</label>
-                        <input type="range" id="intensityFilterSlider" min="0" max="1.0" step="0.01" value="0">
-                        <span id="intensityFilterValue">0.00</span>
-                    </div>
-                    <div class="control-item">
-                        <input type="checkbox" id="uniformSizeToggle">
-                        <label for="uniformSizeToggle" title="When enabled, all markers use the same size regardless of plane distance">Uniform Size</label>
-                    </div>
-                </div>
-            </div>
-
             <!-- Cell Classes Section (Collapsible) -->
             <div class="control-section">
                 <h3 class="section-label collapsible-header" id="cellClassesHeader">
@@ -205,9 +157,57 @@ stage_image(
                     <span class="collapse-icon">▼</span> Cell Charts
                 </h3>
                 <div class="section-content" id="cellChartsContent">
-
                     <button id="classesByZBtn" title="Cell Class Distribution by Z-Plane">Classes by Z</button>
                     <button id="classPercentageBtn" title="Overall Cell Class Distribution">Class Distribution</button>
+                </div>
+            </div>
+
+            <!-- Genes Section (Collapsible) -->
+            <div class="control-section">
+                <h3 class="section-label collapsible-header" id="genesHeader">
+                    <span class="collapse-icon">▼</span> Genes
+                </h3>
+                <div class="section-content" id="genesContent">
+                    <div class="cell-class-controls">
+                        <button class="show-all-btn" id="showAllGenesBtn">Show All</button>
+                        <button class="hide-all-btn" id="hideAllGenesBtn">Hide All</button>
+                    </div>
+                    <div class="cell-class-filter-container" id="geneFilterContainer">
+                        <input type="text" class="filter-input" id="geneFilter" placeholder="Filter genes…" autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="cell-class-list" id="genesList">
+                        <div class="loading-message">Loading genes...</div>
+                    </div>
+                    <div class="legend-resize-handle" id="genesResizeHandle" title="Drag to resize"></div>
+                </div>
+            </div>
+
+            <!-- Gene Controls Section (Collapsible) -->
+            <div class="control-section">
+                <h3 class="section-label collapsible-header" id="geneControlsHeader">
+                    <span class="collapse-icon">▼</span> Gene Controls
+                </h3>
+                <div class="section-content" id="geneControlsContent">
+                    <button id="geneDistributionBtn" title="Gene Distribution Chart">Distribution</button>
+                    <div class="control-item gene-size-item">
+                        <label for="geneSizeSlider">Size</label>
+                        <input type="range" id="geneSizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
+                        <span id="geneSizeValue">1.0</span>
+                    </div>
+                    <div class="control-item score-filter-item">
+                        <label for="scoreFilterSlider">Score Filter</label>
+                        <input type="range" id="scoreFilterSlider" min="0" max="1.0" step="0.01" value="0">
+                        <span id="scoreFilterValue">0.00</span>
+                    </div>
+                    <div class="control-item intensity-filter-item">
+                        <label for="intensityFilterSlider">Intensity Filter</label>
+                        <input type="range" id="intensityFilterSlider" min="0" max="1.0" step="0.01" value="0">
+                        <span id="intensityFilterValue">0.00</span>
+                    </div>
+                    <div class="control-item">
+                        <input type="checkbox" id="uniformSizeToggle">
+                        <label for="uniformSizeToggle" title="When enabled, all markers use the same size regardless of plane distance">Uniform Size</label>
+                    </div>
                 </div>
             </div>
 
