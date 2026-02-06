@@ -77,6 +77,7 @@ function renderTable(container, data) {
   const mvn = data.mvn.slice(0, nCells);
   const attn = data.attention.slice(0, nCells);
   const expr = data.exprFluct.slice(0, nCells);
+  const cellIneff = data.cellInefficiency.slice(0, nCells);
   const misread = data.misread;
 
   // Inline styles for a "pretty" table that doesn't stretch
@@ -93,6 +94,7 @@ function renderTable(container, data) {
           <th style="${thStyle}">mvn_loglik</th>
           <th style="${thStyle}">attention</th>
           <th style="${thStyle}">expr_fluct</th>
+          <th style="${thStyle}">cell_inefficiency</th>
           <th style="${thStyle}">sum</th>
         </tr>
       </thead>
@@ -101,13 +103,14 @@ function renderTable(container, data) {
 
   // Rows for Neighbor Cells
   for (let i = 0; i < nCells; i++) {
-    const sum = mvn[i] + attn[i] + expr[i];
+    const sum = mvn[i] + attn[i] + expr[i] + cellIneff[i];
     html += `
       <tr class="check-spot-row-hover">
         <td style="${nameTdStyle}">${labels[i]}</td>
         <td style="${tdStyle}">${mvn[i].toFixed(3)}</td>
         <td style="${tdStyle}">${attn[i].toFixed(3)}</td>
         <td style="${tdStyle}">${expr[i].toFixed(3)}</td>
+        <td style="${tdStyle}">${cellIneff[i].toFixed(3)}</td>
         <td style="${tdStyle} font-weight:bold; color:#fff">${sum.toFixed(3)}</td>
       </tr>
     `;
@@ -117,6 +120,7 @@ function renderTable(container, data) {
   html += `
       <tr class="check-spot-row-hover">
         <td style="${nameTdStyle}">misread</td>
+        <td style="${tdStyle} color:#4b5563">NaN</td>
         <td style="${tdStyle} color:#4b5563">NaN</td>
         <td style="${tdStyle} color:#4b5563">NaN</td>
         <td style="${tdStyle} color:#4b5563">NaN</td>
@@ -150,6 +154,7 @@ function renderScores(container, data) {
   const mvn = data.mvn.slice(0, nCells);
   const attn = data.attention.slice(0, nCells);
   const expr = data.exprFluct.slice(0, nCells);
+  const cellIneff = data.cellInefficiency.slice(0, nCells);
   const misread = data.misread;
 
   // Chart Dimensions - Sidebar Friendly
@@ -191,8 +196,8 @@ function renderScores(container, data) {
       .padding(0.3);
 
   // Calculate Y domain
-  const stackedSums = mvn.map((v, i) => v + attn[i] + expr[i]); 
-  const allValues = [...mvn, ...attn, ...expr, misread, ...stackedSums];
+  const stackedSums = mvn.map((v, i) => v + attn[i] + expr[i] + cellIneff[i]);
+  const allValues = [...mvn, ...attn, ...expr, ...cellIneff, misread, ...stackedSums];
   const yMin = d3.min(allValues);
   const yMax = d3.max(allValues);
   const yDomain = [Math.min(0, yMin * 1.1), Math.max(0, yMax * 1.1)];
@@ -237,11 +242,11 @@ function renderScores(container, data) {
           .style('font-size', '12px');
 
   // Colors
-  const colors = { mvn: '#1f77b4', attn: '#ff7f0e', expr: '#2ca02c', misread: '#db5c5c' };
+  const colors = { mvn: '#1f77b4', attn: '#ff7f0e', expr: '#2ca02c', cellIneff: '#9467bd', misread: '#db5c5c' };
 
   // Helper to draw a rect segment
   const drawSegment = (dataArray, bottomArray, colorClass, colorHex) => {
-      const labelsMap = { mvn: 'MVN LogLik', attn: 'Attention', expr: 'Expr Fluctuation' };
+      const labelsMap = { mvn: 'MVN LogLik', attn: 'Attention', expr: 'Expr Fluctuation', cellIneff: 'Cell Inefficiency' };
       g.selectAll(`.bar-${colorClass}`)
           .data(dataArray)
           .enter().append('rect')
@@ -262,6 +267,8 @@ function renderScores(container, data) {
   drawSegment(attn, mvn, 'attn', colors.attn);
   const mvnPlusAttn = mvn.map((v, i) => v + attn[i]);
   drawSegment(expr, mvnPlusAttn, 'expr', colors.expr);
+  const mvnPlusAttnPlusExpr = mvn.map((v, i) => v + attn[i] + expr[i]);
+  drawSegment(cellIneff, mvnPlusAttnPlusExpr, 'cellIneff', colors.cellIneff);
 
   // Misread Bar
   const misreadX = x(labels[nCells]);
@@ -285,13 +292,14 @@ function renderScores(container, data) {
       { label: 'MVN (Spatial)', color: colors.mvn },
       { label: 'Attention', color: colors.attn },
       { label: 'Expr. Fluctuation', color: colors.expr },
+      { label: 'Cell Inefficiency', color: colors.cellIneff },
       { label: 'Misread Density', color: colors.misread }
   ];
 
-  // Draw legend items in a 2x2 grid
+  // Draw legend items in a grid
   legendItems.forEach((item, i) => {
-      const row = Math.floor(i / 2);
-      const col = i % 2;
+      const row = Math.floor(i / 3);
+      const col = i % 3;
       const lg = legend.append('g').attr('transform', `translate(${col * 140}, ${row * 20})`);
       
       lg.append('rect').attr('width', 10).attr('height', 10).attr('rx', 2).attr('fill', item.color);
