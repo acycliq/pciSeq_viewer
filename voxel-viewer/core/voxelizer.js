@@ -1,4 +1,5 @@
 // Core: voxel generation from raster masks
+import { VOXEL_TYPE_STONE, VOXEL_TYPE_CELL, VOXEL_TYPE_BOUNDARY } from './coords.js';
 
 // Generate stone, cell (interior), and boundary voxels from masks.
 // Disjoint boundary: interior excludes boundary pixels.
@@ -36,7 +37,7 @@ export function generateVoxelsFromMasks({
             temperature: 0.5,
             humidity: 0.5,
             lighting: 5,
-            voxelType: 2,
+            voxelType: VOXEL_TYPE_CELL,
             voxelId: id,
             index: cellVoxels.length,
             planeId: planeId,
@@ -51,7 +52,7 @@ export function generateVoxelsFromMasks({
           temperature: 0.5,
           humidity: 0.5,
           lighting: 10,
-          voxelType: 0,
+          voxelType: VOXEL_TYPE_STONE,
           voxelId: 0,
           index: stoneVoxels.length,
           planeId: planeId
@@ -83,7 +84,7 @@ export function generateVoxelsFromMasks({
             temperature: 0.5,
             humidity: 0.5,
             lighting: 5,
-            voxelType: 3,
+            voxelType: VOXEL_TYPE_BOUNDARY,
             voxelId: id,
             index: boundaryVoxels.length,
             rgb: cellRgb,

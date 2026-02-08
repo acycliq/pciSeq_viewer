@@ -33,13 +33,13 @@ export function createLayers({
 
   const layerConfigs = [
     ['stone-background-solid', solidStoneVoxels, { visible: showBackground, pickable: false, autoHighlight: false, parameters: { depthMask: true }, sliceY: currentSliceY }],
-    ['hole-stone-solid',      solidCellVoxels,  { visible: showHoleVoxels, pickable: false, autoHighlight: false, parameters: { depthMask: true }, sliceY: currentSliceY }],
-    ['boundary-solid',        solidBoundaryVoxels, { visible: showBoundaryVoxels, pickable: false, autoHighlight: false, parameters: { depthMask: true }, sliceY: currentSliceY }],
+    ['hole-stone-solid',      solidCellVoxels,  { visible: showHoleVoxels, pickable: true,  autoHighlight: true,  highlightColor: [255,255,255,120], parameters: { depthMask: true }, sliceY: currentSliceY }],
+    ['boundary-solid',        solidBoundaryVoxels, { visible: showBoundaryVoxels, pickable: true, autoHighlight: true, highlightColor: [255,255,255,120], parameters: { depthMask: true }, sliceY: currentSliceY }],
     ['gene-spots-solid',      solidGeneVoxels,  { pickable: true, autoHighlight: true, highlightColor: [255,255,255,200], parameters: { depthMask: true }, sliceY: currentSliceY }],
 
     ['stone-background-transparent', transparentStoneVoxels, { visible: showBackground && showGhosting, ghostOpacity: stoneGhostOpacity, pickable: false, autoHighlight: false, parameters: { depthMask: false, blend: true, blendFunc: [770,771], cull: false }, sliceY: currentSliceY }],
-    ['hole-stone-transparent',      transparentCellVoxels,  { visible: showHoleVoxels && showGhosting, ghostOpacity: stoneGhostOpacity, pickable: false, autoHighlight: false, parameters: { depthMask: false, blend: true, blendFunc: [770,771], cull: false }, sliceY: currentSliceY }],
-    ['boundary-transparent',        transparentBoundaryVoxels, { visible: showBoundaryVoxels && showGhosting, ghostOpacity: stoneGhostOpacity, pickable: false, autoHighlight: false, parameters: { depthMask: false, blend: true, blendFunc: [770,771], cull: false }, sliceY: currentSliceY }],
+    ['hole-stone-transparent',      transparentCellVoxels,  { visible: showHoleVoxels && showGhosting, ghostOpacity: stoneGhostOpacity, pickable: true,  autoHighlight: false, parameters: { depthMask: false, blend: true, blendFunc: [770,771], cull: false }, sliceY: currentSliceY }],
+    ['boundary-transparent',        transparentBoundaryVoxels, { visible: showBoundaryVoxels && showGhosting, ghostOpacity: stoneGhostOpacity, pickable: true, autoHighlight: false, parameters: { depthMask: false, blend: true, blendFunc: [770,771], cull: false }, sliceY: currentSliceY }],
     ['gene-spots-transparent',      transparentGeneVoxels,  { visible: showGhosting, ghostOpacity: geneGhostOpacity, pickable: true, autoHighlight: false, parameters: { depthMask: false, blend: true, blendFunc: [770,771], cull: false }, sliceY: currentSliceY }]
   ];
 

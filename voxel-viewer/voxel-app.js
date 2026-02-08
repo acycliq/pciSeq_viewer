@@ -5,6 +5,7 @@
 import { buildPlaneLabelMask, buildMasksByPlane } from './core/masks.js';
 import { generateVoxelsFromMasks } from './core/voxelizer.js';
 import { buildSceneIndex } from './core/sceneIndex.js';
+import { computeTransformedBounds, planeIdToDepth, VOXEL_TYPE_GENE, VOXEL_TYPE_BOUNDARY } from './core/coords.js';
 import { initGenesPanel } from './ui/genesPanel.js';
 import { createLayers as buildLayers } from './layers/createLayers.js';
 import { initControls } from './ui/controls.js';
@@ -67,6 +68,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Get dataset from selection or generate test data
     const dataset = getDataset();
+    // Expose selection bounds (transformed) for tooltip/global coord conversions
+    try {
+        const sel = dataset?.bounds;
+        if (sel) {
+            const transformed = computeTransformedBounds(sel);
+            window.voxelSelectionBounds = sel;
+            window.voxelTransformedBounds = transformed;
+        }
+    } catch (e) {
+        console.warn('Failed to compute transformed bounds:', e);
+    }
     console.log('Generated dataset:', dataset);
 
     // Gene selection state (declare early so transformBioDataToBlocks can use them)
@@ -84,14 +96,15 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log(`... and ${dataset.spots.data.length - 10} more spots`);
     console.log('=== END ORIGINAL COORDINATES ===');
 
-    // Convert plane_id to anisotropic Y coordinate for rendering
+    // Convert plane_id to anisotropic Y coordinate for rendering (shared helper)
     function planeIdToSliceY(planeId) {
-        if (window.opener && window.opener.window.config) {
-            const config = window.opener.window.config();
-            const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
-            return planeId * (zVoxel / xVoxel); // Anisotropic scaling for proper Z positioning
+        try {
+            const cfg = window.opener?.window?.config?.();
+            if (cfg && cfg.voxelSize) return planeIdToDepth(planeId, cfg.voxelSize);
+        } catch (e) {
+            console.warn('planeIdToSliceY: config unavailable:', e);
         }
-        return planeId; // Direct mapping fallback
+        return planeId; // Fallback: no scaling info
     }
 
     // Ray-cast removed: any usage should throw to surface incorrect code paths.
@@ -206,7 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(' Debug: Cell IDs in boundary voxels:', uniqueCellIds);
         uniqueCellIds.forEach(cellId => {
             const voxelCount = boundaryVoxels.filter(v => v.cellId === cellId).length;
-            console.log(`  Cell ${cellId}: voxelType=3, voxelId=${cellId}, ${voxelCount} voxels`);
+            console.log(`  Cell ${cellId}: voxelType=${VOXEL_TYPE_BOUNDARY}, voxelId=${cellId}, ${voxelCount} voxels`);
         });
 
         // Transform gene spots to colored blocks (with coordinate transpose)
@@ -234,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 temperature: 0.5,
                 humidity: 0.5,
                 lighting: 15,
-                voxelType: 1, // 1 = gene voxel
+                voxelType: VOXEL_TYPE_GENE,
                 voxelId: index, // Use spot index as gene voxel ID
                 gene_name: spot.gene,
                 spot_id: spot.spot_id,
@@ -345,11 +358,20 @@ document.addEventListener('DOMContentLoaded', function() {
     let showBoundaryVoxels = false; // Toggle for showing boundary voxels (red cell outlines)
     let showGhosting = true; // Toggle for showing ghosting effects
 
-    // Calculate anisotropic scale from config
-    const config = window.opener.window.config();
-    const [xVoxel, yVoxel, zVoxel] = config.voxelSize;
-    const anisotropicScale = zVoxel / xVoxel;
-    console.log(`Anisotropic scale from config: zVoxel(${zVoxel}) / xVoxel(${xVoxel}) = ${anisotropicScale}`);
+    // Calculate anisotropic scale from config (safe for standalone demo)
+    let anisotropicScale = 1;
+    try {
+        const cfg = window.opener?.window?.config?.();
+        if (cfg && Array.isArray(cfg.voxelSize)) {
+            const [xVoxel, , zVoxel] = cfg.voxelSize;
+            if (xVoxel) anisotropicScale = zVoxel / xVoxel;
+            console.log(`Anisotropic scale from config: zVoxel(${zVoxel}) / xVoxel(${xVoxel}) = ${anisotropicScale}`);
+        } else {
+            console.log('Anisotropic scale: using default 1 (no opener config)');
+        }
+    } catch (e) {
+        console.warn('Anisotropic scale: config unavailable:', e);
+    }
 
     // Helper to create a VoxelLayer with common settings
     function createVoxelLayer(id, data, config) {
@@ -593,7 +615,7 @@ document.addEventListener('DOMContentLoaded', function() {
             gl.depthMask(true);
         },
         onHover: (info) => {
-            if (info.object && info.object.gene_name) {
+            if (info && info.object) {
                 showChunkTooltip(info);
             } else {
                 hideChunkTooltip();
@@ -626,7 +648,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Legacy fallback if parent still provides totalPlanes in config
                     return window.opener.window.config().totalPlanes;
                 }
-            } catch {}
+            } catch (e) {
+                console.warn('getTotalPlanes: opener config unavailable:', e);
+            }
             // Fallback to bounds-based estimate if unavailable
             return blockData.bounds.maxY + 1;
         },
