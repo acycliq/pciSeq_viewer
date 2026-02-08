@@ -5,12 +5,13 @@
 import { buildPlaneLabelMask, buildMasksByPlane } from './core/masks.js';
 import { generateVoxelsFromMasks } from './core/voxelizer.js';
 import { buildSceneIndex } from './core/sceneIndex.js';
-import { computeTransformedBounds, planeIdToDepth, VOXEL_TYPE_GENE, VOXEL_TYPE_BOUNDARY } from './core/coords.js';
+import { computeTransformedBounds, planeIdToDepth, VOXEL_TYPE_GENE, VOXEL_TYPE_BOUNDARY, VOXEL_TYPE_CELL } from './core/coords.js';
 import { initGenesPanel } from './ui/genesPanel.js';
 import { createLayers as buildLayers } from './layers/createLayers.js';
 import { initControls } from './ui/controls.js';
 import { initSliceSlider } from './ui/slider.js';
 import { showTooltip as showChunkTooltip, hideTooltip as hideChunkTooltip } from './ui/tooltip.js';
+import { initHiddenCellsPanel } from './ui/hiddenCellsPanel.js';
 
 // Boundary tracing no longer used; raster masks produce boundary voxels.
 
@@ -85,6 +86,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let availableGenes = new Set(); // All genes in the current dataset
     let selectedGenes = new Set(); // Currently visible genes
     let geneColors = new Map(); // Gene -> color mapping
+    let hiddenCells = new Set(); // Hidden cell IDs
+    let updateHiddenCellsPanel = () => {};
 
     // Print original spot coordinates
     console.log('=== ORIGINAL SPOT COORDINATES ===');
@@ -592,6 +595,7 @@ document.addEventListener('DOMContentLoaded', function() {
             geneGhostOpacity,
             showSpotLines,
             lineGhostOpacity,
+            hiddenCells,
             createVoxelLayer,
             createLinesData,
             deck
@@ -621,15 +625,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 hideChunkTooltip();
             }
         },
-        onClick: (info) => {
-            if (info.object) {
-                console.log('Clicked:', {
-                    gene: info.object.gene_name,
-                    position: info.object.position,
-                    original_coords: info.object.original_coords,
-                    parent_cell: info.object.parent_cell_id
-                });
+        onClick: (info, event) => {
+            const obj = info && info.object;
+            if (!obj) return;
+
+            // Ctrl/Cmd + click to hide a cell (cell or boundary voxels only)
+            const nativeEvt = event && event.srcEvent;
+            const modifier = !!(nativeEvt && (nativeEvt.ctrlKey || nativeEvt.metaKey));
+            if (modifier) {
+                const vt = obj.voxelType;
+                const isCellish = (vt === VOXEL_TYPE_CELL) || (vt === VOXEL_TYPE_BOUNDARY);
+                // Prefer explicit cellId; fallback to voxelId for boundary/cell
+                const cid = (obj.cellId !== undefined && obj.cellId !== null) ? obj.cellId : obj.voxelId;
+                if (isCellish && (cid !== undefined && cid !== null)) {
+                    if (!hiddenCells.has(cid)) {
+                        hiddenCells.add(cid);
+                        deckgl.setProps({ layers: createLayers() });
+                        updateHiddenCellsPanel();
+                    }
+                    return; // prevent fallthrough logging
+                }
             }
+
+            // Default click behavior (log gene voxels or others as before)
+            console.log('Clicked:', {
+                gene: obj.gene_name,
+                position: obj.position,
+                original_coords: obj.original_coords,
+                parent_cell: obj.parent_cell_id,
+                voxelType: obj.voxelType,
+                cellId: obj.cellId,
+                voxelId: obj.voxelId
+            });
         },
         layers: createLayers()
     });
@@ -679,6 +706,14 @@ document.addEventListener('DOMContentLoaded', function() {
         deckgl,
         geneColors
     });
+
+    // Initialize hidden cells panel
+    const { updatePanel } = initHiddenCellsPanel({
+        hiddenCells,
+        deckgl,
+        createLayers
+    });
+    updateHiddenCellsPanel = updatePanel;
 
     console.log('Bio demo initialized with', blockData.geneData.length, 'gene spots and', blockData.stoneData.length, 'stone blocks');
 

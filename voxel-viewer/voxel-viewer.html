@@ -54,6 +54,16 @@
         <div class="minimal-controls" style="top: 15px; left: 15px; right: auto;">
             <button id="genePanelBtn">🧬 Genes</button>
         </div>
+
+        <!-- Hidden Cells Panel -->
+        <div id="hiddenCellsPanel" class="hidden-cells-panel hidden" aria-live="polite">
+            <div class="hidden-cells-header">
+                <span class="title">Hidden Cells</span>
+                <span class="count" id="hiddenCellsCount">(0)</span>
+                <button id="hiddenCellsShowAll" class="hidden-cells-btn">Show All</button>
+            </div>
+            <div id="hiddenCellsList" class="hidden-cells-list"></div>
+        </div>
         <div class="slider-container">
             <input type="range" class="z-slicer"
                    id="sliceZ" />

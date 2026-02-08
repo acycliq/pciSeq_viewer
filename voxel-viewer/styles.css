@@ -299,6 +299,68 @@ canvas:active {
     white-space: nowrap;
 }
 
+/* Hidden Cells Panel */
+.hidden-cells-panel {
+    position: absolute;
+    left: 15px;
+    bottom: 15px;
+    background: rgba(17, 24, 39, 0.9);
+    color: #e5e7eb;
+    border-radius: 6px;
+    padding: 8px 10px;
+    width: 240px;
+    max-height: 200px;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.08);
+    font-family: inherit;
+    z-index: 20;
+}
+.hidden-cells-panel.hidden { display: none; }
+.hidden-cells-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.hidden-cells-header .title { font-weight: 600; color: #f3f4f6; }
+.hidden-cells-header .count { color: #9ca3af; font-size: 12px; }
+.hidden-cells-btn {
+    margin-left: auto;
+    background: #374151;
+    color: #e5e7eb;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+.hidden-cells-btn:hover { background: #4b5563; }
+.hidden-cells-list {
+    overflow: auto;
+    max-height: 150px;
+    padding-right: 4px;
+}
+.hidden-cell-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px dotted rgba(255,255,255,0.08);
+}
+.hidden-cell-id { color: #cbd5e1; font-size: 12px; }
+.restore-cell-btn {
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    padding: 2px 6px;
+    cursor: pointer;
+}
+.restore-cell-btn:hover { background: #1d4ed8; }
+
 .toggle-all-btn:hover {
     background: rgba(255, 255, 255, 0.2);
 }

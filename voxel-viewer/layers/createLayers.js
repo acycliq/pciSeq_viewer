@@ -12,6 +12,7 @@ export function createLayers({
   geneGhostOpacity,
   showSpotLines,
   lineGhostOpacity,
+  hiddenCells,
   createVoxelLayer,
   createLinesData,
   deck
@@ -22,11 +23,15 @@ export function createLayers({
   const solidStoneVoxels = blockData.stoneData.filter(b => b.position[1] <= currentSliceY);
   const transparentStoneVoxels = blockData.stoneData.filter(b => b.position[1] > currentSliceY);
 
-  const solidCellVoxels = blockData.holeStoneData.filter(b => b.position[1] <= currentSliceY);
-  const transparentCellVoxels = blockData.holeStoneData.filter(b => b.position[1] > currentSliceY);
+  const solidCellVoxels = blockData.holeStoneData
+    .filter(b => b.position[1] <= currentSliceY && !hiddenCells.has(b.cellId));
+  const transparentCellVoxels = blockData.holeStoneData
+    .filter(b => b.position[1] > currentSliceY && !hiddenCells.has(b.cellId));
 
-  const solidBoundaryVoxels = blockData.boundaryData.filter(b => b.position[1] <= currentSliceY);
-  const transparentBoundaryVoxels = blockData.boundaryData.filter(b => b.position[1] > currentSliceY);
+  const solidBoundaryVoxels = blockData.boundaryData
+    .filter(b => b.position[1] <= currentSliceY && !hiddenCells.has(b.cellId));
+  const transparentBoundaryVoxels = blockData.boundaryData
+    .filter(b => b.position[1] > currentSliceY && !hiddenCells.has(b.cellId));
 
   const solidGeneVoxels = blockData.geneData.filter(b => b.position[1] <= currentSliceY && selectedGenes.has(b.gene_name));
   const transparentGeneVoxels = blockData.geneData.filter(b => b.position[1] > currentSliceY && selectedGenes.has(b.gene_name));
