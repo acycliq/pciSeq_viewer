@@ -92,9 +92,28 @@ export function showTooltip(info) {
       colorInfo = `<strong>Color:</strong> ${color.formatHex().toUpperCase()}<br>`;
     }
 
+    // Optional metadata: class and total gene counts (queried from opener if not present)
+    let classInfo = '';
+    let totalInfo = '';
+    try {
+      const cid = (obj.cellId !== undefined && obj.cellId !== null) ? obj.cellId : obj.voxelId;
+      let cls = obj.className;
+      let total = obj.totalGeneCount;
+      if ((cls === undefined || total === undefined) && window.opener && typeof window.opener.getCellMeta === 'function') {
+        const meta = window.opener.getCellMeta(cid);
+        if (meta) {
+          if (cls === undefined && meta.className !== undefined) cls = meta.className;
+          if (total === undefined && meta.totalGeneCount !== undefined) total = meta.totalGeneCount.toFixed(2);
+        }
+      }
+      if (cls !== undefined) classInfo = `<strong>Class:</strong> ${cls}<br>`;
+      if (total !== undefined) totalInfo = `<strong>Total Gene Counts:</strong> ${total}<br>`;
+    } catch { /* no-op */ }
+
     const content = `<strong>Cell:</strong> ${obj.cellId ?? obj.voxelId}<br>
+                     ${classInfo}${totalInfo}
                      <strong>Type:</strong> ${typeLabel}<br>
-                     ${colorInfo}${posText ? `<strong>Position:</strong> ${posText}<br>` : ''}
+                     ${colorInfo}${posText ? `<strong>Voxel Coords:</strong> ${posText}<br>` : ''}
                      ${plane !== '' ? `<strong>Plane:</strong> ${plane}<br>` : ''}`;
 
     el.innerHTML = content;

@@ -140,6 +140,24 @@ window.transformToTileCoordinates = transformToTileCoordinates;
 // Cell info panel function
 window.updateCellInfo = updateCellInfo;
 
+// Expose lightweight cell metadata lookup for child windows (voxel viewer)
+// Returns { className, totalGeneCount } or null if not available
+window.getCellMeta = (cellId) => {
+    try {
+        if (!state || !state.cellDataMap) return null;
+        const cell = state.cellDataMap.get(Number(cellId));
+        if (!cell) return null;
+        const classArr = cell?.classification?.className;
+        const className = Array.isArray(classArr) && classArr.length > 0
+            ? String(classArr[0])
+            : 'Unknown';
+        const total = (typeof cell.totalGeneCount === 'number') ? cell.totalGeneCount : 0;
+        return { className, totalGeneCount: total };
+    } catch {
+        return null;
+    }
+};
+
 // === METADATA ERROR DISPLAY (Electron-specific) ===
 function showMetadataError(metadataResult, errorMessage) {
     // Hide loading curtain
