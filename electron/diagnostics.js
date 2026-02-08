@@ -8,6 +8,7 @@ const Database = require('better-sqlite3');
 let diagnosticsDb = null;
 let diagnosticsMeta = null;
 let diagnosticsSetupWindow = null;
+let hasCellInefficiency = false;
 
 // References from main.js (set via init)
 let mainWindow = null;
@@ -47,7 +48,11 @@ function openDiagnosticsDatabase(dbPath) {
     diagnosticsMeta[row.key] = parseMetadataValue(row.value);
   }
 
-  console.log('Diagnostics DB loaded. nC=%d, nS=%d', diagnosticsMeta.nC, diagnosticsMeta.nS);
+  // Check if cell_inefficiency column exists in spots table
+  const columns = diagnosticsDb.prepare("PRAGMA table_info(spots)").all();
+  hasCellInefficiency = columns.some(col => col.name === 'cell_inefficiency');
+
+  console.log('Diagnostics DB loaded. nC=%d, nS=%d, hasCellInefficiency=%s', diagnosticsMeta.nC, diagnosticsMeta.nS, hasCellInefficiency);
   return diagnosticsMeta;
 }
 
@@ -57,6 +62,7 @@ function closeDiagnosticsDatabase() {
     diagnosticsDb = null;
   }
   diagnosticsMeta = null;
+  hasCellInefficiency = false;
 }
 
 function broadcastDiagnosticsState(enabled) {
@@ -169,7 +175,10 @@ ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
   }
   try {
     const { gene_panel, label_map, misread_density, nN } = diagnosticsMeta;
-    const row = diagnosticsDb.prepare('SELECT gene_idx, x, y, z, neighbor_cell_ids, mvn_loglik, attention, expr_fluct, cell_inefficiency FROM spots WHERE spot_id = ?').get(spotId);
+    const selectCols = hasCellInefficiency
+      ? 'SELECT gene_idx, x, y, z, neighbor_cell_ids, mvn_loglik, attention, expr_fluct, cell_inefficiency FROM spots WHERE spot_id = ?'
+      : 'SELECT gene_idx, x, y, z, neighbor_cell_ids, mvn_loglik, attention, expr_fluct FROM spots WHERE spot_id = ?';
+    const row = diagnosticsDb.prepare(selectCols).get(spotId);
     if (!row) return { success: false, error: 'Spot not found in database: ' + spotId };
 
     // 1. Strict Gene Resolution
@@ -189,11 +198,13 @@ ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
     const neighIds = neighIdsFull.slice(0, n);
 
     // 3. Strict Buffer Decoding
-    if (!row.mvn_loglik || !row.attention || !row.expr_fluct || !row.cell_inefficiency) throw new Error(`Missing score buffers for spot ${spotId}`);
+    if (!row.mvn_loglik || !row.attention || !row.expr_fluct) throw new Error(`Missing score buffers for spot ${spotId}`);
     const mvn = new Float32Array(row.mvn_loglik.buffer, row.mvn_loglik.byteOffset, n);
     const attn = new Float32Array(row.attention.buffer, row.attention.byteOffset, n);
     const expr = new Float32Array(row.expr_fluct.buffer, row.expr_fluct.byteOffset, n);
-    const cellIneff = new Float32Array(row.cell_inefficiency.buffer, row.cell_inefficiency.byteOffset, n);
+    const cellIneff = (hasCellInefficiency && row.cell_inefficiency)
+      ? new Float32Array(row.cell_inefficiency.buffer, row.cell_inefficiency.byteOffset, n)
+      : null;
 
     // 4. Strict Label Mapping
     let neighborLabels = neighIds.map(id => id);
@@ -215,7 +226,7 @@ ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
 
     // 6. Probability Calculation
     const scores = new Array(n + 1);
-    for (let i = 0; i < n; i++) scores[i] = mvn[i] + attn[i] + expr[i] + cellIneff[i];
+    for (let i = 0; i < n; i++) scores[i] = mvn[i] + attn[i] + expr[i] + (cellIneff ? cellIneff[i] : 0);
     scores[n] = misreadVal;
 
     const probabilities = softmaxJS(scores);
@@ -230,7 +241,7 @@ ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
       mvn: Array.from(mvn),
       attention: Array.from(attn),
       exprFluct: Array.from(expr),
-      cellInefficiency: Array.from(cellIneff),
+      cellInefficiency: cellIneff ? Array.from(cellIneff) : null,
       misread: misreadVal,
       scores,
       probabilities

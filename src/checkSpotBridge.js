@@ -77,7 +77,7 @@ function renderTable(container, data) {
   const mvn = data.mvn.slice(0, nCells);
   const attn = data.attention.slice(0, nCells);
   const expr = data.exprFluct.slice(0, nCells);
-  const cellIneff = data.cellInefficiency.slice(0, nCells);
+  const cellIneff = data.cellInefficiency ? data.cellInefficiency.slice(0, nCells) : null;
   const misread = data.misread;
 
   // Inline styles for a "pretty" table that doesn't stretch
@@ -103,14 +103,14 @@ function renderTable(container, data) {
 
   // Rows for Neighbor Cells
   for (let i = 0; i < nCells; i++) {
-    const sum = mvn[i] + attn[i] + expr[i] + cellIneff[i];
+    const sum = mvn[i] + attn[i] + expr[i] + (cellIneff ? cellIneff[i] : 0);
     html += `
       <tr class="check-spot-row-hover">
         <td style="${nameTdStyle}">${labels[i]}</td>
         <td style="${tdStyle}">${mvn[i].toFixed(3)}</td>
         <td style="${tdStyle}">${attn[i].toFixed(3)}</td>
         <td style="${tdStyle}">${expr[i].toFixed(3)}</td>
-        <td style="${tdStyle}">${cellIneff[i].toFixed(3)}</td>
+        <td style="${tdStyle}">${cellIneff ? cellIneff[i].toFixed(3) : 'Null'}</td>
         <td style="${tdStyle} font-weight:bold; color:#fff">${sum.toFixed(3)}</td>
       </tr>
     `;
@@ -120,10 +120,10 @@ function renderTable(container, data) {
   html += `
       <tr class="check-spot-row-hover">
         <td style="${nameTdStyle}">misread</td>
-        <td style="${tdStyle} color:#4b5563">NaN</td>
-        <td style="${tdStyle} color:#4b5563">NaN</td>
-        <td style="${tdStyle} color:#4b5563">NaN</td>
-        <td style="${tdStyle} color:#4b5563">NaN</td>
+        <td style="${tdStyle} color:#4b5563">Null</td>
+        <td style="${tdStyle} color:#4b5563">Null</td>
+        <td style="${tdStyle} color:#4b5563">Null</td>
+        <td style="${tdStyle} color:#4b5563">Null</td>
         <td style="${tdStyle} font-weight:bold; color:#fff">${misread.toFixed(3)}</td>
       </tr>
     </tbody>
@@ -154,7 +154,7 @@ function renderScores(container, data) {
   const mvn = data.mvn.slice(0, nCells);
   const attn = data.attention.slice(0, nCells);
   const expr = data.exprFluct.slice(0, nCells);
-  const cellIneff = data.cellInefficiency.slice(0, nCells);
+  const cellIneff = data.cellInefficiency ? data.cellInefficiency.slice(0, nCells) : null;
   const misread = data.misread;
 
   // Chart Dimensions - Sidebar Friendly
@@ -196,8 +196,8 @@ function renderScores(container, data) {
       .padding(0.3);
 
   // Calculate Y domain
-  const stackedSums = mvn.map((v, i) => v + attn[i] + expr[i] + cellIneff[i]);
-  const allValues = [...mvn, ...attn, ...expr, ...cellIneff, misread, ...stackedSums];
+  const stackedSums = mvn.map((v, i) => v + attn[i] + expr[i] + (cellIneff ? cellIneff[i] : 0));
+  const allValues = [...mvn, ...attn, ...expr, ...(cellIneff || []), misread, ...stackedSums];
   const yMin = d3.min(allValues);
   const yMax = d3.max(allValues);
   const yDomain = [Math.min(0, yMin * 1.1), Math.max(0, yMax * 1.1)];
@@ -267,8 +267,10 @@ function renderScores(container, data) {
   drawSegment(attn, mvn, 'attn', colors.attn);
   const mvnPlusAttn = mvn.map((v, i) => v + attn[i]);
   drawSegment(expr, mvnPlusAttn, 'expr', colors.expr);
-  const mvnPlusAttnPlusExpr = mvn.map((v, i) => v + attn[i] + expr[i]);
-  drawSegment(cellIneff, mvnPlusAttnPlusExpr, 'cellIneff', colors.cellIneff);
+  if (cellIneff) {
+    const mvnPlusAttnPlusExpr = mvn.map((v, i) => v + attn[i] + expr[i]);
+    drawSegment(cellIneff, mvnPlusAttnPlusExpr, 'cellIneff', colors.cellIneff);
+  }
 
   // Misread Bar
   const misreadX = x(labels[nCells]);
@@ -292,7 +294,7 @@ function renderScores(container, data) {
       { label: 'MVN (Spatial)', color: colors.mvn },
       { label: 'Attention', color: colors.attn },
       { label: 'Expr. Fluctuation', color: colors.expr },
-      { label: 'Cell Inefficiency', color: colors.cellIneff },
+      { label: cellIneff ? 'Cell Inefficiency' : 'Cell Inefficiency (N/A)', color: colors.cellIneff },
       { label: 'Misread Density', color: colors.misread }
   ];
 
@@ -505,4 +507,3 @@ function showNotification(message, type = 'success') {
   notification.style.opacity = '1';
   setTimeout(() => { notification.style.opacity = '0'; }, 4000);
 }
-
