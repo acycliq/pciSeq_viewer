@@ -82,12 +82,15 @@ export function showTooltip(info, tooltipElement) {
                 // Get cell coordinates and probability from cellData
                 let cellCoords = '';
                 let classProb = '';
+                let totalGeneCount = '';
                 let colorHex = '';
                 if (window.debugData && window.debugData.getCell) {
                     const cellData = window.debugData.getCell(parseInt(cellLabel));
-                    if (cellData && cellData.position) {
-                        const coords = cellData.position;
-                        cellCoords = `<strong>Cell Coords:</strong> (${coords.x.toFixed(2)}, ${coords.y.toFixed(2)}, ${coords.z.toFixed(2)})<br>`;
+                    if (cellData) {
+                        if (cellData.position) {
+                            const coords = cellData.position;
+                            cellCoords = `<strong>Cell Coords:</strong> (${coords.x.toFixed(2)}, ${coords.y.toFixed(2)}, ${coords.z.toFixed(2)})<br>`;
+                        }
 
                         // Get cell class probability if available
                         if (cellData.classification && cellData.classification.className && cellData.classification.probability) {
@@ -96,6 +99,11 @@ export function showTooltip(info, tooltipElement) {
                                 const prob = cellData.classification.probability[classIndex];
                                 classProb = `<strong>Class Probability:</strong> ${(prob * 100).toFixed(1)}%<br>`;
                             }
+                        }
+
+                        // Get total gene counts
+                        if (typeof cellData.totalGeneCount === 'number') {
+                            totalGeneCount = `<strong>Total Gene Counts:</strong> ${cellData.totalGeneCount.toFixed(2)}<br>`;
                         }
                     }
                 }
@@ -112,10 +120,11 @@ export function showTooltip(info, tooltipElement) {
 
                 content =  `<strong>Cell Label:</strong> ${cellLabel}<br>
                             ${cellCoords}
-                            <strong>Plane:</strong>${planeId}<br>
+                            <strong>Plane:</strong> ${planeId}<br>
                             <strong>Cell Class:</strong> ${cellClass}<br>
-                            ${colorHex}
-                            ${classProb}`;
+                            ${classProb}
+                            ${totalGeneCount}
+                            ${colorHex}`;
             }
         } else if (info.object.gene) {
             // Gene tooltip - show enhanced gene spot information
