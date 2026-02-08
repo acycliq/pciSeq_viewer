@@ -95,26 +95,52 @@ export function showTooltip(info) {
     // Optional metadata: class and total gene counts (queried from opener if not present)
     let classInfo = '';
     let totalInfo = '';
+    let probInfo = '';
+    let centroidCoordsInfo = '';
+    let centroidPlaneInfo = '';
+
     try {
       const cid = (obj.cellId !== undefined && obj.cellId !== null) ? obj.cellId : obj.voxelId;
       let cls = obj.className;
       let total = obj.totalGeneCount;
-      if ((cls === undefined || total === undefined) && window.opener && typeof window.opener.getCellMeta === 'function') {
+      let prob = obj.probability;
+      let centroidPos = undefined;
+      let pid = obj.plane_id;
+
+      // Fetch missing fields (class/total/prob/centroid/plane) from opener
+      if ((cls === undefined || total === undefined || prob === undefined || centroidPos === undefined || pid === undefined)
+          && window.opener && typeof window.opener.getCellMeta === 'function') {
         const meta = window.opener.getCellMeta(cid);
         if (meta) {
           if (cls === undefined && meta.className !== undefined) cls = meta.className;
-          if (total === undefined && meta.totalGeneCount !== undefined) total = meta.totalGeneCount.toFixed(2);
+          if (total === undefined && meta.totalGeneCount !== undefined) total = meta.totalGeneCount;
+          if (prob === undefined && meta.probability !== undefined) prob = meta.probability;
+          if (centroidPos === undefined && meta.position !== undefined) centroidPos = meta.position;
+          if (pid === undefined && meta.plane_id !== undefined) pid = meta.plane_id;
         }
       }
+
       if (cls !== undefined) classInfo = `<strong>Class:</strong> ${cls}<br>`;
-      if (total !== undefined) totalInfo = `<strong>Total Gene Counts:</strong> ${total}<br>`;
+      if (total !== undefined) totalInfo = `<strong>Total Gene Counts:</strong> ${Number(total).toFixed(2)}<br>`;
+      if (prob !== undefined) probInfo = `<strong>Class Probability:</strong> ${(Number(prob) * 100).toFixed(1)}%<br>`;
+
+      if (centroidPos !== undefined && centroidPos.x !== undefined && centroidPos.y !== undefined) {
+          centroidCoordsInfo = `<strong>Centroid Coords:</strong> (${centroidPos.x.toFixed(2)}, ${centroidPos.y.toFixed(2)}, ${centroidPos.z.toFixed(2)})<br>`;
+      }
+      if (pid !== undefined) centroidPlaneInfo = `<strong>Centroid Plane:</strong> ${pid}<br>`;
+
     } catch { /* no-op */ }
 
     const content = `<strong>Cell:</strong> ${obj.cellId ?? obj.voxelId}<br>
-                     ${classInfo}${totalInfo}
+                     ${centroidCoordsInfo}
+                     ${centroidPlaneInfo}
+                     ${classInfo}
+                     ${probInfo}
+                     ${totalInfo}
+                     ${posText ? `<strong>Voxel Coords:</strong> ${posText}<br>` : ''}
+                     ${plane !== '' ? `<strong>Voxel Plane:</strong> ${plane}<br>` : ''}
                      <strong>Type:</strong> ${typeLabel}<br>
-                     ${colorInfo}${posText ? `<strong>Voxel Coords:</strong> ${posText}<br>` : ''}
-                     ${plane !== '' ? `<strong>Plane:</strong> ${plane}<br>` : ''}`;
+                     ${colorInfo}`;
 
     el.innerHTML = content;
     el.style.display = 'block';

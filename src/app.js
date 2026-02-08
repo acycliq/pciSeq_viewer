@@ -141,18 +141,45 @@ window.transformToTileCoordinates = transformToTileCoordinates;
 window.updateCellInfo = updateCellInfo;
 
 // Expose lightweight cell metadata lookup for child windows (voxel viewer)
-// Returns { className, totalGeneCount } or null if not available
+// Returns { className, totalGeneCount, position, plane_id, probability } or null if not available
 window.getCellMeta = (cellId) => {
     try {
         if (!state || !state.cellDataMap) return null;
         const cell = state.cellDataMap.get(Number(cellId));
         if (!cell) return null;
+
         const classArr = cell?.classification?.className;
         const className = Array.isArray(classArr) && classArr.length > 0
             ? String(classArr[0])
             : 'Unknown';
+
         const total = (typeof cell.totalGeneCount === 'number') ? cell.totalGeneCount : 0;
-        return { className, totalGeneCount: total };
+
+        // Extract probability for the top class
+        let probability = undefined;
+        if (cell?.classification?.probability && Array.isArray(cell?.classification?.probability)) {
+            probability = cell.classification.probability[0];
+        }
+
+        // Derive plane_id from position.z using voxel size ratio
+        let plane_id = undefined;
+        if (cell.position && cell.position.z !== undefined) {
+            const cfg = window.config ? window.config() : null;
+            if (cfg && Array.isArray(cfg.voxelSize)) {
+                const [xVoxel, , zVoxel] = cfg.voxelSize;
+                plane_id = Math.floor(cell.position.z * xVoxel / zVoxel);
+            } else {
+                plane_id = Math.floor(cell.position.z);
+            }
+        }
+
+        return {
+            className,
+            totalGeneCount: total,
+            position: cell.position, // {x, y, z}
+            plane_id,
+            probability: probability
+        };
     } catch {
         return null;
     }
