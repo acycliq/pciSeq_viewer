@@ -173,6 +173,9 @@ After both steps, your data folder should look like this:
    - Cell boundaries from `arrow_boundaries/`
    - Cell information from `arrow_cells/`
 
+> No MBTiles? Add `image_dims.json` next to your Arrow folders with:
+> `{ "width": 6411, "height": 4412, "plane_count": 102 }` (width and height are in pixels). The app reads width/height/plane_count from MBTiles when present; otherwise it uses `image_dims.json`. Voxel size is always entered in the welcome screen.
+
 ---
 
 <!--

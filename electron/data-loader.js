@@ -278,34 +278,50 @@ ipcMain.handle('get-dataset-metadata', async () => {
     source: null
   };
 
-  // Read from MBTiles ONLY - no fallback
+  // Prefer MBTiles for image dimensions if available
   const mbtilesPath = store.get('mbtilesPath', '');
-  if (!mbtilesPath || !mbtilesDb) {
-    return {
-      success: false,
-      ...result,
-      error: 'No MBTiles file loaded. Please ensure your dataset includes an MBTiles file with metadata.'
-    };
+  if (mbtilesPath && mbtilesDb) {
+    try {
+      const stmt = mbtilesDb.prepare('SELECT name, value FROM metadata');
+      const rows = stmt.all();
+
+      rows.forEach(row => {
+        if (row.name === 'width') result.imageWidth = parseInt(row.value);
+        if (row.name === 'height') result.imageHeight = parseInt(row.value);
+        if (row.name === 'plane_count') result.planeCount = parseInt(row.value);
+        // NOTE: Do NOT read voxel_size from MBTiles; single source is the welcome screen (stored value)
+      });
+
+      result.source = 'mbtiles';
+      console.log(`[metadata] Image dims from MBTiles: ${result.imageWidth}x${result.imageHeight}, planes=${result.planeCount}`);
+    } catch (e) {
+      return {
+        success: false,
+        ...result,
+        error: `Failed to read MBTiles metadata: ${e.message}`
+      };
+    }
   }
 
-  try {
-    const stmt = mbtilesDb.prepare('SELECT name, value FROM metadata');
-    const rows = stmt.all();
-
-    rows.forEach(row => {
-      if (row.name === 'width') result.imageWidth = parseInt(row.value);
-      if (row.name === 'height') result.imageHeight = parseInt(row.value);
-      if (row.name === 'plane_count') result.planeCount = parseInt(row.value);
-      // NOTE: Do NOT read voxel_size from MBTiles; single source is the welcome screen (stored value)
-    });
-
-    result.source = 'mbtiles';
-  } catch (e) {
-    return {
-      success: false,
-      ...result,
-      error: `Failed to read MBTiles metadata: ${e.message}`
-    };
+  // If missing dims, try image_dims.json next to the data folder
+  if (!result.imageWidth || !result.imageHeight || !result.planeCount) {
+    try {
+      const dataPath = store.get('dataPath', '');
+      if (dataPath) {
+        const dimsPath = path.join(dataPath, 'image_dims.json');
+        if (fs.existsSync(dimsPath)) {
+          const content = fs.readFileSync(dimsPath, 'utf8');
+          const dims = JSON.parse(content);
+          if (Number.isFinite(dims?.width)) result.imageWidth = parseInt(dims.width);
+          if (Number.isFinite(dims?.height)) result.imageHeight = parseInt(dims.height);
+          if (Number.isFinite(dims?.plane_count)) result.planeCount = parseInt(dims.plane_count);
+          result.source = result.source ? `${result.source}+image_dims.json` : 'image_dims.json';
+          console.log(`[metadata] Image dims from image_dims.json: ${result.imageWidth}x${result.imageHeight}, planes=${result.planeCount} (${dimsPath})`);
+        }
+      }
+    } catch (e) {
+      return { success: false, ...result, error: `Failed to read image_dims.json: ${e.message}` };
+    }
   }
 
   // Single source for voxel size: user-provided value stored in electron-store
@@ -321,7 +337,7 @@ ipcMain.handle('get-dataset-metadata', async () => {
   return {
     success: hasRequired,
     ...result,
-    error: hasRequired ? null : 'Missing required metadata: width, height, plane_count (from MBTiles) and voxel_size (set in the welcome screen) are required'
+    error: hasRequired ? null : 'Missing required metadata: width, height, plane_count (from MBTiles or image_dims.json) and voxel_size (set in the welcome screen) are required'
   };
 });
 

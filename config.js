@@ -50,13 +50,13 @@ function config() {
     // Validate metadata if data path is configured (meta will be null on welcome screen)
     if (meta !== null) {
         if (!meta.imageWidth || !meta.imageHeight) {
-            throw new Error('Missing required metadata: width and height must be provided in MBTiles file');
+            throw new Error('Missing required metadata: width and height must be provided (from MBTiles or image_dims.json)');
         }
         if (!meta.planeCount || meta.planeCount < 1) {
-            throw new Error('Missing required metadata: plane_count must be provided in MBTiles file');
+            throw new Error('Missing required metadata: plane_count must be provided (from MBTiles or image_dims.json)');
         }
         if (!meta.voxelSize || !Array.isArray(meta.voxelSize) || meta.voxelSize.length !== 3) {
-            throw new Error('Missing required metadata: voxel_size must be provided in MBTiles file as [x, y, z] values in microns');
+            throw new Error('Missing required metadata: voxel_size must be entered in the welcome screen as [x, y, z] microns per pixel');
         }
     }
 
