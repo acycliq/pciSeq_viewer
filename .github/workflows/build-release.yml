@@ -4,9 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g., v0.0.1)'
+        description: 'Release tag (e.g., v0.0.6-alpha.1)'
         required: true
-        default: 'v0.0.1'
+        default: 'v0.0.6-alpha.1'
+      prerelease:
+        description: 'Mark as pre-release'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -38,6 +42,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event.inputs.tag }}
+          prerelease: ${{ github.event.inputs.prerelease }}
           files: |
             dist/*.AppImage
             dist/*.deb
@@ -73,6 +78,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event.inputs.tag }}
+          prerelease: ${{ github.event.inputs.prerelease }}
           files: |
             dist/*.dmg
             dist/*.zip
@@ -111,6 +117,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event.inputs.tag }}
+          prerelease: ${{ github.event.inputs.prerelease }}
           files: |
             dist/*.exe
         env:
