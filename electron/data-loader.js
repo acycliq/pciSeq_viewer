@@ -296,11 +296,7 @@ ipcMain.handle('get-dataset-metadata', async () => {
       if (row.name === 'width') result.imageWidth = parseInt(row.value);
       if (row.name === 'height') result.imageHeight = parseInt(row.value);
       if (row.name === 'plane_count') result.planeCount = parseInt(row.value);
-      if (row.name === 'voxel_size') {
-        // Parse comma-separated voxel size: "0.28,0.28,0.7"
-        const parts = row.value.split(',').map(parseFloat);
-        if (parts.length === 3) result.voxelSize = parts;
-      }
+      // NOTE: Do NOT read voxel_size from MBTiles; single source is the welcome screen (stored value)
     });
 
     result.source = 'mbtiles';
@@ -312,14 +308,12 @@ ipcMain.handle('get-dataset-metadata', async () => {
     };
   }
 
-  // If voxelSize not in MBTiles, use stored voxel size from electron-store
-  if (!result.voxelSize) {
-    const storedVoxelSize = store.get('voxelSize', null);
-    if (storedVoxelSize && Array.isArray(storedVoxelSize) && storedVoxelSize.length === 3) {
-      result.voxelSize = storedVoxelSize;
-      result.source = 'mbtiles+store';
-      console.log('Using stored voxel size:', storedVoxelSize);
-    }
+  // Single source for voxel size: user-provided value stored in electron-store
+  const storedVoxelSize = store.get('voxelSize', null);
+  if (storedVoxelSize && Array.isArray(storedVoxelSize) && storedVoxelSize.length === 3) {
+    result.voxelSize = storedVoxelSize;
+    if (result.source === 'mbtiles') result.source = 'mbtiles+store';
+    console.log('Using stored voxel size:', storedVoxelSize);
   }
 
   // Check required fields - all four are now required
@@ -327,7 +321,7 @@ ipcMain.handle('get-dataset-metadata', async () => {
   return {
     success: hasRequired,
     ...result,
-    error: hasRequired ? null : 'Missing required metadata: width, height, plane_count (from MBTiles), and voxel_size (from MBTiles or user input) are required'
+    error: hasRequired ? null : 'Missing required metadata: width, height, plane_count (from MBTiles) and voxel_size (set in the welcome screen) are required'
   };
 });
 
