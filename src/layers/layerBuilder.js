@@ -203,15 +203,7 @@ export function buildRegionLayers(state, elements) {
             autoHighlight: true,
             highlightColor: [...color, 255],
             onHover: (info) => {
-                if (info.object) {
-                    showTooltip({
-                        x: info.x,
-                        y: info.y,
-                        object: { name: info.object.name }
-                    }, elements.tooltip, `Region: ${info.object.name}`);
-                } else {
-                    elements.tooltip.style.opacity = '0';
-                }
+                showTooltip(info, elements.tooltip);
             }
         });
 

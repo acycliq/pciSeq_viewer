@@ -171,11 +171,15 @@ export function showTooltip(info, tooltipElement) {
                       ${colorInfo}<strong>Coords:</strong> ${coords}<br>
                       <strong>Plane:</strong> ${planeId}<br>
                       ${parentInfo}${qualityInfo}`;
+        } else if (info.object.name) {
+            // Region tooltip
+            content = `<strong>Region:</strong> ${info.object.name}`;
         }
 
         if (content) {
             tooltipElement.innerHTML = content;
             tooltipElement.style.display = 'block';
+            tooltipElement.style.opacity = '1';
             tooltipElement.style.left = info.x + 20 + 'px';
             tooltipElement.style.top = info.y - 60 + 'px';
         } else {
