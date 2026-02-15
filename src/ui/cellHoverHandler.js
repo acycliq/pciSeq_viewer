@@ -105,7 +105,7 @@ function buildCellInfoData(fullCellData, cellLabel) {
 function showCellInfoPanel() {
     const panel = document.getElementById('cellInfoPanel');
     if (panel) {
-        panel.style.display = 'block';
+        panel.classList.add('visible');
     }
 }
 
@@ -115,6 +115,6 @@ function showCellInfoPanel() {
 function hideCellInfoPanel() {
     const panel = document.getElementById('cellInfoPanel');
     if (panel) {
-        panel.style.display = 'none';
+        panel.classList.remove('visible');
     }
 }

@@ -16,6 +16,19 @@
     z-index: 2000;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     overflow: hidden;
+    /* Transition: fade + slide up */
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+    visibility: hidden;
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+}
+
+.cell-info-panel.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+    visibility: visible;
 }
 
 .cell-info-header {
@@ -35,45 +48,103 @@
     overflow-y: auto;
 }
 
-/* Two-column layout: table left, donut right */
+/* Three-column layout: gene table | donut | class legend */
 .cell-info-layout {
     display: flex;
-    gap: 4px;
-    align-items: stretch;
+    gap: 8px;
+    align-items: flex-start;
 }
 
-.cell-info-left, .cell-info-right {
-    flex: 0 1 auto;
+.cell-info-column {
+    flex: 0 0 auto;
 }
 
-/* Constrain heights to match donut svg height */
-.cell-info-left {
-    max-height: 160px;
-    overflow: auto;
+.cell-info-genes {
+    max-height: 180px;
+    overflow-y: auto;
+    min-width: 120px;
+    max-width: 160px;
 }
 
-.cell-info-right #cellInfoChart svg {
+.cell-info-donut {
+    flex: 0 0 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cell-info-donut #cellInfoChart svg {
     display: block;
 }
 
-.cell-info-chart-container {
-    text-align: center;
-    margin: 0;
+.cell-info-legend {
+    max-height: 180px;
+    overflow-y: auto;
+    min-width: 140px;
+    max-width: 200px;
 }
 
-.cell-info-tables {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.table-section h4 {
-    margin: 0 0 8px 0;
+/* Class legend rows */
+#classLegend {
     font-size: 11px;
-    font-weight: 600;
+}
+
+.legend-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.15s ease;
+}
+
+.legend-row:hover,
+.legend-row.highlight {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.legend-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #e8e8f0;
+}
+
+.legend-prob {
     color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Scrollbar for legend and gene table */
+.cell-info-legend::-webkit-scrollbar,
+.cell-info-genes::-webkit-scrollbar {
+    width: 4px;
+}
+
+.cell-info-legend::-webkit-scrollbar-track,
+.cell-info-genes::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.cell-info-legend::-webkit-scrollbar-thumb,
+.cell-info-genes::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.cell-info-legend::-webkit-scrollbar-thumb:hover,
+.cell-info-genes::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
 }
 
 .cell-info-panel table {
@@ -130,21 +201,19 @@
 }
 
 /* Donut chart styles */
-.cell-info-panel .slices path {
+.cell-info-panel .slices path.slice {
     stroke: rgba(255, 255, 255, 0.2);
     stroke-width: 1px;
+    transition: opacity 0.15s ease, stroke-width 0.15s ease;
 }
 
-.cell-info-panel .sliceLabels text {
-    font-size: 10px;
-    fill: #e8e8f0;
-    pointer-events: none;
+.cell-info-panel .slices path.slice.dimmed {
+    opacity: 0.3;
 }
 
-.cell-info-panel .lines polyline {
-    fill: none;
-    stroke: rgba(255, 255, 255, 0.45);
-    stroke-width: 1px;
+.cell-info-panel .slices path.slice.highlight {
+    stroke: #ffffff;
+    stroke-width: 2px;
 }
 
 .donutTooltip {

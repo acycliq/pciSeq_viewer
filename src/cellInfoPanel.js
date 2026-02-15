@@ -35,9 +35,12 @@ export function updateCellInfo(cellProperties) {
         // Update gene counts table (left of donut); isolate failures
         updateGeneTable(cellData);
 
+        // Update class legend (right of donut); isolate failures
+        updateClassLegend(cellData);
+
         // Ensure panel is visible
         const panel = document.getElementById('cellInfoPanel');
-        if (panel) panel.style.display = 'block';
+        if (panel) panel.classList.add('visible');
 
         // Update header with Cell Num, total counts, and coordinates
         updateCellInfoHeader(cellData, cellProperties);
@@ -74,6 +77,21 @@ function updateGeneTable(cellData) {
         }
     } catch (e) {
         console.warn('Gene table update failed:', e);
+    }
+}
+
+/**
+ * Update the class legend
+ * @param {Object} cellData - Formatted cell data
+ */
+function updateClassLegend(cellData) {
+    try {
+        const fn = (typeof window !== 'undefined') ? window.renderClassLegend : null;
+        if (typeof fn === 'function') {
+            fn(cellData);
+        }
+    } catch (e) {
+        console.warn('Class legend update failed:', e);
     }
 }
 
@@ -116,7 +134,7 @@ export function setupCellInfoPanel() {
 
     if (closeBtn && panel) {
         closeBtn.addEventListener('click', () => {
-            panel.style.display = 'none';
+            panel.classList.remove('visible');
         });
     }
 }
@@ -151,7 +169,7 @@ export function initCellInfoColorScheme() {
 export function hideCellInfoPanel() {
     const panel = document.getElementById('cellInfoPanel');
     if (panel) {
-        panel.style.display = 'none';
+        panel.classList.remove('visible');
     }
 }
 
@@ -161,6 +179,6 @@ export function hideCellInfoPanel() {
 export function showCellInfoPanel() {
     const panel = document.getElementById('cellInfoPanel');
     if (panel) {
-        panel.style.display = 'block';
+        panel.classList.add('visible');
     }
 }

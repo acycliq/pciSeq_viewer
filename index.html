@@ -418,24 +418,26 @@
     </div>
 
     <!-- Cell Info Panel (Bottom Right) -->
-    <div id="cellInfoPanel" class="cell-info-panel" style="display: none;">
+    <div id="cellInfoPanel" class="cell-info-panel">
         <div class="cell-info-header">
             <span id="cellInfoTitle">Cell Information</span>
-            <button id="cellInfoClose" class="widget-close-btn">×</button>
+            <button id="cellInfoClose" class="widget-close-btn">&times;</button>
         </div>
         <div class="cell-info-content">
             <div class="cell-info-layout">
-                <!-- Gene Counts Table (left) -->
-                <div class="cell-info-left">
+                <!-- LEFT: Gene Counts Table -->
+                <div class="cell-info-column cell-info-genes">
                     <table id="geneCountsTable" class="display compact"></table>
                 </div>
-                <!-- Donut Chart (right) -->
-                <div class="cell-info-right">
-                    <div class="cell-info-chart-container">
-                        <div id="cellInfoChart">
-                            <svg width="280" height="160"></svg>
-                        </div>
+                <!-- CENTER: Donut Chart (clean, no labels) -->
+                <div class="cell-info-column cell-info-donut">
+                    <div id="cellInfoChart">
+                        <svg width="180" height="180"></svg>
                     </div>
+                </div>
+                <!-- RIGHT: Class Legend (scrollable) -->
+                <div class="cell-info-column cell-info-legend">
+                    <div id="classLegend"></div>
                 </div>
             </div>
         </div>
