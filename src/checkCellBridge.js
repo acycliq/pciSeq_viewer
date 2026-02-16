@@ -47,6 +47,7 @@ function applyCheckCellState(stateData, notify) {
     if (stateData.enabled) {
         state.checkCellConnected = true;
         state.checkCellClasses = stateData.classes || [];
+        window.appState.labelMap = stateData.labelMap || null;
         if (notify) {
             showNotification('check_cell connected (' + state.checkCellClasses.length + ' classes)', 'success');
         }
@@ -54,6 +55,7 @@ function applyCheckCellState(stateData, notify) {
     } else {
         state.checkCellConnected = false;
         state.checkCellClasses = [];
+        window.appState.labelMap = null;
         if (notify && state.checkCellConnected) {
             // Only notify on disconnect if we were previously connected
             console.log('check_cell disabled');

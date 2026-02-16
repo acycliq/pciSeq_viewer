@@ -75,7 +75,8 @@ function broadcastDiagnosticsState(enabled) {
       classes: diagnosticsMeta.class_names || [],
       nC: diagnosticsMeta.nC,
       nG: diagnosticsMeta.nG,
-      nK: diagnosticsMeta.nK
+      nK: diagnosticsMeta.nK,
+      labelMap: diagnosticsMeta.label_map || null
     });
 
     // Send state for check_spot
@@ -380,7 +381,8 @@ ipcMain.handle('check-cell-get-state', () => {
       classes: diagnosticsMeta.class_names || [],
       nC: diagnosticsMeta.nC,
       nG: diagnosticsMeta.nG,
-      nK: diagnosticsMeta.nK
+      nK: diagnosticsMeta.nK,
+      labelMap: diagnosticsMeta.label_map || null
     };
   }
   return { enabled: false };

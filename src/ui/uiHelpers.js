@@ -118,13 +118,24 @@ export function showTooltip(info, tooltipElement) {
                     }
                 } catch {}
 
+                // Internal index from diagnostics label_map (only when diagnostics are loaded)
+                let internalLabel = '';
+                const labelMap = window.appState && window.appState.labelMap;
+                if (labelMap) {
+                    const internal = labelMap[String(cellLabel)];
+                    if (internal !== undefined) {
+                        internalLabel = `<strong>Internal Index:</strong> ${internal}<br>`;
+                    }
+                }
+
                 content =  `<strong>Cell Label:</strong> ${cellLabel}<br>
                             ${cellCoords}
                             <strong>Plane:</strong> ${planeId}<br>
                             <strong>Cell Class:</strong> ${cellClass}<br>
                             ${classProb}
                             ${totalGeneCount}
-                            ${colorHex}`;
+                            ${colorHex}
+                            ${internalLabel}`;
             }
         } else if (info.object.gene) {
             // Gene tooltip - show enhanced gene spot information
