@@ -5,6 +5,8 @@
  * Extracts cell data and updates the cell info panel.
  */
 
+import { update, show, hide } from '../cellInfoPanel/index.js';
+
 /**
  * Handle hover events on cell polygons
  * Looks up full cell data and updates the cell info panel
@@ -21,15 +23,15 @@ export function handleCellHover(info) {
             fullCellData = window.appState.cellDataMap.get(cellId);
         }
 
-        if (fullCellData && window.updateCellInfo && typeof window.updateCellInfo === 'function') {
+        if (fullCellData) {
             const cellData = buildCellInfoData(fullCellData, cellLabel);
-            window.updateCellInfo(cellData);
-            showCellInfoPanel();
+            update(cellData);
+            show();
         } else {
             console.warn('No full cell data found for cell:', cellLabel);
         }
     } else {
-        hideCellInfoPanel();
+        hide();
     }
 }
 
@@ -97,55 +99,4 @@ function buildCellInfoData(fullCellData, cellLabel) {
             color: topColor
         }
     };
-}
-
-/**
- * Pin state for cell info panel.
- * Ctrl toggles pin: pinned panel stays visible and interactive (scrollable).
- * Ctrl again or X button unpins and hides.
- */
-let _panelPinned = false;
-
-document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Control') return;
-    const panel = document.getElementById('cellInfoPanel');
-    if (!panel) return;
-
-    if (_panelPinned) {
-        // Unpin and hide
-        _panelPinned = false;
-        panel.classList.remove('pinned');
-        panel.classList.remove('visible');
-    } else if (panel.classList.contains('visible')) {
-        // Pin the currently visible panel
-        _panelPinned = true;
-        panel.classList.add('pinned');
-    }
-});
-
-function showCellInfoPanel() {
-    const panel = document.getElementById('cellInfoPanel');
-    if (panel) {
-        panel.classList.add('visible');
-    }
-}
-
-function hideCellInfoPanel() {
-    if (_panelPinned) return;
-    const panel = document.getElementById('cellInfoPanel');
-    if (panel) {
-        panel.classList.remove('visible');
-    }
-}
-
-/**
- * Called by the X close button — always hides, clears pin state
- */
-export function forceHideCellInfoPanel() {
-    _panelPinned = false;
-    const panel = document.getElementById('cellInfoPanel');
-    if (panel) {
-        panel.classList.remove('pinned');
-        panel.classList.remove('visible');
-    }
 }

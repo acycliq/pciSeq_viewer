@@ -23,7 +23,7 @@ import Perf from '../utils/runtimePerf.js';
 import { showLoading, hideLoading, showTooltip } from './ui/uiHelpers.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
-import { updateCellInfo, setupCellInfoPanel, initCellInfoColorScheme } from './cellInfoPanel.js';
+import { init as initCellInfoPanel } from './cellInfoPanel/index.js';
 import { applyPendingClassColorSchemeIfAny, applyClassColorScheme } from './classColorImport.js';
 import { applyGeneScheme } from './geneColorImport.js';
 
@@ -137,8 +137,6 @@ window.openCheckSpotModal = openCheckSpotModal;
 // Coordinate transformation for child windows
 window.transformToTileCoordinates = transformToTileCoordinates;
 
-// Cell info panel function
-window.updateCellInfo = updateCellInfo;
 
 // Expose lightweight cell metadata lookup for child windows (voxel viewer)
 // Returns { className, totalGeneCount, position, plane_id, probability } or null if not available
@@ -727,12 +725,11 @@ async function init() {
 
 // === DOM CONTENT LOADED HANDLER ===
 document.addEventListener('DOMContentLoaded', () => {
-    // Setup cell info panel close button
-    setupCellInfoPanel();
+    // Initialize cell info panel (close button + color scheme)
+    initCellInfoPanel();
 
     // Initialize D3 components when DOM is ready
     if (typeof d3 !== 'undefined') {
-        initCellInfoColorScheme();
         initGeneDistributionChart();
         initCellClassDistributionChart();
         initCellClassPercentageChart();
