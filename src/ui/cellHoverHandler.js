@@ -100,8 +100,29 @@ function buildCellInfoData(fullCellData, cellLabel) {
 }
 
 /**
- * Show the cell info panel
+ * Pin state for cell info panel.
+ * Ctrl toggles pin: pinned panel stays visible and interactive (scrollable).
+ * Ctrl again or X button unpins and hides.
  */
+let _panelPinned = false;
+
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Control') return;
+    const panel = document.getElementById('cellInfoPanel');
+    if (!panel) return;
+
+    if (_panelPinned) {
+        // Unpin and hide
+        _panelPinned = false;
+        panel.classList.remove('pinned');
+        panel.classList.remove('visible');
+    } else if (panel.classList.contains('visible')) {
+        // Pin the currently visible panel
+        _panelPinned = true;
+        panel.classList.add('pinned');
+    }
+});
+
 function showCellInfoPanel() {
     const panel = document.getElementById('cellInfoPanel');
     if (panel) {
@@ -109,12 +130,22 @@ function showCellInfoPanel() {
     }
 }
 
-/**
- * Hide the cell info panel
- */
 function hideCellInfoPanel() {
+    if (_panelPinned) return;
     const panel = document.getElementById('cellInfoPanel');
     if (panel) {
+        panel.classList.remove('visible');
+    }
+}
+
+/**
+ * Called by the X close button — always hides, clears pin state
+ */
+export function forceHideCellInfoPanel() {
+    _panelPinned = false;
+    const panel = document.getElementById('cellInfoPanel');
+    if (panel) {
+        panel.classList.remove('pinned');
         panel.classList.remove('visible');
     }
 }

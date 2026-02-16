@@ -31,6 +31,23 @@
     visibility: visible;
 }
 
+.cell-info-panel.pinned {
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.2);
+}
+
+.cell-info-panel.pinned .cell-info-header {
+    border-bottom-color: rgba(59, 130, 246, 0.3);
+}
+
+.cell-info-panel.pinned .cell-info-header::after {
+    content: 'Ctrl to unpin';
+    font-size: 10px;
+    font-weight: 400;
+    color: rgba(59, 130, 246, 0.6);
+    margin-left: 8px;
+}
+
 .cell-info-header {
     display: flex;
     justify-content: space-between;

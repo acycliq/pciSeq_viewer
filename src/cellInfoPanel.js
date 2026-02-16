@@ -4,6 +4,7 @@
  * Handles the cell information panel that displays when hovering over cells.
  * Shows cell metadata, gene expression, and classification data.
  */
+import { forceHideCellInfoPanel } from './ui/cellHoverHandler.js';
 
 /**
  * Update the cell info panel with data for a specific cell
@@ -134,7 +135,7 @@ export function setupCellInfoPanel() {
 
     if (closeBtn && panel) {
         closeBtn.addEventListener('click', () => {
-            panel.classList.remove('visible');
+            forceHideCellInfoPanel();
         });
     }
 }
