@@ -98,18 +98,13 @@
     <div id="tooltip"></div>
 
 
-    <!-- Cell Search Modal -->
-    <div class="cell-search-modal" id="cellSearchModal">
-        <div class="cell-search-dialog">
-            <h3>🔍 Cell Lookup</h3>
-            <input type="text" class="cell-search-input" id="cellSearchInput" placeholder="Enter cell ID (e.g., 1, 42, 1000...)" />
-            <div class="cell-search-buttons">
-                <button class="cell-search-btn primary" id="cellSearchGo">Go to Cell</button>
-                <button class="cell-search-btn secondary" id="cellSearchCancel">Cancel</button>
-            </div>
-            <div class="cell-search-status" id="cellSearchStatus"></div>
-        </div>
-    </div>
+    <!-- Cell Lookup (command palette) -->
+    <input type="text"
+           id="cellSearchInput"
+           class="cell-search-bar"
+           placeholder="Go to cell..."
+           autocomplete="off"
+           style="display:none;" />
 
     <!-- Controls Panel (collapsed by default; gutter with embedded hamburger) -->
     <div id="controlsPanel" class="controls-panel collapsed" role="complementary" aria-label="Controls drawer">

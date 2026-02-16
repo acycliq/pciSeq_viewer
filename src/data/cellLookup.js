@@ -18,25 +18,24 @@ async function initializeCellLookup() {
         return;
     }
 
-    console.log(' Initializing cell lookup system...');
+    console.log('Initializing cell lookup system...');
 
     try {
         // Load cell data (Arrow-only)
         await loadCellData();
         isLookupInitialized = true;
-        console.log(' Cell lookup initialized with', cellLookupData.size, 'cells');
+        console.log('Cell lookup initialized with', cellLookupData.size, 'cells');
     } catch (error) {
-        console.error(' Failed to initialize cell lookup:', error);
+        console.error('Failed to initialize cell lookup:', error);
         throw error;
     }
 }
 
 /**
- * Load and parse cell data from Arrow or TSV based on configuration
+ * Load and parse cell data from Arrow based on configuration
  */
 async function loadCellData() {
     if (window.appState && window.appState.cellDataMap) {
-        console.log(' Using Arrow-loaded cell data from appState.cellDataMap');
         return loadFromArrowData();
     }
     throw new Error('Arrow cell data not available.');
@@ -47,7 +46,6 @@ async function loadCellData() {
  */
 function loadFromArrowData() {
     const cellDataMap = window.appState.cellDataMap;
-    console.log(' Processing', cellDataMap.size, 'Arrow-loaded cell records...');
 
     for (const [cellId, cellData] of cellDataMap) {
         const x = cellData.position.x;
@@ -63,36 +61,6 @@ function loadFromArrowData() {
             z: z,
             bounds: bounds
         });
-    }
-}
-
-/**
- * Parse gaussian contour string to extract bounding box
- */
-function parseContourBounds(contourStr) {
-    try {
-        // Remove brackets and split by space, then parse coordinate pairs
-        const coordStr = contourStr.replace(/[\[\]]/g, '');
-        const coords = coordStr.split(' ');
-
-        let minX = Infinity, maxX = -Infinity;
-        let minY = Infinity, maxY = -Infinity;
-
-        for (let i = 0; i < coords.length; i += 2) {
-            const x = parseFloat(coords[i]);
-            const y = parseFloat(coords[i + 1]);
-
-            if (!isNaN(x) && !isNaN(y)) {
-                minX = Math.min(minX, x);
-                maxX = Math.max(maxX, x);
-                minY = Math.min(minY, y);
-                maxY = Math.max(maxY, y);
-            }
-        }
-
-        return { minX, maxX, minY, maxY };
-    } catch (e) {
-        return null;
     }
 }
 
@@ -115,8 +83,7 @@ async function searchAndNavigateToCell(cellId) {
         throw new Error(`Cell ${cellNum} not found in dataset`);
     }
 
-    console.log(` Navigating to cell ${cellNum} at position (${cellData.x}, ${cellData.y})`);
-    console.log(` Cell bounds:`, cellData.bounds);
+    console.log('Navigating to cell', cellNum, 'at position', cellData.x, cellData.y);
 
     // Get image dimensions for coordinate transformation
     const config = window.config ? window.config() : {};
@@ -126,30 +93,18 @@ async function searchAndNavigateToCell(cellId) {
         tileSize: 256
     };
 
-    console.log(` Image dimensions: ${config.imageWidth}x${config.imageHeight}`);
-
     // CRITICAL: Transform coordinates from original image space to tile coordinate space
     const [transformedX, transformedY] = transformToTileCoordinates(cellData.x, cellData.y, imageDimensions);
-
-    console.log(` Coordinate transformation:`);
-    console.log(`   Original: (${cellData.x}, ${cellData.y})`);
-    console.log(`   Transformed: (${transformedX}, ${transformedY})`);
 
     // Calculate plane number from Z coordinate
     const [xVoxelSize, yVoxelSize, zVoxelSize] = config.voxelSize; // [0.28, 0.28, 0.7]
     const planeNumber = Math.floor(cellData.z * xVoxelSize / zVoxelSize);
 
-    console.log(` Cell Z coordinate: ${cellData.z}`);
-    console.log(` Voxel sizes: x=${xVoxelSize}, y=${yVoxelSize}, z=${zVoxelSize}`);
-    console.log(` Calculation: ${cellData.z} * ${xVoxelSize} / ${zVoxelSize} = ${cellData.z * xVoxelSize / zVoxelSize}`);
-    console.log(` Calculated plane number: ${planeNumber} (valid range: 0-${config.totalPlanes - 1})`);
-
     // Switch to the calculated plane
     if (window.updatePlane && typeof window.updatePlane === 'function') {
         window.updatePlane(planeNumber);
-        console.log(` Switched to plane ${planeNumber}`);
     } else {
-        console.warn(' Could not switch plane - updatePlane function not available');
+        console.warn('Could not switch plane - updatePlane function not available');
     }
 
     // CRITICAL: Use high zoom for close-up view of the cell
@@ -161,12 +116,8 @@ async function searchAndNavigateToCell(cellId) {
         throw new Error('Deck.GL instance not available');
     }
 
-    // Temporarily disable the controller, do the navigation, then re-enable it with original settings
-    console.log(' Navigating to cell at transformed coordinates:', transformedX, transformedY);
-
     // Step 1: Save original controller configuration and disable controller during transition
     const originalController = deckInstance.props.controller;
-    console.log(' Saved original controller config:', originalController);
 
     deckInstance.setProps({
         controller: false
@@ -187,105 +138,135 @@ async function searchAndNavigateToCell(cellId) {
     // Step 3: Re-enable controller with ORIGINAL configuration after transition
     setTimeout(() => {
         deckInstance.setProps({
-            controller: originalController, // Restore original controller with maxZoom: 8, etc.
+            controller: originalController,
             viewState: undefined // Let controller take over
         });
-        console.log(' Controller re-enabled with original config (maxZoom: 8)');
     }, 1600);
 
-    console.log(` Started navigation to: (${transformedX}, ${transformedY}) at zoom ${targetZoom}`);
-
     return cellData;
+}
+
+/**
+ * Flash a white outline on the target cell polygon for ~1.2s
+ */
+function pulseCell(cellId) {
+    const deckInstance = window.appState?.deckglInstance;
+    if (!deckInstance) return;
+
+    // Find the polygon feature from the current plane's cached GeoJSON
+    const currentPlane = window.appState?.currentPlane ?? 0;
+    const geojson = window.appState?.polygonCache?.get(currentPlane);
+    if (!geojson || !geojson.features) return;
+
+    const feature = geojson.features.find(
+        f => f.properties && parseInt(f.properties.label) === cellId
+    );
+    if (!feature) return;
+
+    const pulseLayerId = 'cell-lookup-pulse';
+
+    const pulseLayer = new deck.GeoJsonLayer({
+        id: pulseLayerId,
+        data: { type: 'FeatureCollection', features: [feature] },
+        stroked: true,
+        filled: false,
+        getLineColor: [255, 255, 255, 200],
+        getLineWidth: 4,
+        lineWidthUnits: 'pixels',
+        pickable: false,
+        parameters: { depthTest: false }
+    });
+
+    // Inject pulse layer
+    const currentLayers = deckInstance.props.layers || [];
+    deckInstance.setProps({ layers: [...currentLayers, pulseLayer] });
+
+    // Remove after 1.2s
+    setTimeout(() => {
+        const layers = deckInstance.props.layers || [];
+        deckInstance.setProps({
+            layers: layers.filter(l => l.id !== pulseLayerId)
+        });
+    }, 1200);
 }
 
 /**
  * Setup cell lookup UI event handlers
  */
 function setupCellLookupUI() {
-    const modal = document.getElementById('cellSearchModal');
     const input = document.getElementById('cellSearchInput');
-    const goBtn = document.getElementById('cellSearchGo');
-    const cancelBtn = document.getElementById('cellSearchCancel');
-    const status = document.getElementById('cellSearchStatus');
 
-    // Open modal when Ctrl+F is pressed
+    function openBar() {
+        input.style.display = 'block';
+        input.classList.remove('error');
+        input.value = '';
+        // Force reflow then focus (so display:block takes effect first)
+        input.offsetHeight;
+        input.focus();
+    }
+
+    function closeBar() {
+        input.style.display = 'none';
+        input.classList.remove('error');
+        input.value = '';
+    }
+
+    // Ctrl+F opens the bar
     document.addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key === 'f') {
-            e.preventDefault(); // Prevent browser's default find dialog
-            modal.style.display = 'flex';
-            input.focus();
-            input.select();
-            status.textContent = '';
-            status.className = 'cell-search-status';
-            console.log(' Cell lookup opened with Ctrl+F');
+            e.preventDefault();
+            if (input.style.display === 'block') {
+                closeBar();
+            } else {
+                openBar();
+            }
         }
     });
 
-    // Close modal when cancel is clicked or Escape is pressed
-    cancelBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
-
-    // Close modal when Escape key is pressed
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.style.display === 'flex') {
-            modal.style.display = 'none';
+    // Escape closes
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeBar();
         }
     });
 
-    // Close modal when clicking outside dialog
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.style.display = 'none';
-        }
-    });
-
-    // Handle Enter key in input
-    input.addEventListener('keypress', (e) => {
+    // Enter triggers search
+    input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-            performCellSearch();
+            performSearch();
         }
     });
 
-    // Handle Go button click
-    goBtn.addEventListener('click', performCellSearch);
+    // Blur closes (click elsewhere dismisses)
+    input.addEventListener('blur', () => {
+        // Small delay so click events on the input itself aren't eaten
+        setTimeout(() => {
+            if (document.activeElement !== input) {
+                closeBar();
+            }
+        }, 150);
+    });
 
-    // Search function
-    async function performCellSearch() {
+    async function performSearch() {
         const cellId = input.value.trim();
-
-        if (!cellId) {
-            showStatus('Please enter a cell ID', 'error');
-            return;
-        }
+        if (!cellId) return;
 
         try {
-            showStatus('Searching for cell...', '');
-            goBtn.disabled = true;
-
-            const cellData = await searchAndNavigateToCell(cellId);
-
-            showStatus(`Found cell ${cellId}! Navigating...`, 'success');
-
-            // Close modal after short delay
-            setTimeout(() => {
-                modal.style.display = 'none';
-                goBtn.disabled = false;
-            }, 1500);
-
+            await searchAndNavigateToCell(cellId);
+            closeBar();
+            // Pulse the target cell polygon
+            pulseCell(parseInt(cellId));
         } catch (error) {
-            showStatus(error.message, 'error');
-            goBtn.disabled = false;
+            // Shake + red border
+            input.classList.remove('error');
+            input.offsetHeight; // reflow to restart animation
+            input.classList.add('error');
+            input.select();
+            console.log('Cell lookup error:', error.message);
         }
     }
 
-    // Show status message
-    function showStatus(message, type) {
-        status.textContent = message;
-        status.className = `cell-search-status ${type}`;
-    }
-
-    console.log(' Cell lookup UI initialized - Press Ctrl+F to search for cells');
+    console.log('Cell lookup UI initialized - Press Ctrl+F to search');
 }
 
 // Export functions for use in main application
