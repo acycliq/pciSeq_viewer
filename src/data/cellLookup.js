@@ -1,6 +1,15 @@
 /**
  * Cell Lookup Module
- * Provides cell search functionality with smooth camera transitions
+ * Provides cell search functionality with smooth camera transitions.
+ *
+ * Wired up from src/app.js which calls window.cellLookup.setupUI() at startup.
+ * Depends on:
+ *   - window.appState.cellDataMap    Map<cellId, {position, classification, ...}>
+ *   - window.appState.deckglInstance  the deck.gl Deck object
+ *   - window.appState.polygonCache   Map<planeNum, GeoJSON>  (for pulse highlight)
+ *   - window.appState.currentPlane   number                  (for pulse highlight)
+ *   - window.config()                returns {imageWidth, imageHeight, voxelSize, totalPlanes, ...}
+ *   - window.updatePlane(n)          switches the visible z-plane
  */
 
 // Import the shared coordinate transformation function
