@@ -81,6 +81,7 @@ export function showTooltip(info, tooltipElement) {
 
                 // Get cell coordinates and probability from cellData
                 let cellCoords = '';
+                let centroidPlane = '';
                 let classProb = '';
                 let totalGeneCount = '';
                 let colorHex = '';
@@ -90,6 +91,17 @@ export function showTooltip(info, tooltipElement) {
                         if (cellData.position) {
                             const coords = cellData.position;
                             cellCoords = `<strong>Cell Coords:</strong> (${coords.x.toFixed(2)}, ${coords.y.toFixed(2)}, ${coords.z.toFixed(2)})<br>`;
+
+                            // Derive centroid plane from z coordinate
+                            if (coords.z !== undefined) {
+                                const cfg = window.config ? window.config() : null;
+                                if (cfg && Array.isArray(cfg.voxelSize)) {
+                                    const [xVoxel, , zVoxel] = cfg.voxelSize;
+                                    centroidPlane = `<strong>Centroid Plane:</strong> ${Math.floor(coords.z * xVoxel / zVoxel)}<br>`;
+                                } else {
+                                    centroidPlane = `<strong>Centroid Plane:</strong> ${Math.floor(coords.z)}<br>`;
+                                }
+                            }
                         }
 
                         // Get cell class probability if available
@@ -130,7 +142,8 @@ export function showTooltip(info, tooltipElement) {
 
                 content =  `<strong>Cell Label:</strong> ${cellLabel}<br>
                             ${cellCoords}
-                            <strong>Plane:</strong> ${planeId}<br>
+                            ${centroidPlane}
+                            <strong>Polygon Plane:</strong> ${planeId}<br>
                             <strong>Cell Class:</strong> ${cellClass}<br>
                             ${classProb}
                             ${totalGeneCount}
