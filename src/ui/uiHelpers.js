@@ -179,7 +179,6 @@ export function showTooltip(info, tooltipElement) {
         if (content) {
             tooltipElement.innerHTML = content;
             tooltipElement.style.display = 'block';
-            tooltipElement.style.opacity = '1';
             tooltipElement.style.left = info.x + 20 + 'px';
             tooltipElement.style.top = info.y - 60 + 'px';
         } else {
