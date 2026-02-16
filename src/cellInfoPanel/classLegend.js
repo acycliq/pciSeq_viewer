@@ -13,42 +13,41 @@ import { highlightClass, clearHighlight } from './highlight.js';
  * @param {Object} cellData - Cell data with ClassName[] and Prob[]
  */
 export function renderClassLegend(cellData) {
-    try {
-        var container = document.getElementById('classLegend');
-        if (!container) return;
+    const container = document.getElementById('classLegend');
+    if (!container) return;
 
-        var names = Array.isArray(cellData.ClassName) ? cellData.ClassName : [];
-        var probs = Array.isArray(cellData.Prob) ? cellData.Prob : [];
-        var rows = [];
-        for (var i = 0; i < names.length; i++) {
-            rows.push({ name: names[i] || '', prob: Number(probs[i]) || 0 });
-        }
-        rows.sort(function(a, b) { return b.prob - a.prob; });
+    const names = Array.isArray(cellData.ClassName) ? cellData.ClassName : [];
+    const probs = Array.isArray(cellData.Prob) ? cellData.Prob : [];
 
-        var html = '';
-        for (var j = 0; j < rows.length; j++) {
-            var r = rows[j];
-            var color = getClassColor(r.name);
-            var pct = (r.prob * 100).toFixed(1) + '%';
-            html += '<div class="legend-row" data-class="' + r.name + '">'
-                  + '<span class="legend-dot" style="background:' + color + '"></span>'
-                  + '<span class="legend-name" title="' + r.name + '">' + r.name + '</span>'
-                  + '<span class="legend-prob">' + pct + '</span>'
-                  + '</div>';
-        }
-        container.innerHTML = html;
-
-        // Attach hover events for cross-highlighting
-        var legendRows = container.querySelectorAll('.legend-row');
-        legendRows.forEach(function(row) {
-            row.addEventListener('mouseenter', function() {
-                highlightClass(this.dataset.class);
-            });
-            row.addEventListener('mouseleave', function() {
-                clearHighlight();
-            });
-        });
-    } catch (e) {
-        console.warn('renderClassLegend failed:', e);
+    // Build rows sorted by probability descending
+    const rows = [];
+    for (let i = 0; i < names.length; i++) {
+        rows.push({ name: names[i] || '', prob: Number(probs[i]) || 0 });
     }
+    rows.sort((a, b) => b.prob - a.prob);
+
+    // Build HTML
+    let html = '';
+    for (let j = 0; j < rows.length; j++) {
+        const r = rows[j];
+        const color = getClassColor(r.name);
+        const pct = (r.prob * 100).toFixed(1) + '%';
+        html += '<div class="legend-row" data-class="' + r.name + '">'
+              + '<span class="legend-dot" style="background:' + color + '"></span>'
+              + '<span class="legend-name" title="' + r.name + '">' + r.name + '</span>'
+              + '<span class="legend-prob">' + pct + '</span>'
+              + '</div>';
+    }
+    container.innerHTML = html;
+
+    // Attach hover events for cross-highlighting with donut chart
+    const legendRows = container.querySelectorAll('.legend-row');
+    legendRows.forEach(function(row) {
+        row.addEventListener('mouseenter', function() {
+            highlightClass(this.dataset.class);
+        });
+        row.addEventListener('mouseleave', function() {
+            clearHighlight();
+        });
+    });
 }

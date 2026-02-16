@@ -6,10 +6,11 @@
  */
 
 import { update, show, hide } from '../cellInfoPanel/index.js';
+import { getClassColor } from '../cellInfoPanel/colorResolver.js';
 
 /**
- * Handle hover events on cell polygons
- * Looks up full cell data and updates the cell info panel
+ * Handle hover events on cell polygons.
+ * Looks up full cell data and updates the cell info panel.
  * @param {Object} info - Hover info from deck.gl
  */
 export function handleCellHover(info) {
@@ -36,7 +37,7 @@ export function handleCellHover(info) {
 }
 
 /**
- * Build cell info data structure from full cell data
+ * Build cell info data structure from full cell data.
  * @param {Object} fullCellData - Cell data from cellDataMap
  * @param {string|number} cellLabel - Cell label/ID
  * @returns {Object} Formatted cell data for info panel
@@ -44,6 +45,7 @@ export function handleCellHover(info) {
 function buildCellInfoData(fullCellData, cellLabel) {
     const cx = Number(fullCellData.position?.x || 0);
     const cy = Number(fullCellData.position?.y || 0);
+
     const names = Array.isArray(fullCellData.classification?.className)
         ? fullCellData.classification.className
         : [];
@@ -51,12 +53,12 @@ function buildCellInfoData(fullCellData, cellLabel) {
         ? fullCellData.classification.probability
         : [];
 
-    // Determine top class
-    let topIdx = -1, topVal = -Infinity;
+    // Determine top class (highest probability)
+    let topIdx = -1;
+    let topVal = -Infinity;
     for (let i = 0; i < probs.length; i++) {
-        const v = probs[i];
-        if (typeof v === 'number' && v > topVal) {
-            topVal = v;
+        if (typeof probs[i] === 'number' && probs[i] > topVal) {
+            topVal = probs[i];
             topIdx = i;
         }
     }
@@ -67,16 +69,6 @@ function buildCellInfoData(fullCellData, cellLabel) {
         ? fullCellData.geneExpression.geneCounts
         : [];
     const geneTotal = geneCounts.reduce((a, b) => a + (Number(b) || 0), 0);
-
-    // Resolve a color for the top class if available
-    let topColor = '#C0C0C0';
-    try {
-        const scheme = (window.currentColorScheme && window.currentColorScheme.cellClasses)
-            ? window.currentColorScheme.cellClasses
-            : [];
-        const entry = scheme.find(e => e.className === topClass);
-        if (entry && entry.color) topColor = entry.color;
-    } catch {}
 
     return {
         cell_id: fullCellData.cellNum || Number(cellLabel),
@@ -96,7 +88,7 @@ function buildCellInfoData(fullCellData, cellLabel) {
             Y: cy,
             GeneCountTotal: geneTotal,
             IdentifiedType: topClass,
-            color: topColor
+            color: getClassColor(topClass)
         }
     };
 }

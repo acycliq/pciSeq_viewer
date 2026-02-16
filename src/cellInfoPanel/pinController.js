@@ -4,27 +4,32 @@
  * Manages the pin state for the cell info panel.
  * Ctrl toggles pin: pinned panel stays visible and interactive (scrollable).
  * Ctrl again or X button unpins and hides.
+ *
+ * Call init() once at startup to register the Ctrl key listener.
  */
 
 let _panelPinned = false;
 
-// Bind Ctrl key listener on module load
-document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Control') return;
-    const panel = document.getElementById('cellInfoPanel');
-    if (!panel) return;
+/**
+ * Register the Ctrl key listener for pin toggling.
+ * Must be called explicitly during app initialization.
+ */
+export function init() {
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Control') return;
+        const panel = document.getElementById('cellInfoPanel');
+        if (!panel) return;
 
-    if (_panelPinned) {
-        // Unpin and hide
-        _panelPinned = false;
-        panel.classList.remove('pinned');
-        panel.classList.remove('visible');
-    } else if (panel.classList.contains('visible')) {
-        // Pin the currently visible panel
-        _panelPinned = true;
-        panel.classList.add('pinned');
-    }
-});
+        if (_panelPinned) {
+            _panelPinned = false;
+            panel.classList.remove('pinned');
+            panel.classList.remove('visible');
+        } else if (panel.classList.contains('visible')) {
+            _panelPinned = true;
+            panel.classList.add('pinned');
+        }
+    });
+}
 
 /**
  * Show the cell info panel (adds 'visible' class).
