@@ -1802,6 +1802,52 @@ body {
 }
 .about-modal-close:hover { color: #fff; }
 
+/* Keyboard Shortcuts Modal */
+.shortcuts-modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease;
+    z-index: 3200;
+}
+.shortcuts-modal-bg.active { opacity: 1; pointer-events: all; }
+
+.shortcuts-modal {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: #111;
+    color: #eee;
+    width: min(480px, 90vw);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 16px 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+.shortcuts-modal h3 { margin: 0 0 12px; }
+
+.shortcuts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    line-height: 1.6;
+}
+.shortcuts-table td { padding: 4px 8px; }
+.shortcuts-table tr:nth-child(odd) { background: rgba(255, 255, 255, 0.04); }
+.shortcuts-table td:first-child { white-space: nowrap; width: 40%; }
+
+.shortcuts-table kbd {
+    font-family: monospace;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 12px;
+}
+
 .check-cell-assigned {
     margin: 0 0 12px;
     font-size: 13px;

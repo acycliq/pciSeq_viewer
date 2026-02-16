@@ -526,6 +526,14 @@ function createMenu() {
       label: 'Help',
       submenu: [
         {
+          label: 'Keyboard Shortcuts...',
+          accelerator: 'CmdOrCtrl+/',
+          click: () => {
+            if (mainWindow) mainWindow.webContents.send('show-shortcuts');
+          }
+        },
+        { type: 'separator' },
+        {
           label: 'Check for Updates...',
           click: () => {
             checkForUpdates();

@@ -409,6 +409,26 @@
         </div>
     </div>
 
+    <!-- Keyboard Shortcuts Modal -->
+    <div id="shortcutsModal" class="shortcuts-modal-bg" role="dialog" aria-modal="true" aria-labelledby="shortcutsTitle">
+        <div class="shortcuts-modal" role="document">
+            <button class="about-modal-close" id="shortcutsClose" aria-label="Close">&times;</button>
+            <h3 id="shortcutsTitle">Keyboard Shortcuts</h3>
+            <table class="shortcuts-table">
+                <tbody>
+                    <tr><td><kbd>Left</kbd> / <kbd>Right</kbd></td><td>Previous / Next plane</td></tr>
+                    <tr><td><kbd>Home</kbd> / <kbd>End</kbd></td><td>First / Last plane</td></tr>
+                    <tr><td><kbd>PageUp</kbd> / <kbd>PageDown</kbd></td><td>Back / Forward 10 planes</td></tr>
+                    <tr><td><kbd>T</kbd></td><td>Toggle background tiles</td></tr>
+                    <tr><td><kbd>P</kbd></td><td>Toggle cell polygons</td></tr>
+                    <tr><td><kbd>Ctrl+F</kbd></td><td>Cell search</td></tr>
+                    <tr><td><kbd>Ctrl</kbd> (hold)</td><td>Pin / unpin cell info panel</td></tr>
+                    <tr><td><kbd>Escape</kbd></td><td>Close panels and modals</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- Cell Info Panel (Bottom Right) -->
     <div id="cellInfoPanel" class="cell-info-panel">
         <div class="cell-info-header">
@@ -450,6 +470,28 @@
             if (closeBtn) closeBtn.addEventListener('click', close);
             modalBg.addEventListener('click', (e) => { if (e.target === modalBg) close(); });
             document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+        })();
+
+        // Keyboard Shortcuts modal wiring
+        (function() {
+            const modalBg = document.getElementById('shortcutsModal');
+            const closeBtn = document.getElementById('shortcutsClose');
+            if (!modalBg) return;
+
+            const open = () => modalBg.classList.add('active');
+            const close = () => modalBg.classList.remove('active');
+
+            if (closeBtn) closeBtn.addEventListener('click', close);
+            modalBg.addEventListener('click', (e) => { if (e.target === modalBg) close(); });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') close();
+                if (e.key === '/' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); open(); }
+            });
+
+            // Electron IPC trigger
+            if (window.electronAPI && window.electronAPI.onShowShortcuts) {
+                window.electronAPI.onShowShortcuts(() => open());
+            }
         })();
     </script>
 

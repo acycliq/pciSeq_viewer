@@ -34,7 +34,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Import colour schemes from menu
   onImportGeneColors: (handler) => ipcRenderer.on('import-gene-colors', (_e, data) => handler(data)),
-  onImportClassColors: (handler) => ipcRenderer.on('import-class-colors', (_e, data) => handler(data))
+  onImportClassColors: (handler) => ipcRenderer.on('import-class-colors', (_e, data) => handler(data)),
+
+  // Keyboard shortcuts overlay
+  onShowShortcuts: (handler) => ipcRenderer.on('show-shortcuts', handler)
 });
 
 console.log('Preload script loaded - electronAPI exposed to renderer');
