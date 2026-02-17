@@ -6,6 +6,7 @@
  */
 
 import { loadPolygonData } from './dataLoaders.js';
+import { updateCellBoundaryIndex } from './cellIndexes.js';
 
 // Yield back to the browser to keep UI responsive
 function idleYield() {
@@ -86,23 +87,11 @@ async function loadPlaneForIndex(planeId, cellBoundaryIndex, appState) {
         );
 
         if (geojson?.features && geojson.features.length > 0) {
-            let cellCount = 0;
-            for (let i = 0; i < geojson.features.length; i++) {
-                const feature = geojson.features[i];
-                const cellId = parseInt(feature.properties.label);
-                if (!isNaN(cellId)) {
-                    if (!cellBoundaryIndex.has(cellId)) {
-                        cellBoundaryIndex.set(cellId, []);
-                    }
-                    cellBoundaryIndex.get(cellId).push(planeId);
-                    cellCount++;
-                }
-                if (i % 1000 === 0) await idleYield();
-            }
-
+            updateCellBoundaryIndex(planeId, geojson, cellBoundaryIndex);
+            
             // Log progress every 20 planes
             if (planeId % 20 === 0) {
-                console.log(` Background index progress: plane ${planeId} loaded (${cellCount} cells)`);
+                console.log(` Background index progress: plane ${planeId} loaded (${geojson.features.length} cells)`);
             }
         } else {
             // File exists but is empty or has no features

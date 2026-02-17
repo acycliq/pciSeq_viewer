@@ -10,6 +10,10 @@ import {
     ARROW_MANIFESTS
 } from '../../config/constants.js';
 import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
+import {
+    getMostProbableCellClass,
+    updateCellBoundaryIndex
+} from './cellIndexes.js';
 // Note: classColorsCodes is loaded globally from color scheme files
 
 /**
@@ -343,158 +347,6 @@ export function buildGeneIconAtlas(genes) {
 }
 
 /**
- * Build lightning-fast lookup indexes for gene spot data
- * @param {Map} geneDataMap - Map of gene data by gene name
- * @param {Map} cellToSpotsIndex - Index to populate: cellLabel -> spots
- * @param {Map} spotToParentsIndex - Index to populate: spotId -> parent info
- */
-export function buildGeneSpotIndexes(geneDataMap, cellToSpotsIndex, spotToParentsIndex) {
-    console.log('Building gene spot indexes for lightning-fast lookups...');
-
-    // Clear existing indexes
-    cellToSpotsIndex.clear();
-    spotToParentsIndex.clear();
-
-    let totalSpots = 0;
-
-    let globalSpotIndex = 0; // Track global position in geneData.tsv
-
-    geneDataMap.forEach((spots, geneName) => {
-        spots.forEach((spot, spotIndex) => {
-            const spot_id = globalSpotIndex; // Use global position as spot_id
-            globalSpotIndex++;
-            totalSpots++;
-
-            // Index 1: Cell parent -> spots (for "show me spots for this cell")
-            const primaryParent = spot.neighbour;
-            if (primaryParent) {
-                if (!cellToSpotsIndex.has(primaryParent)) {
-                    cellToSpotsIndex.set(primaryParent, []);
-                }
-                cellToSpotsIndex.get(primaryParent).push({
-                    spot_id: spot_id,
-                    gene: geneName,
-                    x: spot.x,
-                    y: spot.y,
-                    z: spot.z,
-                    plane_id: spot.plane_id,
-                    // Complete neighbour/probability info from geneData.tsv
-                    neighbour: spot.neighbour,
-                    neighbour_array: spot.neighbour_array,
-                    prob: spot.prob,
-                    prob_array: spot.prob_array,
-                    // Include measurement fields for weighted counts
-                    intensity: spot.intensity,
-                    score: spot.score
-                });
-            }
-
-            // Index 2: Spot -> all parent candidates (for "show me parents for this spot")
-            if (spot.neighbour_array && spot.prob_array) {
-                spotToParentsIndex.set(spot_id, {
-                    parents: spot.neighbour_array,
-                    probabilities: spot.prob_array,
-                    gene: geneName,
-                    coordinates: {
-                        x: spot.x,
-                        y: spot.y,
-                        z: spot.z,
-                        plane_id: spot.plane_id
-                    }
-                });
-            }
-        });
-    });
-
-    console.log(` Built indexes: ${cellToSpotsIndex.size} cells, ${spotToParentsIndex.size} spots (${totalSpots} total)`);
-}
-
-/**
- * Get the most probable cell class from cellData
- * @param {string|number} cellNum - Cell number
- * @param {Map} cellDataMap - Map containing cell data
- * @returns {string} Most probable cell class
- */
-function getMostProbableCellClass(cellNum, cellDataMap) {
-    const cellData = cellDataMap.get(parseInt(cellNum));
-    if (!cellData) {
-        console.error(`No cell data found for cell ${cellNum}`);
-        return 'Unknown';
-    }
-    let names = cellData?.classification?.className;
-    let probs = cellData?.classification?.probability;
-    if (!names) {
-        console.error(`Cell ${cellNum} missing classification.className`, cellData);
-        return 'Unknown';
-    }
-    if (!Array.isArray(names) && typeof names === 'string') {
-        try { const parsed = JSON.parse(names.replace(/'/g, '"')); if (Array.isArray(parsed)) names = parsed; } catch {}
-    }
-    if (!Array.isArray(names)) {
-        console.error(`Cell ${cellNum} className is not an array`, names);
-        return 'Unknown';
-    }
-    if (!Array.isArray(probs) || probs.length !== names.length) {
-        console.error(`Cell ${cellNum} probabilities invalid or length mismatch`, { names, probs });
-        return 'Unknown';
-    }
-    let maxProbIndex = -1; let maxProb = -Infinity;
-    for (let i = 0; i < probs.length; i++) { if (typeof probs[i] === 'number' && probs[i] > maxProb) { maxProb = probs[i]; maxProbIndex = i; } }
-    if (maxProbIndex < 0 || maxProbIndex >= names.length) {
-        console.error(`Cell ${cellNum} could not select a class from`, { names, probs });
-        return 'Unknown';
-    }
-    const result = String(names[maxProbIndex]).trim();
-    if (!result) {
-        console.warn(`Cell ${cellNum} selected class name is empty, using 'Unknown' fallback. Selected:`, names[maxProbIndex]);
-        return 'Unknown';
-    }
-    return result;
-}
-
-/**
- * Get color for a cell class using classConfig
- * @param {string} className - Cell class name
- * @returns {Array} RGB color array
- */
-function getCellClassColor(className) {
-    if (Array.isArray(className)) {
-        console.error('getCellClassColor expected string, received array', className);
-        return [192,192,192];
-    }
-    const key = String(className || '').trim();
-    // Use the global classColorsCodes function
-    if (typeof classColorsCodes === 'function') {
-        const colorConfig = classColorsCodes();
-        const classEntry = colorConfig.find(entry => entry.className === key);
-        if (classEntry && classEntry.color) {
-            // Convert hex color to RGB array
-            const hex = classEntry.color.replace('#', '');
-            const r = parseInt(hex.substr(0, 2), 16);
-            const g = parseInt(hex.substr(2, 2), 16);
-            const b = parseInt(hex.substr(4, 2), 16);
-            return [r, g, b];
-        } else {
-            console.log(`No color found for ${key}, using fallback gray`);
-        }
-    } else {
-        console.log('classColorsCodes function not available, using fallback gray');
-    }
-    // Fallback to generic gray color (do not invent colors; exposes mapping errors)
-    return [192, 192, 192]; // #C0C0C0
-}
-
-/**
- * Convert TSV polygon data to GeoJSON format
- * Transforms coordinates to tile space and assigns aliases
- * @param {Object[]} tsvData - Raw TSV data rows
- * @param {number} planeId - Current plane ID
- * @param {Set} allPolygonAliases - Set to track all discovered aliases
- * @returns {Object} GeoJSON FeatureCollection
- */
-// TSV polygon conversion removed
-
-/**
  * Load polygon boundary data for a specific plane using Web Worker
  * Handles caching, coordinate transformation, and alias generation
  * @param {number} planeNum - Plane number to load
@@ -506,150 +358,48 @@ function getCellClassColor(className) {
  */
 export async function loadPolygonData(planeNum, polygonCache, allCellClasses, cellDataMap = null, cellBoundaryIndex = null) {
     // Arrow-only path: build per-plane GeoJSON from Arrow buffers and cache it
-        if (polygonCache.has(planeNum)) {
-            const cached = polygonCache.get(planeNum);
-            console.log(`Using cached polygon data (Arrow) for plane ${planeNum}, features: ${cached?.features?.length || 0}`);
-            return cached;
-        }
-        try {
-            const { initArrow, loadBoundariesPlane } = await import('../../arrow-loader/lib/arrow-loaders.js');
-            initArrow({
-                spotsManifest: ARROW_MANIFESTS.spotsManifest,
-                cellsManifest: ARROW_MANIFESTS.cellsManifest,
-                boundariesManifest: ARROW_MANIFESTS.boundariesManifest,
-                spotsGeneDict: ARROW_MANIFESTS.spotsGeneDict
-            });
-            const { buffers } = await loadBoundariesPlane(planeNum);
-            // Transform to tile coords and build GeoJSON
-            const { positions, startIndices, length, labels } = buffers;
-            const features = [];
-            for (let pi = 0; pi < length; pi++) {
-                const start = startIndices[pi];
-                const end = startIndices[pi + 1];
-                if (end - start < 3) continue;
-                const ring = [];
-                for (let i = start; i < end; i++) {
-                    const [tx, ty] = transformToTileCoordinates(positions[2*i], positions[2*i+1], IMG_DIMENSIONS);
-                    ring.push([tx, ty]);
-                }
-                const label = labels ? labels[pi] : -1;
-                const cellClass = getMostProbableCellClass(label, cellDataMap || window.appState?.cellDataMap || new Map());
-                if (cellClass === 'Unknown') {
-                    console.warn(`Polygon processing: Cell ${label} not found in cellDataMap, adding 'Unknown' to allCellClasses`);
-                }
-                if (cellClass && allCellClasses) allCellClasses.add(cellClass);
-                features.push({
-                    type: 'Feature',
-                    geometry: { type: 'Polygon', coordinates: [ring] },
-                    properties: { plane_id: planeNum, label, cellClass }
-                });
+    if (polygonCache.has(planeNum)) {
+        const cached = polygonCache.get(planeNum);
+        console.log(`Using cached polygon data (Arrow) for plane ${planeNum}, features: ${cached?.features?.length || 0}`);
+        return cached;
+    }
+    try {
+        const { initArrow, loadBoundariesPlane } = await import('../../arrow-loader/lib/arrow-loaders.js');
+        initArrow({
+            spotsManifest: ARROW_MANIFESTS.spotsManifest,
+            cellsManifest: ARROW_MANIFESTS.cellsManifest,
+            boundariesManifest: ARROW_MANIFESTS.boundariesManifest,
+            spotsGeneDict: ARROW_MANIFESTS.spotsGeneDict
+        });
+        const { buffers } = await loadBoundariesPlane(planeNum);
+        // Transform to tile coords and build GeoJSON
+        const { positions, startIndices, length, labels } = buffers;
+        const features = [];
+        for (let pi = 0; pi < length; pi++) {
+            const start = startIndices[pi];
+            const end = startIndices[pi + 1];
+            if (end - start < 3) continue;
+            const ring = [];
+            for (let i = start; i < end; i++) {
+                const [tx, ty] = transformToTileCoordinates(positions[2*i], positions[2*i+1], IMG_DIMENSIONS);
+                ring.push([tx, ty]);
             }
-            const geojson = { type: 'FeatureCollection', features };
-            polygonCache.set(planeNum, geojson);
-            console.log(`Loaded ${features.length} polygons for plane ${planeNum} (Arrow)`);
-            if (cellBoundaryIndex) updateCellBoundaryIndex(planeNum, geojson, cellBoundaryIndex);
-            return geojson;
-        } catch (err) {
-            console.error(`Failed to load Arrow polygon data for plane ${planeNum}:`, err);
-            return { type: 'FeatureCollection', features: [] };
-        }
-    
-}
-
-/**
- * Load polygon data using unified Web Worker
- * @param {number} planeNum - Plane number to load
- * @returns {Promise<Object>} GeoJSON FeatureCollection
- */
-// TSV polygon worker path removed
-
-/**
- * Build cell boundary index for fast lookup
- * @param {Map} polygonCache - Cache containing polygon data by plane
- * @param {Map} cellBoundaryIndex - Index to populate: cellId -> [planeId1, planeId2, ...]
- */
-export function buildCellBoundaryIndex(polygonCache, cellBoundaryIndex) {
-    console.log('Building cell boundary index for fast lookup...');
-
-    // Clear existing index
-    cellBoundaryIndex.clear();
-
-    let totalBoundaries = 0;
-
-    // Iterate through all planes in polygon cache
-    polygonCache.forEach((geojson, planeId) => {
-        if (geojson && geojson.features) {
-            geojson.features.forEach(feature => {
-                if (feature.properties && feature.properties.label) {
-                    const cellId = parseInt(feature.properties.label);
-
-                    // Add plane to this cell's plane list
-                    if (!cellBoundaryIndex.has(cellId)) {
-                        cellBoundaryIndex.set(cellId, []);
-                    }
-                    cellBoundaryIndex.get(cellId).push(planeId);
-                    totalBoundaries++;
-                }
+            const label = labels ? labels[pi] : -1;
+            const cellClass = getMostProbableCellClass(label, cellDataMap || window.appState?.cellDataMap || new Map());
+            if (cellClass && allCellClasses) allCellClasses.add(cellClass);
+            features.push({
+                type: 'Feature',
+                geometry: { type: 'Polygon', coordinates: [ring] },
+                properties: { plane_id: planeNum, label, cellClass }
             });
         }
-    });
-
-    console.log(` Built cell boundary index: ${cellBoundaryIndex.size} cells across ${polygonCache.size} planes (${totalBoundaries} total boundaries)`);
-}
-
-/**
- * Update cell boundary index when new polygon data is loaded
- * @param {number} planeId - Plane ID that was just loaded
- * @param {Object} geojson - GeoJSON data for the plane
- * @param {Map} cellBoundaryIndex - Index to update
- */
-export function updateCellBoundaryIndex(planeId, geojson, cellBoundaryIndex) {
-    if (!geojson || !geojson.features) return;
-
-    geojson.features.forEach(feature => {
-        if (feature.properties && feature.properties.label) {
-            const cellId = parseInt(feature.properties.label);
-
-            // Add plane to this cell's plane list
-            if (!cellBoundaryIndex.has(cellId)) {
-                cellBoundaryIndex.set(cellId, []);
-            }
-
-            // Only add if not already present
-            const planes = cellBoundaryIndex.get(cellId);
-            if (!planes.includes(planeId)) {
-                planes.push(planeId);
-            }
-        }
-    });
-}
-
-/**
- * Get all plane IDs where a cell has boundaries
- * @param {number} cellId - Cell ID to lookup
- * @param {Map} cellBoundaryIndex - Cell boundary index
- * @returns {number[]} Array of plane IDs where this cell has boundaries
- */
-export function getCellBoundaryPlanes(cellId, cellBoundaryIndex) {
-    return cellBoundaryIndex.get(cellId) || [];
-}
-
-/**
- * Assign colors to cell classes for consistent visualization
- * @param {Set} allCellClasses - All discovered cell classes
- * @param {Map} cellClassColors - Map to store cell class colors
- */
-export function assignColorsToCellClasses(allCellClasses, cellClassColors) {
-    const classes = Array.from(allCellClasses);
-    console.log(`Assigning colors for ${classes.length} cell classes:`, classes);
-
-    classes.forEach((cellClass) => {
-        if (!cellClassColors.has(cellClass)) {
-            const color = getCellClassColor(cellClass);
-            cellClassColors.set(cellClass, color);
-            // console.log(`Assigned color to ${cellClass}:`, color);
-        }
-    });
-
-    console.log('Final color map:', Array.from(cellClassColors.entries()));
+        const geojson = { type: 'FeatureCollection', features };
+        polygonCache.set(planeNum, geojson);
+        console.log(`Loaded ${features.length} polygons for plane ${planeNum} (Arrow)`);
+        if (cellBoundaryIndex) updateCellBoundaryIndex(planeNum, geojson, cellBoundaryIndex);
+        return geojson;
+    } catch (err) {
+        console.error(`Failed to load Arrow polygon data for plane ${planeNum}:`, err);
+        return { type: 'FeatureCollection', features: [] };
+    }
 }

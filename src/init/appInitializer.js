@@ -14,10 +14,12 @@ import { showLoading, hideLoading, showTooltip } from '../ui/uiHelpers.js';
 import {
     loadGeneData,
     loadCellData,
-    loadPolygonData,
+    loadPolygonData
+} from '../data/dataLoaders.js';
+import {
     assignColorsToCellClasses,
     buildGeneSpotIndexes
-} from '../data/dataLoaders.js';
+} from '../data/cellIndexes.js';
 import { PolygonBoundaryHighlighter } from '../ui/polygonInteractions.js';
 import { RectangularSelector } from '../ui/rectangularSelector.js';
 import { applyPendingClassColorSchemeIfAny } from '../classColorImport.js';

@@ -8,12 +8,12 @@
 import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
 import { IMG_DIMENSIONS, MAX_PRELOAD, INITIAL_VIEW_STATE } from '../../config/constants.js';
 import { showTooltip } from '../ui/uiHelpers.js';
+import { createTileLayer } from './tileLayerCreator.js';
+import { createPolygonLayers } from './polygonLayerCreator.js';
 import {
-    createTileLayer,
-    createPolygonLayers,
     createGeneLayers,
     createArrowPointCloudLayer
-} from './layerCreators.js';
+} from './spotLayerCreator.js';
 import { createZProjectionLayer, isZProjectionReady } from './zProjectionOverlay.js';
 import { getVisibleRegions, getRegionColorRgb } from '../regionsManager.js';
 

@@ -21,11 +21,26 @@ import Perf from '../utils/runtimePerf.js';
 
 // === UI IMPORTS ===
 import { showLoading, hideLoading, showTooltip } from './ui/uiHelpers.js';
+import { showMetadataError } from './ui/metadataError.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
 import { init as initCellInfoPanel } from './cellInfoPanel/index.js';
 import { applyPendingClassColorSchemeIfAny, applyClassColorScheme } from './classColorImport.js';
 import { applyGeneScheme } from './geneColorImport.js';
+
+// === INITIALIZATION IMPORTS ===
+import {
+    initializeDeckGL,
+    derivePlanesFromManifest,
+    initializePlaneSlider,
+    initializeGeneData,
+    initializePolygonHighlighter,
+    initializeRectangularSelector,
+    initializeCellData,
+    finalizeInitialization,
+    preloadAdjacentPlanesInitial,
+    removeCurtain
+} from './init/appInitializer.js';
 
 // === LAYER IMPORTS ===
 import {
@@ -43,9 +58,8 @@ import {
     loadGeneData,
     loadPolygonData,
     loadCellData,
-    assignColorsToCellClasses,
-    buildGeneSpotIndexes
 } from './data/dataLoaders.js';
+import { buildGeneSpotIndexes, assignColorsToCellClasses } from './data/cellIndexes.js';
 
 // === EVENT HANDLING IMPORTS ===
 import { setupEventHandlers, setupAdvancedKeyboardShortcuts } from './events/eventHandlers.js';
@@ -53,8 +67,6 @@ import { setupCheckCellBridge, openCheckCellModal } from './checkCellBridge.js';
 import { setupCheckSpotBridge, openCheckSpotModal } from './checkSpotBridge.js';
 
 // === UI INTERACTION IMPORTS ===
-import { PolygonBoundaryHighlighter } from './ui/polygonInteractions.js';
-import { RectangularSelector } from './ui/rectangularSelector.js';
 import { setupBoundariesReadyListener } from './ui/spatialIndexing.js';
 
 // === WIDGET IMPORTS ===
@@ -182,79 +194,6 @@ window.getCellMeta = (cellId) => {
         return null;
     }
 };
-
-// === METADATA ERROR DISPLAY (Electron-specific) ===
-function showMetadataError(metadataResult, errorMessage) {
-    // Hide loading curtain
-    const curtain = document.getElementById('appCurtain');
-    if (curtain) {
-        curtain.classList.add('hidden');
-    }
-
-    // Hide loading indicator
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    if (loadingIndicator) {
-        loadingIndicator.style.display = 'none';
-    }
-
-    // Show metadata error screen
-    const errorScreen = document.getElementById('metadataErrorState');
-    const errorDetails = document.getElementById('metadataErrorDetails');
-
-    if (errorScreen) {
-        errorScreen.classList.remove('hidden');
-
-        // Build details table showing which fields are present/missing
-        if (errorDetails) {
-            const fields = [
-                { name: 'width', label: 'Image Width', value: metadataResult?.imageWidth },
-                { name: 'height', label: 'Image Height', value: metadataResult?.imageHeight },
-                { name: 'plane_count', label: 'Plane Count', value: metadataResult?.planeCount },
-                { name: 'voxel_size', label: 'Voxel Size', value: metadataResult?.voxelSize ? JSON.stringify(metadataResult.voxelSize) : null }
-            ];
-
-            let html = '';
-            fields.forEach(field => {
-                const isOk = field.value !== null && field.value !== undefined;
-                const statusClass = isOk ? 'ok' : 'missing';
-                const statusIcon = isOk ? 'OK' : 'X';
-                const valueDisplay = isOk ? field.value : 'missing';
-
-                html += `
-                    <div class="error-field">
-                        <span class="field-status ${statusClass}">${statusIcon}</span>
-                        <span class="field-name">${field.label}</span>
-                        <span class="field-value">${valueDisplay}</span>
-                    </div>
-                `;
-            });
-
-            errorDetails.innerHTML = html;
-        }
-
-        // Setup button handlers
-        const openBtn = document.getElementById('metadataErrorOpenBtn');
-        const closeBtn = document.getElementById('metadataErrorCloseBtn');
-
-        if (openBtn) {
-            openBtn.addEventListener('click', async () => {
-                const result = await window.electronAPI.selectDataFolder();
-                if (result.success) {
-                    window.location.reload();
-                }
-            });
-        }
-
-        if (closeBtn) {
-            closeBtn.addEventListener('click', async () => {
-                // Close the dataset and reload to welcome screen
-                window.location.reload();
-            });
-        }
-    }
-
-    console.error('Metadata error displayed:', errorMessage);
-}
 
 // === ZOOM MODE TRACKING ===
 let __lastZoomMode = null; // 'pc' or 'icon'
@@ -441,286 +380,103 @@ function handleHover(info) {
     showTooltip(info, elements.tooltip);
 }
 
-// === DECKGL INITIALIZATION ===
-function initializeDeckGL() {
-    const { DeckGL, OrthographicView, COORDINATE_SYSTEM } = deck;
+/**
+ * Show the empty state welcome screen
+ */
+function showEmptyState() {
+    const curtain = document.getElementById('appCurtain');
+    if (curtain) {
+        curtain.classList.add('hidden');
+    }
+    
+    if (elements.loadingIndicator) {
+        elements.loadingIndicator.style.display = 'none';
+    }
 
-    const advancedConfig = window.advancedConfig();
-    const tileSize = advancedConfig.visualization.tileSize;
+    const emptyState = document.getElementById('emptyState');
+    const emptyStateBtn = document.getElementById('emptyStateBtn');
+    
+    if (emptyState) {
+        emptyState.classList.remove('hidden');
 
-    state.deckglInstance = new DeckGL({
-        container: 'map',
-        views: new OrthographicView({
-            id: 'ortho',
-            flipY: true,
-            controller: true
-        }),
-        initialViewState: INITIAL_VIEW_STATE,
-        controller: {
-            scrollZoom: { speed: 0.01, smooth: true },
-            doubleClickZoom: true,
-            touchZoom: true,
-            touchRotate: false,
-            keyboard: true,
-            dragPan: true
-        },
-        onViewStateChange: handleViewStateChange,
-        onHover: handleHover,
-        getTooltip: null,
-        parameters: {
-            depthTest: false,
-            blend: true,
-            blendFunc: [770, 771]
-        },
-        getCursor: ({isHovering}) => {
-            try {
-                const active = window.appState?.rectangularSelector?.isActive;
-                if (active) return 'crosshair';
-            } catch {}
-            return isHovering ? 'pointer' : 'default';
-        },
-        layers: []
-    });
+        if (emptyStateBtn) {
+            emptyStateBtn.onclick = async () => {
+                const voxelX = parseFloat(document.getElementById('voxelSizeX')?.value) || 0.28;
+                const voxelY = parseFloat(document.getElementById('voxelSizeY')?.value) || 0.28;
+                const voxelZ = parseFloat(document.getElementById('voxelSizeZ')?.value) || 0.70;
 
-    window.appState.deckglInstance = state.deckglInstance;
+                await window.electronAPI.setVoxelSize([voxelX, voxelY, voxelZ]);
+                const result = await window.electronAPI.selectDataFolder();
+                if (result.success) {
+                    window.location.reload();
+                }
+            };
+        }
+    }
+    console.warn('Data folder not configured. Waiting for user selection.');
 }
 
 // === MAIN INITIALIZATION (Electron-specific) ===
 async function init() {
     showLoading(state, elements.loadingIndicator);
 
-    // Check if data path is configured first (Electron-specific)
+    // 1. Check for data path (Electron empty-state)
     const paths = await window.electronAPI.getPaths();
-    if (!paths.dataPath) {
-        // Hide loading curtain and show empty state
-        const curtain = document.getElementById('appCurtain');
-        if (curtain) {
-            curtain.classList.add('hidden');
-        }
-        const loadingIndicator = elements.loadingIndicator;
-        if (loadingIndicator) {
-            loadingIndicator.style.display = 'none';
-        }
-
-        // Show empty state screen
-        const emptyState = document.getElementById('emptyState');
-        const emptyStateBtn = document.getElementById('emptyStateBtn');
-        if (emptyState) {
-            emptyState.classList.remove('hidden');
-
-            if (emptyStateBtn) {
-                emptyStateBtn.addEventListener('click', async () => {
-                    // Read voxel size from input fields before opening folder
-                    const voxelX = parseFloat(document.getElementById('voxelSizeX')?.value) || 0.28;
-                    const voxelY = parseFloat(document.getElementById('voxelSizeY')?.value) || 0.28;
-                    const voxelZ = parseFloat(document.getElementById('voxelSizeZ')?.value) || 0.70;
-
-                    // Save voxel size to electron-store
-                    await window.electronAPI.setVoxelSize([voxelX, voxelY, voxelZ]);
-                    console.log('Voxel size saved:', [voxelX, voxelY, voxelZ]);
-
-                    const result = await window.electronAPI.selectDataFolder();
-                    if (result.success) {
-                        // Reload to apply new data path
-                        window.location.reload();
-                    }
-                });
-            }
-        }
-
-        console.warn('Data folder not configured. Waiting for user selection.');
-        // Don't proceed with initialization
-        return;
+    if (!paths.dataPath) { 
+        showEmptyState(); 
+        return; 
     }
 
-    // Load dataset metadata from MBTiles before config()
+    // 2. Load metadata and config
     const metadataResult = await window.loadDatasetMetadata();
-
-    // Try to get config - catch errors for missing metadata
     let userConfig;
-    try {
-        userConfig = window.config();
-    } catch (error) {
-        console.error('Configuration error:', error.message);
-        showMetadataError(metadataResult, error.message);
-        return;
+    try { 
+        userConfig = window.config(); 
+    } catch (err) { 
+        showMetadataError(metadataResult, err.message); 
+        return; 
     }
 
-    const advancedConfig = window.advancedConfig();
-
-    // Performance optimization info
-    if (advancedConfig.performance.enablePerformanceMode) {
-        console.log('Performance optimizations enabled:');
-        console.log('  Two-phase updates (immediate UI + background data)');
-        console.log('  Smart caching with automatic cleanup');
-        console.log('  Background preloading of adjacent planes');
-        console.log('  Reduced slider debouncing for instant response');
-        console.log('  Memory management (max 50 planes cached)');
-    }
-
-    // Clear polygon cache to ensure fresh load on app restart
     state.polygonCache.clear();
 
-    // Initialize deck.gl instance
-    initializeDeckGL();
+    // 3. Initialize deck.gl
+    state.deckglInstance = initializeDeckGL(handleViewStateChange, handleHover);
+    window.appState.deckglInstance = state.deckglInstance;
 
-    // Setup all UI event listeners
+    // 4. Setup event handlers
     setupEventHandlers(elements, state, updatePlane, updateAllLayers);
     setupAdvancedKeyboardShortcuts(state, updatePlane, updateAllLayers);
     setupCheckCellBridge();
     setupCheckSpotBridge();
 
-    // Derive totalPlanes and startingPlane from Arrow boundaries manifest
-    try {
-        if (!userConfig.arrowBoundariesManifest) {
-            throw new Error('arrowBoundariesManifest is not configured');
-        }
-        const manifestUrl = new URL(userConfig.arrowBoundariesManifest, window.location.href).href;
-        const manifest = await fetch(manifestUrl).then(r => r.json());
-        let totalPlanes = 0;
-        if (manifest && Array.isArray(manifest.shards)) {
-            const planes = manifest.shards.map(s => Number(s.plane)).filter(n => Number.isFinite(n));
-            totalPlanes = planes.length > 0 ? (Math.max(...planes) + 1) : manifest.shards.length;
-        }
-        if (!Number.isFinite(totalPlanes) || totalPlanes <= 0) {
-            throw new Error('Invalid totalPlanes derived from manifest');
-        }
-        const startingPlane = Math.floor(totalPlanes / 2);
-        window.appState.totalPlanes = totalPlanes;
-        console.log(`The image has ${totalPlanes} planes`);
-        state.currentPlane = startingPlane;
-        elements.slider.min = 0;
-        elements.slider.max = totalPlanes - 1;
-        elements.slider.value = state.currentPlane;
-        elements.label.textContent = `Plane: ${state.currentPlane}`;
-    } catch (e) {
-        console.error('Failed to derive totalPlanes from manifest.', e);
-        throw e;
-    }
+    // 5. Derive planes from manifest
+    const { totalPlanes, startingPlane } = await derivePlanesFromManifest();
+    initializePlaneSlider(totalPlanes, startingPlane);
 
-    // Load gene data
-    const {atlas, mapping} = await loadGeneData(state.geneDataMap, state.selectedGenes);
-    state.geneIconAtlas = atlas;
-    state.geneIconMapping = mapping;
-
-    // Sync dataset capability flags
-    try {
-        state.hasScores = Boolean(window.appState && window.appState.hasScores);
-        state.hasIntensity = Boolean(window.appState && window.appState.hasIntensity);
-    } catch {}
-
-    // Show/hide filter sliders based on dataset fields
-    const scoreFilterContainer = document.querySelector('.score-filter-item');
-    if (scoreFilterContainer) {
-        scoreFilterContainer.style.display = state.hasScores ? 'flex' : 'none';
-    }
-    const intensityFilterContainer = document.querySelector('.intensity-filter-item');
-    if (intensityFilterContainer) {
-        intensityFilterContainer.style.display = state.hasIntensity ? 'flex' : 'none';
-    }
-
-    // Build lookup indexes
+    // 6. Load gene data + indexes
+    await initializeGeneData();
     buildGeneSpotIndexes(state.geneDataMap, state.cellToSpotsIndex, state.spotToParentsIndex);
 
-    // Initialize polygon highlighter
-    state.polygonHighlighter = new PolygonBoundaryHighlighter(
-        state.deckglInstance,
-        deck.COORDINATE_SYSTEM.CARTESIAN,
-        state.cellToSpotsIndex,
-        state.geneToId,
-        state.cellDataMap
-    );
-    state.polygonHighlighter.initialize();
+    // 7. Initialize interactions
+    initializePolygonHighlighter();
+    initializeRectangularSelector();
 
-    // Initialize rectangular selector
-    state.rectangularSelector = new RectangularSelector(state.deckglInstance, state);
-    window.appState.rectangularSelector = state.rectangularSelector;
+    // 8. Load cell data + colors
+    await initializeCellData();
 
-    const selectionToolBtn = document.getElementById('selectionToolBtn');
-    if (selectionToolBtn) {
-        selectionToolBtn.addEventListener('click', () => {
-            state.rectangularSelector.toggle();
-        });
-    }
+    // 9. Load polygon data for current plane
+    await loadPolygonData(state.currentPlane, state.polygonCache, state.allCellClasses, state.cellDataMap);
 
-    // Load cell data
-    await loadCellData(state.cellDataMap);
+    // 10. Finalize UI + layers
+    finalizeInitialization(updateAllLayers);
+    preloadAdjacentPlanesInitial();
 
-    // Compute max total gene count
-    try {
-        let maxCount = 0;
-        state.cellDataMap.forEach(cell => {
-            const v = cell && typeof cell.totalGeneCount === 'number' ? cell.totalGeneCount : 0;
-            if (v > maxCount) maxCount = v;
-        });
-        state.maxTotalGeneCount = Math.max(0, maxCount) || 100;
-        const slider = document.getElementById('geneCountSlider');
-        if (slider) {
-            slider.max = String(state.maxTotalGeneCount);
-        }
-    } catch (e) {
-        console.warn('Failed to compute max total gene count:', e);
-    }
-
-    // Initialize class colors
-    state.allCellClasses.clear();
-    state.cellDataMap.forEach((cell, cellId) => {
-        const names = cell?.classification?.className;
-        if (Array.isArray(names) && names.length > 0) {
-            state.allCellClasses.add(names[0]);
-        }
-    });
-    assignColorsToCellClasses(state.allCellClasses, state.cellClassColors);
-    if (state.selectedCellClasses.size === 0) {
-        state.allCellClasses.forEach(c => state.selectedCellClasses.add(c));
-    }
-
-    // Populate UI
-    populateCellClassDrawer();
-    applyPendingClassColorSchemeIfAny();
-    populateGeneDrawer();
-
-    // Preload adjacent planes
-    const totalPlanes = window.appState.totalPlanes;
-    const adjacentPlanes = [
-        Math.max(0, state.currentPlane - 1),
-        Math.min(totalPlanes - 1, state.currentPlane + 1)
-    ];
-    adjacentPlanes.forEach(async (plane) => {
-        if (plane !== state.currentPlane && !state.polygonCache.has(plane)) {
-            loadPolygonData(plane, state.polygonCache, state.allCellClasses, state.cellDataMap).catch(() => {});
-        }
-    });
-
-    // Update layers
-    updateAllLayers();
-
-    // Build Z-projection overlay in background
-    buildGlobalZProjection(state).then(() => {
-        console.log('Z-projection overlay ready');
-    }).catch(err => {
-        console.warn('Failed to build Z-projection overlay:', err);
-    });
-
-    // Setup boundaries ready listener
-    try {
-        setupBoundariesReadyListener(updateAllLayers, state);
-    } catch {}
+    // 11. Background tasks
+    buildGlobalZProjection(state).catch(err => console.warn('Z-projection failed:', err));
+    try { setupBoundariesReadyListener(updateAllLayers, state); } catch {}
 
     hideLoading(state, elements.loadingIndicator);
-
-    // Remove curtain
-    try {
-        const curtain = document.getElementById('appCurtain');
-        if (curtain) {
-            curtain.classList.add('hidden');
-            setTimeout(() => { curtain.style.display = 'none'; }, 350);
-        }
-    } catch {}
-
-    if (advancedConfig.performance.showPerformanceStats) {
-        console.log('Initialization complete.');
-    }
+    removeCurtain();
 }
 
 // === DOM CONTENT LOADED HANDLER ===

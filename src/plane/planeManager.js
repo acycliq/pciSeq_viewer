@@ -7,7 +7,8 @@
 
 import { clamp } from '../../utils/coordinateTransform.js';
 import { showLoading, hideLoading } from '../ui/uiHelpers.js';
-import { loadPolygonData, assignColorsToCellClasses } from '../data/dataLoaders.js';
+import { loadPolygonData } from '../data/dataLoaders.js';
+import { assignColorsToCellClasses } from '../data/cellIndexes.js';
 
 /**
  * Fast update for immediate visual feedback (tiles and genes only)
