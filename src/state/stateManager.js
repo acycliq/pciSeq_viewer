@@ -16,7 +16,7 @@ const state = {
 
     // Z-Projection Cell Mode (show all cells from all planes colored by class)
     zProjectionCellMode: false,
-    cellCountMode: 'weighted', // 'weighted' or 'hard'
+    cellCountMode: 'hard', // 'weighted' or 'hard'
     geneCountThreshold: 0,
     geneCountMaxThreshold: Infinity,
     maxTotalGeneCount: 0,
