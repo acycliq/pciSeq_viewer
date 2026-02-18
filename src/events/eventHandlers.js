@@ -363,9 +363,6 @@ function setupCellProjectionToggle(state, updateLayersCallback) {
             geneCountRafId = requestAnimationFrame(() => {
                 geneCountRafId = null;
                 updateLayersCallback();
-                if (typeof window.populateCellClassDrawer === 'function') {
-                    window.populateCellClassDrawer();
-                }
             });
         }
     };

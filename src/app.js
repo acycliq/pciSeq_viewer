@@ -270,7 +270,6 @@ function updateAllLayers() {
 
 // Expose updateAllLayers globally for widget modules
 window.updateAllLayers = updateAllLayers;
-window.populateCellClassDrawer = populateCellClassDrawer;
 
 // === PLANE UPDATE WRAPPER ===
 /**

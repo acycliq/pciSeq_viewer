@@ -520,7 +520,7 @@ function createMenu() {
             {
               label: 'Weighted (by class probability)',
               type: 'radio',
-              checked: false,
+              checked: true,
               click: () => {
                 if (mainWindow) mainWindow.webContents.send('set-cell-count-mode', 'weighted');
               }
@@ -528,7 +528,7 @@ function createMenu() {
             {
               label: 'Hard (primary class only)',
               type: 'radio',
-              checked: true,
+              checked: false,
               click: () => {
                 if (mainWindow) mainWindow.webContents.send('set-cell-count-mode', 'hard');
               }

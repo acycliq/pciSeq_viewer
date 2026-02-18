@@ -26,18 +26,8 @@ export function populateCellClassDrawer() {
     const cellCounts = new Map();
     const useWeighted = state.cellCountMode === 'weighted';
 
-    // When cell projection is active, filter by the slider range
-    const applySliderFilter = state.zProjectionCellMode;
-    const minThreshold = state.geneCountThreshold || 0;
-    const maxThreshold = state.geneCountMaxThreshold === Infinity ? Infinity : (state.geneCountMaxThreshold || Infinity);
-
     if (state.cellDataMap && state.cellDataMap.size > 0) {
         state.cellDataMap.forEach(cell => {
-            if (applySliderFilter) {
-                const geneCount = cell.totalGeneCount || 0;
-                if (geneCount < minThreshold || geneCount > maxThreshold) return;
-            }
-
             if (useWeighted) {
                 // Soft clustering: weight each cell by its class probability
                 const classNames = cell?.classification?.className;
