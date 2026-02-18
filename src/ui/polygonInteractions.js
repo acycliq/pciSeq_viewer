@@ -25,9 +25,16 @@ import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
 import { IMG_DIMENSIONS } from '../../config/constants.js';
 // Track Ctrl key state globally (deck.gl Deck-level onClick doesn't reliably expose srcEvent)
 let _ctrlKeyDown = false;
-document.addEventListener('keydown', (e) => { if (e.key === 'Control') _ctrlKeyDown = true; });
-document.addEventListener('keyup', (e) => { if (e.key === 'Control') _ctrlKeyDown = false; });
-window.addEventListener('blur', () => { _ctrlKeyDown = false; }); // Reset on window blur
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Control') _ctrlKeyDown = true;
+    // Track modifiers globally for handlers lacking event flags
+    if (e.ctrlKey || e.metaKey) window.__modifierDown = true;
+});
+document.addEventListener('keyup', (e) => {
+    if (e.key === 'Control') _ctrlKeyDown = false;
+    if (!e.ctrlKey && !e.metaKey) window.__modifierDown = false;
+});
+window.addEventListener('blur', () => { _ctrlKeyDown = false; window.__modifierDown = false; }); // Reset on blur
 
 export class PolygonBoundaryHighlighter {
     constructor(deckglInstance, coordinateSystem, cellToSpotsIndex = null, geneToId = null, cellDataMap = null) {

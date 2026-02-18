@@ -40,8 +40,16 @@
     border-bottom-color: rgba(59, 130, 246, 0.3);
 }
 
-.cell-info-panel.pinned .cell-info-header::after {
-    content: 'Ctrl to unpin';
+.cell-info-panel.pinned:not(.frozen) .cell-info-header::after {
+    content: 'Shift to unpin';
+    font-size: 10px;
+    font-weight: 400;
+    color: rgba(59, 130, 246, 0.6);
+    margin-left: 8px;
+}
+
+.cell-info-panel.pinned.frozen .cell-info-header::after {
+    content: 'Shift to resume hover';
     font-size: 10px;
     font-weight: 400;
     color: rgba(59, 130, 246, 0.6);

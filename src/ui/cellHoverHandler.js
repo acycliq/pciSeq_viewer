@@ -6,7 +6,7 @@
  */
 
 import { update, show, hide } from '../cellInfoPanel/index.js';
-import { isPinned, pin } from '../cellInfoPanel/pinController.js';
+import { isFrozen, pin } from '../cellInfoPanel/pinController.js';
 import { getClassColor } from '../cellInfoPanel/colorResolver.js';
 
 /**
@@ -15,8 +15,8 @@ import { getClassColor } from '../cellInfoPanel/colorResolver.js';
  * @param {Object} info - Hover info from deck.gl
  */
 export function handleCellHover(info) {
-    // Freeze hover updates when panel is pinned (hard pin)
-    if (typeof isPinned === 'function' && isPinned()) return;
+    // Freeze hover updates only when hard pinned (frozen)
+    if (typeof isFrozen === 'function' && isFrozen()) return;
 
     if (info.picked && info.object && info.object.properties) {
         const cellLabel = info.object.properties.label;
@@ -105,7 +105,14 @@ function buildCellInfoData(fullCellData, cellLabel) {
 export function handleCellClick(info) {
     if (!info || !info.object || !info.object.properties) return;
     const evt = info.srcEvent || info.sourceEvent;
-    if (evt && (evt.ctrlKey || evt.metaKey)) return; // diagnostics handled elsewhere
+    // Robust modifier detection (fallback when event lacks flags)
+    let modifierDown = false;
+    if (evt) {
+        modifierDown = !!(evt.ctrlKey || evt.metaKey);
+    } else {
+        try { modifierDown = !!(window.__modifierDown); } catch {}
+    }
+    if (modifierDown) return; // diagnostics handled elsewhere
 
     const cellLabel = info.object.properties.label;
     let fullCellData = null;
