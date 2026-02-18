@@ -94,6 +94,10 @@ import {
     hideCellClassPercentageWidget
 } from './cellClassPercentageChart.js';
 import {
+    showExpressionHistogramWidget,
+    hideExpressionHistogramWidget
+} from './expressionHistogramChart.js';
+import {
     showControlsPanel,
     hideControlsPanel,
     toggleControlsPanel,
@@ -128,6 +132,10 @@ window.hideCellClassDistributionWidget = hideCellClassDistributionWidget;
 // Cell class percentage chart functions
 window.showCellClassPercentageWidget = showCellClassPercentageWidget;
 window.hideCellClassPercentageWidget = hideCellClassPercentageWidget;
+
+// Expression histogram chart functions
+window.showExpressionHistogramWidget = showExpressionHistogramWidget;
+window.hideExpressionHistogramWidget = hideExpressionHistogramWidget;
 
 // Controls panel (drawer) functions
 window.showControlsPanel = showControlsPanel;

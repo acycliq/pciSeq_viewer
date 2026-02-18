@@ -197,6 +197,14 @@ function setupWidgetControls(elements) {
         });
     }
 
+    // Expression histogram chart button
+    const expressionHistogramBtn = document.getElementById('expressionHistogramBtn');
+    if (expressionHistogramBtn) {
+        expressionHistogramBtn.addEventListener('click', () => {
+            window.showExpressionHistogramWidget();
+        });
+    }
+
     // Cell class widget controls
     elements.cellClassWidgetClose.addEventListener('click', () => {
         window.hideCellClassWidget();
