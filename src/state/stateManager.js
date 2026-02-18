@@ -18,7 +18,7 @@ const state = {
     zProjectionCellMode: false,
     geneCountThreshold: 0,
     geneCountMaxThreshold: Infinity,
-    maxTotalGeneCount: 100,
+    maxTotalGeneCount: 0,
 
     // Data caches
     tileCache: new Map(),

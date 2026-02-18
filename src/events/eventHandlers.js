@@ -394,8 +394,8 @@ function setupCellProjectionToggle(state, updateLayersCallback) {
  * Handle enabling Cell Projection mode
  */
 async function handleCellProjectionEnable(state, updateLayersCallback) {
-    // Ensure slider max reflects dataset max gene count
-    const max = Number(state.maxTotalGeneCount || 100);
+    // Ensure slider max reflects dataset max gene count (ceiled to integer)
+    const max = Math.ceil(Number(state.maxTotalGeneCount || 0));
 
     const slider = document.getElementById('geneCountSlider');
     const valueEl = document.getElementById('geneCountValue');

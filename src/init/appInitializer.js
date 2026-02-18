@@ -207,7 +207,7 @@ function computeMaxGeneCount() {
             const v = cell && typeof cell.totalGeneCount === 'number' ? cell.totalGeneCount : 0;
             if (v > maxCount) maxCount = v;
         });
-        state.maxTotalGeneCount = Math.max(0, maxCount) || 100;
+        state.maxTotalGeneCount = Math.ceil(Math.max(0, maxCount));
 
         const slider = document.getElementById('geneCountSlider');
         const valueEl = document.getElementById('geneCountValue');
