@@ -233,29 +233,83 @@ class ExpressionHistogramWidget extends WidgetBase {
             return;
         }
 
-        const margin = { top: 40, right: 20, bottom: 50, left: 60 };
-        const width = container.clientWidth - margin.left - margin.right;
-        const height = container.clientHeight - margin.top - margin.bottom;
+        // Layout: main focus chart on top, small context chart with brush below
+        const contextHeight = 40;
+        const gap = 20;
+        const margin = { top: 40, right: 20, bottom: 30, left: 60 };
+        const marginContext = { top: 0, right: 20, bottom: 20, left: 60 };
+        const totalWidth = container.clientWidth;
+        const totalHeight = container.clientHeight;
+        const width = totalWidth - margin.left - margin.right;
+        const focusHeight = totalHeight - margin.top - margin.bottom - gap - contextHeight - marginContext.bottom;
+
+        const barColor = this.getClassColor(className);
 
         const svg = d3.select(container).append('svg')
-            .attr('width', width + margin.left + margin.right)
-            .attr('height', height + margin.top + margin.bottom);
+            .attr('width', totalWidth)
+            .attr('height', totalHeight);
 
-        const g = svg.append('g')
+        // --- Context (overview) chart at the bottom with brush ---
+        const contextTop = margin.top + focusHeight + margin.bottom + gap;
+        const gContext = svg.append('g')
+            .attr('transform', `translate(${marginContext.left},${contextTop})`);
+
+        // Context uses a linear scale so the brush maps pixel positions to bin indices
+        const xContext = d3.scaleLinear()
+            .domain([0, bins.length])
+            .range([0, width]);
+
+        const yContext = d3.scaleLinear()
+            .domain([0, d3.max(bins, d => d.count)])
+            .range([contextHeight, 0]);
+
+        // Context bars
+        const contextBarWidth = Math.max(1, width / bins.length);
+        gContext.selectAll('.context-bar')
+            .data(bins)
+            .enter().append('rect')
+            .attr('x', (d, i) => xContext(i))
+            .attr('width', contextBarWidth)
+            .attr('y', d => yContext(d.count))
+            .attr('height', d => contextHeight - yContext(d.count))
+            .attr('fill', barColor)
+            .attr('opacity', 0.4);
+
+        // Context x-axis (sparse ticks)
+        const contextXAxis = d3.axisBottom(xContext)
+            .ticks(Math.min(bins.length, 10))
+            .tickFormat(i => {
+                const idx = Math.round(i);
+                return idx >= 0 && idx < bins.length ? bins[idx].bin : '';
+            });
+        gContext.append('g')
+            .attr('transform', `translate(0,${contextHeight})`)
+            .call(contextXAxis);
+
+        // Style context axes
+        gContext.selectAll('.domain, .tick line').attr('stroke', 'rgba(255,255,255,0.1)');
+        gContext.selectAll('.tick text')
+            .attr('fill', 'rgba(255,255,255,0.4)')
+            .style('font-size', '9px');
+
+        // --- Focus (main) chart on top ---
+        // Clip path to hide bars outside the focus area
+        svg.append('defs').append('clipPath')
+            .attr('id', 'focus-clip-' + this.id)
+            .append('rect')
+            .attr('width', width)
+            .attr('height', focusHeight);
+
+        const gFocus = svg.append('g')
             .attr('transform', `translate(${margin.left},${margin.top})`);
 
-        // Scales — zero padding so bars fill the full band width
-        const xScale = d3.scaleBand()
-            .domain(bins.map(d => d.bin))
-            .range([0, width])
-            .padding(0);
+        const focusBarsGroup = gFocus.append('g')
+            .attr('clip-path', `url(#focus-clip-${this.id})`);
 
-        const yScale = d3.scaleLinear()
-            .domain([0, d3.max(bins, d => d.count)])
-            .range([height, 0]);
+        const xAxisGroup = gFocus.append('g')
+            .attr('transform', `translate(0,${focusHeight})`);
 
-        // Bar color from cellClassColors
-        const barColor = this.getClassColor(className);
+        const yAxisGroup = gFocus.append('g');
 
         // Tooltip
         let tooltip = document.querySelector('.chart-tooltip');
@@ -265,80 +319,120 @@ class ExpressionHistogramWidget extends WidgetBase {
             document.body.appendChild(tooltip);
         }
 
-        // Bars
-        g.selectAll('.bar')
-            .data(bins)
-            .enter().append('rect')
-            .attr('class', 'bar')
-            .attr('x', d => xScale(d.bin))
-            .attr('width', xScale.bandwidth())
-            .attr('y', d => yScale(d.count))
-            .attr('height', d => height - yScale(d.count))
-            .attr('fill', barColor)
-            .attr('stroke', 'rgba(255, 255, 255, 0.2)')
-            .attr('stroke-width', 0.5)
-            .attr('opacity', 0.8)
-            .style('cursor', 'pointer')
-            .on('mouseenter', function(e, d) {
-                d3.select(this).attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 1.5);
-                const pct = displayedWeight > 0 ? ((d.count / displayedWeight) * 100).toFixed(1) : '0.0';
-                tooltip.innerHTML = `
-                    <div style="font-weight:600;margin-bottom:2px">${className}</div>
-                    <div>Gene Reads: ${d.bin}</div>
-                    <div>Weighted Count: ${d.count.toFixed(1)}</div>
-                    <div style="color:#aaa;font-size:11px;margin-top:2px">${pct}% of class</div>
-                `;
-                tooltip.style.opacity = 1;
-                tooltip.style.left = (e.pageX + 10) + 'px';
-                tooltip.style.top = (e.pageY - 10) + 'px';
-            })
-            .on('mousemove', (e) => {
-                tooltip.style.left = (e.pageX + 10) + 'px';
-                tooltip.style.top = (e.pageY - 10) + 'px';
-            })
-            .on('mouseleave', function() {
-                d3.select(this)
-                    .attr('opacity', 0.8)
-                    .attr('stroke', 'rgba(255, 255, 255, 0.2)')
-                    .attr('stroke-width', 0.5);
-                tooltip.style.opacity = 0;
+        // Function to update the focus chart for a given index range
+        const updateFocus = (startIdx, endIdx) => {
+            const visibleBins = bins.slice(startIdx, endIdx);
+            if (visibleBins.length === 0) return;
+
+            // Focus scales
+            const xFocus = d3.scaleBand()
+                .domain(visibleBins.map(d => d.bin))
+                .range([0, width])
+                .padding(0.05);
+
+            const yFocus = d3.scaleLinear()
+                .domain([0, d3.max(visibleBins, d => d.count)])
+                .range([focusHeight, 0]);
+
+            // Update bars
+            const bars = focusBarsGroup.selectAll('.bar').data(visibleBins, d => d.bin);
+            bars.exit().remove();
+            const enter = bars.enter().append('rect').attr('class', 'bar');
+            const merged = enter.merge(bars)
+                .attr('x', d => xFocus(d.bin))
+                .attr('width', xFocus.bandwidth())
+                .attr('y', d => yFocus(d.count))
+                .attr('height', d => focusHeight - yFocus(d.count))
+                .attr('fill', barColor)
+                .attr('stroke', 'rgba(255, 255, 255, 0.2)')
+                .attr('stroke-width', 0.5)
+                .attr('opacity', 0.8)
+                .style('cursor', 'pointer');
+
+            // Tooltip events
+            merged
+                .on('mouseenter', function(e, d) {
+                    d3.select(this).attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 1.5);
+                    const pct = displayedWeight > 0 ? ((d.count / displayedWeight) * 100).toFixed(1) : '0.0';
+                    tooltip.innerHTML = `
+                        <div style="font-weight:600;margin-bottom:2px">${className}</div>
+                        <div>Gene Reads: ${d.bin}</div>
+                        <div>Cell Count: ${d.count.toFixed(1)}</div>
+                        <div style="color:#aaa;font-size:11px;margin-top:2px">${pct}% of class</div>
+                    `;
+                    tooltip.style.opacity = 1;
+                    tooltip.style.left = (e.pageX + 10) + 'px';
+                    tooltip.style.top = (e.pageY - 10) + 'px';
+                })
+                .on('mousemove', (e) => {
+                    tooltip.style.left = (e.pageX + 10) + 'px';
+                    tooltip.style.top = (e.pageY - 10) + 'px';
+                })
+                .on('mouseleave', function() {
+                    d3.select(this)
+                        .attr('opacity', 0.8)
+                        .attr('stroke', 'rgba(255, 255, 255, 0.2)')
+                        .attr('stroke-width', 0.5);
+                    tooltip.style.opacity = 0;
+                });
+
+            // Update axes
+            const xAxisFn = d3.axisBottom(xFocus)
+                .tickValues(xFocus.domain().filter((d, i) => {
+                    const total = visibleBins.length;
+                    if (total <= 20) return true;
+                    return !(i % Math.ceil(total / 20));
+                }));
+            xAxisGroup.call(xAxisFn);
+            yAxisGroup.call(d3.axisLeft(yFocus).ticks(5));
+
+            // Style axes
+            gFocus.selectAll('.domain, .tick line').attr('stroke', 'rgba(255,255,255,0.1)');
+            gFocus.selectAll('.tick text')
+                .attr('fill', 'rgba(255,255,255,0.6)')
+                .style('font-family', 'inherit')
+                .style('font-size', '10px');
+        };
+
+        // Initial render: show all bins
+        updateFocus(0, bins.length);
+
+        // --- Brush on context chart ---
+        const brush = d3.brushX()
+            .extent([[0, 0], [width, contextHeight]])
+            .on('brush end', (event) => {
+                if (!event.selection) {
+                    updateFocus(0, bins.length);
+                    return;
+                }
+                const [x0, x1] = event.selection;
+                const startIdx = Math.max(0, Math.floor(xContext.invert(x0)));
+                const endIdx = Math.min(bins.length, Math.ceil(xContext.invert(x1)));
+                if (endIdx > startIdx) updateFocus(startIdx, endIdx);
             });
 
-        // Axes
-        const xAxis = d3.axisBottom(xScale)
-            .tickValues(xScale.domain().filter((d, i) => {
-                // Show a manageable number of ticks
-                const total = bins.length;
-                if (total <= 20) return true;
-                return !(i % Math.ceil(total / 20));
-            }));
-        const yAxis = d3.axisLeft(yScale).ticks(5);
+        gContext.append('g')
+            .attr('class', 'brush')
+            .call(brush)
+            .call(brush.move, [0, width]); // Start with full range selected
 
-        g.append('g')
-            .attr('transform', `translate(0,${height})`)
-            .call(xAxis);
-
-        g.append('g').call(yAxis);
-
-        // Style axes
-        g.selectAll('.domain, .tick line').attr('stroke', 'rgba(255,255,255,0.1)');
-        g.selectAll('.tick text')
-            .attr('fill', 'rgba(255,255,255,0.6)')
-            .style('font-family', 'inherit')
-            .style('font-size', '10px');
+        // Style brush handles
+        gContext.selectAll('.selection')
+            .attr('fill', 'rgba(255,255,255,0.15)')
+            .attr('stroke', 'rgba(255,255,255,0.4)');
 
         // Labels
-        g.append('text')
+        gFocus.append('text')
             .attr('x', width / 2)
-            .attr('y', height + 40)
+            .attr('y', focusHeight + 28)
             .attr('fill', 'rgba(255,255,255,0.4)')
             .attr('text-anchor', 'middle')
             .style('font-size', '11px')
             .text('Gene Reads');
 
-        g.append('text')
+        gFocus.append('text')
             .attr('transform', 'rotate(-90)')
-            .attr('x', -height / 2)
+            .attr('x', -focusHeight / 2)
             .attr('y', -45)
             .attr('dy', '1em')
             .style('text-anchor', 'middle')
@@ -347,7 +441,7 @@ class ExpressionHistogramWidget extends WidgetBase {
             .text('Cell Counts');
 
         // Subtitle: clarify data origin
-        g.append('text')
+        gFocus.append('text')
             .attr('x', 0)
             .attr('y', -20)
             .attr('fill', 'rgba(255,255,255,0.35)')
@@ -355,7 +449,7 @@ class ExpressionHistogramWidget extends WidgetBase {
             .text('Posterior counts from pciSeq cell typing');
 
         // Summary text (top-right corner)
-        g.append('text')
+        gFocus.append('text')
             .attr('x', width)
             .attr('y', -20)
             .attr('fill', 'rgba(255,255,255,0.35)')
