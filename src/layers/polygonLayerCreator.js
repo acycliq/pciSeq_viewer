@@ -17,13 +17,13 @@ const CELL_FILTER_EXTENSION = new DataFilterExtension({ filterSize: 1 });
 /**
  * Create polygon layers for cell boundary visualization
  */
-export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null, zProjectionCellMode = false, geneCountThreshold = 0) {
+export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null, zProjectionCellMode = false, geneCountThreshold = 0, geneCountMaxThreshold = Infinity) {
     const layers = [];
 
     if (!showPolygons) return layers;
 
     if (zProjectionCellMode) {
-        return createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold);
+        return createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold);
     }
 
     // Arrow fast-path: use binary buffers from worker
@@ -174,7 +174,7 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
     });
 }
 
-function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold) {
+function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold) {
     const features = (window.appState && window.appState.cellProjectionFeatures) || [];
     const selectedKey = selectedCellClasses ? Array.from(selectedCellClasses).sort().join('|') : '';
 
@@ -187,7 +187,7 @@ function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOp
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
         extensions: [CELL_FILTER_EXTENSION],
         getFilterValue: f => f.properties.totalGeneCount || 0,
-        filterRange: [geneCountThreshold, 1e9],
+        filterRange: [geneCountThreshold, geneCountMaxThreshold === Infinity ? 1e9 : geneCountMaxThreshold],
         filterEnabled: true,
         onHover: handleCellHover,
         getFillColor: d => {

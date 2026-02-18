@@ -73,7 +73,8 @@ export function buildPolygonLayers(state) {
         state.selectedCellClasses,
         state.cellDataMap,
         state.zProjectionCellMode,
-        state.geneCountThreshold
+        state.geneCountThreshold,
+        state.geneCountMaxThreshold
     );
 }
 

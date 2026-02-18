@@ -336,6 +336,8 @@ function setupCellProjectionToggle(state, updateLayersCallback) {
     const cellProjectionControls = document.getElementById('cellProjectionControls');
     const geneCountSlider = document.getElementById('geneCountSlider');
     const geneCountValue = document.getElementById('geneCountValue');
+    const geneCountMaxSlider = document.getElementById('geneCountMaxSlider');
+    const geneCountMaxValue = document.getElementById('geneCountMaxValue');
 
     if (cellProjectionToggle) {
         cellProjectionToggle.addEventListener('change', async () => {
@@ -354,8 +356,17 @@ function setupCellProjectionToggle(state, updateLayersCallback) {
         });
     }
 
-    // Gene count slider (rAF-throttled)
+    // Gene count sliders (rAF-throttled)
     let geneCountRafId = null;
+    const scheduleUpdate = () => {
+        if (state.zProjectionCellMode && geneCountRafId == null) {
+            geneCountRafId = requestAnimationFrame(() => {
+                geneCountRafId = null;
+                updateLayersCallback();
+            });
+        }
+    };
+
     if (geneCountSlider) {
         geneCountSlider.addEventListener('input', (e) => {
             const threshold = parseInt(e.target.value);
@@ -363,12 +374,18 @@ function setupCellProjectionToggle(state, updateLayersCallback) {
             if (geneCountValue) {
                 geneCountValue.textContent = threshold.toString();
             }
-            if (state.zProjectionCellMode && geneCountRafId == null) {
-                geneCountRafId = requestAnimationFrame(() => {
-                    geneCountRafId = null;
-                    updateLayersCallback();
-                });
+            scheduleUpdate();
+        });
+    }
+
+    if (geneCountMaxSlider) {
+        geneCountMaxSlider.addEventListener('input', (e) => {
+            const threshold = parseInt(e.target.value);
+            state.geneCountMaxThreshold = threshold;
+            if (geneCountMaxValue) {
+                geneCountMaxValue.textContent = threshold.toString();
             }
+            scheduleUpdate();
         });
     }
 }
@@ -378,16 +395,26 @@ function setupCellProjectionToggle(state, updateLayersCallback) {
  */
 async function handleCellProjectionEnable(state, updateLayersCallback) {
     // Ensure slider max reflects dataset max gene count
+    const max = Number(state.maxTotalGeneCount || 100);
+
     const slider = document.getElementById('geneCountSlider');
     const valueEl = document.getElementById('geneCountValue');
     if (slider) {
-        const max = Number(state.maxTotalGeneCount || 100);
         if (Number(slider.max) !== max) slider.max = String(max);
         if (Number(slider.value) > max) {
             slider.value = '0';
             state.geneCountThreshold = 0;
             if (valueEl) valueEl.textContent = '0';
         }
+    }
+
+    const maxSlider = document.getElementById('geneCountMaxSlider');
+    const maxValueEl = document.getElementById('geneCountMaxValue');
+    if (maxSlider) {
+        if (Number(maxSlider.max) !== max) maxSlider.max = String(max);
+        maxSlider.value = String(max);
+        state.geneCountMaxThreshold = max;
+        if (maxValueEl) maxValueEl.textContent = String(max);
     }
 
     // If features are already prepared, reuse them

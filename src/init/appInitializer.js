@@ -219,6 +219,16 @@ function computeMaxGeneCount() {
                 if (valueEl) valueEl.textContent = '0';
             }
         }
+
+        const maxSlider = document.getElementById('geneCountMaxSlider');
+        const maxValueEl = document.getElementById('geneCountMaxValue');
+        if (maxSlider) {
+            maxSlider.max = String(state.maxTotalGeneCount);
+            maxSlider.value = String(state.maxTotalGeneCount);
+            state.geneCountMaxThreshold = state.maxTotalGeneCount;
+            if (maxValueEl) maxValueEl.textContent = String(state.maxTotalGeneCount);
+        }
+
         console.log(`Max total gene count computed: ${state.maxTotalGeneCount}`);
     } catch (e) {
         console.warn('Failed to compute max total gene count for slider bounds:', e);

@@ -17,6 +17,7 @@ const state = {
     // Z-Projection Cell Mode (show all cells from all planes colored by class)
     zProjectionCellMode: false,
     geneCountThreshold: 0,
+    geneCountMaxThreshold: Infinity,
     maxTotalGeneCount: 100,
 
     // Data caches
