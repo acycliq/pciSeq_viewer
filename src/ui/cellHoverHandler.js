@@ -6,6 +6,7 @@
  */
 
 import { update, show, hide } from '../cellInfoPanel/index.js';
+import { isPinned, pin } from '../cellInfoPanel/pinController.js';
 import { getClassColor } from '../cellInfoPanel/colorResolver.js';
 
 /**
@@ -14,6 +15,9 @@ import { getClassColor } from '../cellInfoPanel/colorResolver.js';
  * @param {Object} info - Hover info from deck.gl
  */
 export function handleCellHover(info) {
+    // Freeze hover updates when panel is pinned (hard pin)
+    if (typeof isPinned === 'function' && isPinned()) return;
+
     if (info.picked && info.object && info.object.properties) {
         const cellLabel = info.object.properties.label;
 
@@ -32,6 +36,7 @@ export function handleCellHover(info) {
             console.warn('No full cell data found for cell:', cellLabel);
         }
     } else {
+        // Unpinned: allow hide on mouse-out
         hide();
     }
 }
@@ -91,4 +96,27 @@ function buildCellInfoData(fullCellData, cellLabel) {
             color: getClassColor(topClass)
         }
     };
+}
+
+/**
+ * Click handler: update panel to clicked cell and hard-pin it.
+ * Ctrl+Click is reserved for diagnostics and should NOT pin the panel.
+ */
+export function handleCellClick(info) {
+    if (!info || !info.object || !info.object.properties) return;
+    const evt = info.srcEvent || info.sourceEvent;
+    if (evt && (evt.ctrlKey || evt.metaKey)) return; // diagnostics handled elsewhere
+
+    const cellLabel = info.object.properties.label;
+    let fullCellData = null;
+    if (window.appState && window.appState.cellDataMap) {
+        const cellId = parseInt(cellLabel);
+        fullCellData = window.appState.cellDataMap.get(cellId);
+    }
+    if (!fullCellData) return;
+
+    const cellData = buildCellInfoData(fullCellData, cellLabel);
+    update(cellData);
+    show();
+    if (typeof pin === 'function') pin();
 }

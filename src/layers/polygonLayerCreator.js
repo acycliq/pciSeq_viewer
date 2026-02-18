@@ -5,7 +5,7 @@
 
 import { IMG_DIMENSIONS } from '../../config/constants.js';
 import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
-import { handleCellHover } from '../ui/cellHoverHandler.js';
+import { handleCellHover, handleCellClick } from '../ui/cellHoverHandler.js';
 import { ensureArrowInitialized } from './arrowInit.js';
 import { arrowBoundaryCache, arrowGeojsonCache } from './boundaryCache.js';
 
@@ -161,6 +161,7 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
         filled: true,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
         onHover: handleCellHover,
+        onClick: handleCellClick,
         getFillColor: d => {
             const cellClass = d.properties.cellClass;
             const alpha = Math.round(polygonOpacity * 255);
@@ -190,6 +191,7 @@ function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOp
         filterRange: [geneCountThreshold, geneCountMaxThreshold === Infinity ? 1e9 : geneCountMaxThreshold],
         filterEnabled: true,
         onHover: handleCellHover,
+        onClick: handleCellClick,
         getFillColor: d => {
             const rgb = d.properties.colorRGB || [192, 192, 192];
             const alpha = Math.round(polygonOpacity * 255);

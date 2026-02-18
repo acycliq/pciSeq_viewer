@@ -20,14 +20,10 @@ export function init() {
         const panel = document.getElementById('cellInfoPanel');
         if (!panel) return;
 
-        if (_panelPinned) {
-            _panelPinned = false;
-            panel.classList.remove('pinned');
-            panel.classList.remove('visible');
-        } else if (panel.classList.contains('visible')) {
-            _panelPinned = true;
-            panel.classList.add('pinned');
-        }
+        // Ctrl acts as unpin: return to hover-driven behavior.
+        // Do not force-hide immediately; allow normal hover-out to hide it.
+        _panelPinned = false;
+        panel.classList.remove('pinned');
     });
 }
 
@@ -71,4 +67,16 @@ export function forceHide() {
  */
 export function isPinned() {
     return _panelPinned;
+}
+
+/**
+ * Programmatically pin the panel (hard pin) and ensure it's visible.
+ */
+export function pin() {
+    _panelPinned = true;
+    const panel = document.getElementById('cellInfoPanel');
+    if (panel) {
+        panel.classList.add('pinned');
+        panel.classList.add('visible');
+    }
 }

@@ -62,8 +62,6 @@ export class PolygonBoundaryHighlighter {
         this.calculatePolygonCentroid = this.calculatePolygonCentroid.bind(this);
         this.getGeneColor = this.getGeneColor.bind(this);
         this.onClick = this.onClick.bind(this);
-        this.pinCellLines = this.pinCellLines.bind(this);
-        this.unpinCellLines = this.unpinCellLines.bind(this);
     }
 
     /**
@@ -352,7 +350,8 @@ export class PolygonBoundaryHighlighter {
     }
 
     /**
-     * Handle click events for pinning cell lines
+     * Handle click events for diagnostics only (Ctrl+Click).
+     * Plain clicks no longer toggle line pinning here.
      */
     onClick(info) {
         // Call original click handler if it exists
@@ -360,128 +359,15 @@ export class PolygonBoundaryHighlighter {
             this.originalClickHandler(info);
         }
 
-        // Only handle polygon clicks
+        // Only handle Ctrl+Click for polygons (diagnostics)
         if (info.layer && info.layer.id.includes('polygons-') && info.object) {
             const cellLabel = info.object.properties.label;
-
-            // Ctrl+click: open check_cell modal (if connected)
             if (_ctrlKeyDown) {
                 if (window.appState && window.appState.checkCellConnected) {
                     window.openCheckCellModal(cellLabel);
                 }
-                return;
-            }
-
-            if (this.pinnedCell === cellLabel) {
-                // Unpin if clicking the same cell
-                console.log(`Unpinning cell ${cellLabel}`);
-                this.unpinCellLines();
-            } else {
-                // Pin the new cell
-                console.log(`Pinning cell ${cellLabel}`);
-                this.pinCellLines(info.object);
             }
         }
-    }
-
-    /**
-     * Pin cell lines to persist across plane changes
-     */
-    pinCellLines(polygonObject) {
-        const cellLabel = polygonObject.properties.label;
-        this.pinnedCell = cellLabel;
-
-        // Create the line layer for this cell
-        const lineLayer = this.createLineLayer(polygonObject);
-        if (lineLayer) {
-            this.pinnedLineLayer = lineLayer;
-
-            // Add the pinned line layer
-            const currentLayers = this.deckglInstance.props.layers || [];
-            const existingLinesIndex = currentLayers.findIndex(layer =>
-                layer.id === this.linesLayerId
-            );
-
-            let updatedLayers = [...currentLayers];
-            if (existingLinesIndex >= 0) {
-                updatedLayers[existingLinesIndex] = lineLayer;
-            } else {
-                updatedLayers.push(lineLayer);
-            }
-
-            this.deckglInstance.setProps({ layers: updatedLayers });
-
-            // Show pin notification near the cell
-            this.showPinNotification(`Cell ${cellLabel} pinned`, 'pin', polygonObject);
-        }
-    }
-
-    /**
-     * Unpin cell lines
-     */
-    unpinCellLines() {
-        const cellLabel = this.pinnedCell;
-        this.pinnedCell = null;
-        this.pinnedLineLayer = null;
-
-        // Remove the pinned lines layer
-        const currentLayers = this.deckglInstance.props.layers || [];
-        const existingLinesIndex = currentLayers.findIndex(layer =>
-            layer.id === this.linesLayerId
-        );
-
-        if (existingLinesIndex >= 0) {
-            const updatedLayers = [...currentLayers];
-            updatedLayers.splice(existingLinesIndex, 1);
-            this.deckglInstance.setProps({ layers: updatedLayers });
-        }
-
-        // Show unpin notification
-        if (cellLabel) {
-            this.showPinNotification(`Cell ${cellLabel} unpinned`, 'unpin');
-        }
-    }
-
-    /**
-     * Show pin/unpin notification
-     */
-    showPinNotification(message, type) {
-        // Create or get existing notification element
-        let notification = document.getElementById('pin-notification');
-        if (!notification) {
-            notification = document.createElement('div');
-            notification.id = 'pin-notification';
-            notification.style.cssText = `
-                position: fixed;
-                top: 50px;
-                right: 20px;
-                background: rgba(0, 0, 0, 0.8);
-                color: white;
-                padding: 12px 20px;
-                border-radius: 8px;
-                font-family: Arial, sans-serif;
-                font-size: 14px;
-                font-weight: bold;
-                z-index: 10000;
-                transition: opacity 0.3s ease;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            `;
-            document.body.appendChild(notification);
-        }
-
-        // Set message and color based on type
-        notification.textContent = message;
-        notification.style.background = type === 'pin' ?
-            'rgba(34, 139, 34, 0.9)' : // Green for pin
-            'rgba(220, 53, 69, 0.9)';  // Red for unpin
-
-        // Show notification
-        notification.style.opacity = '1';
-
-        // Hide after 2 seconds
-        setTimeout(() => {
-            notification.style.opacity = '0';
-        }, 2000);
     }
 
     /**
@@ -489,14 +375,7 @@ export class PolygonBoundaryHighlighter {
      */
     destroy() {
         this.clearHighlight();
-        this.unpinCellLines();
         this.hoveredPolygon = null;
-
-        // Remove notification if it exists
-        const notification = document.getElementById('pin-notification');
-        if (notification) {
-            notification.remove();
-        }
     }
 }
 
