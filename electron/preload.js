@@ -36,9 +36,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onImportGeneColors: (handler) => ipcRenderer.on('import-gene-colors', (_e, data) => handler(data)),
   onImportClassColors: (handler) => ipcRenderer.on('import-class-colors', (_e, data) => handler(data)),
 
-  // Settings
-  onSetCellCountMode: (handler) => ipcRenderer.on('set-cell-count-mode', (_e, mode) => handler(mode)),
-
   // Keyboard shortcuts overlay
   onShowShortcuts: (handler) => ipcRenderer.on('show-shortcuts', handler)
 });

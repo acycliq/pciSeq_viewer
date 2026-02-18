@@ -536,13 +536,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Cell count mode setting from menu
-        window.electronAPI.onSetCellCountMode((mode) => {
-            state.cellCountMode = mode;
-            populateCellClassDrawer();
-            console.log('Cell count mode set to: ' + mode);
-        });
-
         // Cell class colours import from menu
         window.electronAPI.onImportClassColors((data) => {
             try {

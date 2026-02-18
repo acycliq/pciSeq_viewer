@@ -512,32 +512,6 @@ function createMenu() {
       ]
     },
     {
-      label: 'Settings',
-      submenu: [
-        {
-          label: 'Cell Count Mode',
-          submenu: [
-            {
-              label: 'Weighted (by class probability)',
-              type: 'radio',
-              checked: true,
-              click: () => {
-                if (mainWindow) mainWindow.webContents.send('set-cell-count-mode', 'weighted');
-              }
-            },
-            {
-              label: 'Hard (primary class only)',
-              type: 'radio',
-              checked: false,
-              click: () => {
-                if (mainWindow) mainWindow.webContents.send('set-cell-count-mode', 'hard');
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
       label: 'Diagnostics',
       submenu: [
         {
