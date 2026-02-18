@@ -22,20 +22,36 @@ export function populateCellClassDrawer() {
         return;
     }
 
-    // Count cells per class (match pciSeq_3d semantics: count by primary class)
+    // Count cells per class — mode controlled by state.cellCountMode
     const cellCounts = new Map();
+    const useWeighted = state.cellCountMode === 'weighted';
 
     if (state.cellDataMap && state.cellDataMap.size > 0) {
         state.cellDataMap.forEach(cell => {
-            // Prefer explicit primaryClass set at load time
-            let primary = cell?.primaryClass;
-            if (!primary) {
-                const names = Array.isArray(cell?.classification?.className) ? cell.classification.className : null;
-                primary = names && names.length ? String(names[0]).trim() : null;
-            }
-            if (!primary) primary = 'Unknown';
+            if (useWeighted) {
+                // Soft clustering: weight each cell by its class probability
+                const classNames = cell?.classification?.className;
+                const probs = cell?.classification?.probability;
 
-            cellCounts.set(primary, (cellCounts.get(primary) || 0) + 1);
+                if (Array.isArray(classNames) && Array.isArray(probs)) {
+                    for (let i = 0; i < classNames.length; i++) {
+                        const cls = String(classNames[i]).trim();
+                        const weight = probs[i] || 0;
+                        if (cls && weight > 0) {
+                            cellCounts.set(cls, (cellCounts.get(cls) || 0) + weight);
+                        }
+                    }
+                }
+            } else {
+                // Hard assignment: count 1 per cell's primaryClass
+                let primary = cell?.primaryClass;
+                if (!primary) {
+                    const names = Array.isArray(cell?.classification?.className) ? cell.classification.className : null;
+                    primary = names && names.length ? String(names[0]).trim() : null;
+                }
+                if (!primary) primary = 'Unknown';
+                cellCounts.set(primary, (cellCounts.get(primary) || 0) + 1);
+            }
         });
     }
 
@@ -78,11 +94,12 @@ export function populateCellClassDrawer() {
         nameSpan.textContent = name;
         nameSpan.title = name; // Tooltip for long names
 
-        // Cell count
+        // Cell count (weighted)
         const countSpan = document.createElement('span');
         countSpan.className = 'cell-class-count';
-        countSpan.textContent = count.toLocaleString();
-        countSpan.title = `${count} cells`;
+        const displayCount = Number.isInteger(count) ? count.toLocaleString() : count.toFixed(1);
+        countSpan.textContent = displayCount;
+        countSpan.title = `${count.toFixed(2)} weighted cells`;
 
         // Add click handler for eye icon
         eye.addEventListener('click', (e) => {
