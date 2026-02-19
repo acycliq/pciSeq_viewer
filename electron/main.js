@@ -11,7 +11,27 @@ const dataLoader = require('./data-loader');
 const GITHUB_REPO = 'acycliq/pciSeq_viewer';
 const RELEASES_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
 
-// Check for updates from GitHub releases
+// --- PROFILE ISOLATION LOGIC ---
+// This must run BEFORE the Store is initialized to ensure each profile gets its own config file.
+const args = process.argv.slice(2);
+const profileArg = args.find(a => a.startsWith('--profile='));
+if (profileArg) {
+  const profileName = profileArg.split('=')[1];
+  const currentPath = app.getPath('userData');
+  // Create a sibling directory for the profile to keep things tidy
+  const customPath = path.join(path.dirname(currentPath), `pciSeq-profile-${profileName}`);
+  app.setPath('userData', customPath);
+  global.profileName = profileName;
+  console.log(`Using isolated profile: ${profileName}`);
+  console.log(`Profile data path: ${customPath}`);
+} else {
+  global.profileName = 'Default';
+}
+// -------------------------------
+
+// Initialize persistent storage for user paths
+const store = new Store();
+
 function checkForUpdates() {
   const packageJson = require('../package.json');
   const currentVersion = packageJson.version;
@@ -57,9 +77,6 @@ function checkForUpdates() {
     dialog.showErrorBox('Update Check Failed', `Could not connect to GitHub: ${e.message}`);
   });
 }
-
-// Initialize persistent storage for user paths
-const store = new Store();
 
 let mainWindow;
 

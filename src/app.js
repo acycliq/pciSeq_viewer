@@ -435,6 +435,13 @@ async function init() {
         return; 
     }
 
+    // Update window title for awareness
+    try {
+        document.title = `pciSeq Viewer - ${paths.dataPath}`;
+    } catch (e) {
+        console.warn('Failed to update window title:', e);
+    }
+
     // 2. Load metadata and config
     const metadataResult = await window.loadDatasetMetadata();
     let userConfig;

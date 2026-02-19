@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Get currently configured paths
   getPaths: () => ipcRenderer.invoke('get-paths'),
+  getProfileName: () => ipcRenderer.invoke('get-profile-name'),
 
   // check_cell (SQLite data, no Python required)
   getCheckCellState: () => ipcRenderer.invoke('check-cell-get-state'),

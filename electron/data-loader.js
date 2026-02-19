@@ -146,6 +146,10 @@ ipcMain.handle('select-tiles-folder', async () => {
   return { success: false };
 });
 
+ipcMain.handle('get-profile-name', () => {
+  return global.profileName || 'Default';
+});
+
 ipcMain.handle('get-paths', () => {
   return {
     dataPath: store.get('dataPath', ''),
