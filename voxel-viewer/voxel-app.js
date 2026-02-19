@@ -6,12 +6,12 @@ import { buildPlaneLabelMask, buildMasksByPlane } from './core/masks.js';
 import { generateVoxelsFromMasks } from './core/voxelizer.js';
 import { buildSceneIndex } from './core/sceneIndex.js';
 import { computeTransformedBounds, planeIdToDepth, VOXEL_TYPE_GENE, VOXEL_TYPE_BOUNDARY, VOXEL_TYPE_CELL } from './core/coords.js';
-import { initGenesPanel } from './ui/genesPanel.js';
+import { initVoxelDrawer } from './ui/drawer.js';
 import { createLayers as buildLayers } from './layers/createLayers.js';
 import { initControls } from './ui/controls.js';
 import { initSliceSlider } from './ui/slider.js';
 import { showTooltip as showChunkTooltip, hideTooltip as hideChunkTooltip } from './ui/tooltip.js';
-import { initHiddenCellsPanel } from './ui/hiddenCellsPanel.js';
+// Hidden cells lives in drawer; legacy panel removed
 
 // Boundary tracing no longer used; raster masks produce boundary voxels.
 
@@ -87,7 +87,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let selectedGenes = new Set(); // Currently visible genes
     let geneColors = new Map(); // Gene -> color mapping
     let hiddenCells = new Set(); // Hidden cell IDs
-    let updateHiddenCellsPanel = () => {};
+    let updateHiddenCellsPanel = { current: () => {} };
+    const selectedCellClasses = new Set();
+    const cellIdToClass = new Map();
+    const classColors = new Map();
+    const classCounts = new Map();
 
     // Print original spot coordinates
     console.log('=== ORIGINAL SPOT COORDINATES ===');
@@ -582,10 +586,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return lines;
     }
 
-    function createLayers() {
+    function createLayersWrapper() {
         return buildLayers({
             blockData,
             selectedGenes,
+            selectedCellClasses,
+            cellIdToClass,
             currentSliceY,
             showBackground,
             showHoleVoxels,
@@ -640,8 +646,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (isCellish && (cid !== undefined && cid !== null)) {
                     if (!hiddenCells.has(cid)) {
                         hiddenCells.add(cid);
-                        deckgl.setProps({ layers: createLayers() });
-                        updateHiddenCellsPanel();
+                        deckgl.setProps({ layers: createLayersWrapper() });
+                        try { updateHiddenCellsPanel.current(); } catch {}
                     }
                     return; // prevent fallthrough logging
                 }
@@ -658,13 +664,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 voxelId: obj.voxelId
             });
         },
-        layers: createLayers()
+        layers: createLayersWrapper()
     });
 
     // Initialize Z-slice slider via UI module
     initSliceSlider({
         deckgl,
-        createLayers,
+        createLayers: () => createLayersWrapper(),
         planeIdToSliceY,
         getTotalPlanes: () => {
             try {
@@ -689,31 +695,45 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize minimal top-right controls via UI module
     initControls({
         deckgl,
-        createLayers,
+        createLayers: () => createLayersWrapper(),
         setShowSpotLines: (v) => { showSpotLines = v; },
         setShowBackground: (v) => { showBackground = v; },
         setShowHoleVoxels: (v) => { showHoleVoxels = v; },
         setShowBoundaryVoxels: (v) => { showBoundaryVoxels = v; },
         setShowGhosting: (v) => { showGhosting = v; }
     });
+    // Build class metadata (totals) and initialize drawer UI
+    try {
+        const getMeta = window.opener && typeof window.opener.getCellMeta === 'function' ? window.opener.getCellMeta : null;
+        const schemeFn = window.opener && typeof window.opener.classColorsCodes === 'function' ? window.opener.classColorsCodes : null;
+        const scheme = schemeFn ? schemeFn() : [];
+        const colorByClass = new Map(scheme.map(e => [e.className, e.color]));
+        const ids = new Set(blockData.holeStoneData.map(v => v.cellId).concat(blockData.boundaryData.map(v => v.cellId)));
+        ids.forEach(cid => {
+            let cls = null;
+            try { const meta = getMeta ? getMeta(cid) : null; cls = meta && meta.className ? String(meta.className) : null; } catch {}
+            if (!cls) cls = 'Unknown';
+            cellIdToClass.set(cid, cls);
+            classCounts.set(cls, (classCounts.get(cls) || 0) + 1);
+            if (!classColors.has(cls)) classColors.set(cls, colorByClass.get(cls) || '#c0c0c0');
+            selectedCellClasses.add(cls);
+        });
+    } catch (e) { console.warn('Class metadata unavailable:', e); }
 
-    // Initialize genes panel UI module (build list, toggle, search, open/close)
-    initGenesPanel({
+    initVoxelDrawer({
+        deckgl,
+        createLayers: () => createLayersWrapper(),
+        blockData,
         availableGenes,
         selectedGenes,
-        blockData,
-        createLayers,
-        deckgl,
-        geneColors
-    });
-
-    // Initialize hidden cells panel
-    const { updatePanel } = initHiddenCellsPanel({
+        geneColors,
         hiddenCells,
-        deckgl,
-        createLayers
+        updateHiddenCellsPanel,
+        selectedCellClasses,
+        cellIdToClass,
+        classColors,
+        classCounts
     });
-    updateHiddenCellsPanel = updatePanel;
 
     console.log('Bio demo initialized with', blockData.geneData.length, 'gene spots and', blockData.stoneData.length, 'stone blocks');
 

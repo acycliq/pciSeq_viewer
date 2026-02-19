@@ -3,6 +3,8 @@
 export function createLayers({
   blockData,
   selectedGenes,
+  selectedCellClasses,
+  cellIdToClass,
   currentSliceY,
   showBackground,
   showHoleVoxels,
@@ -23,15 +25,23 @@ export function createLayers({
   const solidStoneVoxels = blockData.stoneData.filter(b => b.position[1] <= currentSliceY);
   const transparentStoneVoxels = blockData.stoneData.filter(b => b.position[1] > currentSliceY);
 
+  const classVisible = (cid) => {
+    if (hiddenCells.has(cid)) return false;
+    if (!selectedCellClasses || selectedCellClasses.size === 0) return false;
+    const cls = cellIdToClass ? cellIdToClass.get(cid) : null;
+    if (!cls) return true; // if unknown, keep visible
+    return selectedCellClasses.has(cls);
+  };
+
   const solidCellVoxels = blockData.holeStoneData
-    .filter(b => b.position[1] <= currentSliceY && !hiddenCells.has(b.cellId));
+    .filter(b => b.position[1] <= currentSliceY && classVisible(b.cellId));
   const transparentCellVoxels = blockData.holeStoneData
-    .filter(b => b.position[1] > currentSliceY && !hiddenCells.has(b.cellId));
+    .filter(b => b.position[1] > currentSliceY && classVisible(b.cellId));
 
   const solidBoundaryVoxels = blockData.boundaryData
-    .filter(b => b.position[1] <= currentSliceY && !hiddenCells.has(b.cellId));
+    .filter(b => b.position[1] <= currentSliceY && classVisible(b.cellId));
   const transparentBoundaryVoxels = blockData.boundaryData
-    .filter(b => b.position[1] > currentSliceY && !hiddenCells.has(b.cellId));
+    .filter(b => b.position[1] > currentSliceY && classVisible(b.cellId));
 
   const solidGeneVoxels = blockData.geneData.filter(b => b.position[1] <= currentSliceY && selectedGenes.has(b.gene_name));
   const transparentGeneVoxels = blockData.geneData.filter(b => b.position[1] > currentSliceY && selectedGenes.has(b.gene_name));

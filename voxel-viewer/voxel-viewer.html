@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voxel Viewer</title>
+    <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -33,37 +34,46 @@
             </label>
         </div>
 
-        <!-- Gene Controls Widget - at top left -->
-        <div id="chunkGeneWidget" class="gene-widget hidden" style="top: 20px; left: 20px;">
-            <div class="gene-widget-header">
-                <span class="gene-widget-title">🧬 Gene Panel</span>
-                <div class="widget-header-buttons">
-                    <button id="geneWidgetCollapse" class="widget-collapse-btn" title="Collapse">−</button>
-                    <button id="geneWidgetClose" class="widget-close-btn" title="Close">×</button>
+        <!-- Left Drawer (permanent) matching main UI style -->
+        <div id="voxelControlsPanel" class="controls-panel" role="complementary" aria-label="Controls drawer">
+            <div class="controls-content">
+                <!-- Cell Classes Section -->
+                <div class="control-section">
+                    <h3 class="section-label">Cell Classes</h3>
+                    <div class="cell-class-controls">
+                        <button class="show-all-btn" id="voxelShowAllClassesBtn">Show All</button>
+                        <button class="hide-all-btn" id="voxelHideAllClassesBtn">Hide All</button>
+                    </div>
+                    <div class="cell-class-filter-container">
+                        <input type="text" class="filter-input" id="voxelClassFilter" placeholder="Filter classes…" autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="cell-class-list" id="voxelClassesList"></div>
+                    <div class="legend-resize-handle" id="cellClassesResizeHandle" title="Drag to resize"></div>
+                </div>
+
+                <!-- Genes Section -->
+                <div class="control-section">
+                    <h3 class="section-label">Genes</h3>
+                    <div class="cell-class-controls">
+                        <button class="show-all-btn" id="voxelShowAllGenesBtn">Show All</button>
+                        <button class="hide-all-btn" id="voxelHideAllGenesBtn">Hide All</button>
+                    </div>
+                    <div class="cell-class-filter-container">
+                        <input type="text" class="filter-input" id="voxelGeneFilter" placeholder="Filter genes…" autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="cell-class-list" id="voxelGenesList"></div>
+                    <div class="legend-resize-handle" id="genesResizeHandle" title="Drag to resize"></div>
+                </div>
+
+                <!-- Hidden Cells Section -->
+                <div class="control-section">
+                    <h3 class="section-label">Hidden Cells <span class="count-badge" id="voxelHiddenCellsCount">(0)</span></h3>
+                    <button id="voxelHiddenCellsShowAll" class="hidden-cells-btn">Show All</button>
+                    <div id="voxelHiddenCellsList" class="hidden-cells-list"></div>
                 </div>
             </div>
-            <div class="gene-widget-search">
-                <input type="text" id="geneSearch" placeholder="Search genes..." />
-                <button id="toggleAllGenes" class="toggle-all-btn">Unselect All</button>
-            </div>
-            <div class="gene-widget-content" id="geneList">
-                <!-- Gene list will be populated here -->
-            </div>
-        </div>
-        <!-- Minimal Genes button like main UI -->
-        <div class="minimal-controls" style="top: 15px; left: 15px; right: auto;">
-            <button id="genePanelBtn">🧬 Genes</button>
         </div>
 
-        <!-- Hidden Cells Panel -->
-        <div id="hiddenCellsPanel" class="hidden-cells-panel hidden" aria-live="polite">
-            <div class="hidden-cells-header">
-                <span class="title">Hidden Cells</span>
-                <span class="count" id="hiddenCellsCount">(0)</span>
-                <button id="hiddenCellsShowAll" class="hidden-cells-btn">Show All</button>
-            </div>
-            <div id="hiddenCellsList" class="hidden-cells-list"></div>
-        </div>
         <div class="slider-container">
             <input type="range" class="z-slicer"
                    id="sliceZ" />
