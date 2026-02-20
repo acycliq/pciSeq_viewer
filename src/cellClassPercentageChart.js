@@ -221,7 +221,7 @@ class CellClassPercentageWidget extends WidgetBase {
                 tooltip.style.opacity = 0;
             });
 
-        // Axes (Zen Style)
+        // Axes (Minimal Style)
         const xAxis = d3.axisBottom(xScale);
         const yAxis = d3.axisLeft(yScale);
 

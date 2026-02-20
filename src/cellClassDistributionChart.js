@@ -1,5 +1,5 @@
 /**
- * Cell Class Distribution Chart (Zen Widget)
+ * Cell Class Distribution Chart (Compact Widget)
  *
  * A modern, interactive stacked bar chart showing cell class distribution across Z-planes.
  * Built on WidgetBase for a unified "Glass Cockpit" experience.
@@ -234,7 +234,7 @@ class CellClassDistributionWidget extends WidgetBase {
         
         // Tooltip logic (shared single instance managed by WidgetBase logic implicitly or separate?)
         // We'll create a local tooltip helper or reuse a global one.
-        // For Zen feeling, let's create a lightweight internal one if needed, 
+        // For a cleaner feel, let's create a lightweight internal one if needed, 
         // but styles.css already has .chart-tooltip.
         let tooltip = document.querySelector('.chart-tooltip');
         if (!tooltip) {
@@ -298,7 +298,7 @@ class CellClassDistributionWidget extends WidgetBase {
                 });
         });
 
-        // --- Axes (Zen Style: Minimal) ---
+        // --- Axes (Minimal Style) ---
         const xAxis = d3.axisBottom(xScale)
             .tickValues(xScale.domain().filter((d, i) => !(i % Math.ceil(z_values.length / 10)))); // Show ~10 ticks
         
@@ -320,7 +320,7 @@ class CellClassDistributionWidget extends WidgetBase {
             .attr('fill', 'rgba(255,255,255,0.4)').attr('text-anchor', 'middle')
             .style('font-size', '11px').text('Cell Count');
 
-        // --- Legend (Custom Zen Scrollable) ---
+        // --- Legend (Custom Scrollable) ---
         // Create HTML overlay for legend to handle scrolling better than SVG
         const legendDiv = document.createElement('div');
         legendDiv.style.cssText = `

@@ -68,14 +68,10 @@ export class RectangularSelector {
                 container.style.cursor = this.isActive ? 'crosshair' : 'default';
             }
 
-            // Update button appearance via class (works with CSS !important rules)
-            const button = document.getElementById('selectionToolBtn');
-            if (button) {
-                if (this.isActive) {
-                    button.classList.add('active');
-                } else {
-                    button.classList.remove('active');
-                }
+            // Sync the toggle switch checkbox
+            const checkbox = document.getElementById('selectionToolBtn');
+            if (checkbox) {
+                checkbox.checked = this.isActive;
             }
         } catch {}
     }

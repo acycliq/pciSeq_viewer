@@ -171,15 +171,20 @@ export function initializeRectangularSelector() {
     // Ensure it's accessible via window.appState
     window.appState.rectangularSelector = state.rectangularSelector;
 
-    // Setup selection tool button
+    // Setup selection tool switch
     const selectionToolBtn = document.getElementById('selectionToolBtn');
     if (selectionToolBtn) {
-        selectionToolBtn.addEventListener('click', () => {
-            state.rectangularSelector.toggle();
+        selectionToolBtn.addEventListener('change', (e) => {
+            state.rectangularSelector.isActive = e.target.checked;
+            const container = document.getElementById('map');
+            if (container) {
+                container.style.cursor = e.target.checked ? 'crosshair' : 'default';
+            }
+            console.log('Selection mode:', e.target.checked ? 'ON' : 'OFF');
         });
     }
 
-    console.log('Rectangular selector ready - Click selection tool icon to toggle');
+    console.log('Rectangular selector ready - Toggle selection tool switch to activate');
 }
 
 /**

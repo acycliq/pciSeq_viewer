@@ -26,14 +26,14 @@ canvas:active {
 }
 
 
-/* Zen Switch Styling */
+/* Switch Styling */
 .visibility-toggles {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.zen-switch {
+.toggle-switch {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -46,11 +46,11 @@ canvas:active {
     transition: background-color 0.2s ease;
 }
 
-.zen-switch:hover {
+.toggle-switch:hover {
     background-color: rgba(255, 255, 255, 0.05);
 }
 
-.zen-switch input {
+.toggle-switch input {
     opacity: 0;
     width: 0;
     height: 0;
@@ -80,16 +80,16 @@ canvas:active {
     border-radius: 50%;
 }
 
-.zen-switch input:checked + .switch-slider {
+.toggle-switch input:checked + .switch-slider {
     background-color: var(--drawer-accent, #22c55e);
 }
 
-.zen-switch input:checked + .switch-slider:before {
+.toggle-switch input:checked + .switch-slider:before {
     transform: translateX(14px);
     background-color: #0b0b0b;
 }
 
-.zen-switch .label-text {
+.toggle-switch .label-text {
     font-size: 12px;
     color: var(--drawer-text, #e5e5e5);
     margin-right: 12px;
