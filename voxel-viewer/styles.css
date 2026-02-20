@@ -26,74 +26,74 @@ canvas:active {
 }
 
 
-/* Toggle controls positioned at top-right */
-/* Collapsible controls (top-right) */
-.toggle-controls-right {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    z-index: 100;
-    width: 220px;
-    background: rgba(0, 0, 0, 0.65);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 8px;
-    overflow: hidden;
+/* Zen Switch Styling */
+.visibility-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
-.toggle-controls-right > summary {
-    list-style: none;
+
+.zen-switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     cursor: pointer;
-    padding: 8px 10px;
-    font-weight: 600;
-    background: rgba(255,255,255,0.06);
     user-select: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
+    padding: 6px 8px;
+    margin: 0 -8px;
+    width: auto;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
 }
-.toggle-controls-right[open] > summary { border-bottom: 1px solid rgba(255,255,255,0.1); }
-.toggle-controls-right > summary::-webkit-details-marker { display: none; }
 
-.toggle-controls-right .controls-body {
-    padding: 10px 12px;
-    display: grid;
-    gap: 8px;
+.zen-switch:hover {
+    background-color: rgba(255, 255, 255, 0.05);
 }
-.toggle-controls-right label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-}
-.toggle-controls-right input[type="checkbox"] { margin: 0; cursor: pointer; }
 
-/* Minimal checkboxes panel (top-right) */
-.mini-controls-right {
+.zen-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
     position: absolute;
-    top: 15px;
-    right: 15px;
-    z-index: 110;
-    background: rgba(0,0,0,0.35);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 8px;
-    padding: 8px 10px;
-    display: grid;
-    gap: 6px;
+}
+
+.switch-slider {
+    position: relative;
+    display: inline-block;
+    width: 32px;
+    height: 18px;
+    background-color: #333;
+    transition: .3s;
+    border-radius: 20px;
+    flex-shrink: 0;
+}
+
+.switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 12px;
+    width: 12px;
+    left: 3px;
+    bottom: 3px;
+    background-color: #9aa0a6;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+.zen-switch input:checked + .switch-slider {
+    background-color: var(--drawer-accent, #22c55e);
+}
+
+.zen-switch input:checked + .switch-slider:before {
+    transform: translateX(14px);
+    background-color: #0b0b0b;
+}
+
+.zen-switch .label-text {
     font-size: 12px;
-}
-.mini-controls-right label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: rgba(255,255,255,0.9);
-    cursor: pointer;
-}
-.mini-controls-right input[type="checkbox"] {
-    width: 14px;
-    height: 14px;
-    margin: 0;
-    cursor: pointer;
+    color: var(--drawer-text, #e5e5e5);
+    margin-right: 12px;
+    flex: 1;
 }
 
 .slider-container {

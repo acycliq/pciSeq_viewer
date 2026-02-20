@@ -10,30 +10,6 @@
 <body>
     <div id="container">
 
-        <!-- Toggle Controls moved to top-right -->
-        <div class="mini-controls-right">
-            <label>
-                <input type="checkbox" id="showLinesToggle" checked>
-                Spot to cell assignments
-            </label>
-            <label>
-                <input type="checkbox" id="showBackgroundToggle" checked>
-                Background voxels
-            </label>
-            <label>
-                <input type="checkbox" id="showHoleVoxelsToggle">
-                Cell voxels
-            </label>
-            <label>
-                <input type="checkbox" id="showBoundaryVoxelsToggle">
-                Boundary voxels
-            </label>
-            <label>
-                <input type="checkbox" id="showGhostingToggle" checked>
-                Ghosting
-            </label>
-        </div>
-
         <!-- Left Drawer (permanent) matching main UI style -->
         <div id="voxelControlsPanel" class="controls-panel" role="complementary" aria-label="Controls drawer">
             <div class="controls-content">
@@ -63,6 +39,38 @@
                     </div>
                     <div class="cell-class-list" id="voxelGenesList"></div>
                     <div class="legend-resize-handle" id="genesResizeHandle" title="Drag to resize"></div>
+                </div>
+
+                <!-- Visibility Toggles Section -->
+                <div class="control-section">
+                    <h3 class="section-label">Visibility Controls</h3>
+                    <div class="visibility-toggles">
+                        <label class="zen-switch">
+                            <span class="label-text">Spot to cell assignments</span>
+                            <input type="checkbox" id="showLinesToggle" checked>
+                            <span class="switch-slider"></span>
+                        </label>
+                        <label class="zen-switch">
+                            <span class="label-text">Background voxels</span>
+                            <input type="checkbox" id="showBackgroundToggle" checked>
+                            <span class="switch-slider"></span>
+                        </label>
+                        <label class="zen-switch">
+                            <span class="label-text">Cell voxels</span>
+                            <input type="checkbox" id="showHoleVoxelsToggle">
+                            <span class="switch-slider"></span>
+                        </label>
+                        <label class="zen-switch">
+                            <span class="label-text">Boundary voxels</span>
+                            <input type="checkbox" id="showBoundaryVoxelsToggle">
+                            <span class="switch-slider"></span>
+                        </label>
+                        <label class="zen-switch">
+                            <span class="label-text">Ghosting</span>
+                            <input type="checkbox" id="showGhostingToggle" checked>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Hidden Cells Section -->
