@@ -30,7 +30,7 @@ canvas:active {
 .visibility-toggles {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 4px;
 }
 
 .zen-switch {
@@ -39,7 +39,7 @@ canvas:active {
     justify-content: space-between;
     cursor: pointer;
     user-select: none;
-    padding: 6px 8px;
+    padding: 4px 8px;
     margin: 0 -8px;
     width: auto;
     border-radius: 4px;
