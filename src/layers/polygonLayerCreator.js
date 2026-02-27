@@ -3,7 +3,8 @@
  * Handles cell boundary visualization and Z-projection cell mode
  */
 
-import { IMG_DIMENSIONS } from '../../config/constants.js';
+import { IMG_DIMENSIONS, EAGLE_VIEW_CONFIG } from '../../config/constants.js';
+import { planeZOffset } from '../eagleView.js';
 import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
 import { handleCellHover, handleCellClick } from '../ui/cellHoverHandler.js';
 import { ensureArrowInitialized } from './arrowInit.js';
@@ -17,7 +18,7 @@ const CELL_FILTER_EXTENSION = new DataFilterExtension({ filterSize: 1 });
 /**
  * Create polygon layers for cell boundary visualization
  */
-export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null, zProjectionCellMode = false, geneCountThreshold = 0, geneCountMaxThreshold = Infinity) {
+export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null, zProjectionCellMode = false, geneCountThreshold = 0, geneCountMaxThreshold = Infinity, eagleView = false) {
     const layers = [];
 
     if (!showPolygons) return layers;
@@ -26,15 +27,35 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
         return createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold);
     }
 
+    if (eagleView) {
+        return createEagleViewPolygonLayers(planeNum, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap);
+    }
+
     // Arrow fast-path: use binary buffers from worker
+    ensurePlaneLoaded(planeNum);
+
+    const buffers = arrowBoundaryCache.get(planeNum);
+    if (!buffers) return layers;
+
+    ensureTileTransformed(buffers);
+    ensureGeojsonCached(planeNum, buffers, cellDataMap);
+
+    const geojsonFromArrow = arrowGeojsonCache.get(planeNum);
+    return [createFilledGeoJsonLayer(planeNum, geojsonFromArrow, cellClassColors, polygonOpacity, selectedCellClasses)];
+}
+
+/**
+ * Trigger async boundary load for a plane if not already cached.
+ */
+function ensurePlaneLoaded(planeNum) {
     (async () => {
         try {
             await ensureArrowInitialized();
             if (!arrowBoundaryCache.has(planeNum)) {
                 const { loadBoundariesPlane } = await import('../../arrow-loader/lib/arrow-loaders.js');
-                const { buffers, timings } = await loadBoundariesPlane(planeNum);
+                const { buffers } = await loadBoundariesPlane(planeNum);
                 arrowBoundaryCache.set(planeNum, buffers);
-                
+
                 if (typeof window !== 'undefined' && window.dispatchEvent) {
                     window.dispatchEvent(new CustomEvent('arrow-boundaries-ready', { detail: { plane: planeNum } }));
                 }
@@ -43,10 +64,12 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
             console.error('Arrow boundary load error:', e);
         }
     })();
+}
 
-    const buffers = arrowBoundaryCache.get(planeNum);
-    if (!buffers) return layers;
-
+/**
+ * Transform boundary buffer positions from image to tile coordinates.
+ */
+function ensureTileTransformed(buffers) {
     if (!buffers._tileTransformed) {
         const src = buffers.positions;
         const dst = new Float32Array(src.length);
@@ -60,7 +83,12 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
         buffers.positions = dst;
         buffers._tileTransformed = true;
     }
+}
 
+/**
+ * Build and cache GeoJSON features for a plane from Arrow buffers.
+ */
+function ensureGeojsonCached(planeNum, buffers, cellDataMap) {
     if (!arrowGeojsonCache.has(planeNum)) {
         const { positions, startIndices, length, labels } = buffers;
         const features = [];
@@ -84,9 +112,51 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
         }
         arrowGeojsonCache.set(planeNum, { type: 'FeatureCollection', features });
     }
+}
 
-    const geojsonFromArrow = arrowGeojsonCache.get(planeNum);
-    return [createFilledGeoJsonLayer(planeNum, geojsonFromArrow, cellClassColors, polygonOpacity, selectedCellClasses)];
+/**
+ * Create multi-plane elevated polygon layers for eagle-view mode.
+ * Renders planes from currentPlane ± PLANE_RANGE with Z-offset coordinates.
+ */
+function createEagleViewPolygonLayers(currentPlane, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap) {
+    const layers = [];
+    const totalPlanes = (window.appState && typeof window.appState.totalPlanes === 'number')
+        ? window.appState.totalPlanes : 0;
+    const range = EAGLE_VIEW_CONFIG.PLANE_RANGE;
+    const startPlane = Math.max(0, currentPlane - range);
+    const endPlane = Math.min(totalPlanes - 1, currentPlane + range);
+
+    for (let plane = startPlane; plane <= endPlane; plane++) {
+        // Trigger async load for this plane
+        ensurePlaneLoaded(plane);
+
+        const buffers = arrowBoundaryCache.get(plane);
+        if (!buffers) continue;
+
+        ensureTileTransformed(buffers);
+        ensureGeojsonCached(plane, buffers, cellDataMap);
+
+        const geojson = arrowGeojsonCache.get(plane);
+        if (!geojson || !geojson.features || geojson.features.length === 0) continue;
+
+        // Clone features with Z-offset coordinates
+        const zOffset = planeZOffset(plane, currentPlane);
+        const elevatedFeatures = geojson.features.map(f => ({
+            type: 'Feature',
+            geometry: {
+                type: 'Polygon',
+                coordinates: f.geometry.coordinates.map(ring =>
+                    ring.map(([x, y]) => [x, y, zOffset])
+                )
+            },
+            properties: f.properties
+        }));
+
+        const elevatedGeojson = { type: 'FeatureCollection', features: elevatedFeatures };
+        layers.push(createFilledGeoJsonLayer(`eagle-${plane}`, elevatedGeojson, cellClassColors, polygonOpacity, selectedCellClasses));
+    }
+
+    return layers;
 }
 
 function computeMostProbableClass(label, cellDataMap) {

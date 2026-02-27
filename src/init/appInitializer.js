@@ -28,7 +28,15 @@ import { populateGeneDrawer } from '../geneDrawer.js';
 import Perf from '../../utils/runtimePerf.js';
 
 // Extract deck.gl components
-const { DeckGL, OrthographicView, COORDINATE_SYSTEM } = deck;
+const { DeckGL, OrthographicView, OrbitView, COORDINATE_SYSTEM } = deck;
+
+export function createOrthoView() {
+    return new OrthographicView({ id: 'ortho' });
+}
+
+export function createOrbitView() {
+    return new OrbitView({ id: 'eagle' });
+}
 
 /**
  * Initialize the deck.gl instance

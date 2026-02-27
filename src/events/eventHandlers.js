@@ -21,6 +21,7 @@ import {
     loadAllPlanesForProjection,
     prepareProjectionFromCaches
 } from '../data/cellProjectionLoader.js';
+import { toggleEagleView } from '../eagleView.js';
 
 // === MAIN SETUP FUNCTION ===
 
@@ -98,6 +99,14 @@ function setupLayerToggles(elements, state, updateLayersCallback) {
         state.showPolygons = e.target.checked;
         updateLayersCallback();
     });
+
+    // Eagle View toggle
+    const eagleViewToggle = document.getElementById('eagleViewToggle');
+    if (eagleViewToggle) {
+        eagleViewToggle.addEventListener('change', () => {
+            toggleEagleView(state, updateLayersCallback);
+        });
+    }
 
     // Polygon opacity slider
     elements.polygonOpacitySlider.addEventListener('input', (e) => {
@@ -602,6 +611,12 @@ export function setupAdvancedKeyboardShortcuts(state, updatePlaneCallback, updat
                 state.showPolygons = !state.showPolygons;
                 document.getElementById('showPolygons').checked = state.showPolygons;
                 updateLayersCallback();
+                break;
+
+            case 'e':
+            case 'E':
+                toggleEagleView(state, updateLayersCallback);
+                document.getElementById('eagleViewToggle').checked = state.eagleView;
                 break;
         }
     });

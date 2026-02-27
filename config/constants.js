@@ -190,6 +190,14 @@ export const GENE_SIZE_CONFIG = {
 // Helper function to get polygon file URL for a specific plane
 // Removed TSV polygon file URL helper (Arrow-only)
 
+// Eagle-view (tilted perspective) configuration
+export const EAGLE_VIEW_CONFIG = {
+    PLANE_RANGE: 2,        // currentPlane ± 2
+    Z_SPACING: 20,         // vertical gap between planes (tile-coord units)
+    ROTATION_X: -30,       // fixed tilt angle in degrees
+    ROTATION_ORBIT: 0,     // azimuth
+};
+
 // Helper function to get tile URL pattern
 export function getTileUrlPattern() {
     const cfg = window.config ? window.config() : null;

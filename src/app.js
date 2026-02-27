@@ -314,8 +314,8 @@ window.updatePlane = updatePlane;
  * @returns {Object} Updated view state
  */
 function handleViewStateChange({ viewState, interactionState }) {
-    // Update scale bar when view changes
-    updateScaleBar(viewState);
+    // Update scale bar when view changes (skip in eagle-view as OrbitView lacks orthographic fields)
+    if (!state.eagleView) updateScaleBar(viewState);
 
     try { state.currentZoom = viewState.zoom; } catch {}
 

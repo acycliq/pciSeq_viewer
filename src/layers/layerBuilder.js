@@ -74,7 +74,8 @@ export function buildPolygonLayers(state) {
         state.cellDataMap,
         state.zProjectionCellMode,
         state.geneCountThreshold,
-        state.geneCountMaxThreshold
+        state.geneCountMaxThreshold,
+        state.eagleView
     );
 }
 
@@ -101,7 +102,7 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
             state.uniformMarkerSize,
             state.intensityThreshold,
             state.hasIntensity,
-            state.filterMode
+            state.eagleView
         );
         if (pc && state.showGenes) layers.push(pc);
         // Simplified: no deferred cleanup needed with single IconLayer approach
@@ -126,7 +127,7 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
                 state.uniformMarkerSize,
                 state.intensityThreshold,
                 state.hasIntensity,
-                state.filterMode
+                state.eagleView
             );
             if (pc && state.showGenes) layers.push(pc);
             state.lastIconLayers = [];
@@ -147,7 +148,7 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
                 state.uniformMarkerSize,
                 state.intensityThreshold,
                 state.hasIntensity,
-                state.filterMode
+                state.eagleView
             );
             layers.push(...iconLayers);
             state.lastIconLayers = iconLayers;
@@ -264,7 +265,7 @@ export function logZoomTransitionMetrics(state, layers) {
                         iconPoints += n;
                     } catch {}
                 }
-                if (lyr.id === 'spots-scatter-binary') hasBinary = true;
+                if (lyr.id === 'spots-scatter-binary' || lyr.id === 'spots-scatter-binary-eagle') hasBinary = true;
             }
 
             console.log(`Zoom transition end: ${state.zoomTransition.from || 'none'} -> ${state.zoomTransition.to} in ${elapsed.toFixed(1)}ms | layers=${totalLayers}, iconLayers=${iconLayers}, iconPoints${iconPoints}, binary=${hasBinary}`);

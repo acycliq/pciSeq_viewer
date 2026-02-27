@@ -6,7 +6,8 @@
 
 import {
     IMG_DIMENSIONS,
-    GENE_SIZE_CONFIG
+    GENE_SIZE_CONFIG,
+    EAGLE_VIEW_CONFIG
 } from '../../config/constants.js';
 import {
     transformToTileCoordinates,
@@ -36,7 +37,7 @@ function getArrowSpotBinaryCache() {
 /**
  * Create a high-performance ScatterplotLayer for Arrow-loaded spots
  */
-export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false) {
+export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, eagleView = false) {
     const cache = getArrowSpotBinaryCache();
     if (!cache || cache.length === 0) return null;
 
@@ -110,6 +111,55 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         console.warn('Gene mask caching failed:', e);
     }
 
+    // Eagle-view: create Z-offset positions and hide spots outside plane range
+    let eaglePositions = null;
+    if (eagleView) {
+        try {
+            const app = (typeof window !== 'undefined') ? window.appState || (window.appState = {}) : {};
+            const ezCache = app._eagleZCache || (app._eagleZCache = {});
+            const needsPosInit = !ezCache.positions || ezCache.length !== length ||
+                             ezCache.posBuffer !== positions.buffer || ezCache.plane !== (currentPlane || 0);
+
+            if (needsPosInit) {
+                const cur = (currentPlane || 0) | 0;
+                const spacing = EAGLE_VIEW_CONFIG.Z_SPACING;
+                const ezPositions = new Float32Array(length * 3);
+                for (let i = 0; i < length; i++) {
+                    ezPositions[3 * i]     = positions[3 * i];
+                    ezPositions[3 * i + 1] = positions[3 * i + 1];
+                    ezPositions[3 * i + 2] = (planes[i] - cur) * spacing;
+                }
+                ezCache.positions = ezPositions;
+                ezCache.length = length;
+                ezCache.posBuffer = positions.buffer;
+                ezCache.plane = cur;
+            }
+            eaglePositions = ezCache.positions;
+
+            // Apply eagle alpha masking on a clone (never mutate the gene mask cache).
+            // Cache keyed on source buffer identity + plane to avoid re-allocation during panning.
+            const eagleMaskCache = app._eagleMaskCache || (app._eagleMaskCache = {});
+            const src = maskedColors || colors;
+            const cur = (currentPlane || 0) | 0;
+            if (eagleMaskCache.srcRef !== src || eagleMaskCache.plane !== cur || eagleMaskCache.length !== length) {
+                const eagleMasked = new Uint8Array(src);
+                const range = EAGLE_VIEW_CONFIG.PLANE_RANGE;
+                for (let i = 0; i < length; i++) {
+                    if (Math.abs(planes[i] - cur) > range) {
+                        eagleMasked[4 * i + 3] = 0;
+                    }
+                }
+                eagleMaskCache.buffer = eagleMasked;
+                eagleMaskCache.srcRef = src;
+                eagleMaskCache.plane = cur;
+                eagleMaskCache.length = length;
+            }
+            maskedColors = eagleMaskCache.buffer;
+        } catch (e) {
+            console.warn('Eagle-view Z-offset cache failed:', e);
+        }
+    }
+
     const canFilterScore = Boolean(scores) && hasScores;
     const canFilterIntensity = Boolean(intensities) && hasIntensity;
     const use2D = canFilterScore && canFilterIntensity && Boolean(filterPairs);
@@ -117,7 +167,7 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
     const data = {
         length,
         attributes: {
-            getPosition: { value: positions, size: 3 },
+            getPosition: { value: eaglePositions || positions, size: 3 },
             getFillColor: { value: maskedColors || colors, size: 4 },
             getRadius: uniformMarkerSize ? { constant: 1 } : { value: radiusFactors, size: 1 },
             ...(use2D ? { getFilterValue: { value: filterPairs, size: 2 } } : 
@@ -136,7 +186,7 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
     } catch {}
 
     return new ScatterplotLayer({
-        id: 'spots-scatter-binary',
+        id: eagleView ? 'spots-scatter-binary-eagle' : 'spots-scatter-binary',
         data,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
         pickable: false,
@@ -158,7 +208,7 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
 /**
  * Create gene expression layers using IconLayer
  */
-export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false) {
+export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, eagleView = false) {
     if (!showGenes || !geneIconAtlas) return [];
 
     if (combineIntoSingleLayer) {
@@ -185,14 +235,19 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
                 
                 const passScore = !(hasScores && scoreThreshold > 0) || (d.score != null && Number(d.score) >= scoreThreshold);
                 const passInten = !(hasIntensity && intensityThreshold > 0) || (d.intensity != null && Number(d.intensity) >= intensityThreshold);
-                if (passScore && passInten) combined.push(d);
+                const passPlane = !eagleView || Math.abs((d.plane_id || 0) - currentPlane) <= EAGLE_VIEW_CONFIG.PLANE_RANGE;
+                if (passScore && passInten && passPlane) combined.push(d);
             }
         }
 
         if (combined.length === 0) return [];
 
+        const eagleGetPosition = eagleView
+            ? d => { const [tx, ty] = transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS); return [tx, ty, ((d.plane_id || 0) - currentPlane) * EAGLE_VIEW_CONFIG.Z_SPACING]; }
+            : d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS);
+
         return [new IconLayer({
-            id: 'genes-combined',
+            id: eagleView ? 'genes-combined-eagle' : 'genes-combined',
             data: combined,
             pickable: true,
             onHover: showTooltip,
@@ -208,13 +263,13 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
             iconAtlas: geneIconAtlas,
             iconMapping: geneIconMapping,
-            getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
+            getPosition: eagleGetPosition,
             getSize: d => uniformMarkerSize ? GENE_SIZE_CONFIG.BASE_SIZE : (GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane))),
             getIcon: d => d.gene,
             getColor: [255, 255, 255],
             sizeUnits: 'pixels',
             sizeScale: geneSizeScale,
-            updateTriggers: { getSize: [currentPlane, uniformMarkerSize] }
+            updateTriggers: { getSize: [currentPlane, uniformMarkerSize], getPosition: [eagleView, currentPlane] }
         })];
     }
 
@@ -232,13 +287,18 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
         const filtered = data.filter(d => {
             const passScore = !(hasScores && scoreThreshold > 0) || (d.score != null && Number(d.score) >= scoreThreshold);
             const passInten = !(hasIntensity && intensityThreshold > 0) || (d.intensity != null && Number(d.intensity) >= intensityThreshold);
-            return passScore && passInten;
+            const passPlane = !eagleView || Math.abs((d.plane_id || 0) - currentPlane) <= EAGLE_VIEW_CONFIG.PLANE_RANGE;
+            return passScore && passInten && passPlane;
         });
 
         if (filtered.length === 0) continue;
 
+        const perGeneGetPos = eagleView
+            ? d => { const [tx, ty] = transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS); return [tx, ty, ((d.plane_id || 0) - currentPlane) * EAGLE_VIEW_CONFIG.Z_SPACING]; }
+            : d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS);
+
         layers.push(new IconLayer({
-            id: `genes-${gene}`,
+            id: eagleView ? `genes-${gene}-eagle` : `genes-${gene}`,
             data: filtered,
             visible: selectedGenes.has(gene),
             pickable: true,
@@ -255,13 +315,13 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
             iconAtlas: geneIconAtlas,
             iconMapping: geneIconMapping,
-            getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
+            getPosition: perGeneGetPos,
             getSize: d => uniformMarkerSize ? GENE_SIZE_CONFIG.BASE_SIZE : (GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane))),
             getIcon: d => d.gene,
             getColor: [255, 255, 255],
             sizeUnits: 'pixels',
             sizeScale: geneSizeScale,
-            updateTriggers: { getSize: [currentPlane, uniformMarkerSize] }
+            updateTriggers: { getSize: [currentPlane, uniformMarkerSize], getPosition: [eagleView, currentPlane] }
         }));
     }
     return layers;
