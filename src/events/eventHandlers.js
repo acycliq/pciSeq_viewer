@@ -15,6 +15,7 @@ import {
     openGenePanel,
     toggleLayerControls
 } from '../ui/uiHelpers.js';
+import { showNotification } from '../ui/notification.js';
 import { setupResizableList } from '../../utils/resizableList.js';
 import { debounce } from '../../utils/common.js';
 import {
@@ -566,6 +567,18 @@ export function setupAdvancedKeyboardShortcuts(state, updatePlaneCallback, updat
     document.addEventListener('keydown', (e) => {
         // Prevent shortcuts when typing in inputs
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+
+        // Ctrl/Cmd + L toggles line overlay (current-plane cells, all-plane spots)
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'l' || e.key === 'L')) {
+            e.preventDefault();
+            state.showCellSpotLines = !state.showCellSpotLines;
+            updateLayersCallback();
+            showNotification(
+                `Cell-to-spot lines ${state.showCellSpotLines ? 'enabled' : 'disabled'} (current-plane cells, all-plane spots)`,
+                'info'
+            );
             return;
         }
 

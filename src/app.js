@@ -46,6 +46,7 @@ import {
 import {
     buildTileLayers,
     buildPolygonLayers,
+    buildCellSpotLineLayer,
     buildSpotLayers,
     buildRegionLayers,
     buildZProjectionLayer,
@@ -206,6 +207,7 @@ window.getCellMeta = (cellId) => {
 // === ZOOM MODE TRACKING ===
 let __lastZoomMode = null; // 'pc' or 'icon'
 let __lastDragging = false; // track pan-drag state
+let __lastInteracting = false; // track drag/zoom interaction state
 
 // === VIEWPORT BOUNDS ===
 /**
@@ -246,6 +248,9 @@ function updateAllLayers() {
 
     // Build polygon layers (cell boundaries)
     layers.push(...buildPolygonLayers(state));
+
+    // Build current-plane cell-to-spot line overlay (viewport-only)
+    layers.push(...buildCellSpotLineLayer(state, getCurrentViewportTileBounds));
 
     // Build spot layers (genes - PointCloud or IconLayers based on zoom)
     layers.push(...buildSpotLayers(state, elements, getCurrentViewportTileBounds));
@@ -324,6 +329,7 @@ function handleViewStateChange({ viewState, interactionState }) {
         const adv = window.advancedConfig ? window.advancedConfig() : { performance: { showPerformanceStats: false } };
         const mode = (viewState.zoom < 7) ? 'pc' : 'icon';
         const dragging = Boolean(interactionState && interactionState.isDragging);
+        const interacting = Boolean(interactionState && (interactionState.isDragging || interactionState.isZooming));
 
         if (mode !== __lastZoomMode) {
             // Zoom mode changed - trigger transition
@@ -335,6 +341,7 @@ function handleViewStateChange({ viewState, interactionState }) {
 
             __lastZoomMode = mode;
             __lastDragging = dragging;
+            __lastInteracting = interacting;
 
             // Measure and update layers
             if (adv.performance.showPerformanceStats) {
@@ -356,14 +363,21 @@ function handleViewStateChange({ viewState, interactionState }) {
                 updateAllLayers();
             }
         } else if (mode === 'icon') {
-            // At deep zoom: rebuild IconLayer only when panning ends
-            if (__lastDragging && !dragging) {
+            // At deep zoom: rebuild on pan-end, and rebuild viewport-cropped line overlay on interaction-end
+            const iconPanEnded = __lastDragging && !dragging;
+            const lineInteractionEnded = state.showCellSpotLines && __lastInteracting && !interacting;
+            if (iconPanEnded || lineInteractionEnded) {
                 updateAllLayers();
             }
             __lastDragging = dragging;
+            __lastInteracting = interacting;
         } else {
-            // In pointcloud mode track dragging state but no special work
+            // In pointcloud mode, refresh viewport-cropped line overlay only when interaction ends
+            if (state.showCellSpotLines && __lastInteracting && !interacting) {
+                updateAllLayers();
+            }
             __lastDragging = dragging;
+            __lastInteracting = interacting;
         }
     } catch {}
 
