@@ -208,6 +208,20 @@ window.getCellMeta = (cellId) => {
 let __lastZoomMode = null; // 'pc' or 'icon'
 let __lastDragging = false; // track pan-drag state
 let __lastInteracting = false; // track drag/zoom interaction state
+let __lastViewZoom = null; // track zoom value for overlay refresh fallback
+let __lineOverlayZoomRefreshTimer = null; // debounce timer for Ctrl+L overlay refresh on zoom
+
+function scheduleLineOverlayZoomRefresh() {
+    if (__lineOverlayZoomRefreshTimer) {
+        clearTimeout(__lineOverlayZoomRefreshTimer);
+    }
+    __lineOverlayZoomRefreshTimer = setTimeout(() => {
+        __lineOverlayZoomRefreshTimer = null;
+        if (state.showCellSpotLines) {
+            updateAllLayers();
+        }
+    }, 120);
+}
 
 // === VIEWPORT BOUNDS ===
 /**
@@ -323,6 +337,8 @@ function handleViewStateChange({ viewState, interactionState }) {
     updateScaleBar(viewState);
 
     try { state.currentZoom = viewState.zoom; } catch {}
+    const zoomChanged = (__lastViewZoom !== null) && (Math.abs((viewState.zoom ?? 0) - __lastViewZoom) > 1e-6);
+    __lastViewZoom = viewState.zoom ?? __lastViewZoom;
 
     // Update layers based on zoom mode transitions
     try {
@@ -378,6 +394,12 @@ function handleViewStateChange({ viewState, interactionState }) {
             }
             __lastDragging = dragging;
             __lastInteracting = interacting;
+        }
+
+        // Fallback: interactionState zoom flags are not always reliable on wheel zoom.
+        // Debounce a refresh so Ctrl+L overlay updates for newly visible cells after zoom stops.
+        if (state.showCellSpotLines && zoomChanged) {
+            scheduleLineOverlayZoomRefresh();
         }
     } catch {}
 
