@@ -518,6 +518,26 @@ export function setupAdvancedKeyboardShortcuts(state, updatePlaneCallback, updat
             return;
         }
 
+        // Ctrl/Cmd + L toggles line overlay (current-plane cells, all-plane spots)
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'l' || e.key === 'L')) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.repeat) return; // avoid rapid key-repeat flip-flopping
+
+            state.showCellSpotLines = !state.showCellSpotLines;
+            updateLayersCallback();
+
+            // Run one more frame after key handling to ensure viewport-dependent overlay gets built
+            if (state.showCellSpotLines) {
+                requestAnimationFrame(() => {
+                    if (state.showCellSpotLines) updateLayersCallback();
+                });
+            }
+
+            console.log(`Cell-to-spot lines ${state.showCellSpotLines ? 'enabled' : 'disabled'}`);
+            return;
+        }
+
         switch (e.key) {
             case 'Home':
                 e.preventDefault();

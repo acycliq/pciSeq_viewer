@@ -14,6 +14,7 @@ import {
     createGeneLayers,
     createArrowPointCloudLayer
 } from './layerCreators.js';
+import { createCellSpotLineOverlayLayer } from './cellSpotLineOverlayLayer.js';
 import { createZProjectionLayer, isZProjectionReady } from './zProjectionOverlay.js';
 import { getVisibleRegions, getRegionColorRgb } from '../regionsManager.js';
 
@@ -156,6 +157,27 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
     }
 
     return layers;
+}
+
+/**
+ * Build current-plane cell-to-spot line overlay for visible viewport cells
+ * @param {Object} state - Application state
+ * @param {Function} getCurrentViewportTileBounds - Function to get viewport bounds
+ * @returns {Array} Array with line overlay layer (or empty)
+ */
+export function buildCellSpotLineLayer(state, getCurrentViewportTileBounds) {
+    if (!state.showCellSpotLines) return [];
+    const bounds = getCurrentViewportTileBounds ? getCurrentViewportTileBounds() : null;
+    if (!bounds) {
+        console.warn('[cell-spot-overlay] skipped: viewport bounds unavailable');
+        return [];
+    }
+    const lineLayer = createCellSpotLineOverlayLayer(state, bounds);
+    if (!lineLayer) {
+        console.warn('[cell-spot-overlay] skipped: no lines generated for current frame');
+        return [];
+    }
+    return lineLayer ? [lineLayer] : [];
 }
 
 /**

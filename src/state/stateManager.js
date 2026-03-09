@@ -11,6 +11,7 @@ const state = {
     showTiles: DEFAULT_STATE.showTiles,
     showPolygons: DEFAULT_STATE.showPolygons,
     showGenes: DEFAULT_STATE.showGenes,
+    showCellSpotLines: false,
     showZProjectionOverlay: false,
     zProjectionOpacity: 0.3,
 

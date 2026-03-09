@@ -29,6 +29,7 @@ import { updateCellInfo, setupCellInfoPanel, initCellInfoColorScheme } from './c
 import {
     buildTileLayers,
     buildPolygonLayers,
+    buildCellSpotLineLayer,
     buildSpotLayers,
     buildRegionLayers,
     buildZProjectionLayer,
@@ -144,6 +145,21 @@ window.updateCellInfo = updateCellInfo;
 // === ZOOM MODE TRACKING ===
 let __lastZoomMode = null; // 'pc' or 'icon'
 let __lastDragging = false; // track pan-drag state
+let __lastInteracting = false; // track drag/zoom interaction state
+let __lastViewZoom = null; // track zoom value for overlay refresh fallback
+let __lineOverlayZoomRefreshTimer = null; // debounce timer for Ctrl+L overlay refresh on zoom
+
+function scheduleLineOverlayZoomRefresh() {
+    if (__lineOverlayZoomRefreshTimer) {
+        clearTimeout(__lineOverlayZoomRefreshTimer);
+    }
+    __lineOverlayZoomRefreshTimer = setTimeout(() => {
+        __lineOverlayZoomRefreshTimer = null;
+        if (state.showCellSpotLines) {
+            updateAllLayers();
+        }
+    }, 120);
+}
 
 // === VIEWPORT BOUNDS ===
 /**
@@ -155,13 +171,16 @@ function getCurrentViewportTileBounds() {
         const vps = state.deckglInstance && state.deckglInstance.getViewports && state.deckglInstance.getViewports();
         const vp = vps && vps[0];
         if (!vp) return null;
-        const w = vp.width || 0, h = vp.height || 0;
-        const p0 = vp.unproject([0, h]);     // bottom-left screen -> world
-        const p1 = vp.unproject([w, 0]);     // top-right screen -> world
-        const minX = Math.min(p0[0], p1[0]);
-        const maxX = Math.max(p0[0], p1[0]);
-        const minY = Math.min(p0[1], p1[1]);
-        const maxY = Math.max(p0[1], p1[1]);
+        const w = vp.width || 0;
+        const h = vp.height || 0;
+        const p0 = vp.unproject([0, 0]);
+        const p1 = vp.unproject([w, 0]);
+        const p2 = vp.unproject([0, h]);
+        const p3 = vp.unproject([w, h]);
+        const minX = Math.min(p0[0], p1[0], p2[0], p3[0]);
+        const maxX = Math.max(p0[0], p1[0], p2[0], p3[0]);
+        const minY = Math.min(p0[1], p1[1], p2[1], p3[1]);
+        const maxY = Math.max(p0[1], p1[1], p2[1], p3[1]);
         return { minX, minY, maxX, maxY };
     } catch (e) {
         console.warn('Failed to compute viewport bounds:', e);
@@ -191,6 +210,9 @@ function updateAllLayers() {
     // Build region overlay layers (user-imported boundaries)
     layers.push(...buildRegionLayers(state, elements));
 
+    // Build current-plane cell-to-spot line overlay (viewport-only) above spots
+    layers.push(...buildCellSpotLineLayer(state, getCurrentViewportTileBounds));
+
     // Preserve pinned line layers from polygon highlighter
     if (state.polygonHighlighter && state.polygonHighlighter.pinnedLineLayer) {
         layers.push(state.polygonHighlighter.pinnedLineLayer);
@@ -208,6 +230,15 @@ function updateAllLayers() {
 
 // Expose updateAllLayers globally for widget modules
 window.updateAllLayers = updateAllLayers;
+window.toggleCellSpotLines = (enabled) => {
+    if (typeof enabled === 'boolean') {
+        state.showCellSpotLines = enabled;
+    } else {
+        state.showCellSpotLines = !state.showCellSpotLines;
+    }
+    updateAllLayers();
+    return state.showCellSpotLines;
+};
 
 // === PLANE UPDATE WRAPPER ===
 /**
@@ -233,12 +264,15 @@ function handleViewStateChange({ viewState, interactionState }) {
     updateScaleBar(viewState);
 
     try { state.currentZoom = viewState.zoom; } catch {}
+    const zoomChanged = (__lastViewZoom !== null) && (Math.abs((viewState.zoom ?? 0) - __lastViewZoom) > 1e-6);
+    __lastViewZoom = viewState.zoom ?? __lastViewZoom;
 
     // Update layers based on zoom mode transitions
     try {
         const adv = window.advancedConfig ? window.advancedConfig() : { performance: { showPerformanceStats: false } };
         const mode = (viewState.zoom < 7) ? 'pc' : 'icon';
         const dragging = Boolean(interactionState && interactionState.isDragging);
+        const interacting = Boolean(interactionState && (interactionState.isDragging || interactionState.isZooming));
 
         if (mode !== __lastZoomMode) {
             // Zoom mode changed - trigger transition
@@ -250,6 +284,7 @@ function handleViewStateChange({ viewState, interactionState }) {
 
             __lastZoomMode = mode;
             __lastDragging = dragging;
+            __lastInteracting = interacting;
 
             // Measure and update layers
             if (adv.performance.showPerformanceStats) {
@@ -271,14 +306,27 @@ function handleViewStateChange({ viewState, interactionState }) {
                 updateAllLayers();
             }
         } else if (mode === 'icon') {
-            // At deep zoom: rebuild IconLayer only when panning ends
-            if (__lastDragging && !dragging) {
+            // At deep zoom: rebuild on pan-end, and rebuild viewport-cropped line overlay on interaction-end
+            const iconPanEnded = __lastDragging && !dragging;
+            const lineInteractionEnded = state.showCellSpotLines && __lastInteracting && !interacting;
+            if (iconPanEnded || lineInteractionEnded) {
                 updateAllLayers();
             }
             __lastDragging = dragging;
+            __lastInteracting = interacting;
         } else {
-            // In pointcloud mode track dragging state but no special work
+            // In pointcloud mode, refresh viewport-cropped line overlay only when interaction ends
+            if (state.showCellSpotLines && __lastInteracting && !interacting) {
+                updateAllLayers();
+            }
             __lastDragging = dragging;
+            __lastInteracting = interacting;
+        }
+
+        // Fallback: interactionState zoom flags are not always reliable on wheel zoom.
+        // Debounce a refresh so Ctrl+L overlay updates for newly visible cells after zoom stops.
+        if (state.showCellSpotLines && zoomChanged) {
+            scheduleLineOverlayZoomRefresh();
         }
     } catch {}
 
