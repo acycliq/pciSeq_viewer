@@ -70,7 +70,7 @@
     },
     "dmg": {
       "title": "pciSeq Viewer ${version}",
-      "icon": "build/icons/icon.icns",
+      "icon": "icons/icon.icns",
       "background": null,
       "window": {
         "width": 540,
