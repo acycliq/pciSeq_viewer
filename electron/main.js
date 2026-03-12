@@ -1,5 +1,6 @@
-const { app, BrowserWindow, protocol, dialog, Menu, shell } = require('electron');
+const { app, BrowserWindow, protocol, net, dialog, Menu, shell } = require('electron');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const fs = require('fs');
 const https = require('https');
 const Store = require('electron-store');
@@ -175,7 +176,7 @@ function getTileFromMBTiles(planeId, z, x, y) {
 
 // MBTiles protocol handler
 function registerMBTilesProtocol() {
-  protocol.registerBufferProtocol('mbtiles', (request, callback) => {
+  protocol.handle('mbtiles', (request) => {
     // URL format: mbtiles://tiles/{plane}/{z}/{y}/{x}.jpg
     // The "tiles" is a dummy hostname to avoid URL parsing issues with plane numbers
     const url = request.url.replace('mbtiles://', '');
@@ -184,8 +185,7 @@ function registerMBTilesProtocol() {
     // Expected parts: ["tiles", plane, z, y, "x.jpg"]
     if (parts.length < 5) {
       console.error('Invalid mbtiles URL format:', request.url);
-      callback({ error: -6 }); // FILE_NOT_FOUND
-      return;
+      return new Response('Invalid URL', { status: 400 });
     }
 
     // Skip parts[0] which is the dummy hostname "tiles"
@@ -194,25 +194,20 @@ function registerMBTilesProtocol() {
     const y = parseInt(parts[3]);
     const x = parseInt(parts[4].replace(/\.(jpg|jpeg|png)$/i, ''));
 
-    // console.log(`Fetch tile: plane=${planeId}, z=${z}, x=${x}, y=${y}`);
-
     const tileData = getTileFromMBTiles(planeId, z, x, y);
 
     if (tileData) {
-      callback({
-        mimeType: 'image/jpeg',
-        data: Buffer.from(tileData)
+      return new Response(Buffer.from(tileData), {
+        headers: { 'content-type': 'image/jpeg' }
       });
-    } else {
-    //   console.warn(`Tile not found in DB: plane=${planeId}, z=${z}, x=${x}, y=${y}`);
-      callback({ error: -6 }); // FILE_NOT_FOUND
     }
+    return new Response('Not found', { status: 404 });
   });
 }
 
 // Custom protocol handler
 function registerCustomProtocol() {
-  protocol.registerFileProtocol('app', (request, callback) => {
+  protocol.handle('app', (request) => {
     let url = request.url.replace('app://', '');
 
     // Remove trailing slash
@@ -244,18 +239,12 @@ function registerCustomProtocol() {
     if (url.startsWith('arrow_spots/') || url.startsWith('arrow_cells/') || url.startsWith('arrow_boundaries/')) {
       if (!dataPath) {
         console.error('Data path not configured');
-        callback({ error: -6 }); // FILE_NOT_FOUND
-        return;
+        return new Response('Not found', { status: 404 });
       }
       filePath = path.join(dataPath, url);
     }
     // Route tile requests (Unified handler for Loose Files and MBTiles)
     else if (url.startsWith('tiles/')) {
-      // Strategy 1: MBTiles (Priority if loaded)
-      // Note: Protocol 'mbtiles://' is preferred, but this handles 'app://tiles/' fallback
-      // which shouldn't happen with correct config.js, but good for safety.
-      // We'll skip complex logic here and assume mbtiles protocol handles the DB.
-      
       if (tilesPath) {
          const cleanUrl = url.replace('tiles/', '');
          // Try "tiles_{plane}" convention
@@ -273,8 +262,7 @@ function registerCustomProtocol() {
              filePath = path.join(tilesPath, cleanUrl);
          }
       } else {
-          callback({ error: -6 });
-          return;
+          return new Response('Not found', { status: 404 });
       }
     }
     // Route app files to bundled application directory
@@ -282,28 +270,10 @@ function registerCustomProtocol() {
       filePath = path.join(__dirname, '..', url);
     }
 
-    // Set appropriate MIME type for JavaScript modules
-    const mimeTypes = {
-      '.js': 'text/javascript',
-      '.html': 'text/html',
-      '.css': 'text/css',
-      '.json': 'application/json',
-      '.png': 'image/png',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.svg': 'image/svg+xml',
-      '.feather': 'application/octet-stream'
-    };
+    console.log('Serving file:', filePath);
 
-    const ext = path.extname(filePath).toLowerCase();
-    const mimeType = mimeTypes[ext];
-
-    console.log('Serving file:', filePath, 'with MIME type:', mimeType);
-
-    callback({
-      path: filePath,
-      mimeType: mimeType
-    });
+    // net.fetch with file:// URLs handles MIME types automatically
+    return net.fetch(pathToFileURL(filePath).href);
   });
 }
 
