@@ -30,10 +30,12 @@ jobs:
         run: apt-get update && apt-get install -y python3 make g++ libfuse2
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Rebuild native modules
         run: npx @electron/rebuild
+        env:
+          CXXFLAGS: "-std=c++20"
 
       - name: Build Linux
         run: npx electron-builder --linux -p never
@@ -64,24 +66,10 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Rebuild native modules
         run: npx @electron/rebuild
-
-      - name: Generate macOS icon
-        run: |
-          mkdir -p build/icons/icon.iconset
-          cp build/icons/16x16.png build/icons/icon.iconset/icon_16x16.png
-          cp build/icons/32x32.png build/icons/icon.iconset/icon_16x16@2x.png
-          cp build/icons/32x32.png build/icons/icon.iconset/icon_32x32.png
-          cp build/icons/64x64.png build/icons/icon.iconset/icon_32x32@2x.png
-          cp build/icons/128x128.png build/icons/icon.iconset/icon_128x128.png
-          cp build/icons/256x256.png build/icons/icon.iconset/icon_128x128@2x.png
-          cp build/icons/256x256.png build/icons/icon.iconset/icon_256x256.png
-          cp build/icons/512x512.png build/icons/icon.iconset/icon_256x256@2x.png
-          cp build/icons/512x512.png build/icons/icon.iconset/icon_512x512.png
-          iconutil -c icns build/icons/icon.iconset -o build/icons/icon.icns
 
       - name: Build macOS
         run: npx electron-builder --mac -p never
@@ -114,15 +102,10 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Rebuild native modules
         run: npx @electron/rebuild
-
-      - name: Generate Windows icon
-        run: |
-          npm install --no-save png-to-ico
-          npx png-to-ico build/icons/256x256.png > build/icons/icon.ico
 
       - name: Build Windows
         run: npx electron-builder --win -p never
