@@ -8,6 +8,21 @@
 // Note: Arrow-only runtime; no TSV-specific palette usage here
 
 /**
+ * Hide the startup curtain and loading indicator, then reveal a screen by id.
+ * Shared by the welcome screen, image-dims prompt and metadata-error screen.
+ */
+export function showScreen(screenId) {
+    const curtain = document.getElementById('appCurtain');
+    if (curtain) curtain.classList.add('hidden');
+    const loading = document.getElementById('loadingIndicator');
+    if (loading) loading.style.display = 'none';
+
+    const screen = document.getElementById(screenId);
+    if (screen) screen.classList.remove('hidden');
+    return screen;
+}
+
+/**
  * Show loading indicator
  * @param {Object} state - Application state object
  * @param {HTMLElement} loadingElement - Loading indicator DOM element

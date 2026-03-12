@@ -387,6 +387,20 @@ body {
     min-width: 160px;
 }
 
+.image-dims-content {
+    max-width: 440px;
+}
+
+.image-dims-error {
+    color: #ef4444;
+    font-size: 13px;
+    margin: 12px 0 0;
+}
+
+.image-dims-error.hidden {
+    display: none;
+}
+
 /* Voxel Size Section in Welcome Screen */
 .voxel-size-section {
     background: rgba(255, 255, 255, 0.03);

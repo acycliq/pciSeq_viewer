@@ -355,6 +355,7 @@ function createMenu() {
             store.delete('dataPath');
             store.delete('tilesPath');
             store.delete('mbtilesPath');
+            store.delete('imageDimensions');
             store.delete('checkCellEnabled');
             store.delete('checkCellPath');
             store.delete('checkSpotEnabled');
@@ -553,6 +554,7 @@ app.whenReady().then(async () => {
   store.delete('dataPath');
   store.delete('tilesPath');
   store.delete('mbtilesPath');
+  store.delete('imageDimensions');
 
   registerCustomProtocol();
   registerMBTilesProtocol();

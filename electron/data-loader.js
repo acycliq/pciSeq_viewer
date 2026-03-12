@@ -172,6 +172,15 @@ ipcMain.handle('get-voxel-size', () => {
   return { success: voxelSize !== null, voxelSize };
 });
 
+ipcMain.handle('set-image-dimensions', (event, dims) => {
+  if (dims && Number.isFinite(dims.width) && Number.isFinite(dims.height) && Number.isFinite(dims.planeCount)) {
+    store.set('imageDimensions', { width: dims.width, height: dims.height, planeCount: dims.planeCount });
+    console.log('Image dimensions saved:', dims);
+    return { success: true };
+  }
+  return { success: false, error: 'Invalid dimensions. Expected { width, height, planeCount }.' };
+});
+
 ipcMain.handle('select-mbtiles-file', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
@@ -307,24 +316,15 @@ ipcMain.handle('get-dataset-metadata', async () => {
     }
   }
 
-  // If missing dims, try image_dims.json next to the data folder
+  // If missing dims, try user-provided values from electron-store
   if (!result.imageWidth || !result.imageHeight || !result.planeCount) {
-    try {
-      const dataPath = store.get('dataPath', '');
-      if (dataPath) {
-        const dimsPath = path.join(dataPath, 'image_dims.json');
-        if (fs.existsSync(dimsPath)) {
-          const content = fs.readFileSync(dimsPath, 'utf8');
-          const dims = JSON.parse(content);
-          if (Number.isFinite(dims?.width)) result.imageWidth = parseInt(dims.width);
-          if (Number.isFinite(dims?.height)) result.imageHeight = parseInt(dims.height);
-          if (Number.isFinite(dims?.plane_count)) result.planeCount = parseInt(dims.plane_count);
-          result.source = result.source ? `${result.source}+image_dims.json` : 'image_dims.json';
-          console.log(`[metadata] Image dims from image_dims.json: ${result.imageWidth}x${result.imageHeight}, planes=${result.planeCount} (${dimsPath})`);
-        }
-      }
-    } catch (e) {
-      return { success: false, ...result, error: `Failed to read image_dims.json: ${e.message}` };
+    const storedDims = store.get('imageDimensions', null);
+    if (storedDims) {
+      if (Number.isFinite(storedDims.width)) result.imageWidth = storedDims.width;
+      if (Number.isFinite(storedDims.height)) result.imageHeight = storedDims.height;
+      if (Number.isFinite(storedDims.planeCount)) result.planeCount = storedDims.planeCount;
+      result.source = result.source ? `${result.source}+user` : 'user';
+      console.log(`[metadata] Image dims from user input: ${result.imageWidth}x${result.imageHeight}, planes=${result.planeCount}`);
     }
   }
 
@@ -336,12 +336,15 @@ ipcMain.handle('get-dataset-metadata', async () => {
     console.log('Using stored voxel size:', storedVoxelSize);
   }
 
+  // Flag whether mbtiles is the source (renderer uses this to decide whether to prompt)
+  result.hasMbtiles = !!(mbtilesPath && mbtilesDb);
+
   // Check required fields - all four are now required
   const hasRequired = result.imageWidth && result.imageHeight && result.planeCount && result.voxelSize;
   return {
     success: hasRequired,
     ...result,
-    error: hasRequired ? null : 'Missing required metadata: width, height, plane_count (from MBTiles or image_dims.json) and voxel_size (set in the welcome screen) are required'
+    error: hasRequired ? null : 'Missing required metadata: width, height, plane_count and voxel_size are required'
   };
 });
 

@@ -20,7 +20,7 @@ import { debounce } from '../utils/common.js';
 import Perf from '../utils/runtimePerf.js';
 
 // === UI IMPORTS ===
-import { showLoading, hideLoading, showTooltip } from './ui/uiHelpers.js';
+import { showLoading, hideLoading, showTooltip, showScreen } from './ui/uiHelpers.js';
 import { showMetadataError } from './ui/metadataError.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
@@ -31,7 +31,6 @@ import { applyGeneScheme } from './geneColorImport.js';
 // === INITIALIZATION IMPORTS ===
 import {
     initializeDeckGL,
-    derivePlanesFromManifest,
     initializePlaneSlider,
     initializeGeneData,
     initializePolygonHighlighter,
@@ -428,36 +427,52 @@ function handleHover(info) {
  * Show the empty state welcome screen
  */
 function showEmptyState() {
-    const curtain = document.getElementById('appCurtain');
-    if (curtain) {
-        curtain.classList.add('hidden');
-    }
-    
-    if (elements.loadingIndicator) {
-        elements.loadingIndicator.style.display = 'none';
-    }
+    showScreen('emptyState');
 
-    const emptyState = document.getElementById('emptyState');
     const emptyStateBtn = document.getElementById('emptyStateBtn');
-    
-    if (emptyState) {
-        emptyState.classList.remove('hidden');
+    if (emptyStateBtn) {
+        emptyStateBtn.onclick = async () => {
+            const voxelX = parseFloat(document.getElementById('voxelSizeX')?.value) || 0.28;
+            const voxelY = parseFloat(document.getElementById('voxelSizeY')?.value) || 0.28;
+            const voxelZ = parseFloat(document.getElementById('voxelSizeZ')?.value) || 0.70;
 
-        if (emptyStateBtn) {
-            emptyStateBtn.onclick = async () => {
-                const voxelX = parseFloat(document.getElementById('voxelSizeX')?.value) || 0.28;
-                const voxelY = parseFloat(document.getElementById('voxelSizeY')?.value) || 0.28;
-                const voxelZ = parseFloat(document.getElementById('voxelSizeZ')?.value) || 0.70;
-
-                await window.electronAPI.setVoxelSize([voxelX, voxelY, voxelZ]);
-                const result = await window.electronAPI.selectDataFolder();
-                if (result.success) {
-                    window.location.reload();
-                }
-            };
-        }
+            await window.electronAPI.setVoxelSize([voxelX, voxelY, voxelZ]);
+            const result = await window.electronAPI.selectDataFolder();
+            if (result.success) {
+                window.location.reload();
+            }
+        };
     }
     console.warn('Data folder not configured. Waiting for user selection.');
+}
+
+function showImageDimsPrompt() {
+    showScreen('imageDimsState');
+
+    const submitBtn = document.getElementById('imageDimsSubmitBtn');
+    const closeBtn = document.getElementById('imageDimsCloseBtn');
+    const errorMsg = document.getElementById('imageDimsError');
+
+    if (submitBtn) {
+        submitBtn.onclick = async () => {
+            const width = parseInt(document.getElementById('imageDimsWidth')?.value);
+            const height = parseInt(document.getElementById('imageDimsHeight')?.value);
+            const planeCount = parseInt(document.getElementById('imageDimsPlanes')?.value);
+
+            if (!width || !height || !planeCount || width < 1 || height < 1 || planeCount < 1) {
+                if (errorMsg) errorMsg.classList.remove('hidden');
+                return;
+            }
+            if (errorMsg) errorMsg.classList.add('hidden');
+
+            await window.electronAPI.setImageDimensions({ width, height, planeCount });
+            window.location.reload();
+        };
+    }
+
+    if (closeBtn) {
+        closeBtn.onclick = () => window.location.reload();
+    }
 }
 
 // === MAIN INITIALIZATION (Electron-specific) ===
@@ -480,12 +495,19 @@ async function init() {
 
     // 2. Load metadata and config
     const metadataResult = await window.loadDatasetMetadata();
+
+    // If MBTiles is missing and we don't have image dimensions yet, prompt the user
+    if (metadataResult && !metadataResult.hasMbtiles && (!metadataResult.imageWidth || !metadataResult.imageHeight || !metadataResult.planeCount)) {
+        showImageDimsPrompt();
+        return;
+    }
+
     let userConfig;
-    try { 
-        userConfig = window.config(); 
-    } catch (err) { 
-        showMetadataError(metadataResult, err.message); 
-        return; 
+    try {
+        userConfig = window.config();
+    } catch (err) {
+        showMetadataError(metadataResult, err.message);
+        return;
     }
 
     state.polygonCache.clear();
@@ -500,8 +522,9 @@ async function init() {
     setupCheckCellBridge();
     setupCheckSpotBridge();
 
-    // 5. Derive planes from manifest
-    const { totalPlanes, startingPlane } = await derivePlanesFromManifest();
+    // 5. Plane count comes from metadata (mbtiles or user input)
+    const totalPlanes = userConfig.planeCount;
+    const startingPlane = Math.floor(totalPlanes / 2);
     initializePlaneSlider(totalPlanes, startingPlane);
 
     // 6. Load gene data + indexes

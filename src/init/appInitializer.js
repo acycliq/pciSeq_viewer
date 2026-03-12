@@ -68,35 +68,6 @@ export function initializeDeckGL(onViewStateChange, onHover) {
 }
 
 /**
- * Derive total planes from Arrow boundaries manifest
- * @returns {Promise<{totalPlanes: number, startingPlane: number}>}
- */
-export async function derivePlanesFromManifest() {
-    const userConfig = window.config();
-
-    if (!userConfig.arrowBoundariesManifest) {
-        throw new Error('arrowBoundariesManifest is not configured');
-    }
-
-    const manifestUrl = new URL(userConfig.arrowBoundariesManifest, window.location.href).href;
-    const manifest = await fetch(manifestUrl).then(r => r.json());
-
-    let totalPlanes = 0;
-    if (manifest && Array.isArray(manifest.shards)) {
-        const planes = manifest.shards.map(s => Number(s.plane)).filter(n => Number.isFinite(n));
-        totalPlanes = planes.length > 0 ? (Math.max(...planes) + 1) : manifest.shards.length;
-    }
-
-    if (!Number.isFinite(totalPlanes) || totalPlanes <= 0) {
-        throw new Error('Invalid totalPlanes derived from manifest');
-    }
-
-    const startingPlane = Math.floor(totalPlanes / 2);
-
-    return { totalPlanes, startingPlane };
-}
-
-/**
  * Initialize the plane slider UI
  * @param {number} totalPlanes - Total number of planes
  * @param {number} startingPlane - Initial plane to display

@@ -19,6 +19,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setVoxelSize: (voxelSize) => ipcRenderer.invoke('set-voxel-size', voxelSize),
   getVoxelSize: () => ipcRenderer.invoke('get-voxel-size'),
 
+  // Image dimensions (used when MBTiles is missing)
+  setImageDimensions: (dims) => ipcRenderer.invoke('set-image-dimensions', dims),
+
   // Get currently configured paths
   getPaths: () => ipcRenderer.invoke('get-paths'),
   getProfileName: () => ipcRenderer.invoke('get-profile-name'),
