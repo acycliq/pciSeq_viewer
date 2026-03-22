@@ -182,21 +182,44 @@
         return `rgb(${Math.round(80 * (1 - t))}, ${Math.round(100 * (1 - t))}, ${Math.round(220 + 35 * t)})`;
     }
 
-    function createChartScaffold(containerId, margin) {
+    function createChartScaffold(containerId, margin, useCanvas) {
         const el = document.getElementById(containerId);
         if (!el) return null;
         el.innerHTML = '';
+        el.style.position = 'relative';
 
         const containerW = el.clientWidth || 600;
         const containerH = el.clientHeight || 300;
         const width = containerW - margin.left - margin.right;
         const height = containerH - margin.top - margin.bottom - BRUSH_H;
 
-        const rootSvg = d3.select(el).append('svg')
-            .attr('width', '100%')
-            .attr('height', '100%')
-            .attr('viewBox', `0 0 ${containerW} ${containerH}`)
-            .attr('preserveAspectRatio', 'xMidYMid meet');
+        // Canvas layer for data rendering (behind SVG)
+        let canvas = null, ctx = null, miniCanvas = null, miniCtx = null;
+        if (useCanvas) {
+            canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            canvas.style.cssText = `position:absolute;left:${margin.left}px;top:${margin.top}px;pointer-events:none;`;
+            el.appendChild(canvas);
+            ctx = canvas.getContext('2d');
+
+            miniCanvas = document.createElement('canvas');
+            miniCanvas.width = width;
+            miniCanvas.height = BRUSH_H;
+            miniCanvas.style.cssText = `position:absolute;left:${margin.left}px;top:${containerH - BRUSH_H}px;pointer-events:none;`;
+            el.appendChild(miniCanvas);
+            miniCtx = miniCanvas.getContext('2d');
+        }
+
+        const rootSvg = d3.select(el).append('svg');
+        if (useCanvas) {
+            rootSvg.attr('width', containerW).attr('height', containerH)
+                .style('position', 'absolute').style('left', '0').style('top', '0');
+        } else {
+            rootSvg.attr('width', '100%').attr('height', '100%')
+                .attr('viewBox', `0 0 ${containerW} ${containerH}`)
+                .attr('preserveAspectRatio', 'xMidYMid meet');
+        }
 
         const clipId = `clip-${containerId}`;
         rootSvg.append('defs').append('clipPath').attr('id', clipId)
@@ -212,7 +235,7 @@
             .attr('width', width).attr('height', BRUSH_H)
             .style('fill', '#111').attr('rx', 2);
 
-        return { el, svg, clipG, width, height, rootSvg, brushG };
+        return { el, svg, clipG, width, height, rootSvg, brushG, canvas, ctx, miniCanvas, miniCtx };
     }
 
     /**
@@ -221,7 +244,7 @@
      * onBrush([domainLo, domainHi]) — called when the brush selection changes
      */
     function addBrush(brushG, width, baseX, renderMini, onBrush) {
-        renderMini(brushG, baseX, BRUSH_H);
+        if (renderMini) renderMini(brushG, baseX, BRUSH_H);
 
         const brush = d3.brushX()
             .extent([[0, 0], [width, BRUSH_H]])
@@ -442,7 +465,7 @@
         const { cell_labels, theta, assigned_class_idx, class_names } = data;
         const N = theta.length;
         const margin = { top: 10, right: 10, bottom: 20, left: 50 };
-        const s = createChartScaffold(containerId, margin);
+        const s = createChartScaffold(containerId, margin, true);
         if (!s) return;
 
         const yMax = Math.max(1.5, d3.max(theta) || 1.5);
@@ -450,21 +473,42 @@
         const y = d3.scaleLinear().domain([0, yMax]).nice().range([s.height, 0]);
         let x = baseX.copy();
 
+        // Reference line at θ=1 (SVG)
         s.clipG.append('line').attr('x1', 0).attr('x2', s.width).attr('y1', y(1)).attr('y2', y(1))
             .style('stroke', '#444').style('stroke-dasharray', '4,4');
 
-        const barsG = s.clipG.append('g');
-        function updateBars() {
+        // Pre-compute colors once
+        const barColors = new Array(N);
+        for (let i = 0; i < N; i++) barColors[i] = classColor(assigned_class_idx[i], class_names);
+
+        function drawBars() {
+            s.ctx.clearRect(0, 0, s.width, s.height);
             const bw = Math.max(0.5, (x(1) - x(0)) * 0.9);
-            const bars = barsG.selectAll('.bar').data(d3.range(N), d => d);
-            bars.enter().append('rect').attr('class', 'bar')
-                .on('mouseover', (evt, d) => showTooltip(evt, `Cell: ${cell_labels[d]}<br/>θ: ${theta[d].toFixed(3)}<br/>Class: ${class_names[assigned_class_idx[d]]}`))
-                .on('mousemove', moveTooltip).on('mouseout', hideTooltip)
-                .merge(bars).attr('x', d => x(d) - bw / 2).attr('y', d => y(theta[d]))
-                .attr('width', bw).attr('height', d => Math.max(0, s.height - y(theta[d])))
-                .style('fill', d => classColor(assigned_class_idx[d], class_names));
-            bars.exit().remove();
+            for (let d = 0; d < N; d++) {
+                const bx = x(d) - bw / 2;
+                if (bx + bw < 0 || bx > s.width) continue;
+                const by = y(theta[d]);
+                const bh = s.height - by;
+                if (bh <= 0) continue;
+                s.ctx.fillStyle = barColors[d];
+                s.ctx.fillRect(bx, by, bw, bh);
+            }
         }
+
+        // Tooltip via SVG interaction rect
+        s.svg.append('rect')
+            .attr('width', s.width).attr('height', s.height)
+            .style('fill', 'transparent').style('cursor', 'crosshair')
+            .on('mousemove', function (evt) {
+                const [mx] = d3.pointer(evt);
+                const idx = Math.round(x.invert(mx));
+                if (idx >= 0 && idx < N) {
+                    showTooltip(evt, `Cell: ${cell_labels[idx]}<br/>θ: ${theta[idx].toFixed(3)}<br/>Class: ${class_names[assigned_class_idx[idx]]}`);
+                } else {
+                    hideTooltip();
+                }
+            })
+            .on('mouseout', hideTooltip);
 
         const xAxisG = s.svg.append('g').attr('transform', `translate(0,${s.height})`);
         const yAxisG = s.svg.append('g');
@@ -474,24 +518,27 @@
             styleAxes(s.svg);
         }
 
-        updateBars(); updateAxes();
+        drawBars(); updateAxes();
 
-        // Mini overview: small bars
-        function renderMini(g, xScale, h) {
-            const miniY = d3.scaleLinear().domain([0, yMax]).range([h, 0]);
-            const bw = Math.max(0.5, (xScale(1) - xScale(0)) * 0.9);
-            g.selectAll('.mini-bar').data(d3.range(N)).enter().append('rect')
-                .attr('x', d => xScale(d) - bw / 2)
-                .attr('y', d => miniY(theta[d]))
-                .attr('width', bw)
-                .attr('height', d => Math.max(0, h - miniY(theta[d])))
-                .style('fill', d => classColor(assigned_class_idx[d], class_names))
-                .style('opacity', 0.5);
-        }
+        // Mini overview on canvas
+        (function () {
+            const miniY = d3.scaleLinear().domain([0, yMax]).range([BRUSH_H, 0]);
+            const bw = Math.max(0.3, (baseX(1) - baseX(0)) * 0.9);
+            for (let d = 0; d < N; d++) {
+                const bx = baseX(d) - bw / 2;
+                const by = miniY(theta[d]);
+                const bh = BRUSH_H - by;
+                if (bh <= 0) continue;
+                s.miniCtx.fillStyle = barColors[d];
+                s.miniCtx.globalAlpha = 0.5;
+                s.miniCtx.fillRect(bx, by, bw, bh);
+            }
+            s.miniCtx.globalAlpha = 1;
+        })();
 
-        addBrush(s.brushG, s.width, baseX, renderMini, function ([lo, hi]) {
+        addBrush(s.brushG, s.width, baseX, null, function ([lo, hi]) {
             x = d3.scaleLinear().domain([lo, hi]).range([0, s.width]);
-            updateBars(); updateAxes();
+            drawBars(); updateAxes();
         });
     }
 
@@ -503,7 +550,7 @@
         }
 
         const margin = { top: 10, right: 10, bottom: 30, left: 50 };
-        const s = createChartScaffold(containerId, margin);
+        const s = createChartScaffold(containerId, margin, true);
         if (!s) return;
 
         const xMax = d3.max(pts, d => d.exp) || 100;
@@ -512,6 +559,7 @@
         const baseY = d3.scaleLinear().domain([0, yMax]).nice().range([s.height, 0]);
         let x = baseX.copy(), y = baseY.copy();
 
+        // Diagonal reference line (SVG)
         const diag = s.clipG.append('line').style('stroke', '#444').style('stroke-dasharray', '2,2');
         function updateDiag() {
             const xd = x.domain(), yd = y.domain();
@@ -519,16 +567,39 @@
             diag.attr('x1', x(lo)).attr('y1', y(lo)).attr('x2', x(hi)).attr('y2', y(hi));
         }
 
-        const dotsG = s.clipG.append('g');
-        function updatePoints() {
-            const dots = dotsG.selectAll('circle').data(pts);
-            dots.enter().append('circle').attr('r', 3).style('opacity', 0.5)
-                .on('mouseover', (evt, d) => showTooltip(evt, `Obs Count: ${Math.round(d.obs)}<br/>Exp Count: ${Math.round(d.exp)}<br/>θ: ${d.theta.toFixed(2)}`))
-                .on('mousemove', moveTooltip).on('mouseout', hideTooltip)
-                .merge(dots).attr('cx', d => x(d.exp)).attr('cy', d => y(d.obs))
-                .style('fill', d => classColor(d.cIdx, class_names));
-            dots.exit().remove();
+        // Pre-compute colors once
+        const dotColors = pts.map(d => classColor(d.cIdx, class_names));
+
+        function drawPoints() {
+            s.ctx.clearRect(0, 0, s.width, s.height);
+            s.ctx.globalAlpha = 0.5;
+            for (let i = 0; i < pts.length; i++) {
+                const cx = x(pts[i].exp), cy = y(pts[i].obs);
+                if (cx < -3 || cx > s.width + 3 || cy < -3 || cy > s.height + 3) continue;
+                s.ctx.fillStyle = dotColors[i];
+                s.ctx.beginPath();
+                s.ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+                s.ctx.fill();
+            }
+            s.ctx.globalAlpha = 1;
         }
+
+        // Tooltip via SVG interaction rect + quadtree
+        let tree = d3.quadtree().x(d => x(d.exp)).y(d => y(d.obs)).addAll(pts);
+
+        s.svg.append('rect')
+            .attr('width', s.width).attr('height', s.height)
+            .style('fill', 'transparent').style('cursor', 'crosshair')
+            .on('mousemove', function (evt) {
+                const [mx, my] = d3.pointer(evt);
+                const nearest = tree.find(mx, my, 20);
+                if (nearest) {
+                    showTooltip(evt, `Obs: ${Math.round(nearest.obs)}<br/>Exp: ${Math.round(nearest.exp)}<br/>θ: ${nearest.theta.toFixed(2)}`);
+                } else {
+                    hideTooltip();
+                }
+            })
+            .on('mouseout', hideTooltip);
 
         const xAxisG = s.svg.append('g').attr('transform', `translate(0,${s.height})`);
         const yAxisG = s.svg.append('g');
@@ -538,19 +609,21 @@
             styleAxes(s.svg);
         }
 
-        updatePoints(); updateAxes(); updateDiag();
+        drawPoints(); updateAxes(); updateDiag();
 
-        // Mini overview: dots as rug plot
-        function renderMini(g, xScale, h) {
-            g.selectAll('.mini-dot').data(pts).enter().append('circle')
-                .attr('cx', d => xScale(d.exp))
-                .attr('cy', h / 2)
-                .attr('r', 1.5)
-                .style('fill', d => classColor(d.cIdx, class_names))
-                .style('opacity', 0.5);
-        }
+        // Mini overview on canvas (rug plot)
+        (function () {
+            s.miniCtx.globalAlpha = 0.4;
+            for (let i = 0; i < pts.length; i++) {
+                s.miniCtx.fillStyle = dotColors[i];
+                s.miniCtx.beginPath();
+                s.miniCtx.arc(baseX(pts[i].exp), BRUSH_H / 2, 1.5, 0, Math.PI * 2);
+                s.miniCtx.fill();
+            }
+            s.miniCtx.globalAlpha = 1;
+        })();
 
-        addBrush(s.brushG, s.width, baseX, renderMini, function ([lo, hi]) {
+        addBrush(s.brushG, s.width, baseX, null, function ([lo, hi]) {
             x = baseX.copy().domain([lo, hi]);
             const visible = pts.filter(d => d.exp >= lo && d.exp <= hi);
             if (visible.length > 0) {
@@ -560,7 +633,9 @@
             } else {
                 y = baseY.copy();
             }
-            updatePoints(); updateAxes(); updateDiag();
+            // Rebuild quadtree with current scales
+            tree = d3.quadtree().x(d => x(d.exp)).y(d => y(d.obs)).addAll(pts);
+            drawPoints(); updateAxes(); updateDiag();
         });
     }
 
