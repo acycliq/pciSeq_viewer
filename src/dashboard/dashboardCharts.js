@@ -13,7 +13,7 @@
     const isStandalone = window.location.hostname === 'diagnostics.html'
         || window.location.pathname.endsWith('diagnostics.html');
     const loadingOverlay = document.getElementById('loading-overlay');
-    
+
     let loaded = false;
 
     // Local color caches, populated via IPC broadcasts from the main window
@@ -22,7 +22,7 @@
 
     async function init() {
         console.log('Dashboard init: isStandalone =', isStandalone);
-        
+
         if (isStandalone) {
             // Setup listeners for live color updates from main window
             if (window.electronAPI) {
@@ -50,7 +50,7 @@
                 console.error('Failed to load dashboard:', err);
                 showMsg('dash-eta-chart', `Critical error: ${err.message}`);
             }
-            
+
             if (loadingOverlay) {
                 loadingOverlay.style.opacity = '0';
                 setTimeout(() => loadingOverlay.remove(), 500);
@@ -75,7 +75,6 @@
                 .catch(err => console.error('Failed to open dashboard via IPC:', err));
         } else {
             console.error('electronAPI.openDiagnosticsWindow not available');
-            // Fallback for non-electron environments if needed
             const url = `diagnostics.html`;
             const features = 'width=1400,height=900,menubar=no,toolbar=no,location=no,status=no';
             const win = window.open(url, 'pciSeqDiagnostics', features);
@@ -83,7 +82,9 @@
         }
     }
 
-    // ─── Shared helpers (only needed in standalone/chart context) ───
+    // ─── Shared helpers ───
+
+    const BRUSH_H = 30;
 
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[ch]));
@@ -161,18 +162,14 @@
     }
 
     function classColor(classIdx, classNames) {
-        // IPC-broadcast overrides first
         if (classColorMap && Object.keys(classColorMap).length > 0) {
             const c = classColorMap[classIdx] || (classNames && classColorMap[classNames[classIdx]]);
             if (c) return typeof c === 'string' ? c : `rgb(${c[0]},${c[1]},${c[2]})`;
         }
-
-        // Fall back to color scheme config (loaded via colorSchemes.js)
         if (classNames && classNames[classIdx]) {
             buildSchemeClassColorMap();
             if (schemeClassColorMap[classNames[classIdx]]) return schemeClassColorMap[classNames[classIdx]];
         }
-
         return '#3b82f6';
     }
 
@@ -193,7 +190,7 @@
         const containerW = el.clientWidth || 600;
         const containerH = el.clientHeight || 300;
         const width = containerW - margin.left - margin.right;
-        const height = containerH - margin.top - margin.bottom;
+        const height = containerH - margin.top - margin.bottom - BRUSH_H;
 
         const rootSvg = d3.select(el).append('svg')
             .attr('width', '100%')
@@ -208,18 +205,46 @@
         const svg = rootSvg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
         const clipG = svg.append('g').attr('clip-path', `url(#${clipId})`);
 
-        return { el, svg, clipG, width, height, rootSvg };
+        // Brush strip at the bottom of the container
+        const brushG = rootSvg.append('g')
+            .attr('transform', `translate(${margin.left},${containerH - BRUSH_H})`);
+        brushG.append('rect')
+            .attr('width', width).attr('height', BRUSH_H)
+            .style('fill', '#111').attr('rx', 2);
+
+        return { el, svg, clipG, width, height, rootSvg, brushG };
     }
 
-    function addZoom(svg, width, height, scaleExtent, translateExtent, onZoom) {
-        const zoom = d3.zoom().scaleExtent(scaleExtent).translateExtent(translateExtent).on('zoom', onZoom);
-        const zoomRect = svg.insert('rect', ':first-child')
-            .attr('width', width).attr('height', height)
-            .style('fill', 'transparent').style('cursor', 'grab');
-        zoomRect.call(zoom);
-        zoomRect.node().addEventListener('wheel', e => { e.preventDefault(); }, { passive: false });
-        zoomRect.on('dblclick.zoom', () => { zoomRect.transition().duration(400).call(zoom.transform, d3.zoomIdentity); });
-        return zoom;
+    /**
+     * Add a brush strip for x-axis navigation.
+     * renderMini(g, xScale, h) — draw mini overview content in the brush area
+     * onBrush([domainLo, domainHi]) — called when the brush selection changes
+     */
+    function addBrush(brushG, width, baseX, renderMini, onBrush) {
+        renderMini(brushG, baseX, BRUSH_H);
+
+        const brush = d3.brushX()
+            .extent([[0, 0], [width, BRUSH_H]])
+            .on('brush end', function (event) {
+                if (!event.selection) {
+                    onBrush(baseX.domain());
+                    return;
+                }
+                const [px0, px1] = event.selection;
+                onBrush([baseX.invert(px0), baseX.invert(px1)]);
+            });
+
+        const brushSel = brushG.append('g').attr('class', 'x-brush').call(brush);
+        brushSel.call(brush.move, baseX.range());
+
+        // Dark theme styling
+        brushSel.selectAll('.selection')
+            .style('fill', '#3b82f6').style('fill-opacity', 0.15)
+            .style('stroke', '#3b82f6').style('stroke-opacity', 0.4);
+        brushSel.selectAll('.handle')
+            .style('fill', '#555');
+
+        return brush;
     }
 
     function styleAxes(svg) {
@@ -232,7 +257,7 @@
 
     async function loadDashboard() {
         console.log('Loading dashboard data...');
-        
+
         if (!window.electronAPI) {
             console.error('window.electronAPI is missing. Preload script failed?');
             showMsg('dash-eta-chart', 'System Error: electronAPI missing');
@@ -276,7 +301,7 @@
         const eta = data.eta_bar;
         const genes = data.gene_names;
         const N = eta.length;
-        if (N === 0) { showMsg(containerId, 'No η data'); return; }
+        if (N === 0) { showMsg(containerId, 'No eta data'); return; }
 
         const margin = { top: 10, right: 10, bottom: 60, left: 50 };
         const s = createChartScaffold(containerId, margin);
@@ -322,8 +347,23 @@
         }
 
         updateBars(); updateAxes();
-        addZoom(s.svg, s.width, s.height, [1, N / 5], [[0, 0], [s.width, s.height]], (event) => {
-            x = event.transform.rescaleX(baseX); updateBars(); updateAxes();
+
+        // Mini overview: small bars
+        function renderMini(g, xScale, h) {
+            const miniY = d3.scaleLinear().domain([0, yMax]).range([h, 0]);
+            const bw = Math.max(0.5, (xScale(1) - xScale(0)) * 0.8);
+            g.selectAll('.mini-bar').data(d3.range(N)).enter().append('rect')
+                .attr('x', d => xScale(d) - bw / 2)
+                .attr('y', d => miniY(eta[d]))
+                .attr('width', bw)
+                .attr('height', d => Math.max(0, h - miniY(eta[d])))
+                .style('fill', d => getGeneColor(genes[d]))
+                .style('opacity', 0.5);
+        }
+
+        addBrush(s.brushG, s.width, baseX, renderMini, function ([lo, hi]) {
+            x = d3.scaleLinear().domain([lo, hi]).range([0, s.width]);
+            updateBars(); updateAxes();
         });
     }
 
@@ -336,17 +376,21 @@
             if (counts[i] > 0) pts.push({ gene: genes[i], eta: eta[i], observed: counts[i], expected: counts[i] / eta[i] });
         }
 
-        const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+        const margin = { top: 10, right: 10, bottom: 30, left: 50 };
         const s = createChartScaffold(containerId, margin);
         if (!s) return;
 
         const maxVal = d3.max(pts, d => Math.max(d.observed, d.expected)) || 1000;
-        const baseX = d3.scaleLog().domain([1, maxVal]).range([0, s.width]);
-        const baseY = d3.scaleLog().domain([1, maxVal]).range([s.height, 0]);
+        const baseX = d3.scaleLinear().domain([0, maxVal]).nice().range([0, s.width]);
+        const baseY = d3.scaleLinear().domain([0, maxVal]).nice().range([s.height, 0]);
         let x = baseX.copy(), y = baseY.copy();
 
-        const diag = s.clipG.append('line').attr('x1', x(1)).attr('y1', y(1)).attr('x2', x(maxVal)).attr('y2', y(maxVal))
-            .style('stroke', '#444').style('stroke-dasharray', '2,2');
+        const diag = s.clipG.append('line').style('stroke', '#444').style('stroke-dasharray', '2,2');
+        function updateDiag() {
+            const xd = x.domain(), yd = y.domain();
+            const lo = Math.max(xd[0], yd[0]), hi = Math.min(xd[1], yd[1]);
+            diag.attr('x1', x(lo)).attr('y1', y(lo)).attr('x2', x(hi)).attr('y2', y(hi));
+        }
 
         const dotsG = s.clipG.append('g');
         function updatePoints() {
@@ -354,7 +398,7 @@
             dots.enter().append('circle').attr('r', 4).style('opacity', 0.6)
                 .on('mouseover', (evt, d) => showTooltip(evt, `<b>${escapeHtml(d.gene)}</b><br/>Obs: ${d.observed}<br/>Exp: ${Math.round(d.expected)}<br/>η: ${d.eta.toFixed(3)}`))
                 .on('mousemove', moveTooltip).on('mouseout', hideTooltip)
-                .merge(dots).attr('cx', d => x(Math.max(1, d.expected))).attr('cy', d => y(Math.max(1, d.observed)))
+                .merge(dots).attr('cx', d => x(d.expected)).attr('cy', d => y(d.observed))
                 .style('fill', d => getGeneColor(d.gene));
             dots.exit().remove();
         }
@@ -367,18 +411,37 @@
             styleAxes(s.svg);
         }
 
-        updatePoints(); updateAxes();
-        addZoom(s.svg, s.width, s.height, [0.5, 20], [[-s.width, -s.height], [2*s.width, 2*s.height]], (event) => {
-            x = event.transform.rescaleX(baseX); y = event.transform.rescaleY(baseY);
-            updatePoints(); updateAxes();
-            diag.attr('x1', x(1)).attr('y1', y(1)).attr('x2', x(maxVal)).attr('y2', y(maxVal));
+        updatePoints(); updateAxes(); updateDiag();
+
+        // Mini overview: dots projected as a rug plot
+        function renderMini(g, xScale, h) {
+            g.selectAll('.mini-dot').data(pts).enter().append('circle')
+                .attr('cx', d => xScale(d.expected))
+                .attr('cy', h / 2)
+                .attr('r', 1.5)
+                .style('fill', d => getGeneColor(d.gene))
+                .style('opacity', 0.5);
+        }
+
+        addBrush(s.brushG, s.width, baseX, renderMini, function ([lo, hi]) {
+            x = baseX.copy().domain([lo, hi]);
+            // Auto-fit y to visible points
+            const visible = pts.filter(d => d.expected >= lo && d.expected <= hi);
+            if (visible.length > 0) {
+                const yLo = d3.min(visible, d => d.observed) * 0.8;
+                const yHi = d3.max(visible, d => d.observed) * 1.2;
+                y = baseY.copy().domain([Math.max(0, yLo), yHi]);
+            } else {
+                y = baseY.copy();
+            }
+            updatePoints(); updateAxes(); updateDiag();
         });
     }
 
     function renderThetaBar(containerId, data) {
         const { cell_labels, theta, assigned_class_idx, class_names } = data;
         const N = theta.length;
-        const margin = { top: 10, right: 10, bottom: 40, left: 50 };
+        const margin = { top: 10, right: 10, bottom: 20, left: 50 };
         const s = createChartScaffold(containerId, margin);
         if (!s) return;
 
@@ -412,8 +475,23 @@
         }
 
         updateBars(); updateAxes();
-        addZoom(s.svg, s.width, s.height, [1, N / 10], [[0,0],[s.width, s.height]], (event) => {
-            x = event.transform.rescaleX(baseX); updateBars(); updateAxes();
+
+        // Mini overview: small bars
+        function renderMini(g, xScale, h) {
+            const miniY = d3.scaleLinear().domain([0, yMax]).range([h, 0]);
+            const bw = Math.max(0.5, (xScale(1) - xScale(0)) * 0.9);
+            g.selectAll('.mini-bar').data(d3.range(N)).enter().append('rect')
+                .attr('x', d => xScale(d) - bw / 2)
+                .attr('y', d => miniY(theta[d]))
+                .attr('width', bw)
+                .attr('height', d => Math.max(0, h - miniY(theta[d])))
+                .style('fill', d => classColor(assigned_class_idx[d], class_names))
+                .style('opacity', 0.5);
+        }
+
+        addBrush(s.brushG, s.width, baseX, renderMini, function ([lo, hi]) {
+            x = d3.scaleLinear().domain([lo, hi]).range([0, s.width]);
+            updateBars(); updateAxes();
         });
     }
 
@@ -424,17 +502,22 @@
             if (total_gene_count[i] > 0) pts.push({ theta: theta[i], obs: total_gene_count[i], exp: total_gene_count[i] / theta[i], cIdx: assigned_class_idx[i] });
         }
 
-        const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+        const margin = { top: 10, right: 10, bottom: 30, left: 50 };
         const s = createChartScaffold(containerId, margin);
         if (!s) return;
 
-        const maxVal = d3.max(pts, d => Math.max(d.obs, d.exp)) || 100;
-        const baseX = d3.scaleLog().domain([1, maxVal]).range([0, s.width]);
-        const baseY = d3.scaleLog().domain([1, maxVal]).range([s.height, 0]);
+        const xMax = d3.max(pts, d => d.exp) || 100;
+        const yMax = d3.max(pts, d => d.obs) || 100;
+        const baseX = d3.scaleLinear().domain([0, xMax]).nice().range([0, s.width]);
+        const baseY = d3.scaleLinear().domain([0, yMax]).nice().range([s.height, 0]);
         let x = baseX.copy(), y = baseY.copy();
 
-        const diag = s.clipG.append('line').attr('x1', x(1)).attr('y1', y(1)).attr('x2', x(maxVal)).attr('y2', y(maxVal))
-            .style('stroke', '#444').style('stroke-dasharray', '2,2');
+        const diag = s.clipG.append('line').style('stroke', '#444').style('stroke-dasharray', '2,2');
+        function updateDiag() {
+            const xd = x.domain(), yd = y.domain();
+            const lo = Math.max(xd[0], yd[0]), hi = Math.min(xd[1], yd[1]);
+            diag.attr('x1', x(lo)).attr('y1', y(lo)).attr('x2', x(hi)).attr('y2', y(hi));
+        }
 
         const dotsG = s.clipG.append('g');
         function updatePoints() {
@@ -442,7 +525,7 @@
             dots.enter().append('circle').attr('r', 3).style('opacity', 0.5)
                 .on('mouseover', (evt, d) => showTooltip(evt, `Obs Count: ${Math.round(d.obs)}<br/>Exp Count: ${Math.round(d.exp)}<br/>θ: ${d.theta.toFixed(2)}`))
                 .on('mousemove', moveTooltip).on('mouseout', hideTooltip)
-                .merge(dots).attr('cx', d => x(Math.max(1, d.exp))).attr('cy', d => y(Math.max(1, d.obs)))
+                .merge(dots).attr('cx', d => x(d.exp)).attr('cy', d => y(d.obs))
                 .style('fill', d => classColor(d.cIdx, class_names));
             dots.exit().remove();
         }
@@ -455,11 +538,29 @@
             styleAxes(s.svg);
         }
 
-        updatePoints(); updateAxes();
-        addZoom(s.svg, s.width, s.height, [0.5, 20], [[-s.width, -s.height], [2*s.width, 2*s.height]], (event) => {
-            x = event.transform.rescaleX(baseX); y = event.transform.rescaleY(baseY);
-            updatePoints(); updateAxes();
-            diag.attr('x1', x(1)).attr('y1', y(1)).attr('x2', x(maxVal)).attr('y2', y(maxVal));
+        updatePoints(); updateAxes(); updateDiag();
+
+        // Mini overview: dots as rug plot
+        function renderMini(g, xScale, h) {
+            g.selectAll('.mini-dot').data(pts).enter().append('circle')
+                .attr('cx', d => xScale(d.exp))
+                .attr('cy', h / 2)
+                .attr('r', 1.5)
+                .style('fill', d => classColor(d.cIdx, class_names))
+                .style('opacity', 0.5);
+        }
+
+        addBrush(s.brushG, s.width, baseX, renderMini, function ([lo, hi]) {
+            x = baseX.copy().domain([lo, hi]);
+            const visible = pts.filter(d => d.exp >= lo && d.exp <= hi);
+            if (visible.length > 0) {
+                const yLo = d3.min(visible, d => d.obs) * 0.8;
+                const yHi = d3.max(visible, d => d.obs) * 1.2;
+                y = baseY.copy().domain([Math.max(0, yLo), yHi]);
+            } else {
+                y = baseY.copy();
+            }
+            updatePoints(); updateAxes(); updateDiag();
         });
     }
 
@@ -488,7 +589,7 @@
     function renderGammaScatter(containerId, payload) {
         const { cell_labels, gene_names, gamma, cell_x_idx, unique_cell_labels } = payload;
         const nCells = unique_cell_labels.length;
-        const margin = { top: 10, right: 10, bottom: 50, left: 50 };
+        const margin = { top: 10, right: 10, bottom: 30, left: 50 };
         const s = createChartScaffold(containerId, margin);
         if (!s) return;
 
@@ -516,15 +617,26 @@
         function updateAxes() {
             const lo = Math.max(0, Math.floor(x.invert(0))), hi = Math.min(nCells-1, Math.ceil(x.invert(s.width)));
             const step = Math.max(1, Math.floor((hi-lo+1)/15));
-            const ticks = []; for(let i=lo; i<=hi; i+=step) ticks.push(i);
+            const ticks = []; for (let i = lo; i <= hi; i += step) ticks.push(i);
             xAxisG.call(d3.axisBottom(x).tickValues(ticks).tickFormat(i => unique_cell_labels[i]));
             yAxisG.call(d3.axisLeft(y).ticks(8));
             styleAxes(s.svg);
         }
 
         updatePoints(); updateAxes();
-        addZoom(s.svg, s.width, s.height, [1, nCells/5], [[0,0],[s.width, s.height]], (event) => {
-            x = event.transform.rescaleX(baseX); y = event.transform.rescaleY(baseY);
+
+        // Mini overview: dots showing gamma deviation
+        function renderMini(g, xScale, h) {
+            g.selectAll('.mini-dot').data(d3.range(gamma.length)).enter().append('circle')
+                .attr('cx', i => xScale(cell_x_idx[i]))
+                .attr('cy', h / 2)
+                .attr('r', 1.5)
+                .style('fill', i => gammaColor(gamma[i]))
+                .style('opacity', 0.5);
+        }
+
+        addBrush(s.brushG, s.width, baseX, renderMini, function ([lo, hi]) {
+            x = d3.scaleLinear().domain([lo, hi]).range([0, s.width]);
             updatePoints(); updateAxes();
             refLine.attr('y1', y(1)).attr('y2', y(1));
         });
