@@ -5,8 +5,6 @@
  * loading indicators, and polygon alias controls
  */
 
-// Note: Arrow-only runtime; no TSV-specific palette usage here
-
 /**
  * Hide the startup curtain and loading indicator, then reveal a screen by id.
  * Shared by the welcome screen, image-dims prompt and metadata-error screen.
@@ -68,185 +66,184 @@ export function hideLoading(state, loadingElement) {
 }
 
 /**
- * Show tooltip with polygon or gene information
- * Displays contextual information when hovering over interactive elements
+ * Build tooltip HTML for a cell polygon
+ * @param {Object} properties - Polygon feature properties
+ * @returns {string} HTML content or empty string
+ */
+function buildCellTooltip(properties) {
+    const cellLabel = properties.label;
+    let cellClass = properties.cellClass || 'Unknown';
+    if (Array.isArray(cellClass)) cellClass = cellClass[0] || 'Unknown';
+    // If class came as a stringified list, parse and pick first
+    if (typeof cellClass === 'string' && cellClass.trim().startsWith('[')) {
+        try {
+            const parsed = JSON.parse(cellClass.replace(/'/g, '"'));
+            if (Array.isArray(parsed) && parsed.length > 0) cellClass = parsed[0];
+        } catch {}
+    }
+    cellClass = String(cellClass).trim();
+    const planeId = properties.plane_id;
+
+    let cellCoords = '';
+    let centroidPlane = '';
+    let classProb = '';
+    let totalGeneCount = '';
+    let colorHex = '';
+
+    if (window.debugData && window.debugData.getCell) {
+        const cellData = window.debugData.getCell(parseInt(cellLabel));
+        if (cellData) {
+            if (cellData.position) {
+                const coords = cellData.position;
+                cellCoords = `<strong>Cell Coords:</strong> (${coords.x.toFixed(2)}, ${coords.y.toFixed(2)}, ${coords.z.toFixed(2)})<br>`;
+
+                if (coords.z !== undefined) {
+                    const cfg = window.config ? window.config() : null;
+                    if (cfg && Array.isArray(cfg.voxelSize)) {
+                        const [xVoxel, , zVoxel] = cfg.voxelSize;
+                        centroidPlane = `<strong>Centroid Plane:</strong> ${Math.floor(coords.z * xVoxel / zVoxel)}<br>`;
+                    } else {
+                        centroidPlane = `<strong>Centroid Plane:</strong> ${Math.floor(coords.z)}<br>`;
+                    }
+                }
+            }
+
+            if (cellData.classification && cellData.classification.className && cellData.classification.probability) {
+                const classIndex = cellData.classification.className.indexOf(cellClass);
+                if (classIndex >= 0) {
+                    const prob = cellData.classification.probability[classIndex];
+                    classProb = `<strong>Class Probability:</strong> ${(prob * 100).toFixed(1)}%<br>`;
+                }
+            }
+
+            if (typeof cellData.totalGeneCount === 'number') {
+                totalGeneCount = `<strong>Total Gene Counts:</strong> ${cellData.totalGeneCount.toFixed(2)}<br>`;
+            }
+        }
+    }
+
+    try {
+        if (typeof classColorsCodes === 'function') {
+            const scheme = classColorsCodes();
+            const entry = scheme.find(e => e.className === cellClass);
+            if (entry && entry.color) {
+                colorHex = `<strong>Color:</strong> ${entry.color}<br>`;
+            }
+        }
+    } catch {}
+
+    let internalLabel = '';
+    const labelMap = window.appState && window.appState.labelMap;
+    if (labelMap) {
+        const internal = labelMap[String(cellLabel)];
+        if (internal !== undefined) {
+            internalLabel = `<strong>Internal Index:</strong> ${internal}<br>`;
+        }
+    }
+
+    let thetaInfo = '';
+    const thetaMap = window.appState?.cellThetaMap;
+    if (thetaMap) {
+        const theta = thetaMap.get(Number(cellLabel));
+        if (theta !== undefined) {
+            thetaInfo = `<strong>Theta:</strong> ${theta.toFixed(3)}<br>`;
+        }
+    }
+
+    return `<strong>Cell Label:</strong> ${cellLabel}<br>
+            ${cellCoords}
+            ${centroidPlane}
+            <strong>Polygon Plane:</strong> ${planeId}<br>
+            <strong>Cell Class:</strong> ${cellClass}<br>
+            ${classProb}
+            ${totalGeneCount}
+            ${colorHex}
+            ${internalLabel}
+            ${thetaInfo}`;
+}
+
+/**
+ * Build tooltip HTML for a gene spot
+ * @param {Object} spot - Spot data object
+ * @returns {string} HTML content
+ */
+function buildSpotTooltip(spot) {
+    const gene = spot.gene;
+    const coords = `(${spot.x.toFixed(2)}, ${spot.y.toFixed(2)}, ${spot.z.toFixed(2)})`;
+    const planeId = spot.plane_id;
+
+    let spotInfo = '';
+    if (spot.spot_id !== undefined) {
+        spotInfo = `<strong>Spot ID:</strong> ${spot.spot_id}<br>`;
+    }
+
+    let colorInfo = '';
+    if (typeof glyphSettings === 'function') {
+        const settings = glyphSettings();
+        const geneSetting = settings.find(s => s.gene === gene);
+        if (geneSetting && geneSetting.color) {
+            colorInfo = `<strong>Color:</strong> ${geneSetting.color}<br>`;
+        }
+    }
+
+    let parentInfo = '';
+    const neighbour = spot.neighbour === 0 ? 'Background' : spot.neighbour;
+    if (neighbour && spot.prob !== undefined) {
+        parentInfo = `<strong>Parent Cell:</strong> ${neighbour}<br>
+                     <strong>Parent Probability:</strong> ${(spot.prob * 100).toFixed(1)}%<br>`;
+    }
+
+    let qualityInfo = '';
+    if (spot.score !== undefined && spot.score !== null) {
+        qualityInfo += `<strong>Score:</strong> ${spot.score.toFixed(3)}<br>`;
+    }
+    if (spot.intensity !== undefined && spot.intensity !== null) {
+        qualityInfo += `<strong>Intensity:</strong> ${spot.intensity.toFixed(3)}<br>`;
+    }
+
+    const gMap = window.appState?.gammaMap;
+    const rDict = window.appState?.reverseGeneDict;
+    if (gMap && rDict && spot.neighbour != null) {
+        const gid = rDict[gene];
+        const cellGamma = gMap.get(Number(spot.neighbour));
+        if (cellGamma && gid >= 0 && gid < cellGamma.length) {
+            qualityInfo += `<strong>Gamma:</strong> ${cellGamma[gid].toFixed(3)}<br>`;
+        }
+    }
+
+    return `${spotInfo}<strong>Gene:</strong> ${gene}<br>
+            ${colorInfo}<strong>Coords:</strong> ${coords}<br>
+            <strong>Plane:</strong> ${planeId}<br>
+            ${parentInfo}${qualityInfo}`;
+}
+
+/**
+ * Show tooltip with polygon, gene spot, or region information
  * @param {Object} info - Hover info from deck.gl
  * @param {HTMLElement} tooltipElement - Tooltip DOM element
  */
 export function showTooltip(info, tooltipElement) {
-    if (info.picked && info.object) {
-        let content = '';
+    if (!info.picked || !info.object) {
+        tooltipElement.style.display = 'none';
+        return;
+    }
 
-        // Check if this is a polygon layer
-        if (info.layer?.id?.startsWith('polygons-')) {
-            // Polygon tooltip - show enhanced cell information
-            if (info.object.properties) {
-                const cellLabel = info.object.properties.label;
-                let cellClass = info.object.properties.cellClass || 'Unknown';
-                if (Array.isArray(cellClass)) cellClass = cellClass[0] || 'Unknown';
-                // If class came as a stringified list, parse and pick first
-                if (typeof cellClass === 'string' && cellClass.trim().startsWith('[')) {
-                    try {
-                        const parsed = JSON.parse(cellClass.replace(/'/g, '"'));
-                        if (Array.isArray(parsed) && parsed.length > 0) cellClass = parsed[0];
-                    } catch {}
-                }
-                cellClass = String(cellClass).trim();
-                const planeId = info.object.properties.plane_id;
+    let content = '';
 
-                // Get cell coordinates and probability from cellData
-                let cellCoords = '';
-                let centroidPlane = '';
-                let classProb = '';
-                let totalGeneCount = '';
-                let colorHex = '';
-                if (window.debugData && window.debugData.getCell) {
-                    const cellData = window.debugData.getCell(parseInt(cellLabel));
-                    if (cellData) {
-                        if (cellData.position) {
-                            const coords = cellData.position;
-                            cellCoords = `<strong>Cell Coords:</strong> (${coords.x.toFixed(2)}, ${coords.y.toFixed(2)}, ${coords.z.toFixed(2)})<br>`;
+    if (info.layer?.id?.startsWith('polygons-') && info.object.properties) {
+        content = buildCellTooltip(info.object.properties);
+    } else if (info.object.gene) {
+        content = buildSpotTooltip(info.object);
+    } else if (info.object.name) {
+        content = `<strong>Region:</strong> ${info.object.name}`;
+    }
 
-                            // Derive centroid plane from z coordinate
-                            if (coords.z !== undefined) {
-                                const cfg = window.config ? window.config() : null;
-                                if (cfg && Array.isArray(cfg.voxelSize)) {
-                                    const [xVoxel, , zVoxel] = cfg.voxelSize;
-                                    centroidPlane = `<strong>Centroid Plane:</strong> ${Math.floor(coords.z * xVoxel / zVoxel)}<br>`;
-                                } else {
-                                    centroidPlane = `<strong>Centroid Plane:</strong> ${Math.floor(coords.z)}<br>`;
-                                }
-                            }
-                        }
-
-                        // Get cell class probability if available
-                        if (cellData.classification && cellData.classification.className && cellData.classification.probability) {
-                            const classIndex = cellData.classification.className.indexOf(cellClass);
-                            if (classIndex >= 0) {
-                                const prob = cellData.classification.probability[classIndex];
-                                classProb = `<strong>Class Probability:</strong> ${(prob * 100).toFixed(1)}%<br>`;
-                            }
-                        }
-
-                        // Get total gene counts
-                        if (typeof cellData.totalGeneCount === 'number') {
-                            totalGeneCount = `<strong>Total Gene Counts:</strong> ${cellData.totalGeneCount.toFixed(2)}<br>`;
-                        }
-                    }
-                }
-                // Color hex (from class color schemes if available)
-                try {
-                    if (typeof classColorsCodes === 'function') {
-                        const scheme = classColorsCodes();
-                        const entry = scheme.find(e => e.className === cellClass);
-                        if (entry && entry.color) {
-                            colorHex = `<strong>Color:</strong> ${entry.color}<br>`;
-                        }
-                    }
-                } catch {}
-
-                // Internal index from diagnostics label_map (only when diagnostics are loaded)
-                let internalLabel = '';
-                const labelMap = window.appState && window.appState.labelMap;
-                if (labelMap) {
-                    const internal = labelMap[String(cellLabel)];
-                    if (internal !== undefined) {
-                        internalLabel = `<strong>Internal Index:</strong> ${internal}<br>`;
-                    }
-                }
-
-                // Theta (diagnostics only)
-                let thetaInfo = '';
-                const thetaMap = window.appState?.cellThetaMap;
-                if (thetaMap) {
-                    const theta = thetaMap.get(Number(cellLabel));
-                    if (theta !== undefined) {
-                        thetaInfo = `<strong>Theta:</strong> ${theta.toFixed(3)}<br>`;
-                    }
-                }
-
-                content =  `<strong>Cell Label:</strong> ${cellLabel}<br>
-                            ${cellCoords}
-                            ${centroidPlane}
-                            <strong>Polygon Plane:</strong> ${planeId}<br>
-                            <strong>Cell Class:</strong> ${cellClass}<br>
-                            ${classProb}
-                            ${totalGeneCount}
-                            ${colorHex}
-                            ${internalLabel}
-                            ${thetaInfo}`;
-            }
-        } else if (info.object.gene) {
-            // Gene tooltip - show enhanced gene spot information
-            const gene = info.object.gene;
-            const coords = `(${info.object.x.toFixed(2)}, ${info.object.y.toFixed(2)}, ${info.object.z.toFixed(2)})`;
-            const planeId = info.object.plane_id;
-
-            // Get spot_id and parent information
-            let spotInfo = '';
-            if (info.object.spot_id !== undefined) {
-                spotInfo = `<strong>Spot ID:</strong> ${info.object.spot_id}<br>`;
-            }
-
-            // Get color information
-            let colorInfo = '';
-            if (typeof glyphSettings === 'function') {
-                const settings = glyphSettings();
-                const geneSetting = settings.find(s => s.gene === gene);
-                if (geneSetting && geneSetting.color) {
-                    colorInfo = `<strong>Color:</strong> ${geneSetting.color}<br>`;
-                }
-            }
-
-            // Get parent cell information
-            let parentInfo = '';
-            let label = info.object.neighbour;
-            let neighbour;
-            label === 0? neighbour = 'Background' : neighbour = label;
-            if (neighbour && info.object.prob !== undefined) {
-                parentInfo = `<strong>Parent Cell:</strong> ${neighbour}<br>
-                             <strong>Parent Probability:</strong> ${(info.object.prob * 100).toFixed(1)}%<br>`;
-            }
-
-            // Get score and intensity information
-            let qualityInfo = '';
-            if (info.object.score !== undefined && info.object.score !== null) {
-                qualityInfo += `<strong>Score:</strong> ${info.object.score.toFixed(3)}<br>`;
-            }
-            if (info.object.intensity !== undefined && info.object.intensity !== null) {
-                qualityInfo += `<strong>Intensity:</strong> ${info.object.intensity.toFixed(3)}<br>`;
-            }
-
-            // Gamma (diagnostics only)
-            const gMap = window.appState?.gammaMap;
-            const rDict = window.appState?.reverseGeneDict;
-            if (gMap && rDict && info.object.neighbour != null) {
-                const gid = rDict[gene];
-                const cellGamma = gMap.get(Number(info.object.neighbour));
-                if (cellGamma && gid >= 0 && gid < cellGamma.length) {
-                    qualityInfo += `<strong>Gamma:</strong> ${cellGamma[gid].toFixed(3)}<br>`;
-                }
-            }
-
-            content = `${spotInfo}<strong>Gene:</strong> ${gene}<br>
-                      ${colorInfo}<strong>Coords:</strong> ${coords}<br>
-                      <strong>Plane:</strong> ${planeId}<br>
-                      ${parentInfo}${qualityInfo}`;
-        } else if (info.object.name) {
-            // Region tooltip
-            content = `<strong>Region:</strong> ${info.object.name}`;
-        }
-
-        if (content) {
-            tooltipElement.innerHTML = content;
-            tooltipElement.style.display = 'block';
-            tooltipElement.style.left = info.x + 20 + 'px';
-            tooltipElement.style.top = info.y - 60 + 'px';
-        } else {
-            tooltipElement.style.display = 'none';
-        }
+    if (content) {
+        tooltipElement.innerHTML = content;
+        tooltipElement.style.display = 'block';
+        tooltipElement.style.left = info.x + 20 + 'px';
+        tooltipElement.style.top = info.y - 60 + 'px';
     } else {
-        // Hide tooltip when not hovering over anything
         tooltipElement.style.display = 'none';
     }
 }
