@@ -145,13 +145,35 @@
         return glyphColorMap[geneName] || glyphColorMap['Generic'] || '#3b82f6';
     }
 
-    function classColor(classIdx, classNames) {
-        const cc = classColorMap;
-        if (!cc || Object.keys(cc).length === 0) return '#3b82f6';
+    // Build class color lookup map once from classColorsCodes
+    let schemeClassColorMap = null;
+    function buildSchemeClassColorMap() {
+        if (schemeClassColorMap) return;
+        schemeClassColorMap = {};
+        if (typeof window.classColorsCodes === 'function') {
+            const scheme = window.classColorsCodes();
+            if (Array.isArray(scheme)) {
+                for (const s of scheme) {
+                    if (s.className && s.color) schemeClassColorMap[s.className] = s.color;
+                }
+            }
+        }
+    }
 
-        const c = cc[classIdx] || (classNames && cc[classNames[classIdx]]);
-        if (!c) return '#3b82f6';
-        return typeof c === 'string' ? c : `rgb(${c[0]},${c[1]},${c[2]})`;
+    function classColor(classIdx, classNames) {
+        // IPC-broadcast overrides first
+        if (classColorMap && Object.keys(classColorMap).length > 0) {
+            const c = classColorMap[classIdx] || (classNames && classColorMap[classNames[classIdx]]);
+            if (c) return typeof c === 'string' ? c : `rgb(${c[0]},${c[1]},${c[2]})`;
+        }
+
+        // Fall back to color scheme config (loaded via colorSchemes.js)
+        if (classNames && classNames[classIdx]) {
+            buildSchemeClassColorMap();
+            if (schemeClassColorMap[classNames[classIdx]]) return schemeClassColorMap[classNames[classIdx]];
+        }
+
+        return '#3b82f6';
     }
 
     function gammaColor(gamma) {
