@@ -41,7 +41,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onImportClassColors: (handler) => ipcRenderer.on('import-class-colors', (_e, data) => handler(data)),
 
   // Keyboard shortcuts overlay
-  onShowShortcuts: (handler) => ipcRenderer.on('show-shortcuts', handler)
+  onShowShortcuts: (handler) => ipcRenderer.on('show-shortcuts', handler),
+
+  // Dashboard diagnostics
+  getDashboardData: () => ipcRenderer.invoke('dashboard-get-data'),
+  getDashboardGamma: (classIdx) => ipcRenderer.invoke('dashboard-get-gamma', classIdx)
 });
 
 console.log('Preload script loaded - electronAPI exposed to renderer');

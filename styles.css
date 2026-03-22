@@ -2324,3 +2324,50 @@ body {
     transition: opacity 0.15s ease;
     opacity: 0;
 }
+
+/* Dashboard Modal */
+.dashboard-modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease;
+    z-index: 3200;
+}
+.dashboard-modal-bg.active { opacity: 1; pointer-events: all; }
+
+.dashboard-modal {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: #111;
+    color: #eee;
+    width: min(1100px, 94vw);
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 16px 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+.dashboard-modal h3 { margin: 0 0 12px; font-size: 15px; }
+.dashboard-modal h4 { margin: 0 0 6px; font-size: 12px; color: #aaa; }
+
+.dashboard-grid { display: flex; flex-direction: column; gap: 12px; }
+.dashboard-row { display: flex; gap: 12px; }
+.dashboard-chart {
+    flex: 1;
+    height: 220px;
+    background: #1a1a1a;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.dashboard-chart-title {
+    font-size: 11px;
+    color: #e5e5e5;
+    margin: 4px 0 2px 4px;
+    font-weight: 600;
+}
+

@@ -26,6 +26,17 @@ function softmaxJS(arr) {
   return exps.map(v => v / sum);
 }
 
+// Helper: Build reverse label map { internalId → externalLabel }
+function buildReverseMap(labelMap) {
+  const reverse = {};
+  if (labelMap && typeof labelMap === 'object') {
+    for (const [ext, inter] of Object.entries(labelMap)) {
+      reverse[inter] = Number(ext);
+    }
+  }
+  return reverse;
+}
+
 // Helper: Parse metadata value (JSON array, number, or string)
 function parseMetadataValue(value) {
   try {
@@ -394,6 +405,121 @@ ipcMain.handle('check-spot-get-state', () => {
     return { enabled: true, nS: diagnosticsMeta.nS, nN: diagnosticsMeta.nN };
   }
   return { enabled: false };
+});
+
+// === Dashboard IPC Handlers ===
+
+ipcMain.handle('dashboard-get-data', async () => {
+  if (!diagnosticsDb || !diagnosticsMeta) {
+    return { success: false, error: 'Diagnostics not loaded' };
+  }
+  try {
+    const { gene_panel, eta_bar, class_names, nG } = diagnosticsMeta;
+    const gene_total_spots = diagnosticsMeta.gene_total_spots || null;
+
+    // Read per-cell dashboard columns using iterate() to avoid materialising all BLOBs at once
+    const stmt = diagnosticsDb.prepare(
+      'SELECT cell_id, theta, assigned_class_idx, gene_count FROM cells WHERE cell_id > 0'
+    );
+
+    const cellLabels = [];
+    const thetaArr = [];
+    const assignedClassArr = [];
+    const totalGeneCountArr = [];
+
+    // Build reverse label map
+    const reverseMap = buildReverseMap(diagnosticsMeta.label_map);
+    const hasLabelMap = Object.keys(reverseMap).length > 0;
+
+    for (const row of stmt.iterate()) {
+      const label = hasLabelMap ? (reverseMap[row.cell_id] ?? row.cell_id) : row.cell_id;
+      cellLabels.push(label);
+      thetaArr.push(row.theta);
+      assignedClassArr.push(row.assigned_class_idx);
+
+      // Sum gene counts from BLOB
+      const gc = new Float32Array(row.gene_count.buffer, row.gene_count.byteOffset, nG);
+      let total = 0;
+      for (let g = 0; g < nG; g++) total += gc[g];
+      totalGeneCountArr.push(total);
+    }
+
+    return {
+      success: true,
+      gene_names: gene_panel,
+      eta_bar: eta_bar,
+      gene_total_spots: gene_total_spots,
+      class_names: class_names,
+      cell_labels: cellLabels,
+      theta: thetaArr,
+      assigned_class_idx: assignedClassArr,
+      total_gene_count: totalGeneCountArr,
+      nG
+    };
+  } catch (e) {
+    console.error('Dashboard data error:', e);
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('dashboard-get-gamma', async (event, classIdx) => {
+  if (!diagnosticsDb || !diagnosticsMeta) {
+    return { success: false, error: 'Diagnostics not loaded' };
+  }
+  try {
+    const { gene_panel, nG, class_names } = diagnosticsMeta;
+    classIdx = parseInt(classIdx, 10);
+
+    // Get cells assigned to this class, iterate to avoid large allocation
+    const stmt = diagnosticsDb.prepare(
+      'SELECT cell_id, gamma_assigned FROM cells WHERE cell_id > 0 AND assigned_class_idx = ?'
+    );
+
+    const reverseMap = buildReverseMap(diagnosticsMeta.label_map);
+    const hasLabelMap = Object.keys(reverseMap).length > 0;
+
+    // Filter to top deviators (keep max ~5000 points)
+    const maxPoints = 5000;
+    const allPoints = [];
+
+    for (const row of stmt.iterate(classIdx)) {
+      if (!row.gamma_assigned) continue;
+      const gamma = new Float32Array(row.gamma_assigned.buffer, row.gamma_assigned.byteOffset, nG);
+      const label = hasLabelMap ? (reverseMap[row.cell_id] ?? row.cell_id) : row.cell_id;
+
+      for (let g = 0; g < nG; g++) {
+        const dev = Math.abs(gamma[g] - 1.0);
+        allPoints.push({ label, gene: gene_panel[g], gamma: gamma[g], dev });
+      }
+    }
+
+    // Adaptive threshold
+    let filtered;
+    if (allPoints.length <= maxPoints) {
+      filtered = allPoints;
+    } else {
+      allPoints.sort((a, b) => b.dev - a.dev);
+      filtered = allPoints.slice(0, maxPoints);
+    }
+
+    // Build unique cell label → x-index mapping
+    const uniqueLabels = [...new Set(filtered.map(p => p.label))].sort((a, b) => a - b);
+    const labelToIdx = {};
+    uniqueLabels.forEach((lab, i) => { labelToIdx[lab] = i; });
+
+    return {
+      success: true,
+      class_idx: classIdx,
+      cell_labels: filtered.map(p => p.label),
+      gene_names: filtered.map(p => p.gene),
+      gamma: filtered.map(p => Math.round(p.gamma * 10000) / 10000),
+      cell_x_idx: filtered.map(p => labelToIdx[p.label]),
+      unique_cell_labels: uniqueLabels
+    };
+  } catch (e) {
+    console.error('Dashboard gamma error:', e);
+    return { success: false, error: e.message };
+  }
 });
 
 module.exports = {
