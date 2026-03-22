@@ -189,6 +189,14 @@
                     <span class="collapse-icon">▼</span> Cell Controls
                 </h3>
                 <div class="section-content" id="cellChartsContent">
+                    <div class="control-item color-mode-item">
+                        <label for="cellColorMode">Color by</label>
+                        <select id="cellColorMode" class="color-mode-select">
+                            <option value="cellClass" selected>Cell Class</option>
+                            <option value="theta">Theta</option>
+                            <option value="totalGeneCount">Total Gene Count</option>
+                        </select>
+                    </div>
                     <button id="classesByZBtn" title="Cell Class Distribution by Z-Plane">Classes by Z</button>
                     <button id="classPercentageBtn" title="Overall Cell Class Distribution">Class Distribution</button>
                     <button id="expressionHistogramBtn" title="Gene count distribution per cell class (pciSeq output)">Class Gene Counts</button>
@@ -226,6 +234,13 @@
                     <span class="collapse-icon">▼</span> Gene Controls
                 </h3>
                 <div class="section-content" id="geneControlsContent">
+                    <div class="control-item color-mode-item">
+                        <label for="spotColorMode">Color by</label>
+                        <select id="spotColorMode" class="color-mode-select">
+                            <option value="gene" selected>Gene</option>
+                            <option value="gamma">Gamma</option>
+                        </select>
+                    </div>
                     <button id="geneDistributionBtn" title="Gene Distribution Chart">Distribution</button>
                     <div class="control-item gene-size-item">
                         <label for="geneSizeSlider">Size</label>
@@ -392,6 +407,16 @@
     <div id="scaleBar" class="scale-bar">
         <div class="scale-bar-line"></div>
         <div class="scale-bar-label">100 μm</div>
+    </div>
+
+    <!-- Color Legend Bar -->
+    <div id="colorLegendBar" class="color-legend-bar" style="display: none;">
+        <canvas id="colorLegendCanvas" width="200" height="12"></canvas>
+        <div class="color-legend-labels">
+            <span id="colorLegendMin">0</span>
+            <span id="colorLegendTitle"></span>
+            <span id="colorLegendMax">1</span>
+        </div>
     </div>
 
     <!-- Coordinate Display -->

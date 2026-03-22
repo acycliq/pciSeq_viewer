@@ -44,6 +44,7 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
     setupZProjectionToggle(state, updateLayersCallback);
     setupCellProjectionToggle(state, updateLayersCallback);
     setupDiagnosticsSliders(state, updateLayersCallback);
+    setupColorModeControls(state, updateLayersCallback);
     setupEscapeKeyHandler(elements);
     setupCrossWindowMessaging(state, updateLayersCallback);
 }
@@ -804,6 +805,52 @@ export function setupAdvancedKeyboardShortcuts(state, updatePlaneCallback, updat
                 document.getElementById('showPolygons').checked = state.showPolygons;
                 updateLayersCallback();
                 break;
+        }
+    });
+}
+
+// === COLOR MODE CONTROLS ===
+
+/**
+ * Setup color-by dropdown controls for cells and spots
+ */
+function setupColorModeControls(state, updateLayersCallback) {
+    const cellSelect = document.getElementById('cellColorMode');
+    const spotSelect = document.getElementById('spotColorMode');
+
+    if (cellSelect) {
+        cellSelect.addEventListener('change', (e) => {
+            state.cellColorMode = e.target.value;
+            updateLayersCallback();
+            refreshColorLegend(state);
+        });
+    }
+
+    if (spotSelect) {
+        spotSelect.addEventListener('change', (e) => {
+            state.spotColorMode = e.target.value;
+            updateLayersCallback();
+            refreshColorLegend(state);
+        });
+    }
+}
+
+/**
+ * Update the color legend bar based on active color mode
+ */
+function refreshColorLegend(state) {
+    import('../../utils/colormap.js').then(({ updateColorLegend }) => {
+        const cellMode = state.cellColorMode || 'cellClass';
+        const spotMode = state.spotColorMode || 'gene';
+
+        if (cellMode === 'theta') {
+            updateColorLegend({ title: 'Theta', min: 0, max: state.maxTheta || 1 });
+        } else if (cellMode === 'totalGeneCount') {
+            updateColorLegend({ title: 'Gene Count', min: 0, max: state.maxTotalGeneCount || 1 });
+        } else if (spotMode === 'gamma') {
+            updateColorLegend({ title: 'Gamma', min: 0, max: window.appState?.maxGamma || 1 });
+        } else {
+            updateColorLegend(null);
         }
     });
 }

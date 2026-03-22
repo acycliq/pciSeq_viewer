@@ -8,6 +8,7 @@ import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
 import { handleCellHover, handleCellClick } from '../ui/cellHoverHandler.js';
 import { ensureArrowInitialized } from './arrowInit.js';
 import { arrowBoundaryCache, arrowGeojsonCache } from './boundaryCache.js';
+import { colormap, normalize } from '../../utils/colormap.js';
 
 const { COORDINATE_SYSTEM, GeoJsonLayer, DataFilterExtension } = deck;
 
@@ -173,15 +174,34 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
         onHover: handleCellHover,
         onClick: handleCellClick,
         getFillColor: d => {
-            const cellClass = d.properties.cellClass;
             const alpha = Math.round(polygonOpacity * 255);
+            const colorMode = (window.appState && window.appState.cellColorMode) || 'cellClass';
+
+            if (colorMode === 'theta' && thetaMap) {
+                const theta = thetaMap.get(Number(d.properties.label));
+                if (theta != null) {
+                    const maxTheta = (window.appState && window.appState.maxTheta) || 1;
+                    return [...colormap(normalize(theta, 0, maxTheta)), alpha];
+                }
+                return [128, 128, 128, alpha];
+            }
+
+            if (colorMode === 'totalGeneCount') {
+                const cellDataMap = window.appState && window.appState.cellDataMap;
+                const cell = cellDataMap && cellDataMap.get(Number(d.properties.label));
+                const count = (cell && typeof cell.totalGeneCount === 'number') ? cell.totalGeneCount : 0;
+                const maxCount = (window.appState && window.appState.maxTotalGeneCount) || 1;
+                return [...colormap(normalize(count, 0, maxCount)), alpha];
+            }
+
+            const cellClass = d.properties.cellClass;
             if (cellClass && cellClassColors && cellClassColors.has(cellClass)) {
                 const color = cellClassColors.get(cellClass);
                 return [...color, alpha];
             }
             return [192, 192, 192, alpha];
         },
-        updateTriggers: { getFillColor: [cellClassColors, polygonOpacity], getFilterValue: [thetaThreshold, thetaMap], data: [selectedCellClasses] }
+        updateTriggers: { getFillColor: [cellClassColors, polygonOpacity, window.appState?.cellColorMode], getFilterValue: [thetaThreshold, thetaMap], data: [selectedCellClasses] }
     });
 }
 
@@ -208,14 +228,33 @@ function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOp
         onHover: handleCellHover,
         onClick: handleCellClick,
         getFillColor: d => {
-            const rgb = d.properties.colorRGB || [192, 192, 192];
             const alpha = Math.round(polygonOpacity * 255);
             const cls = d.properties.cellClass;
             const visible = (!selectedCellClasses) || (selectedCellClasses.size > 0 && cls && selectedCellClasses.has(cls));
-            return visible ? [rgb[0], rgb[1], rgb[2], alpha] : [0, 0, 0, 0];
+            if (!visible) return [0, 0, 0, 0];
+
+            const colorMode = (window.appState && window.appState.cellColorMode) || 'cellClass';
+
+            if (colorMode === 'theta' && thetaMap) {
+                const theta = thetaMap.get(Number(d.properties.label));
+                if (theta != null) {
+                    const maxTheta = (window.appState && window.appState.maxTheta) || 1;
+                    return [...colormap(normalize(theta, 0, maxTheta)), alpha];
+                }
+                return [128, 128, 128, alpha];
+            }
+
+            if (colorMode === 'totalGeneCount') {
+                const count = d.properties.totalGeneCount || 0;
+                const maxCount = (window.appState && window.appState.maxTotalGeneCount) || 1;
+                return [...colormap(normalize(count, 0, maxCount)), alpha];
+            }
+
+            const rgb = d.properties.colorRGB || [192, 192, 192];
+            return [rgb[0], rgb[1], rgb[2], alpha];
         },
         updateTriggers: {
-            getFillColor: [polygonOpacity, selectedKey],
+            getFillColor: [polygonOpacity, selectedKey, window.appState?.cellColorMode],
             getFilterValue: [thetaThreshold, geneCountThreshold, geneCountMax, thetaMap]
         }
     })];

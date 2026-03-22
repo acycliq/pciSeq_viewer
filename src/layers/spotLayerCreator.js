@@ -12,6 +12,7 @@ import {
     transformToTileCoordinates,
     transformFromTileCoordinates
 } from '../../utils/coordinateTransform.js';
+import { colormap, normalize } from '../../utils/colormap.js';
 
 const { COORDINATE_SYSTEM, IconLayer, DataFilterExtension, ScatterplotLayer } = deck;
 
@@ -95,37 +96,73 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
     let maskedColors;
     try {
         const app = (typeof window !== 'undefined') ? window.appState || (window.appState = {}) : {};
-        const maskCache = app._geneMaskCache || (app._geneMaskCache = {});
         const geneDict = app.arrowGeneDict || {};
         const totalGenes = Object.keys(geneDict).length;
         const selectedKey = selectedGenes ? Array.from(selectedGenes).sort().join('|') : '';
-        const cacheKey = `${selectedKey}_${length}_${colors.buffer}`;
+        const spotColorMode = app.spotColorMode || 'gene';
+        const gammaValues = app.spotGammaValues;
 
-        if (!maskCache.buffer || maskCache.cacheKey !== cacheKey || maskCache.length !== length) {
-            if (selectedGenes && selectedGenes.size > 0) {
-                const allSelected = selectedGenes.size >= totalGenes;
-                maskedColors = new Uint8Array(colors);
-                if (!allSelected) {
-                    for (let i = 0; i < length; i++) {
+        // Gamma color mode: colormap from per-spot gamma values
+        if (spotColorMode === 'gamma' && gammaValues && gammaValues.length === length) {
+            const gammaCache = app._gammaMaskCache || (app._gammaMaskCache = {});
+            const maxGamma = app.maxGamma || 1;
+            const gammaCacheKey = `gamma_${selectedKey}_${length}_${maxGamma}`;
+
+            if (!gammaCache.buffer || gammaCache.cacheKey !== gammaCacheKey || gammaCache.length !== length) {
+                maskedColors = new Uint8Array(length * 4);
+                const allSelected = !selectedGenes || selectedGenes.size >= totalGenes;
+                for (let i = 0; i < length; i++) {
+                    const t = normalize(gammaValues[i], 0, maxGamma);
+                    const rgb = colormap(t);
+                    maskedColors[4*i]     = rgb[0];
+                    maskedColors[4*i + 1] = rgb[1];
+                    maskedColors[4*i + 2] = rgb[2];
+                    if (allSelected) {
+                        maskedColors[4*i + 3] = 255;
+                    } else if (selectedGenes && selectedGenes.size === 0) {
+                        maskedColors[4*i + 3] = 0;
+                    } else {
                         const name = geneDict[geneIds[i]];
                         maskedColors[4*i + 3] = (name && selectedGenes.has(name)) ? 255 : 0;
                     }
-                } else {
-                    for (let i = 0; i < length; i++) maskedColors[4*i + 3] = 255;
                 }
+                gammaCache.buffer = maskedColors;
+                gammaCache.cacheKey = gammaCacheKey;
+                gammaCache.length = length;
             } else {
-                maskedColors = new Uint8Array(colors);
-                const alpha = (selectedGenes && selectedGenes.size === 0) ? 0 : 255;
-                for (let i = 0; i < length; i++) maskedColors[4*i + 3] = alpha;
+                maskedColors = gammaCache.buffer;
             }
-            maskCache.buffer = maskedColors;
-            maskCache.cacheKey = cacheKey;
-            maskCache.length = length;
         } else {
-            maskedColors = maskCache.buffer;
+            // Default gene-color mode
+            const maskCache = app._geneMaskCache || (app._geneMaskCache = {});
+            const cacheKey = `${selectedKey}_${length}_${colors.buffer}`;
+
+            if (!maskCache.buffer || maskCache.cacheKey !== cacheKey || maskCache.length !== length) {
+                if (selectedGenes && selectedGenes.size > 0) {
+                    const allSelected = selectedGenes.size >= totalGenes;
+                    maskedColors = new Uint8Array(colors);
+                    if (!allSelected) {
+                        for (let i = 0; i < length; i++) {
+                            const name = geneDict[geneIds[i]];
+                            maskedColors[4*i + 3] = (name && selectedGenes.has(name)) ? 255 : 0;
+                        }
+                    } else {
+                        for (let i = 0; i < length; i++) maskedColors[4*i + 3] = 255;
+                    }
+                } else {
+                    maskedColors = new Uint8Array(colors);
+                    const alpha = (selectedGenes && selectedGenes.size === 0) ? 0 : 255;
+                    for (let i = 0; i < length; i++) maskedColors[4*i + 3] = alpha;
+                }
+                maskCache.buffer = maskedColors;
+                maskCache.cacheKey = cacheKey;
+                maskCache.length = length;
+            } else {
+                maskedColors = maskCache.buffer;
+            }
         }
     } catch (e) {
-        console.warn('Gene mask caching failed:', e);
+        console.warn('Spot color caching failed:', e);
     }
 
     // Read intensity upper bound

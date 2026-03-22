@@ -27,6 +27,10 @@ const state = {
     maxTheta: 0,
     gammaThreshold: 0,
 
+    // Color-by mode for cells and spots
+    cellColorMode: 'cellClass',  // 'cellClass' | 'theta' | 'totalGeneCount'
+    spotColorMode: 'gene',       // 'gene' | 'gamma'
+
     // Data caches
     tileCache: new Map(),
     polygonCache: new Map(),

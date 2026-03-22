@@ -91,7 +91,8 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
     const layers = [];
     const zoom = (typeof state.currentZoom === 'number') ? state.currentZoom : INITIAL_VIEW_STATE.zoom;
 
-    if (zoom < 7) {
+    const forceScatter = state.spotColorMode === 'gamma';
+    if (zoom < 7 || forceScatter) {
         try { console.log(`[layers] Using binary Scatterplot for spots at zoom ${zoom.toFixed(1)} (showGenes=${state.showGenes})`); } catch {}
         const pc = createArrowPointCloudLayer(
             state.currentPlane,
