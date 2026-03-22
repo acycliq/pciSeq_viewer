@@ -321,10 +321,28 @@
     // ─── Chart Renderers ───
 
     function renderEtaChart(containerId, data) {
-        const eta = data.eta_bar;
-        const genes = data.gene_names;
-        const N = eta.length;
+        const origEta = data.eta_bar;
+        const origGenes = data.gene_names;
+        const N = origEta.length;
         if (N === 0) { showMsg(containerId, 'No eta data'); return; }
+
+        // Sort index — maps display position → original index
+        let order = d3.range(N);
+        // Sorted views (updated when order changes)
+        let eta = origEta;
+        let genes = origGenes;
+
+        function applySort(mode) {
+            if (mode === 'asc') {
+                order = d3.range(N).sort((a, b) => origEta[a] - origEta[b]);
+            } else if (mode === 'desc') {
+                order = d3.range(N).sort((a, b) => origEta[b] - origEta[a]);
+            } else {
+                order = d3.range(N);
+            }
+            eta = order.map(i => origEta[i]);
+            genes = order.map(i => origGenes[i]);
+        }
 
         const margin = { top: 10, right: 10, bottom: 60, left: 50 };
         const s = createChartScaffold(containerId, margin);
@@ -332,11 +350,16 @@
 
         const yMax = Math.max(1.2, d3.max(eta) || 1.2);
         const baseX = d3.scaleLinear().domain([-0.5, N - 0.5]).range([0, s.width]);
-        const y = d3.scaleLinear().domain([0, yMax]).nice().range([s.height, 0]);
+        const baseY = d3.scaleLinear().domain([0, yMax]).nice().range([s.height, 0]);
         let x = baseX.copy();
+        let y = baseY.copy();
 
-        s.clipG.append('line').attr('x1', 0).attr('x2', s.width)
-            .attr('y1', y(1.0)).attr('y2', y(1.0)).style('stroke', '#444').style('stroke-dasharray', '4,4');
+        const refLine = s.clipG.append('line').attr('x1', 0).attr('x2', s.width)
+            .style('stroke', '#444').style('stroke-dasharray', '4,4');
+        function updateRefLine() {
+            refLine.attr('y1', y(1.0)).attr('y2', y(1.0));
+        }
+        updateRefLine();
 
         const barsG = s.clipG.append('g');
         function updateBars() {
@@ -344,12 +367,12 @@
             const bars = barsG.selectAll('.bar').data(d3.range(N), d => d);
             bars.enter().append('rect').attr('class', 'bar')
                 .style('cursor', 'pointer')
-                .on('mouseover', (evt, d) => showTooltip(evt, `<b>${escapeHtml(genes[d])}</b><br/>η: ${eta[d].toFixed(4)}`))
                 .on('mousemove', moveTooltip).on('mouseout', hideTooltip)
                 .merge(bars)
                 .attr('x', d => x(d) - bw / 2).attr('y', d => y(eta[d]))
                 .attr('width', bw).attr('height', d => Math.max(0, s.height - y(eta[d])))
-                .style('fill', d => getGeneColor(genes[d]));
+                .style('fill', d => getGeneColor(genes[d]))
+                .on('mouseover', (evt, d) => showTooltip(evt, `<b>${escapeHtml(genes[d])}</b><br/>η: ${eta[d].toFixed(4)}`));
             bars.exit().remove();
         }
 
@@ -369,13 +392,25 @@
             styleAxes(s.svg);
         }
 
-        updateBars(); updateAxes();
+        function updateMini() {
+            s.brushG.selectAll('.mini-bar').remove();
+            const miniY = d3.scaleLinear().domain([0, yMax]).range([BRUSH_H, 0]);
+            const bw = Math.max(0.5, (baseX(1) - baseX(0)) * 0.8);
+            s.brushG.insert('g', '.x-brush').selectAll('.mini-bar').data(d3.range(N)).enter().append('rect')
+                .attr('class', 'mini-bar')
+                .attr('x', d => baseX(d) - bw / 2)
+                .attr('y', d => miniY(eta[d]))
+                .attr('width', bw)
+                .attr('height', d => Math.max(0, BRUSH_H - miniY(eta[d])))
+                .style('fill', d => getGeneColor(genes[d]))
+                .style('opacity', 0.5);
+        }
 
-        // Mini overview: small bars
         function renderMini(g, xScale, h) {
             const miniY = d3.scaleLinear().domain([0, yMax]).range([h, 0]);
             const bw = Math.max(0.5, (xScale(1) - xScale(0)) * 0.8);
             g.selectAll('.mini-bar').data(d3.range(N)).enter().append('rect')
+                .attr('class', 'mini-bar')
                 .attr('x', d => xScale(d) - bw / 2)
                 .attr('y', d => miniY(eta[d]))
                 .attr('width', bw)
@@ -384,10 +419,30 @@
                 .style('opacity', 0.5);
         }
 
+        updateBars(); updateAxes();
+
         addBrush(s.brushG, s.width, baseX, renderMini, function ([lo, hi]) {
             x = d3.scaleLinear().domain([lo, hi]).range([0, s.width]);
-            updateBars(); updateAxes();
+            // Auto-fit y to visible range
+            const iLo = Math.max(0, Math.ceil(lo));
+            const iHi = Math.min(N - 1, Math.floor(hi));
+            let visMax = 0;
+            for (let i = iLo; i <= iHi; i++) visMax = Math.max(visMax, eta[i]);
+            y = visMax > 0
+                ? d3.scaleLinear().domain([0, visMax * 1.1]).nice().range([s.height, 0])
+                : baseY.copy();
+            updateRefLine(); updateBars(); updateAxes();
         });
+
+        // Sort control
+        const sortSelect = document.getElementById('dash-eta-sort');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', function () {
+                applySort(this.value);
+                x = baseX.copy();
+                updateBars(); updateAxes(); updateMini();
+            });
+        }
     }
 
     function renderEtaScatter(containerId, data) {
@@ -462,24 +517,48 @@
     }
 
     function renderThetaBar(containerId, data) {
-        const { cell_labels, theta, assigned_class_idx, class_names } = data;
-        const N = theta.length;
+        const { cell_labels: origLabels, theta: origTheta, assigned_class_idx: origClassIdx, class_names } = data;
+        const N = origTheta.length;
         const margin = { top: 10, right: 10, bottom: 20, left: 50 };
         const s = createChartScaffold(containerId, margin, true);
         if (!s) return;
 
-        const yMax = Math.max(1.5, d3.max(theta) || 1.5);
+        const yMax = Math.max(1.5, d3.max(origTheta) || 1.5);
         const baseX = d3.scaleLinear().domain([-0.5, N - 0.5]).range([0, s.width]);
-        const y = d3.scaleLinear().domain([0, yMax]).nice().range([s.height, 0]);
+        const baseY = d3.scaleLinear().domain([0, yMax]).nice().range([s.height, 0]);
         let x = baseX.copy();
+        let y = baseY.copy();
 
         // Reference line at θ=1 (SVG)
-        s.clipG.append('line').attr('x1', 0).attr('x2', s.width).attr('y1', y(1)).attr('y2', y(1))
+        const refLine = s.clipG.append('line').attr('x1', 0).attr('x2', s.width)
             .style('stroke', '#444').style('stroke-dasharray', '4,4');
+        function updateRefLine() {
+            refLine.attr('y1', y(1)).attr('y2', y(1));
+        }
+        updateRefLine();
 
-        // Pre-compute colors once
-        const barColors = new Array(N);
-        for (let i = 0; i < N; i++) barColors[i] = classColor(assigned_class_idx[i], class_names);
+        // Sort support via index indirection
+        let order = d3.range(N);
+        let theta = origTheta;
+        let labels = origLabels;
+        let classIdx = origClassIdx;
+        let barColors = new Array(N);
+
+        function rebuildColors() {
+            for (let i = 0; i < N; i++) barColors[i] = classColor(classIdx[i], class_names);
+        }
+
+        function applySort(mode) {
+            if (mode === 'asc') order = d3.range(N).sort((a, b) => origTheta[a] - origTheta[b]);
+            else if (mode === 'desc') order = d3.range(N).sort((a, b) => origTheta[b] - origTheta[a]);
+            else order = d3.range(N);
+            theta = order.map(i => origTheta[i]);
+            labels = order.map(i => origLabels[i]);
+            classIdx = order.map(i => origClassIdx[i]);
+            rebuildColors();
+        }
+
+        applySort('default');
 
         function drawBars() {
             s.ctx.clearRect(0, 0, s.width, s.height);
@@ -495,6 +574,22 @@
             }
         }
 
+        function drawMini() {
+            s.miniCtx.clearRect(0, 0, s.width, BRUSH_H);
+            const miniY = d3.scaleLinear().domain([0, yMax]).range([BRUSH_H, 0]);
+            const bw = Math.max(0.3, (baseX(1) - baseX(0)) * 0.9);
+            for (let d = 0; d < N; d++) {
+                const bx = baseX(d) - bw / 2;
+                const by = miniY(theta[d]);
+                const bh = BRUSH_H - by;
+                if (bh <= 0) continue;
+                s.miniCtx.fillStyle = barColors[d];
+                s.miniCtx.globalAlpha = 0.5;
+                s.miniCtx.fillRect(bx, by, bw, bh);
+            }
+            s.miniCtx.globalAlpha = 1;
+        }
+
         // Tooltip via SVG interaction rect
         s.svg.append('rect')
             .attr('width', s.width).attr('height', s.height)
@@ -503,7 +598,7 @@
                 const [mx] = d3.pointer(evt);
                 const idx = Math.round(x.invert(mx));
                 if (idx >= 0 && idx < N) {
-                    showTooltip(evt, `Cell: ${cell_labels[idx]}<br/>θ: ${theta[idx].toFixed(3)}<br/>Class: ${class_names[assigned_class_idx[idx]]}`);
+                    showTooltip(evt, `Cell: ${labels[idx]}<br/>θ: ${theta[idx].toFixed(3)}<br/>Class: ${class_names[classIdx[idx]]}`);
                 } else {
                     hideTooltip();
                 }
@@ -518,27 +613,31 @@
             styleAxes(s.svg);
         }
 
-        drawBars(); updateAxes();
+        drawBars(); updateAxes(); drawMini();
 
-        // Mini overview on canvas
-        (function () {
-            const miniY = d3.scaleLinear().domain([0, yMax]).range([BRUSH_H, 0]);
-            const bw = Math.max(0.3, (baseX(1) - baseX(0)) * 0.9);
-            for (let d = 0; d < N; d++) {
-                const bx = baseX(d) - bw / 2;
-                const by = miniY(theta[d]);
-                const bh = BRUSH_H - by;
-                if (bh <= 0) continue;
-                s.miniCtx.fillStyle = barColors[d];
-                s.miniCtx.globalAlpha = 0.5;
-                s.miniCtx.fillRect(bx, by, bw, bh);
-            }
-            s.miniCtx.globalAlpha = 1;
-        })();
+        // Sort dropdown
+        const sortEl = document.getElementById('dash-theta-sort');
+        if (sortEl) {
+            sortEl.addEventListener('change', function () {
+                applySort(this.value);
+                x = baseX.copy();
+                drawBars(); updateAxes(); drawMini();
+                // Reset brush to full extent
+                s.brushG.call(d3.brushX().move, null);
+            });
+        }
 
         addBrush(s.brushG, s.width, baseX, null, function ([lo, hi]) {
             x = d3.scaleLinear().domain([lo, hi]).range([0, s.width]);
-            drawBars(); updateAxes();
+            // Auto-fit y to visible range
+            const iLo = Math.max(0, Math.ceil(lo));
+            const iHi = Math.min(N - 1, Math.floor(hi));
+            let visMax = 0;
+            for (let i = iLo; i <= iHi; i++) visMax = Math.max(visMax, theta[i]);
+            y = visMax > 0
+                ? d3.scaleLinear().domain([0, visMax * 1.1]).nice().range([s.height, 0])
+                : baseY.copy();
+            updateRefLine(); drawBars(); updateAxes();
         });
     }
 
