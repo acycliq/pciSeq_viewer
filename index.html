@@ -183,15 +183,20 @@
                 </div>
             </div>
 
-            <!-- Cell Charts Section (Collapsible) -->
+            <!-- Cell Controls Section (Collapsible) -->
             <div class="control-section">
                 <h3 class="section-label collapsible-header" id="cellChartsHeader">
-                    <span class="collapse-icon">▼</span> Cell Charts
+                    <span class="collapse-icon">▼</span> Cell Controls
                 </h3>
                 <div class="section-content" id="cellChartsContent">
                     <button id="classesByZBtn" title="Cell Class Distribution by Z-Plane">Classes by Z</button>
                     <button id="classPercentageBtn" title="Overall Cell Class Distribution">Class Distribution</button>
                     <button id="expressionHistogramBtn" title="Gene count distribution per cell class (pciSeq output)">Class Gene Counts</button>
+                    <div class="control-item" id="cellThetaSliderItem" style="display: none;">
+                        <label for="cellThetaSlider">Min theta</label>
+                        <input type="range" id="cellThetaSlider" min="0" max="10" step="0.05" value="0">
+                        <span id="cellThetaValue">0</span>
+                    </div>
                 </div>
             </div>
 
@@ -242,6 +247,11 @@
                         <input type="checkbox" id="uniformSizeToggle">
                         <span class="switch-slider"></span>
                     </label>
+                    <div class="control-item" id="gammaSliderItem" style="display: none;">
+                        <label for="gammaSlider">Min gamma</label>
+                        <input type="range" id="gammaSlider" min="0" max="5" step="0.01" value="0">
+                        <span id="gammaValue">0</span>
+                    </div>
                 </div>
             </div>
 
@@ -329,10 +339,11 @@
                     </label>
                 </div>
             </div>
+
         </div>
     </div>
 
-    
+
 
     <!-- Floating Cell Class Panel Widget -->
     <div id="cellClassWidget" class="gene-widget hidden">

@@ -462,6 +462,48 @@ ipcMain.handle('dashboard-get-data', async () => {
   }
 });
 
+ipcMain.handle('get-gamma-assigned', async () => {
+  if (!diagnosticsDb || !diagnosticsMeta) {
+    return { success: false, error: 'Diagnostics not loaded' };
+  }
+  try {
+    const { nG } = diagnosticsMeta;
+    const reverseMap = buildReverseMap(diagnosticsMeta.label_map);
+    const hasLabelMap = Object.keys(reverseMap).length > 0;
+    const stmt = diagnosticsDb.prepare('SELECT cell_id, gamma_assigned FROM cells WHERE cell_id > 0');
+    const entries = [];
+    for (const row of stmt.iterate()) {
+      const label = hasLabelMap ? (reverseMap[row.cell_id] ?? row.cell_id) : row.cell_id;
+      const gamma = new Float32Array(row.gamma_assigned.buffer, row.gamma_assigned.byteOffset, nG);
+      entries.push([label, Array.from(gamma)]);
+    }
+    return { success: true, nG, entries };
+  } catch (e) {
+    console.error('get-gamma-assigned error:', e);
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('get-cell-theta', async () => {
+  if (!diagnosticsDb || !diagnosticsMeta) {
+    return { success: false, error: 'Diagnostics not loaded' };
+  }
+  try {
+    const reverseMap = buildReverseMap(diagnosticsMeta.label_map);
+    const hasLabelMap = Object.keys(reverseMap).length > 0;
+    const stmt = diagnosticsDb.prepare('SELECT cell_id, theta FROM cells WHERE cell_id > 0');
+    const entries = [];
+    for (const row of stmt.iterate()) {
+      const label = hasLabelMap ? (reverseMap[row.cell_id] ?? row.cell_id) : row.cell_id;
+      entries.push([label, row.theta]);
+    }
+    return { success: true, entries };
+  } catch (e) {
+    console.error('get-cell-theta error:', e);
+    return { success: false, error: e.message };
+  }
+});
+
 ipcMain.handle('dashboard-get-gamma', async (event, classIdx) => {
   if (!diagnosticsDb || !diagnosticsMeta) {
     return { success: false, error: 'Diagnostics not loaded' };

@@ -43,6 +43,7 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
     setupRegionImport(elements);
     setupZProjectionToggle(state, updateLayersCallback);
     setupCellProjectionToggle(state, updateLayersCallback);
+    setupDiagnosticsSliders(state, updateLayersCallback);
     setupEscapeKeyHandler(elements);
     setupCrossWindowMessaging(state, updateLayersCallback);
 }
@@ -389,6 +390,193 @@ function setupCellProjectionToggle(state, updateLayersCallback) {
             scheduleUpdate();
         });
     }
+}
+
+// === DIAGNOSTICS SLIDERS ===
+
+/**
+ * Setup theta (cell inefficiency) and gamma (gene expression) sliders.
+ * Sliders are hidden until diagnostics DB is connected.
+ * Theta lives in Cell Controls, gamma lives in Gene Controls.
+ */
+function setupDiagnosticsSliders(state, updateLayersCallback) {
+    const thetaSlider = document.getElementById('cellThetaSlider');
+    const thetaValue = document.getElementById('cellThetaValue');
+    const gammaSlider = document.getElementById('gammaSlider');
+    const gammaValue = document.getElementById('gammaValue');
+    const thetaItem = document.getElementById('cellThetaSliderItem');
+    const gammaItem = document.getElementById('gammaSliderItem');
+
+    // Wire slider: update state property, display value, and trigger layer rebuild (rAF-throttled)
+    function wireSlider(slider, valueEl, stateKey) {
+        if (!slider) return;
+        let rafId = null;
+        slider.addEventListener('input', (e) => {
+            const threshold = parseFloat(e.target.value);
+            state[stateKey] = threshold;
+            if (valueEl) valueEl.textContent = threshold.toFixed(2);
+            if (rafId == null) {
+                rafId = requestAnimationFrame(() => {
+                    rafId = null;
+                    updateLayersCallback();
+                });
+            }
+        });
+    }
+
+    wireSlider(thetaSlider, thetaValue, 'thetaThreshold');
+    wireSlider(gammaSlider, gammaValue, 'gammaThreshold');
+
+    function showDiagnosticsSliders() {
+        if (thetaItem) thetaItem.style.display = 'flex';
+        if (gammaItem) gammaItem.style.display = 'flex';
+        loadCellTheta(state);
+        loadSpotGammaValues(state);
+    }
+
+    function hideDiagnosticsSliders() {
+        if (thetaItem) thetaItem.style.display = 'none';
+        if (gammaItem) gammaItem.style.display = 'none';
+    }
+
+    // Show sliders when diagnostics activates
+    if (window.electronAPI?.onCheckCellState) {
+        window.electronAPI.onCheckCellState((stateData) => {
+            if (stateData.enabled) {
+                showDiagnosticsSliders();
+            } else {
+                hideDiagnosticsSliders();
+            }
+        });
+    }
+
+    // Check if diagnostics is already active on startup
+    if (window.electronAPI?.getCheckCellState) {
+        window.electronAPI.getCheckCellState().then(stateData => {
+            if (stateData && stateData.enabled) showDiagnosticsSliders();
+        }).catch(() => {});
+    }
+}
+
+/**
+ * Load cell theta (inefficiency) from diagnostics DB and configure slider bounds.
+ */
+function loadCellTheta(state) {
+    if (state.cellThetaMap) return;
+    if (typeof window.electronAPI?.getCellTheta !== 'function') return;
+
+    window.electronAPI.getCellTheta().then(result => {
+        if (!result || !result.success || !result.entries) return;
+
+        const map = new Map();
+        let maxTheta = 0;
+        for (const [label, theta] of result.entries) {
+            map.set(Number(label), theta);
+            if (theta > maxTheta) maxTheta = theta;
+        }
+        state.cellThetaMap = map;
+
+        configureSlider('cellThetaSlider', 'cellThetaValue', maxTheta, state, 'maxTheta');
+
+        console.log(`Cell theta loaded: ${map.size} cells, max theta: ${state.maxTheta}`);
+    }).catch(e => {
+        console.warn('Cell theta not available:', e.message || e);
+    });
+}
+
+/**
+ * Wait for scatter cache, then fetch gamma from diagnostics DB and compute per-spot values.
+ * Stores results on window.appState: spotGammaValues, gammaMap, reverseGeneDict.
+ */
+function loadSpotGammaValues(state) {
+    if (window.appState?.spotGammaValues) return;
+    if (typeof window.electronAPI?.getGammaAssigned !== 'function') return;
+
+    // Wait for scatter cache (built async by worker)
+    const cache = window.appState?.arrowScatterCache;
+    if (!cache || !cache.neighbours || !cache.geneIds) {
+        let retries = 0;
+        const interval = setInterval(() => {
+            retries++;
+            const c = window.appState?.arrowScatterCache;
+            if (c && c.neighbours && c.geneIds) {
+                clearInterval(interval);
+                loadSpotGammaValues(state);
+            } else if (retries >= 60) {
+                clearInterval(interval);
+                console.warn('Scatter cache not ready after 30s, giving up on gamma');
+            }
+        }, 500);
+        return;
+    }
+
+    window.electronAPI.getGammaAssigned().then(result => {
+        if (!result || !result.success || !result.entries) return;
+
+        const { spotGamma, gammaMap, maxGamma } = computePerSpotGamma(result.entries, cache);
+
+        window.appState.spotGammaValues = spotGamma;
+        window.appState.gammaMap = gammaMap;
+        window.appState.reverseGeneDict = buildReverseGeneDict();
+
+        configureSlider('gammaSlider', 'gammaValue', maxGamma, state, 'maxGamma');
+
+        console.log(`Spot gamma computed: ${cache.length} spots, max=${maxGamma.toFixed(3)}`);
+    }).catch(e => {
+        console.warn('Gamma data not available:', e.message || e);
+    });
+}
+
+/**
+ * Compute per-spot gamma from cell gamma matrix and scatter cache.
+ * Each spot gets gamma[cell][gene] where cell = spot's primary neighbour.
+ */
+function computePerSpotGamma(entries, cache) {
+    // Keys must be numbers to match Int32Array neighbours
+    const gammaMap = new Map();
+    for (const [label, gammaArr] of entries) {
+        gammaMap.set(Number(label), gammaArr);
+    }
+
+    const { neighbours, geneIds, length } = cache;
+    const spotGamma = new Float32Array(length);
+    let maxGamma = 0;
+    for (let i = 0; i < length; i++) {
+        const cellGamma = gammaMap.get(neighbours[i]);
+        const geneId = geneIds[i];
+        const g = (cellGamma && geneId >= 0 && geneId < cellGamma.length) ? cellGamma[geneId] : 1.0;
+        spotGamma[i] = g;
+        if (g > maxGamma) maxGamma = g;
+    }
+
+    return { spotGamma, gammaMap, maxGamma };
+}
+
+/**
+ * Build reverse gene dict: gene name → gene id (numeric).
+ */
+function buildReverseGeneDict() {
+    const geneDict = window.appState?.arrowGeneDict || {};
+    const reverse = {};
+    for (const [id, name] of Object.entries(geneDict)) {
+        reverse[name] = Number(id);
+    }
+    return reverse;
+}
+
+/**
+ * Configure a slider's max/step from computed data range.
+ */
+function configureSlider(sliderId, valueId, maxVal, state, stateMaxKey) {
+    const rounded = Math.ceil(maxVal * 10) / 10;
+    state[stateMaxKey] = rounded;
+    const slider = document.getElementById(sliderId);
+    const valueEl = document.getElementById(valueId);
+    if (slider) {
+        slider.max = String(rounded);
+        slider.step = String(Math.max(0.01, rounded / 200));
+    }
+    if (valueEl) valueEl.textContent = '0';
 }
 
 /**

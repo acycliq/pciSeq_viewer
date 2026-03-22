@@ -155,6 +155,16 @@ export function showTooltip(info, tooltipElement) {
                     }
                 }
 
+                // Theta (diagnostics only)
+                let thetaInfo = '';
+                const thetaMap = window.appState?.cellThetaMap;
+                if (thetaMap) {
+                    const theta = thetaMap.get(Number(cellLabel));
+                    if (theta !== undefined) {
+                        thetaInfo = `<strong>Theta:</strong> ${theta.toFixed(3)}<br>`;
+                    }
+                }
+
                 content =  `<strong>Cell Label:</strong> ${cellLabel}<br>
                             ${cellCoords}
                             ${centroidPlane}
@@ -163,7 +173,8 @@ export function showTooltip(info, tooltipElement) {
                             ${classProb}
                             ${totalGeneCount}
                             ${colorHex}
-                            ${internalLabel}`;
+                            ${internalLabel}
+                            ${thetaInfo}`;
             }
         } else if (info.object.gene) {
             // Gene tooltip - show enhanced gene spot information
@@ -204,6 +215,17 @@ export function showTooltip(info, tooltipElement) {
             }
             if (info.object.intensity !== undefined && info.object.intensity !== null) {
                 qualityInfo += `<strong>Intensity:</strong> ${info.object.intensity.toFixed(3)}<br>`;
+            }
+
+            // Gamma (diagnostics only)
+            const gMap = window.appState?.gammaMap;
+            const rDict = window.appState?.reverseGeneDict;
+            if (gMap && rDict && info.object.neighbour != null) {
+                const gid = rDict[gene];
+                const cellGamma = gMap.get(Number(info.object.neighbour));
+                if (cellGamma && gid >= 0 && gid < cellGamma.length) {
+                    qualityInfo += `<strong>Gamma:</strong> ${cellGamma[gid].toFixed(3)}<br>`;
+                }
             }
 
             content = `${spotInfo}<strong>Gene:</strong> ${gene}<br>

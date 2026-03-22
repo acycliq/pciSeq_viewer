@@ -123,8 +123,8 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                 }
                 const manifestUrl = new URL(ARROW_MANIFESTS.spotsManifest, window.location.href).href;
                 const img = { width: cfg.imageWidth, height: cfg.imageHeight, tileSize: 256 };
-                const { positions, colors, planes, geneIds, scores, intensities, filterPairs, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity } = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
-                window.appState.arrowScatterCache = { positions, colors, planes, geneIds, scores, intensities, filterPairs, length: (positions?.length||0)/3 };
+                const { positions, colors, planes, geneIds, neighbours, scores, intensities, filterPairs, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity } = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
+                window.appState.arrowScatterCache = { positions, colors, planes, geneIds, neighbours, scores, intensities, filterPairs, length: (positions?.length||0)/3 };
                 hasIntensityFlag = Boolean(hasIntensity);
                 // Update score range with dataset min (UI min = min(0, scoreMin), max remains 1.0)
                 try {

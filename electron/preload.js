@@ -48,7 +48,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Dashboard diagnostics
   openDiagnosticsWindow: () => ipcRenderer.invoke('open-diagnostics-window'),
   getDashboardData: () => ipcRenderer.invoke('dashboard-get-data'),
-  getDashboardGamma: (classIdx) => ipcRenderer.invoke('dashboard-get-gamma', classIdx)
+  getDashboardGamma: (classIdx) => ipcRenderer.invoke('dashboard-get-gamma', classIdx),
+  getCellTheta: () => ipcRenderer.invoke('get-cell-theta'),
+  getGammaAssigned: () => ipcRenderer.invoke('get-gamma-assigned')
 });
 
 console.log('Preload script loaded - electronAPI exposed to renderer');

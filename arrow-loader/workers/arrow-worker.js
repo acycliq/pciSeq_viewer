@@ -281,15 +281,17 @@ self.onmessage = async (e) => {
         const gene_id = getTypedColumn(table, 'gene_id');
         const omp_score = getTypedColumn(table, 'omp_score');
         const omp_intensity = getTypedColumn(table, 'omp_intensity');
+        const neighbour_col = table.getChild('neighbour_array');
         const n = x ? x.length : 0;
         if (!n) continue;
-        shards.push({ x, y, plane_id, gene_id, omp_score, omp_intensity, n });
+        shards.push({ x, y, plane_id, gene_id, omp_score, omp_intensity, neighbour_col, n });
         total += n;
       }
       const positions = new Float32Array(total * 3);
       const colors = new Uint8Array(total * 4);
       const geneIds = new Int32Array(total);
       const planes = new Int32Array(total);
+      const neighbours = new Int32Array(total);
       const scores = new Float32Array(total);
       const intensities = new Float32Array(total);
       const width = img && img.width || 256;
@@ -317,6 +319,8 @@ self.onmessage = async (e) => {
           const gid = sh.gene_id ? sh.gene_id[i] : -1;
           geneIds[off] = gid | 0;
           planes[off] = sh.plane_id ? sh.plane_id[i] : 0;
+          const nArr = sh.neighbour_col ? sh.neighbour_col.get(i) : null;
+          neighbours[off] = (nArr && nArr.length > 0) ? (nArr.get ? nArr.get(0) : nArr[0]) : -1;
           const s = sh.omp_score ? sh.omp_score[i] : 0;
           scores[off] = s;
           if (Number.isFinite(s)) { if (s < scoreMin) scoreMin = s; if (s > scoreMax) scoreMax = s; }
@@ -335,7 +339,7 @@ self.onmessage = async (e) => {
       // Consider intensity present if any finite value exists
       const hasIntensity = intensityFiniteCount > 0;
       let filterPairs = null;
-      const transfers = [positions.buffer, colors.buffer, geneIds.buffer, planes.buffer, scores.buffer];
+      const transfers = [positions.buffer, colors.buffer, geneIds.buffer, planes.buffer, scores.buffer, neighbours.buffer];
       if (hasIntensity) {
         filterPairs = new Float32Array(total * 2);
         for (let i = 0; i < total; i++) { filterPairs[2*i] = scores[i]; filterPairs[2*i+1] = intensities[i]; }
@@ -345,7 +349,7 @@ self.onmessage = async (e) => {
       if (!Number.isFinite(scoreMax)) scoreMax = 1;
       if (!Number.isFinite(intensityMin)) intensityMin = 0;
       if (!Number.isFinite(intensityMax)) intensityMax = 1;
-      self.postMessage({ id, ok: true, type, positions, colors, geneIds, planes, scores, hasIntensity, intensities: hasIntensity ? intensities : undefined, filterPairs: hasIntensity ? filterPairs : undefined, scoreMin, scoreMax, intensityMin, intensityMax }, transfers);
+      self.postMessage({ id, ok: true, type, positions, colors, geneIds, planes, neighbours, scores, hasIntensity, intensities: hasIntensity ? intensities : undefined, filterPairs: hasIntensity ? filterPairs : undefined, scoreMin, scoreMax, intensityMin, intensityMax }, transfers);
     } else {
       throw new Error(`Unknown message type: ${type}`);
     }

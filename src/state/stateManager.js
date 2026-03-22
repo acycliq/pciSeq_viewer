@@ -21,6 +21,12 @@ const state = {
     geneCountMaxThreshold: Infinity,
     maxTotalGeneCount: 0,
 
+    // Diagnostics filtering (activated via Ctrl+D)
+    cellThetaMap: null,
+    thetaThreshold: 0,
+    maxTheta: 0,
+    gammaThreshold: 0,
+
     // Data caches
     tileCache: new Map(),
     polygonCache: new Map(),

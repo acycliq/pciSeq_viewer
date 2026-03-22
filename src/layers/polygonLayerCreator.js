@@ -11,19 +11,19 @@ import { arrowBoundaryCache, arrowGeojsonCache } from './boundaryCache.js';
 
 const { COORDINATE_SYSTEM, GeoJsonLayer, DataFilterExtension } = deck;
 
-// Reusable DataFilterExtension instance for polygon gene count filtering
-const CELL_FILTER_EXTENSION = new DataFilterExtension({ filterSize: 1 });
+// Reusable DataFilterExtension: channel 0 = theta, channel 1 = totalGeneCount
+const CELL_FILTER_EXTENSION = new DataFilterExtension({ filterSize: 2 });
 
 /**
  * Create polygon layers for cell boundary visualization
  */
-export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null, zProjectionCellMode = false, geneCountThreshold = 0, geneCountMaxThreshold = Infinity) {
+export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null, zProjectionCellMode = false, geneCountThreshold = 0, geneCountMaxThreshold = Infinity, thetaThreshold = 0) {
     const layers = [];
 
     if (!showPolygons) return layers;
 
     if (zProjectionCellMode) {
-        return createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold);
+        return createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold, thetaThreshold);
     }
 
     // Arrow fast-path: use binary buffers from worker
@@ -86,7 +86,8 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
     }
 
     const geojsonFromArrow = arrowGeojsonCache.get(planeNum);
-    return [createFilledGeoJsonLayer(planeNum, geojsonFromArrow, cellClassColors, polygonOpacity, selectedCellClasses)];
+    const thetaMap = (window.appState && window.appState.cellThetaMap) || null;
+    return [createFilledGeoJsonLayer(planeNum, geojsonFromArrow, cellClassColors, polygonOpacity, selectedCellClasses, thetaThreshold, thetaMap)];
 }
 
 function computeMostProbableClass(label, cellDataMap) {
@@ -120,7 +121,7 @@ function computeMostProbableClass(label, cellDataMap) {
     return (typeof raw === 'string') ? raw.trim() : String(raw || 'Unknown');
 }
 
-function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpacity, selectedCellClasses) {
+function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpacity, selectedCellClasses, thetaThreshold = 0, thetaMap = null) {
     let filteredData = geojson;
     if (selectedCellClasses) {
         if (selectedCellClasses.size === 0) {
@@ -153,6 +154,8 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
         }
     } catch {}
 
+    const filterEnabled = thetaThreshold > 0 && thetaMap && thetaMap.size > 0;
+
     return new GeoJsonLayer({
         id: `polygons-${planeNum}`,
         data: filteredData,
@@ -160,6 +163,13 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
         stroked: false,
         filled: true,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+        extensions: [CELL_FILTER_EXTENSION],
+        getFilterValue: f => {
+            const theta = thetaMap ? (thetaMap.get(Number(f.properties.label)) ?? 1e9) : 1e9;
+            return [theta, 0];
+        },
+        filterRange: [[thetaThreshold, 1e9], [0, 1e9]],
+        filterEnabled,
         onHover: handleCellHover,
         onClick: handleCellClick,
         getFillColor: d => {
@@ -171,13 +181,15 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
             }
             return [192, 192, 192, alpha];
         },
-        updateTriggers: { getFillColor: [cellClassColors, polygonOpacity], data: [selectedCellClasses] }
+        updateTriggers: { getFillColor: [cellClassColors, polygonOpacity], getFilterValue: [thetaThreshold, thetaMap], data: [selectedCellClasses] }
     });
 }
 
-function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold) {
+function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold, thetaThreshold = 0) {
     const features = (window.appState && window.appState.cellProjectionFeatures) || [];
     const selectedKey = selectedCellClasses ? Array.from(selectedCellClasses).sort().join('|') : '';
+    const thetaMap = (window.appState && window.appState.cellThetaMap) || null;
+    const geneCountMax = geneCountMaxThreshold === Infinity ? 1e9 : geneCountMaxThreshold;
 
     return [new GeoJsonLayer({
         id: 'polygons-z-projection',
@@ -187,8 +199,11 @@ function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOp
         filled: true,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
         extensions: [CELL_FILTER_EXTENSION],
-        getFilterValue: f => f.properties.totalGeneCount || 0,
-        filterRange: [geneCountThreshold, geneCountMaxThreshold === Infinity ? 1e9 : geneCountMaxThreshold],
+        getFilterValue: f => {
+            const theta = thetaMap ? (thetaMap.get(Number(f.properties.label)) ?? 1e9) : 1e9;
+            return [theta, f.properties.totalGeneCount || 0];
+        },
+        filterRange: [[thetaThreshold, 1e9], [geneCountThreshold, geneCountMax]],
         filterEnabled: true,
         onHover: handleCellHover,
         onClick: handleCellClick,
@@ -200,7 +215,8 @@ function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOp
             return visible ? [rgb[0], rgb[1], rgb[2], alpha] : [0, 0, 0, 0];
         },
         updateTriggers: {
-            getFillColor: [polygonOpacity, selectedKey]
+            getFillColor: [polygonOpacity, selectedKey],
+            getFilterValue: [thetaThreshold, geneCountThreshold, geneCountMax, thetaMap]
         }
     })];
 }

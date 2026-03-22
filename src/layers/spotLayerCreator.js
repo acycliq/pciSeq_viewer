@@ -12,7 +12,6 @@ import {
     transformToTileCoordinates,
     transformFromTileCoordinates
 } from '../../utils/coordinateTransform.js';
-import { ensureArrowInitialized } from './arrowInit.js';
 
 const { COORDINATE_SYSTEM, IconLayer, DataFilterExtension, ScatterplotLayer } = deck;
 
@@ -31,6 +30,25 @@ function getArrowSpotBinaryCache() {
         return null;
     }
     return cache;
+}
+
+/**
+ * Returns a filter function for gamma threshold (used by IconLayer CPU filtering).
+ * Returns a no-op (always true) when gamma filtering is inactive.
+ */
+function buildGammaFilter() {
+    const app = window.appState || {};
+    const gammaMap = app.gammaMap;
+    const reverseGeneDict = app.reverseGeneDict;
+    const threshold = app.gammaThreshold || 0;
+    if (!gammaMap || !reverseGeneDict || threshold <= 0) return () => true;
+
+    return (d) => {
+        const gid = reverseGeneDict[d.gene];
+        const cellGamma = (d.neighbour != null) ? gammaMap.get(d.neighbour) : null;
+        const g = (cellGamma && gid >= 0 && gid < cellGamma.length) ? cellGamma[gid] : 1.0;
+        return g >= threshold;
+    };
 }
 
 /**
@@ -110,30 +128,58 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         console.warn('Gene mask caching failed:', e);
     }
 
-    const canFilterScore = Boolean(scores) && hasScores;
-    const canFilterIntensity = Boolean(intensities) && hasIntensity;
-    const use2D = canFilterScore && canFilterIntensity && Boolean(filterPairs);
-    
+    // Read intensity upper bound
+    const app = window.appState || {};
+    let intensityUpper = 1.0;
+    try {
+        if (Array.isArray(app.intensityRange)) {
+            const hi = Number(app.intensityRange[1]);
+            if (Number.isFinite(hi)) intensityUpper = hi;
+        }
+    } catch {}
+
+    // Collect active filter channels
+    const channels = [];
+    if (Boolean(scores) && hasScores)
+        channels.push({ values: scores, range: [Number(scoreThreshold) || 0, 1.0] });
+    if (Boolean(intensities) && hasIntensity)
+        channels.push({ values: intensities, range: [Number(intensityThreshold) || 0, intensityUpper] });
+    const spotGamma = app.spotGammaValues || null;
+    const gammaThreshold = app.gammaThreshold || 0;
+    if (Boolean(spotGamma) && gammaThreshold > 0)
+        channels.push({ values: spotGamma, range: [gammaThreshold, 1e9] });
+
+    // Build interleaved filter attribute from active channels
+    const filterSize = Math.max(channels.length, 1);
+    const filterEnabled = channels.length > 0;
+    let filterAttr = null;
+    let filterRange;
+
+    if (channels.length === 0) {
+        filterRange = [0, 1.0];
+    } else if (channels.length === 1) {
+        filterAttr = { value: channels[0].values, size: 1 };
+        filterRange = channels[0].range;
+    } else {
+        const combined = new Float32Array(length * channels.length);
+        for (let i = 0; i < length; i++) {
+            for (let c = 0; c < channels.length; c++) {
+                combined[i * channels.length + c] = channels[c].values[i];
+            }
+        }
+        filterAttr = { value: combined, size: channels.length };
+        filterRange = channels.map(ch => ch.range);
+    }
+
     const data = {
         length,
         attributes: {
             getPosition: { value: positions, size: 3 },
             getFillColor: { value: maskedColors || colors, size: 4 },
             getRadius: uniformMarkerSize ? { constant: 1 } : { value: radiusFactors, size: 1 },
-            ...(use2D ? { getFilterValue: { value: filterPairs, size: 2 } } : 
-               canFilterScore ? { getFilterValue: { value: scores, size: 1 } } :
-               canFilterIntensity ? { getFilterValue: { value: intensities, size: 1 } } : {})
+            ...(filterAttr ? { getFilterValue: filterAttr } : {})
         }
     };
-
-    let intensityUpper = 1.0;
-    try {
-        const app = window.appState;
-        if (app && Array.isArray(app.intensityRange)) {
-            const hi = Number(app.intensityRange[1]);
-            if (Number.isFinite(hi)) intensityUpper = hi;
-        }
-    } catch {}
 
     return new ScatterplotLayer({
         id: 'spots-scatter-binary',
@@ -146,12 +192,9 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         radiusMinPixels: 0.5,
         opacity: layerOpacity,
         radiusScale: baseScale * (geneSizeScale || 1.0),
-        extensions: [new DataFilterExtension({ filterSize: use2D ? 2 : 1 })],
-        filterEnabled: use2D || canFilterScore || canFilterIntensity,
-        filterRange: use2D
-            ? [ [Number(scoreThreshold) || 0, 1.0], [Number(intensityThreshold) || 0, intensityUpper] ]
-            : canFilterScore ? [Number(scoreThreshold) || 0, 1.0] :
-              canFilterIntensity ? [Number(intensityThreshold) || 0, intensityUpper] : [0, 1.0]
+        extensions: [new DataFilterExtension({ filterSize })],
+        filterEnabled,
+        filterRange
     });
 }
 
@@ -160,6 +203,9 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
  */
 export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false) {
     if (!showGenes || !geneIconAtlas) return [];
+
+    // Gamma filtering for IconLayer path (CPU-side)
+    const passGamma = buildGammaFilter();
 
     if (combineIntoSingleLayer) {
         const combined = [];
@@ -185,7 +231,9 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
                 
                 const passScore = !(hasScores && scoreThreshold > 0) || (d.score != null && Number(d.score) >= scoreThreshold);
                 const passInten = !(hasIntensity && intensityThreshold > 0) || (d.intensity != null && Number(d.intensity) >= intensityThreshold);
-                if (passScore && passInten) combined.push(d);
+                if (!passScore || !passInten) continue;
+                if (!passGamma(d)) continue;
+                combined.push(d);
             }
         }
 
@@ -232,7 +280,8 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
         const filtered = data.filter(d => {
             const passScore = !(hasScores && scoreThreshold > 0) || (d.score != null && Number(d.score) >= scoreThreshold);
             const passInten = !(hasIntensity && intensityThreshold > 0) || (d.intensity != null && Number(d.intensity) >= intensityThreshold);
-            return passScore && passInten;
+            if (!passScore || !passInten) return false;
+            return passGamma(d);
         });
 
         if (filtered.length === 0) continue;
