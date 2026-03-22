@@ -16,32 +16,34 @@
     
     let loaded = false;
 
-    /**
-     * Safe access to opener properties (handles Electron contextIsolation restrictions)
-     */
-    function getOpenerProp(path) {
-        try {
-            if (!window.opener) return null;
-            const parts = path.split('.');
-            let curr = window.opener;
-            for (const part of parts) {
-                if (curr && typeof curr === 'object' && part in curr) {
-                    curr = curr[part];
-                } else {
-                    return null;
-                }
-            }
-            return curr;
-        } catch (e) {
-            console.warn(`Could not access opener property ${path}:`, e);
-            return null;
-        }
-    }
+    // Local color caches, populated via IPC broadcasts from the main window
+    let geneColorMap = {};   // geneName → color string
+    let classColorMap = {};  // classIdx or className → color string/array
 
     async function init() {
         console.log('Dashboard init: isStandalone =', isStandalone);
         
         if (isStandalone) {
+            // Setup listeners for live color updates from main window
+            if (window.electronAPI) {
+                window.electronAPI.onImportGeneColors((data) => {
+                    console.log('Dashboard: Received live gene color update');
+                    if (Array.isArray(data)) {
+                        geneColorMap = {};
+                        data.forEach(s => { if (s.gene && s.color) geneColorMap[s.gene] = s.color; });
+                    }
+                    if (loaded) loadDashboard();
+                });
+
+                window.electronAPI.onImportClassColors((data) => {
+                    console.log('Dashboard: Received live class color update');
+                    if (data && typeof data === 'object') {
+                        classColorMap = data;
+                    }
+                    if (loaded) loadDashboard();
+                });
+            }
+
             try {
                 await loadDashboard();
             } catch (err) {
@@ -81,7 +83,7 @@
         }
     }
 
-    // ─── Shared helpers ───
+    // ─── Shared helpers (only needed in standalone/chart context) ───
 
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[ch]));
@@ -90,19 +92,27 @@
     function showMsg(id, msg) {
         const el = document.getElementById(id);
         if (!el) return;
-        el.innerHTML = `<div style="color:#888;font-size:12px;padding:20px;text-align:center;width:100%;">${msg}</div>`;
+        el.textContent = '';
+        const div = document.createElement('div');
+        div.style.cssText = 'color:#888;font-size:12px;padding:20px;text-align:center;width:100%;';
+        div.textContent = msg;
+        el.appendChild(div);
     }
 
-    const tooltip = (function () {
+    // Tooltip is lazily created only when charts are rendered
+    let tooltip = null;
+    function ensureTooltip() {
+        if (tooltip) return;
         const div = document.createElement('div');
         div.className = 'chart-tooltip';
         div.style.position = 'absolute';
         div.style.opacity = '0';
         document.body.appendChild(div);
-        return d3.select(div);
-    })();
+        tooltip = d3.select(div);
+    }
 
     function showTooltip(evt, html) {
+        ensureTooltip();
         tooltip.html(html)
             .style('left', (evt.pageX + 15) + 'px')
             .style('top', (evt.pageY - 10) + 'px')
@@ -114,12 +124,30 @@
     }
     function hideTooltip() { tooltip.style('opacity', 0); }
 
+    // Build gene color lookup map once from glyphSettings
+    let glyphColorMap = null;
+    function buildGlyphColorMap() {
+        if (glyphColorMap) return;
+        glyphColorMap = {};
+        if (typeof window.glyphSettings === 'function') {
+            const settings = window.glyphSettings();
+            if (Array.isArray(settings)) {
+                for (const s of settings) {
+                    if (s.gene && s.color) glyphColorMap[s.gene] = s.color;
+                }
+            }
+        }
+    }
+
+    function getGeneColor(geneName) {
+        if (geneColorMap[geneName]) return geneColorMap[geneName];
+        buildGlyphColorMap();
+        return glyphColorMap[geneName] || glyphColorMap['Generic'] || '#3b82f6';
+    }
+
     function classColor(classIdx, classNames) {
-        // Try local appState first, then try opener
-        let cc = (window.appState && window.appState.classColors);
-        if (!cc) cc = getOpenerProp('appState.classColors');
-        
-        if (!cc) return '#3b82f6'; // Default blue
+        const cc = classColorMap;
+        if (!cc || Object.keys(cc).length === 0) return '#3b82f6';
 
         const c = cc[classIdx] || (classNames && cc[classNames[classIdx]]);
         if (!c) return '#3b82f6';
@@ -251,7 +279,7 @@
                 .merge(bars)
                 .attr('x', d => x(d) - bw / 2).attr('y', d => y(eta[d]))
                 .attr('width', bw).attr('height', d => Math.max(0, s.height - y(eta[d])))
-                .style('fill', d => eta[d] >= 1.0 ? '#ef4444' : '#3b82f6');
+                .style('fill', d => getGeneColor(genes[d]));
             bars.exit().remove();
         }
 
@@ -301,10 +329,11 @@
         const dotsG = s.clipG.append('g');
         function updatePoints() {
             const dots = dotsG.selectAll('circle').data(pts);
-            dots.enter().append('circle').attr('r', 4).style('fill', '#3b82f6').style('opacity', 0.6)
+            dots.enter().append('circle').attr('r', 4).style('opacity', 0.6)
                 .on('mouseover', (evt, d) => showTooltip(evt, `<b>${escapeHtml(d.gene)}</b><br/>Obs: ${d.observed}<br/>Exp: ${Math.round(d.expected)}<br/>η: ${d.eta.toFixed(3)}`))
                 .on('mousemove', moveTooltip).on('mouseout', hideTooltip)
-                .merge(dots).attr('cx', d => x(Math.max(1, d.expected))).attr('cy', d => y(Math.max(1, d.observed)));
+                .merge(dots).attr('cx', d => x(Math.max(1, d.expected))).attr('cy', d => y(Math.max(1, d.observed)))
+                .style('fill', d => getGeneColor(d.gene));
             dots.exit().remove();
         }
 
@@ -450,7 +479,7 @@
             .style('stroke', '#444').style('stroke-dasharray', '4,4');
 
         const dotsG = s.clipG.append('g');
-        const updatePoints = () => {
+        function updatePoints() {
             const dots = dotsG.selectAll('circle').data(d3.range(gamma.length));
             dots.enter().append('circle').attr('r', 3.5).style('opacity', 0.7).style('cursor', 'pointer')
                 .on('mouseover', (evt, i) => showTooltip(evt, `<b>${gene_names[i]}</b><br/>Cell: ${cell_labels[i]}<br/>γ: ${gamma[i].toFixed(3)}`))
@@ -458,18 +487,18 @@
                 .merge(dots).attr('cx', i => x(cell_x_idx[i])).attr('cy', i => y(gamma[i]))
                 .style('fill', i => gammaColor(gamma[i]));
             dots.exit().remove();
-        };
+        }
 
         const xAxisG = s.svg.append('g').attr('transform', `translate(0,${s.height})`);
         const yAxisG = s.svg.append('g');
-        const updateAxes = () => {
+        function updateAxes() {
             const lo = Math.max(0, Math.floor(x.invert(0))), hi = Math.min(nCells-1, Math.ceil(x.invert(s.width)));
             const step = Math.max(1, Math.floor((hi-lo+1)/15));
             const ticks = []; for(let i=lo; i<=hi; i+=step) ticks.push(i);
             xAxisG.call(d3.axisBottom(x).tickValues(ticks).tickFormat(i => unique_cell_labels[i]));
             yAxisG.call(d3.axisLeft(y).ticks(8));
             styleAxes(s.svg);
-        };
+        }
 
         updatePoints(); updateAxes();
         addZoom(s.svg, s.width, s.height, [1, nCells/5], [[0,0],[s.width, s.height]], (event) => {

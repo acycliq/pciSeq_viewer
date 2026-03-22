@@ -114,6 +114,23 @@ ipcMain.handle('open-diagnostics-window', () => {
   return { success: true };
 });
 
+// Broadcast color updates to all renderer windows
+ipcMain.on('broadcast-gene-colors', (event, data) => {
+  BrowserWindow.getAllWindows().forEach(win => {
+    if (win.id !== event.sender.id) {
+      win.webContents.send('import-gene-colors', data);
+    }
+  });
+});
+
+ipcMain.on('broadcast-class-colors', (event, data) => {
+  BrowserWindow.getAllWindows().forEach(win => {
+    if (win.id !== event.sender.id) {
+      win.webContents.send('import-class-colors', data);
+    }
+  });
+});
+
 // Register custom protocols as privileged before app is ready
 protocol.registerSchemesAsPrivileged([
   {

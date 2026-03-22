@@ -597,6 +597,8 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const { appliedCount } = await applyGeneScheme(data, false);
                 console.log('Imported ' + appliedCount + ' gene colour styles via menu');
+                // Broadcast to other windows (like diagnostics)
+                window.electronAPI.broadcastGeneColors(data);
             } catch (e) {
                 console.error('Failed to import gene colours:', e);
             }
@@ -609,6 +611,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (appliedCount > 0) {
                     populateCellClassDrawer();
                     if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
+                    // Broadcast to other windows (like diagnostics)
+                    window.electronAPI.broadcastClassColors(data);
                 }
                 console.log('Imported ' + appliedCount + ' cell class colours via menu');
                 if (notFoundClasses.length > 0) {

@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Import colour schemes from menu
   onImportGeneColors: (handler) => ipcRenderer.on('import-gene-colors', (_e, data) => handler(data)),
   onImportClassColors: (handler) => ipcRenderer.on('import-class-colors', (_e, data) => handler(data)),
+  broadcastGeneColors: (data) => ipcRenderer.send('broadcast-gene-colors', data),
+  broadcastClassColors: (data) => ipcRenderer.send('broadcast-class-colors', data),
 
   // Keyboard shortcuts overlay
   onShowShortcuts: (handler) => ipcRenderer.on('show-shortcuts', handler),
