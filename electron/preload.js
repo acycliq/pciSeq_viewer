@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onShowShortcuts: (handler) => ipcRenderer.on('show-shortcuts', handler),
 
   // Dashboard diagnostics
+  openDiagnosticsWindow: () => ipcRenderer.invoke('open-diagnostics-window'),
   getDashboardData: () => ipcRenderer.invoke('dashboard-get-data'),
   getDashboardGamma: (classIdx) => ipcRenderer.invoke('dashboard-get-gamma', classIdx)
 });

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, protocol, net, dialog, Menu, shell } = require('electron');
+const { app, BrowserWindow, protocol, net, dialog, Menu, shell, ipcMain } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const fs = require('fs');
@@ -80,6 +80,39 @@ function checkForUpdates() {
 }
 
 let mainWindow;
+let diagnosticsWindow;
+
+function createDiagnosticsWindow() {
+  if (diagnosticsWindow) {
+    diagnosticsWindow.focus();
+    return;
+  }
+
+  diagnosticsWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+      webSecurity: true
+    },
+    title: 'pciSeq Scale Factor Diagnostics',
+    backgroundColor: '#0a0a0a',
+    icon: path.join(__dirname, '..', 'icon.png')
+  });
+
+  diagnosticsWindow.loadURL('app://diagnostics.html');
+
+  diagnosticsWindow.on('closed', () => {
+    diagnosticsWindow = null;
+  });
+}
+
+ipcMain.handle('open-diagnostics-window', () => {
+  createDiagnosticsWindow();
+  return { success: true };
+});
 
 // Register custom protocols as privileged before app is ready
 protocol.registerSchemesAsPrivileged([
@@ -138,6 +171,21 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  // Handle window.open from renderer (e.g. diagnostics.html, voxel-viewer.html)
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    return {
+      action: 'allow',
+      overrideBrowserWindowOptions: {
+        webPreferences: {
+          preload: path.join(__dirname, 'preload.js'),
+          contextIsolation: true,
+          nodeIntegration: false,
+          webSecurity: true
+        }
+      }
+    };
   });
 
   // Initialize modules
@@ -215,11 +263,10 @@ function registerCustomProtocol() {
       url = url.slice(0, -1);
     }
 
-    // Fix: Browser treats index.html as a directory for relative URLs
-    // Remove the index.html/ prefix if present
-    if (url.startsWith('index.html/')) {
-      url = url.replace('index.html/', '');
-    }
+    // Fix: Browser treats .html files as directories for relative URLs
+    // e.g. app://index.html/styles.css or app://diagnostics.html/src/...
+    // Strip the .html/ prefix so the path resolves to the project root
+    url = url.replace(/^[^/]+\.html\//, '');
 
     // Remove query parameters if any
     const queryIndex = url.indexOf('?');
