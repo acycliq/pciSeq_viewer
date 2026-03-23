@@ -29,7 +29,8 @@ const state = {
 
     // Color-by mode for cells and spots
     cellColorMode: 'cellClass',  // 'cellClass' | 'theta' | 'totalGeneCount'
-    spotColorMode: 'gene',       // 'gene' | 'gamma'
+    spotColorMode: 'gene',       // 'gene' | 'gamma' | 'eta'
+    showBackgroundOnly: false,
 
     // Data caches
     tileCache: new Map(),

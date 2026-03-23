@@ -59,7 +59,7 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
     const cache = getArrowSpotBinaryCache();
     if (!cache || cache.length === 0) return null;
 
-    const { positions, colors, planes, geneIds, scores, intensities, filterPairs, length } = cache;
+    const { positions, colors, planes, geneIds, neighbours, scores, intensities, filterPairs, length } = cache;
     const baseScale = (GENE_SIZE_CONFIG?.BASE_SIZE || 12) / 10;
     
     let radiusFactors = null;
@@ -98,61 +98,91 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         const app = (typeof window !== 'undefined') ? window.appState || (window.appState = {}) : {};
         const geneDict = app.arrowGeneDict || {};
         const totalGenes = Object.keys(geneDict).length;
+        // Build a string key from the current gene selection so the cache
+        // knows when to rebuild (different selection = different key).
         const selectedKey = selectedGenes ? Array.from(selectedGenes).sort().join('|') : '';
+        const bgOnly = !!app.showBackgroundOnly;
         const spotColorMode = app.spotColorMode || 'gene';
+
+        // --- Spot visibility helper ---
+        // Returns 255 (visible) or 0 (hidden) for the spot at index i.
+        // A spot is hidden when:
+        //   - "background only" is on and the spot is assigned to a cell
+        //   - no genes are selected
+        //   - the spot's gene is not in the selected set
+        const allGenesSelected = !selectedGenes || selectedGenes.size >= totalGenes;
+        const noGenesSelected = selectedGenes && selectedGenes.size === 0;
+
+        function spotAlpha(i) {
+            // When "background only" is active, hide spots assigned to a cell
+            if (bgOnly && neighbours && neighbours[i] !== 0) {
+                return 0;
+            }
+
+            // All genes visible -> show; no genes selected -> hide
+            if (allGenesSelected) {
+                return 255;
+            }
+            if (noGenesSelected) {
+                return 0;
+            }
+
+            // Show only if this spot's gene is in the selected set
+            const geneName = geneDict[geneIds[i]];
+            if (geneName && selectedGenes.has(geneName)) {
+                return 255;
+            }
+            return 0;
+        }
+
+        // --- Colormap mode (gamma or eta) ---
+        // Each spot is colored by a continuous value using the turbo colormap.
         const gammaValues = app.spotGammaValues;
+        const isGamma = spotColorMode === 'gamma' && gammaValues && gammaValues.length === length;
+        const isEta = spotColorMode === 'eta' && app.spotEtaValues && app.spotEtaValues.length === length;
 
-        // Gamma color mode: colormap from per-spot gamma values
-        if (spotColorMode === 'gamma' && gammaValues && gammaValues.length === length) {
-            const gammaCache = app._gammaMaskCache || (app._gammaMaskCache = {});
-            const maxGamma = app.maxGamma || 1;
-            const gammaCacheKey = `gamma_${selectedKey}_${length}_${maxGamma}`;
+        if (isGamma || isEta) {
+            const values = isGamma ? gammaValues : app.spotEtaValues;
+            const maxVal = isGamma ? (app.maxGamma || 1) : (app.maxEta || 1);
+            const label = isGamma ? 'gamma' : 'eta';
 
-            if (!gammaCache.buffer || gammaCache.cacheKey !== gammaCacheKey || gammaCache.length !== length) {
+            // Re-use a cached RGBA buffer when inputs haven't changed
+            const cacheName = `_${label}MaskCache`;
+            if (!app[cacheName]) app[cacheName] = {};
+            const cacheObj = app[cacheName];
+            const cacheKey = `${label}_${selectedKey}_${length}_${maxVal}_bg${bgOnly}`;
+
+            if (!cacheObj.buffer || cacheObj.cacheKey !== cacheKey || cacheObj.length !== length) {
                 maskedColors = new Uint8Array(length * 4);
-                const allSelected = !selectedGenes || selectedGenes.size >= totalGenes;
                 for (let i = 0; i < length; i++) {
-                    const t = normalize(gammaValues[i], 0, maxGamma);
-                    const rgb = colormap(t);
+                    const alpha = spotAlpha(i);
+                    if (alpha === 0) {
+                        maskedColors[4*i + 3] = 0;
+                        continue;
+                    }
+                    const rgb = colormap(normalize(values[i], 0, maxVal));
                     maskedColors[4*i]     = rgb[0];
                     maskedColors[4*i + 1] = rgb[1];
                     maskedColors[4*i + 2] = rgb[2];
-                    if (allSelected) {
-                        maskedColors[4*i + 3] = 255;
-                    } else if (selectedGenes && selectedGenes.size === 0) {
-                        maskedColors[4*i + 3] = 0;
-                    } else {
-                        const name = geneDict[geneIds[i]];
-                        maskedColors[4*i + 3] = (name && selectedGenes.has(name)) ? 255 : 0;
-                    }
+                    maskedColors[4*i + 3] = alpha;
                 }
-                gammaCache.buffer = maskedColors;
-                gammaCache.cacheKey = gammaCacheKey;
-                gammaCache.length = length;
+                cacheObj.buffer = maskedColors;
+                cacheObj.cacheKey = cacheKey;
+                cacheObj.length = length;
             } else {
-                maskedColors = gammaCache.buffer;
+                maskedColors = cacheObj.buffer;
             }
         } else {
-            // Default gene-color mode
-            const maskCache = app._geneMaskCache || (app._geneMaskCache = {});
-            const cacheKey = `${selectedKey}_${length}_${colors.buffer}`;
+            // --- Default gene-color mode ---
+            // Keep the original gene colors (from the Arrow cache), only update alpha.
+            if (!app._geneMaskCache) app._geneMaskCache = {};
+            const maskCache = app._geneMaskCache;
+            const cacheKey = `${selectedKey}_${length}_${colors.buffer}_bg${bgOnly}`;
 
             if (!maskCache.buffer || maskCache.cacheKey !== cacheKey || maskCache.length !== length) {
-                if (selectedGenes && selectedGenes.size > 0) {
-                    const allSelected = selectedGenes.size >= totalGenes;
-                    maskedColors = new Uint8Array(colors);
-                    if (!allSelected) {
-                        for (let i = 0; i < length; i++) {
-                            const name = geneDict[geneIds[i]];
-                            maskedColors[4*i + 3] = (name && selectedGenes.has(name)) ? 255 : 0;
-                        }
-                    } else {
-                        for (let i = 0; i < length; i++) maskedColors[4*i + 3] = 255;
-                    }
-                } else {
-                    maskedColors = new Uint8Array(colors);
-                    const alpha = (selectedGenes && selectedGenes.size === 0) ? 0 : 255;
-                    for (let i = 0; i < length; i++) maskedColors[4*i + 3] = alpha;
+                maskedColors = new Uint8Array(colors);
+                for (let i = 0; i < length; i++) {
+                    maskedColors[4*i + 3] = spotAlpha(i);
                 }
                 maskCache.buffer = maskedColors;
                 maskCache.cacheKey = cacheKey;

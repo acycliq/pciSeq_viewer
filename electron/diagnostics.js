@@ -477,7 +477,8 @@ ipcMain.handle('get-gamma-assigned', async () => {
       const gamma = new Float32Array(row.gamma_assigned.buffer, row.gamma_assigned.byteOffset, nG);
       entries.push([label, Array.from(gamma)]);
     }
-    return { success: true, nG, entries };
+    const etaBar = diagnosticsMeta.eta_bar || null;
+    return { success: true, nG, entries, etaBar };
   } catch (e) {
     console.error('get-gamma-assigned error:', e);
     return { success: false, error: e.message };

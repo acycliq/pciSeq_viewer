@@ -522,6 +522,14 @@ function loadSpotGammaValues(state) {
 
         configureSlider('gammaSlider', 'gammaValue', maxGamma, state, 'maxGamma');
 
+        // Build per-spot eta from eta_bar array (indexed by geneId)
+        if (result.etaBar) {
+            const { spotEta, maxEta } = computePerSpotEta(result.etaBar, cache);
+            window.appState.spotEtaValues = spotEta;
+            window.appState.maxEta = maxEta;
+            console.log(`Spot eta computed: ${cache.length} spots, max=${maxEta.toFixed(3)}`);
+        }
+
         console.log(`Spot gamma computed: ${cache.length} spots, max=${maxGamma.toFixed(3)}`);
     }).catch(e => {
         console.warn('Gamma data not available:', e.message || e);
@@ -551,6 +559,23 @@ function computePerSpotGamma(entries, cache) {
     }
 
     return { spotGamma, gammaMap, maxGamma };
+}
+
+/**
+ * Compute per-spot eta from eta_bar array.
+ * Each spot gets eta_bar[geneId] — the detection efficiency of its gene.
+ */
+function computePerSpotEta(etaBar, cache) {
+    const { geneIds, length } = cache;
+    const spotEta = new Float32Array(length);
+    let maxEta = 0;
+    for (let i = 0; i < length; i++) {
+        const geneId = geneIds[i];
+        const eta = (geneId >= 0 && geneId < etaBar.length) ? etaBar[geneId] : 1.0;
+        spotEta[i] = eta;
+        if (eta > maxEta) maxEta = eta;
+    }
+    return { spotEta, maxEta };
 }
 
 /**
@@ -833,6 +858,15 @@ function setupColorModeControls(state, updateLayersCallback) {
             refreshColorLegend(state);
         });
     }
+
+    const bgCheckbox = document.getElementById('backgroundOnlyCheckbox');
+    if (bgCheckbox) {
+        bgCheckbox.addEventListener('change', (e) => {
+            state.showBackgroundOnly = e.target.checked;
+            window.appState.showBackgroundOnly = e.target.checked;
+            updateLayersCallback();
+        });
+    }
 }
 
 /**
@@ -849,6 +883,8 @@ function refreshColorLegend(state) {
             updateColorLegend({ title: 'Gene Count', min: 0, max: state.maxTotalGeneCount || 1 });
         } else if (spotMode === 'gamma') {
             updateColorLegend({ title: 'Gamma', min: 0, max: window.appState?.maxGamma || 1 });
+        } else if (spotMode === 'eta') {
+            updateColorLegend({ title: 'Eta', min: 0, max: window.appState?.maxEta || 1 });
         } else {
             updateColorLegend(null);
         }
