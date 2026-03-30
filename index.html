@@ -64,6 +64,38 @@
             </div>
         </div>
             <div class="controls-content">
+            <!-- Cell Classes Section (Collapsible) -->
+            <div class="control-section">
+                <h3 class="section-label collapsible-header" id="cellClassesHeader">
+                    <span class="collapse-icon">▼</span> Cell Classes
+                </h3>
+                <div class="section-content" id="cellClassesContent">
+                    <div class="cell-class-controls">
+                        <button class="show-all-btn" id="showAllCellClassesBtn">Show All</button>
+                        <button class="hide-all-btn" id="hideAllCellClassesBtn">Hide All</button>
+                    </div>
+                    <div class="cell-class-filter-container" id="cellClassFilterContainer">
+                        <input type="text" class="filter-input" id="cellClassFilter" placeholder="Filter classes…" autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="cell-class-list" id="cellClassesList">
+                        <div class="loading-message">Loading cell classes...</div>
+                    </div>
+                    <div class="legend-resize-handle" id="cellClassesResizeHandle" title="Drag to resize"></div>
+                </div>
+            </div>
+
+            <!-- Cell Charts Section (Collapsible) -->
+            <div class="control-section">
+                <h3 class="section-label collapsible-header" id="cellChartsHeader">
+                    <span class="collapse-icon">▼</span> Cell Charts
+                </h3>
+                <div class="section-content" id="cellChartsContent">
+                    <button id="classesByZBtn" title="Cell Class Distribution by Z-Plane">Classes by Z</button>
+                    <button id="classPercentageBtn" title="Overall Cell Class Distribution">Class Distribution</button>
+                    <button id="expressionHistogramBtn" title="Gene count distribution per cell class (pciSeq output)">Class Gene Counts</button>
+                </div>
+            </div>
+
             <!-- Genes Section (Collapsible) -->
             <div class="control-section">
                 <h3 class="section-label collapsible-header" id="genesHeader">
@@ -74,18 +106,16 @@
                         <button class="show-all-btn" id="showAllGenesBtn">Show All</button>
                         <button class="hide-all-btn" id="hideAllGenesBtn">Hide All</button>
                     </div>
-                    <button class="hide-all-btn" id="importGeneColorsBtn" title="Import gene colours and glyphs (Ctrl+click to replace all)">Import colours</button>
-                    <input type="file" id="geneColorFileInput" accept=".json" style="display:none" />
                     <div class="cell-class-filter-container" id="geneFilterContainer">
                         <input type="text" class="filter-input" id="geneFilter" placeholder="Filter genes…" autocomplete="off" spellcheck="false">
                     </div>
                     <div class="cell-class-list" id="genesList">
                         <div class="loading-message">Loading genes...</div>
                     </div>
-                    <div id="geneColorFileStatus" class="file-status" aria-live="polite"></div>
                     <div class="legend-resize-handle" id="genesResizeHandle" title="Drag to resize"></div>
                 </div>
             </div>
+
             <!-- Gene Controls Section (Collapsible) -->
             <div class="control-section">
                 <h3 class="section-label collapsible-header" id="geneControlsHeader">
@@ -108,52 +138,11 @@
                         <input type="range" id="intensityFilterSlider" min="0" max="1.0" step="0.01" value="0">
                         <span id="intensityFilterValue">0.00</span>
                     </div>
-                    <label class="toggle-switch" title="When enabled, all markers use the same size regardless of plane distance">
+                    <label class="toggle-switch">
                         <span class="label-text">Uniform Size</span>
                         <input type="checkbox" id="uniformSizeToggle">
                         <span class="switch-slider"></span>
                     </label>
-                </div>
-            </div>
-
-            <!-- Cell Classes Section (Collapsible) -->
-            <div class="control-section">
-                <h3 class="section-label collapsible-header" id="cellClassesHeader">
-                    <span class="collapse-icon">▼</span> Cell Classes
-                </h3>
-                <div class="section-content" id="cellClassesContent">
-                    <div class="cell-class-controls">
-                        <button class="show-all-btn" id="showAllCellClassesBtn">Show All</button>
-                        <button class="hide-all-btn" id="hideAllCellClassesBtn">Hide All</button>
-                    </div>
-                    <button class="hide-all-btn" id="importClassColorsBtn" title="Import class colours (Ctrl+click to replace all)">Import colours</button>
-                    <!-- Hidden file input for importing class colour schemes -->
-                    <input type="file" id="classColorFileInput" accept=".json" style="display:none" />
-                    <!-- Sticky filter container (pciSeq_3d pattern) -->
-                    <div class="cell-class-filter-container" id="cellClassFilterContainer">
-                        <input type="text" class="filter-input" id="cellClassFilter" placeholder="Filter classes…" autocomplete="off" spellcheck="false">
-                    </div>
-                    <div class="cell-class-list" id="cellClassesList">
-                        <!-- Cell classes will be populated here, ranked by count -->
-                        <div class="loading-message">Loading cell classes...</div>
-                    </div>
-                    <!-- Import status message placed below the list so it doesn't push the filter -->
-                    <div id="classColorFileStatus" class="file-status" aria-live="polite"></div>
-                    <!-- Drag handle to resize list height (pciSeq_3d pattern) -->
-                    <div class="legend-resize-handle" id="cellClassesResizeHandle" title="Drag to resize"></div>
-                </div>
-            </div>
-
-            <!-- Cell Charts Section (Collapsible) -->
-            <div class="control-section">
-                <h3 class="section-label collapsible-header" id="cellChartsHeader">
-                    <span class="collapse-icon">▼</span> Cell Charts
-                </h3>
-                <div class="section-content" id="cellChartsContent">
-                    <button id="cellClassViewerBtn" onclick="openCellClassViewer()" title="Open Christina">Christina</button>
-                    <button id="classesByZBtn" title="Cell Class Distribution by Z-Plane">Classes by Z</button>
-                    <button id="classPercentageBtn" title="Overall Cell Class Distribution">Class Distribution</button>
-                    <button id="expressionHistogramBtn" title="Gene count distribution per cell class (pciSeq output)">Class Gene Counts</button>
                 </div>
             </div>
 
@@ -234,7 +223,7 @@
                     <span class="collapse-icon">▼</span> Tools
                 </h3>
                 <div class="section-content" id="toolsContent">
-                    <label class="toggle-switch" title="Rectangular Selection Tool">
+                    <label class="toggle-switch">
                         <span class="label-text">Selection tool</span>
                         <input type="checkbox" id="selectionToolBtn">
                         <span class="switch-slider"></span>
