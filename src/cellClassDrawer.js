@@ -282,24 +282,24 @@ export function initCellClassDrawer() {
         });
     } catch {}
 
-    // Master tri-state checkbox (GitHub-style)
-    const toggleAll = document.getElementById('classesToggleAll');
-    if (toggleAll) {
-        // Initialize state
-        try { updateClassesToggleAllCheckboxState(); } catch {}
-
-        toggleAll.addEventListener('change', () => {
+    const showAllBtn = document.getElementById('showAllCellClassesBtn');
+    if (showAllBtn) {
+        showAllBtn.addEventListener('click', () => {
             const listContainer = document.getElementById('cellClassesList');
-            const selectAll = Boolean(toggleAll.checked);
-            if (selectAll) {
-                state.allCellClasses.forEach(c => state.selectedCellClasses.add(c));
-                if (listContainer) listContainer.querySelectorAll('.cell-class-item').forEach(it => it.classList.remove('dim'));
-            } else {
-                state.selectedCellClasses.clear();
-                if (listContainer) listContainer.querySelectorAll('.cell-class-item').forEach(it => it.classList.add('dim'));
-            }
+            state.allCellClasses.forEach(c => state.selectedCellClasses.add(c));
+            if (listContainer) listContainer.querySelectorAll('.cell-class-item').forEach(it => it.classList.remove('dim'));
+            populateCellClassDrawer();
+            if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
+        });
+    }
 
-            updateClassesToggleAllCheckboxState();
+    const hideAllBtn = document.getElementById('hideAllCellClassesBtn');
+    if (hideAllBtn) {
+        hideAllBtn.addEventListener('click', () => {
+            const listContainer = document.getElementById('cellClassesList');
+            state.selectedCellClasses.clear();
+            if (listContainer) listContainer.querySelectorAll('.cell-class-item').forEach(it => it.classList.add('dim'));
+            populateCellClassDrawer();
             if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
         });
     }
@@ -449,18 +449,4 @@ function setupCellClassListResize() {
             window.localStorage && window.localStorage.setItem('cellClassesListHeight', String(h));
         } catch {}
     });
-}
-
-function updateClassesToggleAllCheckboxState() {
-    const cb = document.getElementById('classesToggleAll');
-    if (!cb) return;
-    const total = state.allCellClasses ? state.allCellClasses.size : 0;
-    const selected = state.selectedCellClasses ? state.selectedCellClasses.size : 0;
-    const all = total > 0 && selected === total;
-    const none = selected === 0;
-
-    cb.indeterminate = !all && !none;
-    cb.checked = all;
-    cb.setAttribute('aria-checked', cb.indeterminate ? 'mixed' : (all ? 'true' : 'false'));
-    cb.disabled = total === 0;
 }

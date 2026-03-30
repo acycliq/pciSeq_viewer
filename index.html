@@ -71,12 +71,10 @@
                 </h3>
                 <div class="section-content" id="genesContent">
                     <div class="cell-class-controls">
-                        <div class="toggle-all-group" id="genesToggleAllGroup">
-                            <label for="genesToggleAll" class="toggle-all-label">Show All</label>
-                            <input type="checkbox" id="genesToggleAll" class="toggle-all-checkbox" aria-checked="false">
-                        </div>
-                        <button class="hide-all-btn" id="importGeneColorsBtn" title="Import gene colours and glyphs (Ctrl+click to replace all)">Import colours</button>
+                        <button class="show-all-btn" id="showAllGenesBtn">Show All</button>
+                        <button class="hide-all-btn" id="hideAllGenesBtn">Hide All</button>
                     </div>
+                    <button class="hide-all-btn" id="importGeneColorsBtn" title="Import gene colours and glyphs (Ctrl+click to replace all)">Import colours</button>
                     <input type="file" id="geneColorFileInput" accept=".json" style="display:none" />
                     <div class="cell-class-filter-container" id="geneFilterContainer">
                         <input type="text" class="filter-input" id="geneFilter" placeholder="Filter genes…" autocomplete="off" spellcheck="false">
@@ -110,10 +108,11 @@
                         <input type="range" id="intensityFilterSlider" min="0" max="1.0" step="0.01" value="0">
                         <span id="intensityFilterValue">0.00</span>
                     </div>
-                    <div class="control-item">
+                    <label class="toggle-switch" title="When enabled, all markers use the same size regardless of plane distance">
+                        <span class="label-text">Uniform Size</span>
                         <input type="checkbox" id="uniformSizeToggle">
-                        <label for="uniformSizeToggle" title="When enabled, all markers use the same size regardless of plane distance">Uniform Size</label>
-                    </div>
+                        <span class="switch-slider"></span>
+                    </label>
                 </div>
             </div>
 
@@ -124,12 +123,10 @@
                 </h3>
                 <div class="section-content" id="cellClassesContent">
                     <div class="cell-class-controls">
-                        <div class="toggle-all-group" id="classesToggleAllGroup">
-                            <label for="classesToggleAll" class="toggle-all-label">Show All</label>
-                            <input type="checkbox" id="classesToggleAll" class="toggle-all-checkbox" aria-checked="false">
-                        </div>
-                        <button class="hide-all-btn" id="importClassColorsBtn" title="Import class colours (Ctrl+click to replace all)">Import colours</button>
+                        <button class="show-all-btn" id="showAllCellClassesBtn">Show All</button>
+                        <button class="hide-all-btn" id="hideAllCellClassesBtn">Hide All</button>
                     </div>
+                    <button class="hide-all-btn" id="importClassColorsBtn" title="Import class colours (Ctrl+click to replace all)">Import colours</button>
                     <!-- Hidden file input for importing class colour schemes -->
                     <input type="file" id="classColorFileInput" accept=".json" style="display:none" />
                     <!-- Sticky filter container (pciSeq_3d pattern) -->
@@ -181,23 +178,26 @@
                     <span class="collapse-icon">▼</span> Layers
                 </h3>
                 <div class="section-content" id="layersContent">
-                    <div class="control-item">
+                    <label class="toggle-switch">
+                        <span class="label-text">Dapi</span>
                         <input type="checkbox" id="showTiles" checked>
-                        <label for="showTiles">Dapi</label>
-                    </div>
-                    <div class="control-item">
+                        <span class="switch-slider"></span>
+                    </label>
+                    <label class="toggle-switch">
+                        <span class="label-text">Cells</span>
                         <input type="checkbox" id="showPolygons" checked>
-                        <label for="showPolygons">Cells</label>
-                    </div>
+                        <span class="switch-slider"></span>
+                    </label>
                     <div class="control-item polygon-opacity-item">
                         <label for="polygonOpacitySlider">Opacity</label>
                         <input type="range" id="polygonOpacitySlider" min="0.0" max="1.0" step="0.1">
                         <span id="polygonOpacityValue">0.4</span>
                     </div>
-                    <div class="control-item">
+                    <label class="toggle-switch">
+                        <span class="label-text">All Planes</span>
                         <input type="checkbox" id="zProjectionToggle">
-                        <label for="zProjectionToggle">All Planes</label>
-                    </div>
+                        <span class="switch-slider"></span>
+                    </label>
                     <div id="zProjectionControls" style="display: none; margin-left: 15px;">
                         <div class="control-item" style="margin-top: 5px;">
                             <label for="zProjectionOpacity" style="font-size: 11px;">Overlay:</label>
@@ -206,10 +206,11 @@
                             <span id="zProjectionOpacityValue" style="font-size: 10px;">30%</span>
                         </div>
                     </div>
-                    <div class="control-item">
+                    <label class="toggle-switch">
+                        <span class="label-text">Cell Projection</span>
                         <input type="checkbox" id="cellProjectionToggle">
-                        <label for="cellProjectionToggle">Cell Projection</label>
-                    </div>
+                        <span class="switch-slider"></span>
+                    </label>
                     <div id="cellProjectionControls" style="display: none; margin-left: 15px;">
                         <div class="control-item" style="margin-top: 5px;">
                             <label for="geneCountSlider" style="font-size: 11px;">Min Genes:</label>
