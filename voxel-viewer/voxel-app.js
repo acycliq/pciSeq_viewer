@@ -55,10 +55,27 @@ function getDataset() {
         console.log('Selection spots:', window.opener.lastSelectionResults.spots.count);
         console.log('Selection cells:', window.opener.lastSelectionResults.cells.count);
         return window.opener.lastSelectionResults;
-    } else {
-        console.log(' Using demo test dataset');
-        return generateTestDataset();
     }
+
+    if (typeof window.generateTestDataset === 'function') {
+        console.log('Using demo test dataset');
+        return window.generateTestDataset();
+    }
+
+    throw new Error('Voxel viewer requires selection data from the main viewer. Open it via Ctrl+drag with the Selection tool enabled.');
+}
+
+function showFatalError(error) {
+    const container = document.getElementById('container');
+    if (!container) return;
+
+    const message = (error && error.message) ? error.message : 'Unknown error';
+    container.innerHTML = `
+        <div style="padding: 24px; max-width: 640px; color: #f4f4f4; font-family: system-ui, sans-serif;">
+            <h2 style="margin: 0 0 12px;">Voxel Viewer Error</h2>
+            <p style="margin: 0; line-height: 1.5;">${message}</p>
+        </div>
+    `;
 }
 
 // Tooltip now provided by ui/tooltip.js
@@ -623,6 +640,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Bio demo initialized with', blockData.geneData.length, 'gene spots and', blockData.stoneData.length, 'stone blocks');
 
     }).catch(error => {
-        console.error(' Failed to initialize chunk viewer:', error);
+        console.error('Failed to initialize chunk viewer:', error);
+        showFatalError(error);
     });
 });
