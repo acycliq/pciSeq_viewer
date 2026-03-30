@@ -156,6 +156,7 @@
                     <button id="cellClassViewerBtn" onclick="openCellClassViewer()" title="Open Christina">Christina</button>
                     <button id="classesByZBtn" title="Cell Class Distribution by Z-Plane">Classes by Z</button>
                     <button id="classPercentageBtn" title="Overall Cell Class Distribution">Class Distribution</button>
+                    <button id="expressionHistogramBtn" title="Gene count distribution per cell class (pciSeq output)">Class Gene Counts</button>
                 </div>
             </div>
 
@@ -216,6 +217,12 @@
                                    style="width: 80px; margin: 0 5px;">
                             <span id="geneCountValue" style="font-size: 10px;">0</span>
                         </div>
+                        <div class="control-item" style="margin-top: 5px;">
+                            <label for="geneCountMaxSlider" style="font-size: 11px;">Max Genes:</label>
+                            <input type="range" id="geneCountMaxSlider" min="0" max="100" step="1" value="100"
+                                   style="width: 80px; margin: 0 5px;">
+                            <span id="geneCountMaxValue" style="font-size: 10px;">100</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -226,10 +233,11 @@
                     <span class="collapse-icon">▼</span> Tools
                 </h3>
                 <div class="section-content" id="toolsContent">
-                    <button id="selectionToolBtn" class="accent-btn" title="Rectangular Selection">
-                        <img src="selection_tool.png" alt="Selection">
-                        <span>Selection</span>
-                    </button>
+                    <label class="toggle-switch" title="Rectangular Selection Tool">
+                        <span class="label-text">Selection tool</span>
+                        <input type="checkbox" id="selectionToolBtn">
+                        <span class="switch-slider"></span>
+                    </label>
                 </div>
             </div>
         </div>
@@ -369,28 +377,38 @@
     </div>
 
     <!-- Cell Info Panel (Bottom Right) -->
-    <div id="cellInfoPanel" class="cell-info-panel" style="display: none;">
+    <div id="cellInfoPanel" class="cell-info-panel">
         <div class="cell-info-header">
             <span id="cellInfoTitle">Cell Information</span>
-            <button id="cellInfoClose" class="widget-close-btn">×</button>
+            <button id="cellInfoClose" class="widget-close-btn">&times;</button>
         </div>
         <div class="cell-info-content">
             <div class="cell-info-layout">
-                <!-- Gene Counts Table (left) -->
-                <div class="cell-info-left">
+                <!-- LEFT: Gene Counts Table -->
+                <div class="cell-info-column cell-info-genes">
                     <table id="geneCountsTable" class="display compact"></table>
                 </div>
-                <!-- Donut Chart (right) -->
-                <div class="cell-info-right">
-                    <div class="cell-info-chart-container">
-                        <div id="cellInfoChart">
-                            <svg width="280" height="160"></svg>
-                        </div>
+                <!-- CENTER: Donut Chart (clean, no labels) -->
+                <div class="cell-info-column cell-info-donut">
+                    <div id="cellInfoChart">
+                        <svg width="180" height="180"></svg>
                     </div>
+                </div>
+                <!-- RIGHT: Class Legend (scrollable) -->
+                <div class="cell-info-column cell-info-legend">
+                    <div id="classLegend"></div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Cell Lookup (command palette) -->
+    <input type="text"
+           id="cellSearchInput"
+           class="cell-search-bar"
+           placeholder="Go to cell..."
+           autocomplete="off"
+           style="display:none;" />
 
     <script>
         (function() {

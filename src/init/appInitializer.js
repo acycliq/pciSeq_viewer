@@ -14,10 +14,12 @@ import { showLoading, hideLoading, showTooltip } from '../ui/uiHelpers.js';
 import {
     loadGeneData,
     loadCellData,
-    loadPolygonData,
+    loadPolygonData
+} from '../data/dataLoaders.js';
+import {
     assignColorsToCellClasses,
     buildGeneSpotIndexes
-} from '../data/dataLoaders.js';
+} from '../data/cellIndexes.js';
 import { PolygonBoundaryHighlighter } from '../ui/polygonInteractions.js';
 import { RectangularSelector } from '../ui/rectangularSelector.js';
 import { applyPendingClassColorSchemeIfAny } from '../classColorImport.js';
@@ -169,15 +171,20 @@ export function initializeRectangularSelector() {
     // Ensure it's accessible via window.appState
     window.appState.rectangularSelector = state.rectangularSelector;
 
-    // Setup selection tool button
+    // Setup selection tool switch (checkbox)
     const selectionToolBtn = document.getElementById('selectionToolBtn');
     if (selectionToolBtn) {
-        selectionToolBtn.addEventListener('click', () => {
-            state.rectangularSelector.toggle();
+        selectionToolBtn.addEventListener('change', (e) => {
+            state.rectangularSelector.isActive = e.target.checked;
+            const container = document.getElementById('map');
+            if (container) {
+                container.style.cursor = e.target.checked ? 'crosshair' : 'default';
+            }
+            console.log('Selection mode:', e.target.checked ? 'ON' : 'OFF');
         });
     }
 
-    console.log('Rectangular selector ready - Click selection tool icon to toggle');
+    console.log('Rectangular selector ready - Toggle selection tool switch to activate');
 }
 
 /**
@@ -205,7 +212,7 @@ function computeMaxGeneCount() {
             const v = cell && typeof cell.totalGeneCount === 'number' ? cell.totalGeneCount : 0;
             if (v > maxCount) maxCount = v;
         });
-        state.maxTotalGeneCount = Math.max(0, maxCount) || 100;
+        state.maxTotalGeneCount = Math.ceil(Math.max(0, maxCount));
 
         const slider = document.getElementById('geneCountSlider');
         const valueEl = document.getElementById('geneCountValue');
@@ -217,6 +224,16 @@ function computeMaxGeneCount() {
                 if (valueEl) valueEl.textContent = '0';
             }
         }
+
+        const maxSlider = document.getElementById('geneCountMaxSlider');
+        const maxValueEl = document.getElementById('geneCountMaxValue');
+        if (maxSlider) {
+            maxSlider.max = String(state.maxTotalGeneCount);
+            maxSlider.value = String(state.maxTotalGeneCount);
+            state.geneCountMaxThreshold = state.maxTotalGeneCount;
+            if (maxValueEl) maxValueEl.textContent = String(state.maxTotalGeneCount);
+        }
+
         console.log(`Max total gene count computed: ${state.maxTotalGeneCount}`);
     } catch (e) {
         console.warn('Failed to compute max total gene count for slider bounds:', e);

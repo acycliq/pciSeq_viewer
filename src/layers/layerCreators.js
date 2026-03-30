@@ -33,9 +33,9 @@ const {DeckGL, OrthographicView, COORDINATE_SYSTEM, TileLayer, BitmapLayer, GeoJ
 // Reusable DataFilterExtension instance (avoid allocating on every render)
 const CELL_FILTER_EXTENSION = new DataFilterExtension({ filterSize: 1 });
 
-// Arrow boundary buffers cache (per plane) and lazy init for worker facade
-export let arrowBoundaryCache = new Map();
-export let arrowGeojsonCache = new Map();
+// Arrow boundary buffers cache (per plane) - shared via boundaryCache module
+import { arrowBoundaryCache, arrowGeojsonCache } from './boundaryCache.js';
+export { arrowBoundaryCache, arrowGeojsonCache } from './boundaryCache.js';
 let arrowInitialized = false;
 async function ensureArrowInitialized() {
     if (arrowInitialized) return;

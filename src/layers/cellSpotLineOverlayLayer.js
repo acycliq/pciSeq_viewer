@@ -7,7 +7,6 @@
 
 import { IMG_DIMENSIONS } from '../../config/constants.js';
 import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
-import { arrowGeojsonCache } from './layerCreators.js';
 
 const { LineLayer, COORDINATE_SYSTEM } = deck;
 
@@ -25,14 +24,8 @@ function intersects(bounds, item) {
     );
 }
 
-function getPlaneFeatureCollection(plane, polygonCache) {
-    if (polygonCache && polygonCache.has(plane)) return polygonCache.get(plane);
-    if (arrowGeojsonCache && arrowGeojsonCache.has(plane)) return arrowGeojsonCache.get(plane);
-    return null;
-}
-
 function getPlaneBoundsEntries(plane, polygonCache) {
-    const fc = getPlaneFeatureCollection(plane, polygonCache);
+    const fc = polygonCache.get(plane);
     if (!fc || !Array.isArray(fc.features)) return [];
 
     const cached = planeBoundsCache.get(plane);
@@ -140,21 +133,22 @@ function makeViewportKey(viewportBounds) {
     ].join('|');
 }
 
-function createLineLayerFromData(lineData) {
-    if (!Array.isArray(lineData) || lineData.length === 0) return null;
+function createLineLayerFromBinary(binary) {
+    if (!binary || !binary.length) return null;
     return new LineLayer({
         id: 'cell-spot-lines-overlay',
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-        data: lineData,
+        data: {
+            length: binary.length,
+            attributes: {
+                getSourcePosition: { value: binary.sourcePositions, size: 3 },
+                getTargetPosition: { value: binary.targetPositions, size: 3 },
+                getColor: { value: binary.lineColors, size: 4 }
+            }
+        },
         pickable: false,
-        getSourcePosition: d => d.sourcePosition,
-        getTargetPosition: d => d.targetPosition,
-        getColor: d => d.color,
         getWidth: 1.5,
-        widthUnits: 'pixels',
-        parameters: {
-            depthTest: false
-        }
+        widthUnits: 'pixels'
     });
 }
 
@@ -165,28 +159,32 @@ export function createCellSpotLineOverlayLayer(state, viewportBounds) {
 
     const plane = Number(state.currentPlane) || 0;
     const boundsEntries = getPlaneBoundsEntries(plane, state.polygonCache);
-    if (boundsEntries.length === 0) {
-        const hasStateCache = Boolean(state.polygonCache && state.polygonCache.has(plane));
-        const hasArrowCache = Boolean(arrowGeojsonCache && arrowGeojsonCache.has(plane));
-        console.warn('[cell-spot-overlay] no polygon entries for current plane', plane, { hasStateCache, hasArrowCache });
-        return null;
-    }
+    if (boundsEntries.length === 0) return null;
 
-    let visibleCells = boundsEntries.filter(entry => intersects(viewportBounds, entry));
-    if (visibleCells.length === 0) {
-        // Fallback for viewport-math edge cases: keep functionality working
-        visibleCells = boundsEntries;
-    }
-    if (visibleCells.length === 0) {
-        console.warn('[cell-spot-overlay] no visible cells resolved for viewport');
-        return null;
-    }
+    const visibleCells = boundsEntries.filter(entry => intersects(viewportBounds, entry));
+    if (visibleCells.length === 0) return null;
 
     const cacheKey = `p:${plane}|v:${makeViewportKey(viewportBounds)}|cells:${visibleCells.length}`;
     if (overlayCache.key === cacheKey) {
-        return createLineLayerFromData(overlayCache.data);
+        return createLineLayerFromBinary(overlayCache.data);
     }
-    const lineData = [];
+
+    let lineCount = 0;
+    for (const cell of visibleCells) {
+        const spots = getSpotsForCell(state.cellToSpotsIndex, cell.label);
+        if (!spots || spots.length === 0) continue;
+        lineCount += spots.length;
+    }
+
+    if (lineCount === 0) {
+        overlayCache = { key: cacheKey, data: null };
+        return null;
+    }
+
+    const src = new Float32Array(lineCount * 3);
+    const dst = new Float32Array(lineCount * 3);
+    const colors = new Uint8Array(lineCount * 4);
+    let w = 0;
 
     for (const cell of visibleCells) {
         const centroid = getCellCentroidTile(cell.label, state.cellDataMap);
@@ -198,19 +196,32 @@ export function createCellSpotLineOverlayLayer(state, viewportBounds) {
         for (const spot of spots) {
             const [sx, sy] = getSpotTilePosition(spot);
             const c = getGeneLineColor(spot.gene);
-            lineData.push({
-                sourcePosition: [centroid[0], centroid[1], 0],
-                targetPosition: [sx, sy, 0],
-                color: c
-            });
+
+            src[3 * w] = centroid[0];
+            src[3 * w + 1] = centroid[1];
+            src[3 * w + 2] = 0;
+
+            dst[3 * w] = sx;
+            dst[3 * w + 1] = sy;
+            dst[3 * w + 2] = 0;
+
+            colors[4 * w] = c[0];
+            colors[4 * w + 1] = c[1];
+            colors[4 * w + 2] = c[2];
+            colors[4 * w + 3] = c[3];
+            w++;
         }
     }
 
-    if (lineData.length === 0) {
-        console.warn('[cell-spot-overlay] visible cells found but no spot links produced');
+    if (w === 0) {
         overlayCache = { key: cacheKey, data: null };
         return null;
     }
-    overlayCache = { key: cacheKey, data: lineData };
-    return createLineLayerFromData(lineData);
+
+    const sourcePositions = (w === lineCount) ? src : src.subarray(0, w * 3);
+    const targetPositions = (w === lineCount) ? dst : dst.subarray(0, w * 3);
+    const lineColors = (w === lineCount) ? colors : colors.subarray(0, w * 4);
+    const binary = { length: w, sourcePositions, targetPositions, lineColors };
+    overlayCache = { key: cacheKey, data: binary };
+    return createLineLayerFromBinary(binary);
 }

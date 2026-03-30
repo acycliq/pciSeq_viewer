@@ -22,8 +22,12 @@ import Perf from '../utils/runtimePerf.js';
 // === UI IMPORTS ===
 import { showLoading, hideLoading, showTooltip } from './ui/uiHelpers.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
-import { initGeneDrawer } from './geneDrawer.js';
-import { updateCellInfo, setupCellInfoPanel, initCellInfoColorScheme } from './cellInfoPanel.js';
+import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
+import {
+    showExpressionHistogramWidget,
+    hideExpressionHistogramWidget
+} from './expressionHistogramChart.js';
+import { init as initCellInfoPanel, update as updateCellInfo } from './cellInfoPanel/index.js';
 
 // === LAYER IMPORTS ===
 import {
@@ -38,7 +42,7 @@ import {
 import { buildGlobalZProjection } from './layers/zProjectionOverlay.js';
 
 // === DATA IMPORTS ===
-import { buildGeneSpotIndexes } from './data/dataLoaders.js';
+import { buildGeneSpotIndexes } from './data/cellIndexes.js';
 
 // === EVENT HANDLING IMPORTS ===
 import { setupEventHandlers, setupAdvancedKeyboardShortcuts } from './events/eventHandlers.js';
@@ -139,8 +143,55 @@ window.getVisibleRegions = getVisibleRegions;
 // Coordinate transformation for child windows
 window.transformToTileCoordinates = transformToTileCoordinates;
 
-// Cell info panel function
+// Cell info panel function (exposed for backwards compatibility)
 window.updateCellInfo = updateCellInfo;
+
+// Expression histogram chart functions
+window.showExpressionHistogramWidget = showExpressionHistogramWidget;
+window.hideExpressionHistogramWidget = hideExpressionHistogramWidget;
+
+// Expose lightweight cell metadata lookup for child windows (voxel viewer)
+// Returns { className, totalGeneCount, position, plane_id, probability } or null if not available
+window.getCellMeta = (cellId) => {
+    try {
+        if (!state || !state.cellDataMap) return null;
+        const cell = state.cellDataMap.get(Number(cellId));
+        if (!cell) return null;
+
+        const classArr = cell?.classification?.className;
+        const className = Array.isArray(classArr) && classArr.length > 0
+            ? String(classArr[0])
+            : 'Unknown';
+
+        const total = (typeof cell.totalGeneCount === 'number') ? cell.totalGeneCount : 0;
+
+        let probability = undefined;
+        if (cell?.classification?.probability && Array.isArray(cell?.classification?.probability)) {
+            probability = cell.classification.probability[0];
+        }
+
+        let plane_id = undefined;
+        if (cell.position && cell.position.z !== undefined) {
+            const cfg = window.config ? window.config() : null;
+            if (cfg && Array.isArray(cfg.voxelSize)) {
+                const [xVoxel, , zVoxel] = cfg.voxelSize;
+                plane_id = Math.floor(cell.position.z * xVoxel / zVoxel);
+            } else {
+                plane_id = Math.floor(cell.position.z);
+            }
+        }
+
+        return {
+            className,
+            totalGeneCount: total,
+            position: cell.position,
+            plane_id,
+            probability
+        };
+    } catch (e) {
+        return null;
+    }
+};
 
 // === ZOOM MODE TRACKING ===
 let __lastZoomMode = null; // 'pc' or 'icon'
@@ -458,13 +509,11 @@ async function init() {
 
 // === DOM CONTENT LOADED HANDLER ===
 document.addEventListener('DOMContentLoaded', () => {
-    // Setup cell info panel close button
-    setupCellInfoPanel();
+    // Initialize cell info panel (close button, pin controller, color scheme)
+    initCellInfoPanel();
 
     // Initialize D3 components when DOM is ready
     if (typeof d3 !== 'undefined') {
-        // Initialize color scheme mapping
-        initCellInfoColorScheme();
 
         // Initialize gene distribution chart
         initGeneDistributionChart();

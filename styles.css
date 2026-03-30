@@ -16,6 +16,44 @@
     z-index: 2000;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     overflow: hidden;
+    /* Transition: fade + slide up */
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+    visibility: hidden;
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+}
+
+.cell-info-panel.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+    visibility: visible;
+}
+
+.cell-info-panel.pinned {
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.2);
+}
+
+.cell-info-panel.pinned .cell-info-header {
+    border-bottom-color: rgba(59, 130, 246, 0.3);
+}
+
+.cell-info-panel.pinned:not(.frozen) .cell-info-header::after {
+    content: 'Shift to unpin';
+    font-size: 10px;
+    font-weight: 400;
+    color: rgba(59, 130, 246, 0.6);
+    margin-left: 8px;
+}
+
+.cell-info-panel.pinned.frozen .cell-info-header::after {
+    content: 'Shift to resume hover';
+    font-size: 10px;
+    font-weight: 400;
+    color: rgba(59, 130, 246, 0.6);
+    margin-left: 8px;
 }
 
 .cell-info-header {
@@ -35,45 +73,103 @@
     overflow-y: auto;
 }
 
-/* Two-column layout: table left, donut right */
+/* Three-column layout: gene table | donut | class legend */
 .cell-info-layout {
     display: flex;
-    gap: 4px;
-    align-items: stretch;
+    gap: 8px;
+    align-items: flex-start;
 }
 
-.cell-info-left, .cell-info-right {
-    flex: 0 1 auto;
+.cell-info-column {
+    flex: 0 0 auto;
 }
 
-/* Constrain heights to match donut svg height */
-.cell-info-left {
-    max-height: 160px;
-    overflow: auto;
+.cell-info-genes {
+    max-height: 180px;
+    overflow-y: auto;
+    min-width: 120px;
+    max-width: 160px;
 }
 
-.cell-info-right #cellInfoChart svg {
+.cell-info-donut {
+    flex: 0 0 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cell-info-donut #cellInfoChart svg {
     display: block;
 }
 
-.cell-info-chart-container {
-    text-align: center;
-    margin: 0;
+.cell-info-legend {
+    max-height: 180px;
+    overflow-y: auto;
+    min-width: 140px;
+    max-width: 200px;
 }
 
-.cell-info-tables {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.table-section h4 {
-    margin: 0 0 8px 0;
+/* Class legend rows */
+#classLegend {
     font-size: 11px;
-    font-weight: 600;
+}
+
+.legend-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.15s ease;
+}
+
+.legend-row:hover,
+.legend-row.highlight {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.legend-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #e8e8f0;
+}
+
+.legend-prob {
     color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Scrollbar for legend and gene table */
+.cell-info-legend::-webkit-scrollbar,
+.cell-info-genes::-webkit-scrollbar {
+    width: 4px;
+}
+
+.cell-info-legend::-webkit-scrollbar-track,
+.cell-info-genes::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.cell-info-legend::-webkit-scrollbar-thumb,
+.cell-info-genes::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.cell-info-legend::-webkit-scrollbar-thumb:hover,
+.cell-info-genes::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
 }
 
 .cell-info-panel table {
@@ -130,25 +226,67 @@
 }
 
 /* Donut chart styles */
-.cell-info-panel .slices path {
+.cell-info-panel .slices path.slice {
     stroke: rgba(255, 255, 255, 0.2);
     stroke-width: 1px;
+    transition: opacity 0.15s ease, stroke-width 0.15s ease;
 }
 
-.cell-info-panel .sliceLabels text {
-    font-size: 10px;
-    fill: #e8e8f0;
-    pointer-events: none;
+.cell-info-panel .slices path.slice.dimmed {
+    opacity: 0.3;
 }
 
-.cell-info-panel .lines polyline {
-    fill: none;
-    stroke: rgba(255, 255, 255, 0.45);
-    stroke-width: 1px;
+.cell-info-panel .slices path.slice.highlight {
+    stroke: #ffffff;
+    stroke-width: 2px;
 }
 
 .donutTooltip {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Cell Lookup - command palette bar */
+.cell-search-bar {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 320px;
+    padding: 10px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    background: rgba(30, 30, 30, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #e0e0e0;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    z-index: 3000;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    transition: opacity 0.15s ease, border-color 0.2s ease;
+}
+
+.cell-search-bar::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.cell-search-bar:focus {
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.cell-search-bar.error {
+    border-color: rgba(220, 80, 80, 0.7);
+    color: #e06060;
+    animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(-50%); }
+    20%      { transform: translateX(calc(-50% - 6px)); }
+    40%      { transform: translateX(calc(-50% + 6px)); }
+    60%      { transform: translateX(calc(-50% - 4px)); }
+    80%      { transform: translateX(calc(-50% + 4px)); }
 }
 
 /* Cell Search Modal */
@@ -1429,3 +1567,170 @@ body {
     cursor: pointer;
 }
 .about-modal-close:hover { color: #fff; }
+
+/* ============================================
+   Glass Widget System (Glassmorphism)
+   ============================================ */
+.glass-widget {
+    position: fixed;
+    background: rgba(17, 17, 17, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    z-index: 2000;
+    overflow: hidden;
+    color: #e5e5e5;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    transition: opacity 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+                transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+    pointer-events: none;
+}
+
+.glass-widget.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: all;
+}
+
+.glass-widget.hidden {
+    display: none;
+}
+
+.glass-widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: grab;
+    user-select: none;
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.glass-widget-header:active {
+    cursor: grabbing;
+}
+
+.glass-widget-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.glass-widget-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.glass-control-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    font-size: 18px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.glass-control-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.glass-widget-toolbar {
+    padding: 6px 12px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-widget-content {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    padding: 0;
+}
+
+.glass-loader {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 13px;
+}
+
+.glass-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    z-index: 10;
+}
+
+.glass-resize-handle::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid rgba(255, 255, 255, 0.3);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.glass-select {
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    outline: none;
+    min-width: 120px;
+    cursor: pointer;
+    transition: all 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 24px;
+}
+
+.glass-select option {
+    background: #111;
+    color: #fff;
+}
+
+/* Chart Tooltip */
+.chart-tooltip {
+    position: fixed;
+    background: rgba(20, 20, 20, 0.95) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    font-family: 'Segoe UI', sans-serif !important;
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    pointer-events: none;
+    z-index: 10000;
+    transition: opacity 0.15s ease;
+    opacity: 0;
+}
