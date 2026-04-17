@@ -396,6 +396,19 @@ ipcMain.handle('check-spot-get-state', () => {
   return { enabled: false };
 });
 
+// Get misread metadata for misread charts
+ipcMain.handle('get-misread-meta', () => {
+  if (!diagnosticsDb || !diagnosticsMeta) return { enabled: false };
+  return {
+    enabled: true,
+    misread_density: diagnosticsMeta.misread_density || {},
+    rho_bar: diagnosticsMeta.rho_bar || {},
+    gene_panel: diagnosticsMeta.gene_panel || [],
+    hard_misread_counts: diagnosticsMeta.hard_misread_counts || [],
+    hard_misread_by_plane: diagnosticsMeta.hard_misread_by_plane || {},
+  };
+});
+
 module.exports = {
   init,
   openDiagnosticsDatabase,

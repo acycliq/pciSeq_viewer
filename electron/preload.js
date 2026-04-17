@@ -26,6 +26,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPaths: () => ipcRenderer.invoke('get-paths'),
   getProfileName: () => ipcRenderer.invoke('get-profile-name'),
 
+  // misread metadata (gene_panel + misread_density from diagnostics.db)
+  getMisreadMeta: () => ipcRenderer.invoke('get-misread-meta'),
+
   // check_cell (SQLite data, no Python required)
   getCheckCellState: () => ipcRenderer.invoke('check-cell-get-state'),
   checkCellQuery: (params) => ipcRenderer.invoke('check-cell-binary-query', params),

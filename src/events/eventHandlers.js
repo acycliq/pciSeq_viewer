@@ -206,6 +206,16 @@ function setupWidgetControls(elements) {
         });
     }
 
+    // Misread chart buttons
+    const misreadRhoBtn = document.getElementById('misreadRhoBtn');
+    if (misreadRhoBtn) misreadRhoBtn.addEventListener('click', () => window.showRhoBarWidget?.());
+
+    const misreadStackedBtn = document.getElementById('misreadStackedBtn');
+    if (misreadStackedBtn) misreadStackedBtn.addEventListener('click', () => window.showStackedBarWidget?.());
+
+    const misreadPerPlaneBtn = document.getElementById('misreadPerPlaneBtn');
+    if (misreadPerPlaneBtn) misreadPerPlaneBtn.addEventListener('click', () => window.showPerPlaneWidget?.());
+
     // Cell class widget controls
     elements.cellClassWidgetClose.addEventListener('click', () => {
         window.hideCellClassWidget();

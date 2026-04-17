@@ -66,6 +66,11 @@ import { setupEventHandlers, setupAdvancedKeyboardShortcuts } from './events/eve
 import { setupCheckCellBridge, openCheckCellModal } from './checkCellBridge.js';
 import { setupCheckSpotBridge, openCheckSpotModal } from './checkSpotBridge.js';
 
+// === MISREADS IMPORTS ===
+import { showRhoBarWidget }     from './misreads/rhoBar/RhoBarWidget.js';
+import { showStackedBarWidget } from './misreads/stackedBar/StackedBarWidget.js';
+import { showPerPlaneWidget }   from './misreads/perPlane/PerPlaneWidget.js';
+
 // === UI INTERACTION IMPORTS ===
 import { setupBoundariesReadyListener } from './ui/spatialIndexing.js';
 
@@ -135,6 +140,11 @@ window.hideCellClassPercentageWidget = hideCellClassPercentageWidget;
 
 // Expression histogram chart functions
 window.showExpressionHistogramWidget = showExpressionHistogramWidget;
+
+// Misread chart functions
+window.showRhoBarWidget     = showRhoBarWidget;
+window.showStackedBarWidget = showStackedBarWidget;
+window.showPerPlaneWidget   = showPerPlaneWidget;
 window.hideExpressionHistogramWidget = hideExpressionHistogramWidget;
 
 // Controls panel (drawer) functions
