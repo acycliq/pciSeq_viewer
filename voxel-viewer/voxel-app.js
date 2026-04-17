@@ -62,7 +62,7 @@ function getDataset() {
         return window.generateTestDataset();
     }
 
-    throw new Error('Voxel viewer requires selection data from the main viewer. Open it via Ctrl+drag with the Selection tool enabled.');
+    throw new Error('Voxel viewer requires selection data from the main viewer. Open it via Ctrl+drag (or Cmd+drag on Mac) with the Selection tool enabled.');
 }
 
 function showFatalError(error) {

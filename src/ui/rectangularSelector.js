@@ -81,7 +81,7 @@ export class RectangularSelector {
     }
 
     onMouseDown(e) {
-        if (!this.isActive || !e.ctrlKey) return;
+        if (!this.isActive || !(e.ctrlKey || e.metaKey)) return;
 
         this.isSelecting = true;
         const rect = e.target.getBoundingClientRect();
