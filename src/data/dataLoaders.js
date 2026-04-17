@@ -314,9 +314,30 @@ export function buildGeneIconAtlas(genes) {
     const defaultConfig = {glyphName: 'circle', color: '#ffffff'};
 
     const size = 64;
+
+    // Query GPU max texture size to avoid exceeding it on some hardware
+    let maxTextureSize = 4096;
+    try {
+        const probe = document.createElement('canvas');
+        const gl = probe.getContext('webgl2') || probe.getContext('webgl');
+        if (gl) {
+            maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+            gl.getExtension('WEBGL_lose_context')?.loseContext();
+        }
+    } catch (e) {
+        console.warn('Could not query MAX_TEXTURE_SIZE, using default 4096');
+    }
+
+    // Arrange icons in a grid so neither dimension exceeds the GPU limit
+    const maxCols = Math.floor(maxTextureSize / size);
+    const cols = Math.min(genes.length, maxCols);
+    const rows = Math.ceil(genes.length / cols);
+
     const canvas = document.createElement('canvas');
-    canvas.width = size * genes.length;
-    canvas.height = size;
+    canvas.width = cols * size;
+    canvas.height = rows * size;
+    console.log(`Icon atlas: ${genes.length} genes in ${cols}x${rows} grid (${canvas.width}x${canvas.height}px, GPU limit: ${maxTextureSize})`);
+
     const ctx = canvas.getContext('2d');
     const mapping = {};
 
@@ -326,7 +347,9 @@ export function buildGeneIconAtlas(genes) {
             console.warn(`Gene '${gene}' missing glyph config, using circle fallback`);
         }
         const finalConfig = cfg || defaultConfig;
-        const p = {x: i * size + size/2, y: size/2};
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const p = {x: col * size + size / 2, y: row * size + size / 2};
         const r = size * 0.4;
 
         ctx.save();
@@ -336,7 +359,7 @@ export function buildGeneIconAtlas(genes) {
         ctx.stroke();
         ctx.restore();
 
-        mapping[gene] = {x: i * size, y: 0, width: size, height: size};
+        mapping[gene] = {x: col * size, y: row * size, width: size, height: size};
     });
 
     return {atlas: canvas, mapping};
