@@ -166,6 +166,24 @@ function setupGeneControls(elements, state, updateLayersCallback) {
             updateLayersCallback();
         });
     }
+
+    // Grey out misreads toggle
+    if (elements.greyOutMisreadsToggle) {
+        elements.greyOutMisreadsToggle.addEventListener('change', (e) => {
+            state.greyOutMisreads = Boolean(e.target.checked);
+            if (window.appState) window.appState._geneMaskCache = {};
+            updateLayersCallback();
+        });
+    }
+
+    // Hide misreads toggle
+    if (elements.hideMisreadsToggle) {
+        elements.hideMisreadsToggle.addEventListener('change', (e) => {
+            state.hideMisreads = Boolean(e.target.checked);
+            if (window.appState) window.appState._geneMaskCache = {};
+            updateLayersCallback();
+        });
+    }
 }
 
 // === WIDGET CONTROLS ===

@@ -30,6 +30,10 @@ const elements = {
     intensityFilterValue: document.getElementById('intensityFilterValue'),
     // Uniform size toggle
     uniformSizeToggle: document.getElementById('uniformSizeToggle'),
+    // Grey out misreads toggle
+    greyOutMisreadsToggle: document.getElementById('greyOutMisreadsToggle'),
+    // Hide misreads toggle
+    hideMisreadsToggle: document.getElementById('hideMisreadsToggle'),
 
     // Gene widget removed (replaced by Genes drawer)
 

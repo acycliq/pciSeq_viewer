@@ -68,7 +68,7 @@ export async function loadBoundariesPlane(planeId) {
 // payload: { manifestUrl, img: { width, height, tileSize }, geneIdColors: { [id]: [r,g,b] } }
 export async function buildSpotsScatterCache({ manifestUrl, img, geneIdColors }) {
   if (!manifestUrl) throw new Error('spots manifestUrl is required');
-  const { positions, colors, planes, geneIds, scores, intensities, filterPairs, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity } = await call('buildSpotsScatterCache', { manifestUrl, img, geneIdColors });
-  return { positions, colors, planes, geneIds, scores, intensities, filterPairs, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity };
+  const { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity } = await call('buildSpotsScatterCache', { manifestUrl, img, geneIdColors });
+  return { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity };
 }
 

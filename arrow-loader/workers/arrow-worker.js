@@ -82,11 +82,12 @@ async function handleLoadSpots(cfg) {
     const spot_id = getTypedColumn(table, 'spot_id'); // Use actual spot_id from Arrow files
     const omp_score = getTypedColumn(table, 'omp_score');
     const omp_intensity = getTypedColumn(table, 'omp_intensity');
+    const is_hard_misread = getTypedColumn(table, 'is_hard_misread');
     const neighbour_array = getListColumnAsArrays(table, 'neighbour_array');
     const neighbour_prob = getListColumnAsArrays(table, 'neighbour_prob');
-    const payload = { x, y, z, plane_id, gene_id, spot_id, neighbour_array, neighbour_prob, omp_score, omp_intensity };
+    const payload = { x, y, z, plane_id, gene_id, spot_id, neighbour_array, neighbour_prob, omp_score, omp_intensity, is_hard_misread };
     // collect transfers
-    [x,y,z,plane_id,gene_id,spot_id,omp_score,omp_intensity].forEach(a => a && transfers.push(a.buffer));
+    [x,y,z,plane_id,gene_id,spot_id,omp_score,omp_intensity,is_hard_misread].forEach(a => a && transfers.push(a.buffer));
     shards.push(payload);
   }
   return { shards, transfers: uniqueTransferList(transfers) };
@@ -281,15 +282,17 @@ self.onmessage = async (e) => {
         const gene_id = getTypedColumn(table, 'gene_id');
         const omp_score = getTypedColumn(table, 'omp_score');
         const omp_intensity = getTypedColumn(table, 'omp_intensity');
+        const is_hard_misread = getTypedColumn(table, 'is_hard_misread');
         const n = x ? x.length : 0;
         if (!n) continue;
-        shards.push({ x, y, plane_id, gene_id, omp_score, omp_intensity, n });
+        shards.push({ x, y, plane_id, gene_id, omp_score, omp_intensity, is_hard_misread, n });
         total += n;
       }
       const positions = new Float32Array(total * 3);
       const colors = new Uint8Array(total * 4);
       const geneIds = new Int32Array(total);
       const planes = new Int32Array(total);
+      const misreadFlags = new Uint8Array(total);
       const scores = new Float32Array(total);
       const intensities = new Float32Array(total);
       const width = img && img.width || 256;
@@ -328,6 +331,7 @@ self.onmessage = async (e) => {
           colors[4*off + 1] = col[1] | 0;
           colors[4*off + 2] = col[2] | 0;
           colors[4*off + 3] = 255;
+          misreadFlags[off] = sh.is_hard_misread ? (sh.is_hard_misread[i] ? 1 : 0) : 0;
           off++;
         }
       }
@@ -335,7 +339,7 @@ self.onmessage = async (e) => {
       // Consider intensity present if any finite value exists
       const hasIntensity = intensityFiniteCount > 0;
       let filterPairs = null;
-      const transfers = [positions.buffer, colors.buffer, geneIds.buffer, planes.buffer, scores.buffer];
+      const transfers = [positions.buffer, colors.buffer, geneIds.buffer, planes.buffer, scores.buffer, misreadFlags.buffer];
       if (hasIntensity) {
         filterPairs = new Float32Array(total * 2);
         for (let i = 0; i < total; i++) { filterPairs[2*i] = scores[i]; filterPairs[2*i+1] = intensities[i]; }
@@ -345,7 +349,7 @@ self.onmessage = async (e) => {
       if (!Number.isFinite(scoreMax)) scoreMax = 1;
       if (!Number.isFinite(intensityMin)) intensityMin = 0;
       if (!Number.isFinite(intensityMax)) intensityMax = 1;
-      self.postMessage({ id, ok: true, type, positions, colors, geneIds, planes, scores, hasIntensity, intensities: hasIntensity ? intensities : undefined, filterPairs: hasIntensity ? filterPairs : undefined, scoreMin, scoreMax, intensityMin, intensityMax }, transfers);
+      self.postMessage({ id, ok: true, type, positions, colors, geneIds, planes, scores, misreadFlags, hasIntensity, intensities: hasIntensity ? intensities : undefined, filterPairs: hasIntensity ? filterPairs : undefined, scoreMin, scoreMax, intensityMin, intensityMax }, transfers);
     } else {
       throw new Error(`Unknown message type: ${type}`);
     }

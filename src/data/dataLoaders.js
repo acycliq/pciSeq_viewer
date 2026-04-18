@@ -69,7 +69,7 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
             const idToName = geneDict || {};
             let spotTotal = 0;
             for (const sh of shards) {
-                const { x, y, z, plane_id, gene_id, spot_id, neighbour_array, neighbour_prob, omp_score, omp_intensity } = sh;
+                const { x, y, z, plane_id, gene_id, spot_id, neighbour_array, neighbour_prob, omp_score, omp_intensity, is_hard_misread } = sh;
                 const n = x.length;
                 for (let i = 0; i < n; i++) {
                     const gid = gene_id[i];
@@ -92,7 +92,8 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                         prob: primaryProb,
                         prob_array: pArr || null,
                         score: omp_score[i],
-                        intensity: omp_intensity[i]
+                        intensity: omp_intensity[i],
+                        is_hard_misread: is_hard_misread ? is_hard_misread[i] : 0
                     });
                     spotTotal++;
                 }
@@ -123,8 +124,8 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                 }
                 const manifestUrl = new URL(ARROW_MANIFESTS.spotsManifest, window.location.href).href;
                 const img = { width: cfg.imageWidth, height: cfg.imageHeight, tileSize: 256 };
-                const { positions, colors, planes, geneIds, scores, intensities, filterPairs, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity } = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
-                window.appState.arrowScatterCache = { positions, colors, planes, geneIds, scores, intensities, filterPairs, length: (positions?.length||0)/3 };
+                const { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity } = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
+                window.appState.arrowScatterCache = { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, length: (positions?.length||0)/3 };
                 hasIntensityFlag = Boolean(hasIntensity);
                 // Update score range with dataset min (UI min = min(0, scoreMin), max remains 1.0)
                 try {

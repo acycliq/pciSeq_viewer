@@ -102,7 +102,8 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
             state.uniformMarkerSize,
             state.intensityThreshold,
             state.hasIntensity,
-            state.filterMode
+            state.greyOutMisreads,
+            state.hideMisreads
         );
         if (pc && state.showGenes) layers.push(pc);
         // Simplified: no deferred cleanup needed with single IconLayer approach
@@ -127,7 +128,8 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
                 state.uniformMarkerSize,
                 state.intensityThreshold,
                 state.hasIntensity,
-                state.filterMode
+                state.greyOutMisreads,
+                state.hideMisreads
             );
             if (pc && state.showGenes) layers.push(pc);
             state.lastIconLayers = [];
@@ -148,7 +150,8 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
                 state.uniformMarkerSize,
                 state.intensityThreshold,
                 state.hasIntensity,
-                state.filterMode
+                state.greyOutMisreads,
+                state.hideMisreads
             );
             layers.push(...iconLayers);
             state.lastIconLayers = iconLayers;

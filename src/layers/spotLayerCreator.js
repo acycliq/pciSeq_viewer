@@ -36,11 +36,11 @@ function getArrowSpotBinaryCache() {
 /**
  * Create a high-performance ScatterplotLayer for Arrow-loaded spots
  */
-export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false) {
+export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, greyOutMisreads = false, hideMisreads = false) {
     const cache = getArrowSpotBinaryCache();
     if (!cache || cache.length === 0) return null;
 
-    const { positions, colors, planes, geneIds, scores, intensities, filterPairs, length } = cache;
+    const { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, length } = cache;
     const baseScale = (GENE_SIZE_CONFIG?.BASE_SIZE || 12) / 10;
     
     let radiusFactors = null;
@@ -81,24 +81,46 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         const geneDict = app.arrowGeneDict || {};
         const totalGenes = Object.keys(geneDict).length;
         const selectedKey = selectedGenes ? Array.from(selectedGenes).sort().join('|') : '';
-        const cacheKey = `${selectedKey}_${length}_${colors.buffer}`;
+        const cacheKey = `${selectedKey}_${length}_${colors.buffer}_${greyOutMisreads ? 1 : 0}_${hideMisreads ? 1 : 0}`;
 
         if (!maskCache.buffer || maskCache.cacheKey !== cacheKey || maskCache.length !== length) {
             if (selectedGenes && selectedGenes.size > 0) {
                 const allSelected = selectedGenes.size >= totalGenes;
                 maskedColors = new Uint8Array(colors);
-                if (!allSelected) {
-                    for (let i = 0; i < length; i++) {
+                for (let i = 0; i < length; i++) {
+                    const isMisread = misreadFlags && misreadFlags[i];
+                    if (isMisread && hideMisreads) {
+                        maskedColors[4*i + 3] = 0;
+                        continue;
+                    }
+                    if (isMisread && greyOutMisreads) {
+                        maskedColors[4*i + 0] = 160;
+                        maskedColors[4*i + 1] = 160;
+                        maskedColors[4*i + 2] = 160;
+                    }
+                    if (!allSelected) {
                         const name = geneDict[geneIds[i]];
                         maskedColors[4*i + 3] = (name && selectedGenes.has(name)) ? 255 : 0;
+                    } else {
+                        maskedColors[4*i + 3] = 255;
                     }
-                } else {
-                    for (let i = 0; i < length; i++) maskedColors[4*i + 3] = 255;
                 }
             } else {
                 maskedColors = new Uint8Array(colors);
                 const alpha = (selectedGenes && selectedGenes.size === 0) ? 0 : 255;
-                for (let i = 0; i < length; i++) maskedColors[4*i + 3] = alpha;
+                for (let i = 0; i < length; i++) {
+                    const isMisread = misreadFlags && misreadFlags[i];
+                    if (isMisread && hideMisreads) {
+                        maskedColors[4*i + 3] = 0;
+                        continue;
+                    }
+                    if (isMisread && greyOutMisreads) {
+                        maskedColors[4*i + 0] = 160;
+                        maskedColors[4*i + 1] = 160;
+                        maskedColors[4*i + 2] = 160;
+                    }
+                    maskedColors[4*i + 3] = alpha;
+                }
             }
             maskCache.buffer = maskedColors;
             maskCache.cacheKey = cacheKey;
@@ -158,7 +180,7 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
 /**
  * Create gene expression layers using IconLayer
  */
-export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false) {
+export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, greyOutMisreads = false, hideMisreads = false) {
     if (!showGenes || !geneIconAtlas) return [];
 
     if (combineIntoSingleLayer) {
@@ -185,7 +207,7 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
                 
                 const passScore = !(hasScores && scoreThreshold > 0) || (d.score != null && Number(d.score) >= scoreThreshold);
                 const passInten = !(hasIntensity && intensityThreshold > 0) || (d.intensity != null && Number(d.intensity) >= intensityThreshold);
-                if (passScore && passInten) combined.push(d);
+                if (passScore && passInten && !(hideMisreads && d.is_hard_misread)) combined.push(d);
             }
         }
 
@@ -211,10 +233,10 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
             getSize: d => uniformMarkerSize ? GENE_SIZE_CONFIG.BASE_SIZE : (GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane))),
             getIcon: d => d.gene,
-            getColor: [255, 255, 255],
+            getColor: d => (greyOutMisreads && d.is_hard_misread) ? [160, 160, 160] : [255, 255, 255],
             sizeUnits: 'pixels',
             sizeScale: geneSizeScale,
-            updateTriggers: { getSize: [currentPlane, uniformMarkerSize] }
+            updateTriggers: { getSize: [currentPlane, uniformMarkerSize], getColor: [greyOutMisreads] }
         })];
     }
 
@@ -232,7 +254,7 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
         const filtered = data.filter(d => {
             const passScore = !(hasScores && scoreThreshold > 0) || (d.score != null && Number(d.score) >= scoreThreshold);
             const passInten = !(hasIntensity && intensityThreshold > 0) || (d.intensity != null && Number(d.intensity) >= intensityThreshold);
-            return passScore && passInten;
+            return passScore && passInten && !(hideMisreads && d.is_hard_misread);
         });
 
         if (filtered.length === 0) continue;
@@ -258,10 +280,10 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
             getSize: d => uniformMarkerSize ? GENE_SIZE_CONFIG.BASE_SIZE : (GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane))),
             getIcon: d => d.gene,
-            getColor: [255, 255, 255],
+            getColor: d => (greyOutMisreads && d.is_hard_misread) ? [160, 160, 160] : [255, 255, 255],
             sizeUnits: 'pixels',
             sizeScale: geneSizeScale,
-            updateTriggers: { getSize: [currentPlane, uniformMarkerSize] }
+            updateTriggers: { getSize: [currentPlane, uniformMarkerSize], getColor: [greyOutMisreads] }
         }));
     }
     return layers;

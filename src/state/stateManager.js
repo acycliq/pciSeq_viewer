@@ -73,6 +73,10 @@ const state = {
     // Active filter mode: 'score' or 'intensity'
     filterMode: 'score',
 
+    // Misread display
+    greyOutMisreads: false,
+    hideMisreads: false,
+
     // Sizing behavior
     uniformMarkerSize: false, // When true, ignore plane distance for marker size
 
