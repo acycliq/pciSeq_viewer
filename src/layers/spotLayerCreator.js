@@ -232,11 +232,11 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             iconMapping: geneIconMapping,
             getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
             getSize: d => uniformMarkerSize ? GENE_SIZE_CONFIG.BASE_SIZE : (GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane))),
-            getIcon: d => d.gene,
-            getColor: d => (greyOutMisreads && d.is_hard_misread) ? [160, 160, 160] : [255, 255, 255],
+            getIcon: d => (greyOutMisreads && d.is_hard_misread) ? `_grey_${d.gene}` : d.gene,
+            getColor: [255, 255, 255],
             sizeUnits: 'pixels',
             sizeScale: geneSizeScale,
-            updateTriggers: { getSize: [currentPlane, uniformMarkerSize], getColor: [greyOutMisreads] }
+            updateTriggers: { getSize: [currentPlane, uniformMarkerSize], getIcon: [greyOutMisreads] }
         })];
     }
 
@@ -279,11 +279,11 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             iconMapping: geneIconMapping,
             getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
             getSize: d => uniformMarkerSize ? GENE_SIZE_CONFIG.BASE_SIZE : (GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane))),
-            getIcon: d => d.gene,
-            getColor: d => (greyOutMisreads && d.is_hard_misread) ? [160, 160, 160] : [255, 255, 255],
+            getIcon: d => (greyOutMisreads && d.is_hard_misread) ? `_grey_${d.gene}` : d.gene,
+            getColor: [255, 255, 255],
             sizeUnits: 'pixels',
             sizeScale: geneSizeScale,
-            updateTriggers: { getSize: [currentPlane, uniformMarkerSize], getColor: [greyOutMisreads] }
+            updateTriggers: { getSize: [currentPlane, uniformMarkerSize], getIcon: [greyOutMisreads] }
         }));
     }
     return layers;

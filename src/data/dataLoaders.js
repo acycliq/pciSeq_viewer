@@ -333,10 +333,12 @@ export function buildGeneIconAtlas(genes) {
         console.warn('Could not query MAX_TEXTURE_SIZE, using default 4096');
     }
 
-    // Arrange icons in a grid so neither dimension exceeds the GPU limit
+    // Each gene gets a normal-color icon + a grey variant for the grey-out misreads toggle
+    const greyEntries = genes.map(g => `_grey_${g}`);
+    const allEntries = [...genes, ...greyEntries];
     const maxCols = Math.floor(maxTextureSize / size);
-    const cols = Math.min(genes.length, maxCols);
-    const rows = Math.ceil(genes.length / cols);
+    const cols = Math.min(allEntries.length, maxCols);
+    const rows = Math.ceil(allEntries.length / cols);
 
     const canvas = document.createElement('canvas');
     canvas.width = cols * size;
@@ -346,10 +348,12 @@ export function buildGeneIconAtlas(genes) {
     const ctx = canvas.getContext('2d');
     const mapping = {};
 
-    genes.forEach((gene, i) => {
+    allEntries.forEach((entry, i) => {
+        const isGrey = entry.startsWith('_grey_');
+        const gene = isGrey ? entry.slice(6) : entry;
         const cfg = configMap.get(gene);
         if (!cfg) {
-            console.warn(`Gene '${gene}' missing glyph config, using circle fallback`);
+            if (!isGrey) console.warn(`Gene '${gene}' missing glyph config, using circle fallback`);
         }
         const finalConfig = cfg || defaultConfig;
         const col = i % cols;
@@ -358,13 +362,13 @@ export function buildGeneIconAtlas(genes) {
         const r = size * 0.4;
 
         ctx.save();
-        ctx.strokeStyle = finalConfig.color;
+        ctx.strokeStyle = isGrey ? 'rgba(160,160,160,0.75)' : finalConfig.color;
         ctx.lineWidth = 4;
         ctxPath(finalConfig.glyphName, ctx, p, r);
         ctx.stroke();
         ctx.restore();
 
-        mapping[gene] = {x: col * size, y: row * size, width: size, height: size};
+        mapping[entry] = {x: col * size, y: row * size, width: size, height: size};
     });
 
     return {atlas: canvas, mapping};
