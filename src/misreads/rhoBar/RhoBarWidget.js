@@ -24,7 +24,7 @@ class RhoBarWidget extends WidgetBase {
         this._orderChk.checked = true;
         this._orderChk.addEventListener('change', () => {
             this._order = this._orderChk.checked ? 'desc' : 'asc';
-            if (this.data) renderRhoBar(this.contentContainer, this.data, this._order);
+            if (this.data) renderRhoBar(this.contentContainer, this.data, this._order, this.isPosterior);
         });
         chkLabel.append(this._orderChk, 'Decreasing');
         this.addToolbarControl(chkLabel);
@@ -35,14 +35,16 @@ class RhoBarWidget extends WidgetBase {
         this._orderChk.checked = true;
 
         const meta = await loadDiagnosticsMeta();
-        this.data  = prepareRhoData(meta);
-        renderRhoBar(this.contentContainer, this.data, this._order);
+        const { data, isPosterior } = prepareRhoData(meta);
+        this.data       = data;
+        this.isPosterior = isPosterior;
+        renderRhoBar(this.contentContainer, this.data, this._order, this.isPosterior);
     }
 
     onResize() {
         if (this.resizeRaf) cancelAnimationFrame(this.resizeRaf);
         this.resizeRaf = requestAnimationFrame(() => {
-            if (this.data) renderRhoBar(this.contentContainer, this.data, this._order);
+            if (this.data) renderRhoBar(this.contentContainer, this.data, this._order, this.isPosterior);
         });
     }
 }

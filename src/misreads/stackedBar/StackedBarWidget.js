@@ -1,5 +1,4 @@
 import { WidgetBase } from '../../ui/widgetBase.js';
-import { loadDiagnosticsMeta } from '../../data/diagnosticsLoader.js';
 import { prepareStackedData, sortData } from './stackedBarData.js';
 import { renderStackedBar } from './stackedBarRenderer.js';
 
@@ -52,8 +51,7 @@ class StackedBarWidget extends WidgetBase {
         this._sortSel.value      = 'count';
         this._orderChk.checked   = true;
 
-        const meta = await loadDiagnosticsMeta();
-        this._rawData = prepareStackedData(meta);
+        this._rawData = prepareStackedData();
         this._render();
     }
 

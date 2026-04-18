@@ -1,10 +1,13 @@
 // Prepares rho_bar data from diagnostics metadata.
-// Returns [{gene, rho}] sorted by rho ascending.
+// Falls back to misread_density (prior) when rho_bar is absent.
+// Returns { data: [{gene, rho}], isPosterior: bool }
 
 export function prepareRhoData(meta) {
     const rhoBar = meta.get('rho_bar');
-    if (!rhoBar || !Object.keys(rhoBar).length) return [];
-    return Object.entries(rhoBar)
-        .map(([gene, rho]) => ({ gene, rho }))
-        .sort((a, b) => a.rho - b.rho);
+    const isPosterior = rhoBar && Object.keys(rhoBar).length > 0;
+    const source = isPosterior ? rhoBar : (meta.get('misread_density') || {});
+    return {
+        data: Object.entries(source).map(([gene, rho]) => ({ gene, rho })),
+        isPosterior,
+    };
 }

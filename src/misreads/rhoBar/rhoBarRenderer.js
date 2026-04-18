@@ -6,7 +6,7 @@ const MARGIN      = { top: 20, right: 0, bottom: 30, left: 110 };
 const BAR_COLOR   = '#e05252';
 const INIT_WINDOW = 30;
 
-export function renderRhoBar(container, data, order = 'desc') {
+export function renderRhoBar(container, data, order = 'desc', isPosterior = true) {
     const sorted = order === 'asc'
         ? [...data].sort((a, b) => a.rho - b.rho)
         : [...data].sort((a, b) => b.rho - a.rho);
@@ -15,6 +15,13 @@ export function renderRhoBar(container, data, order = 'desc') {
     if (!sorted.length) {
         container.innerHTML = '<div class="glass-loader">No misread density data available.</div>';
         return;
+    }
+
+    if (!isPosterior) {
+        const note = document.createElement('div');
+        note.style.cssText = 'font-size:10px;color:rgba(255,200,100,0.8);padding:2px 8px 4px;';
+        note.textContent = 'Showing prior (misread_density) — gene-specific rho not available for this dataset.';
+        container.appendChild(note);
     }
 
     const { gFocus, focusClipped, gContext, dims } = createFocusContextLayout(container, MARGIN);

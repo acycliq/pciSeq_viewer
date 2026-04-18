@@ -1,5 +1,4 @@
 import { WidgetBase } from '../../ui/widgetBase.js';
-import { loadDiagnosticsMeta } from '../../data/diagnosticsLoader.js';
 import { state } from '../../state/stateManager.js';
 import { preparePerPlaneData } from './perPlaneData.js';
 import { renderPerPlane } from './perPlaneRenderer.js';
@@ -12,7 +11,6 @@ class PerPlaneWidget extends WidgetBase {
         this.resizeRaf    = null;
         this.selectedGene = null;
         this.geneSelect   = null;
-        this._meta        = null;
     }
 
     create() {
@@ -24,8 +22,7 @@ class PerPlaneWidget extends WidgetBase {
         this.addToolbarControl(this.geneSelect);
     }
 
-    async onShow() {
-        this._meta = await loadDiagnosticsMeta();
+    onShow() {
         this._populateGenes();
         this._update();
     }
@@ -55,7 +52,7 @@ class PerPlaneWidget extends WidgetBase {
                 '<div class="glass-loader">Select a gene to view misreads per plane.</div>';
             return;
         }
-        const data = preparePerPlaneData(this._meta || new Map(), gene);
+        const data = preparePerPlaneData(gene);
         renderPerPlane(this.contentContainer, data, gene);
     }
 }

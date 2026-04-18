@@ -14,6 +14,7 @@ import {
     getMostProbableCellClass,
     updateCellBoundaryIndex
 } from './cellIndexes.js';
+import { isHardMisread } from '../misreads/misreadUtils.js';
 // Note: classColorsCodes is loaded globally from color scheme files
 
 /**
@@ -93,11 +94,23 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                         prob_array: pArr || null,
                         score: omp_score[i],
                         intensity: omp_intensity[i],
-                        is_hard_misread: is_hard_misread ? is_hard_misread[i] : 0
+                        is_hard_misread: is_hard_misread ? is_hard_misread[i] : null
                     });
                     spotTotal++;
                 }
             }
+            // Fallback: if is_hard_misread column was absent, compute from prob_array.
+            // See src/misreads/misreadUtils.js for the implementation and rationale.
+            // Ask Dimitri if you want to delete this fallback.
+            const needsFallback = spotTotal > 0 && [...geneDataMap.values()][0]?.[0]?.is_hard_misread === null;
+            if (needsFallback) {
+                for (const spots of geneDataMap.values()) {
+                    for (const spot of spots) {
+                        spot.is_hard_misread = isHardMisread(spot) ? 1 : 0;
+                    }
+                }
+            }
+
             if (window?.advancedConfig?.().performance?.showPerformanceStats) {
                 console.log(`Arrow spots: genes=${geneDataMap.size}, spots=${spotTotal}`);
             }
