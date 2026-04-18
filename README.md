@@ -95,7 +95,7 @@ This creates a folder with your results:
 /path/to/my_dataset/
 └── pciSeq/
     └── data/
-        └── arrow/
+        └── viewer_data/
             ├── arrow_spots/       # Gene spot locations
             ├── arrow_cells/       # Cell information
             └── arrow_boundaries/  # Cell boundary polygons
@@ -119,7 +119,7 @@ dapi_image = np.load('/path/to/dapi_image.npy')
 # Create the MBTiles file (requires pciSeq > 0.0.65)
 pciSeq.stage_image(
     img=dapi_image,
-    out_dir='/path/to/my_dataset/pciSeq/data/arrow',  # Same folder as Arrow files
+    out_dir='/path/to/my_dataset/pciSeq/data/viewer_data',  # Same folder as Arrow files
     name='My Dataset',                                 # Short identifier
     description='DAPI staining, mouse cortex',         # Detailed description
 )
@@ -137,7 +137,7 @@ After both steps, your data folder should look like this:
 /path/to/my_dataset/
 └── pciSeq/
     └── data/
-        └── arrow/
+        └── viewer_data/
             ├── output.mbtiles       # Background image tiles
             ├── arrow_spots/         # Gene spots
             │   ├── manifest.json
@@ -147,9 +147,11 @@ After both steps, your data folder should look like this:
             │   ├── manifest.json
             │   ├── class_dict.json
             │   └── cells_shard_*.feather
-            └── arrow_boundaries/    # Cell boundaries
-                ├── manifest.json
-                └── boundaries_plane_*.feather
+            ├── arrow_boundaries/    # Cell boundaries
+            │   ├── manifest.json
+            │   └── boundaries_plane_*.feather
+            └── diagnostics/         # Diagnostics database
+                └── diagnostics.db
 ```
 
 ---
@@ -160,7 +162,7 @@ After both steps, your data folder should look like this:
 
 2. **Select your data folder**
    - Go to `File > Open Dataset...`
-   - Navigate to your arrow folder (e.g., `/path/to/my_dataset/pciSeq/data/arrow`)
+   - Navigate to your data folder (e.g., `/path/to/my_dataset/pciSeq/data/viewer_data`)
    - Click "Select Folder"
 
 3. **Enter voxel size**
@@ -173,7 +175,7 @@ After both steps, your data folder should look like this:
    - Cell boundaries from `arrow_boundaries/`
    - Cell information from `arrow_cells/`
 
-> No MBTiles? Add `image_dims.json` next to your Arrow folders with:
+> No MBTiles? Add `image_dims.json` next to your data folders with:
 > `{ "width": 6411, "height": 4412, "plane_count": 102 }` (width and height are in pixels). The app reads width/height/plane_count from MBTiles when present; otherwise it uses `image_dims.json`. Voxel size is always entered in the welcome screen.
 
 ---
@@ -244,11 +246,11 @@ pciSeq.fit(
 # 2. Create MBTiles
 pciSeq.stage_image(
     img=dapi,
-    out_dir=f'{output_folder}/pciSeq/data/arrow',
+    out_dir=f'{output_folder}/pciSeq/data/viewer_data',
     name='WT Mouse', # short description, identifier
     description='Mouse cortex, 102 z-planes', # long description
 )
 # Note: if out_dir is not set, output.mbtiles is created in the system temp directory (/tmp on Linux, /var/folders/... on macOS)
 
-print(f'Done! Open this folder in the viewer: {output_folder}/pciSeq/data/arrow')
+print(f'Done! Open this folder in the viewer: {output_folder}/pciSeq/data/viewer_data')
 ```
