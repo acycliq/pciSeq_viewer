@@ -7,6 +7,7 @@
 
 import { state } from './state/stateManager.js';
 import { showNotification } from './ui/notification.js';
+import { getFormattedCellCoordinates } from '../utils/cellFormatting.js';
 import {
     renderDivergingChart,
     buildExpressionTable,
@@ -115,7 +116,10 @@ export function openCheckCellModal(cellLabel) {
 
     // Update title
     const title = document.getElementById('checkCellTitle');
-    if (title) title.textContent = 'Cell ' + cellLabel;
+    const cell = state.cellDataMap ? state.cellDataMap.get(Number(cellLabel)) : null;
+    const coordStr = getFormattedCellCoordinates(cell, true);
+
+    if (title) title.innerHTML = 'Cell ' + cellLabel + coordStr;
 
     // Slide in
     panel.classList.remove('collapsed');
@@ -175,14 +179,9 @@ function renderResults(data) {
     // class name when available (DB exported with log_prior + mrf).
     const summary = document.getElementById('checkCellSummary');
     if (summary) {
-        const assignedPct = formatPct(data.posteriorAssigned);
-        const userPct = formatPct(data.posteriorUser);
-        summary.innerHTML = 'Cell ' + data.cellId + ': ' +
-            '<span style="color:#87CEEB;font-weight:600;">' + escapeHtml(data.assignedClass) + '</span>' +
-            (assignedPct ? ' <span style="color:#87CEEB;">' + assignedPct + '</span>' : '') +
+        summary.innerHTML = '<span style="color:#87CEEB;font-weight:600;">' + escapeHtml(data.assignedClass) + '</span>' +
             ' <span style="color:#6b7280;margin:0 8px;">vs</span> ' +
-            '<span style="color:#db5c5c;font-weight:600;">' + escapeHtml(data.userClass) + '</span>' +
-            (userPct ? ' <span style="color:#db5c5c;">' + userPct + '</span>' : '');
+            '<span style="color:#db5c5c;font-weight:600;">' + escapeHtml(data.userClass) + '</span>';
     }
 
     // Tab 1 (Genes): D3 diverging bar chart of top gene contributions.
