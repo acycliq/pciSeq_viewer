@@ -10,7 +10,9 @@ import { showNotification } from './ui/notification.js';
 import {
     renderDivergingChart,
     buildExpressionTable,
-    buildContributionTable
+    buildContributionTable,
+    renderComponentsChart,
+    renderPosteriorChart
 } from './charts/checkCellCharts.js';
 
 /**
@@ -25,6 +27,10 @@ export async function setupCheckCellBridge() {
     // Compare button
     const compareBtn = document.getElementById('checkCellCompareBtn');
     if (compareBtn) compareBtn.addEventListener('click', handleCompare);
+
+    // Tab switching
+    const tabs = document.querySelectorAll('.check-cell-tab');
+    tabs.forEach(tab => tab.addEventListener('click', () => activateTab(tab.dataset.tab)));
 
     // Subscribe to state changes from main process
     if (window.electronAPI?.onCheckCellState) {
@@ -165,19 +171,34 @@ async function handleCompare() {
 // --- Results Rendering ---
 
 function renderResults(data) {
-    // Main title with cell ID
+    // Main title with cell ID. Posterior probabilities appear inline after each
+    // class name when available (DB exported with log_prior + mrf).
     const summary = document.getElementById('checkCellSummary');
     if (summary) {
+        const assignedPct = formatPct(data.posteriorAssigned);
+        const userPct = formatPct(data.posteriorUser);
         summary.innerHTML = 'Cell ' + data.cellId + ': ' +
-            '<span style="color:#87CEEB;font-weight:600;">' + escapeHtml(data.assignedClass) +
-            '</span> <span style="color:#6b7280;margin:0 8px;">vs</span> ' +
-            '<span style="color:#db5c5c;font-weight:600;">' + escapeHtml(data.userClass) + '</span>';
+            '<span style="color:#87CEEB;font-weight:600;">' + escapeHtml(data.assignedClass) + '</span>' +
+            (assignedPct ? ' <span style="color:#87CEEB;">' + assignedPct + '</span>' : '') +
+            ' <span style="color:#6b7280;margin:0 8px;">vs</span> ' +
+            '<span style="color:#db5c5c;font-weight:600;">' + escapeHtml(data.userClass) + '</span>' +
+            (userPct ? ' <span style="color:#db5c5c;">' + userPct + '</span>' : '');
     }
 
-    // Render D3 diverging bar chart
+    // Tab 1 (Genes): D3 diverging bar chart of top gene contributions.
     const plotContainer = document.getElementById('checkCellPlot');
     if (plotContainer) {
         renderDivergingChart(plotContainer, data);
+    }
+
+    // Tab 2 (Posterior): log-posterior components + posterior probabilities.
+    const componentsContainer = document.getElementById('checkCellComponentsChart');
+    if (componentsContainer) {
+        renderComponentsChart(componentsContainer, data);
+    }
+    const posteriorContainer = document.getElementById('checkCellPosteriorChart');
+    if (posteriorContainer) {
+        renderPosteriorChart(posteriorContainer, data);
     }
 
     // Gene expression table
@@ -191,6 +212,22 @@ function renderResults(data) {
     if (contrWrap) {
         contrWrap.innerHTML = buildContributionTable(data);
     }
+}
+
+function activateTab(tabName) {
+    document.querySelectorAll('.check-cell-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+    document.querySelectorAll('.check-cell-tab-panel').forEach(panel => {
+        const match = panel.dataset.tab === tabName;
+        panel.classList.toggle('active', match);
+        panel.hidden = !match;
+    });
+}
+
+function formatPct(value) {
+    if (value === null || value === undefined || Number.isNaN(value)) return '';
+    return (value * 100).toFixed(1) + '%';
 }
 
 // --- Helpers ---

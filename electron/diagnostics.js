@@ -9,6 +9,7 @@ let diagnosticsDb = null;
 let diagnosticsMeta = null;
 let diagnosticsSetupWindow = null;
 let hasCellInefficiency = false;
+let hasMrf = false;
 
 // References from main.js (set via init)
 let mainWindow = null;
@@ -52,7 +53,11 @@ function openDiagnosticsDatabase(dbPath) {
   const columns = diagnosticsDb.prepare("PRAGMA table_info(spots)").all();
   hasCellInefficiency = columns.some(col => col.name === 'cell_inefficiency');
 
-  console.log('Diagnostics DB loaded. nC=%d, nS=%d, hasCellInefficiency=%s', diagnosticsMeta.nC, diagnosticsMeta.nS, hasCellInefficiency);
+  // Check if mrf column exists in cells table (needed for posterior reconstruction)
+  const cellCols = diagnosticsDb.prepare("PRAGMA table_info(cells)").all();
+  hasMrf = cellCols.some(col => col.name === 'mrf');
+
+  console.log('Diagnostics DB loaded. nC=%d, nS=%d, hasCellInefficiency=%s, hasMrf=%s', diagnosticsMeta.nC, diagnosticsMeta.nS, hasCellInefficiency, hasMrf);
   return diagnosticsMeta;
 }
 
@@ -63,6 +68,7 @@ function closeDiagnosticsDatabase() {
   }
   diagnosticsMeta = null;
   hasCellInefficiency = false;
+  hasMrf = false;
 }
 
 function broadcastDiagnosticsState(enabled) {
@@ -258,7 +264,7 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
     return { success: false, error: 'diagnostics data not loaded' };
   }
 
-  const { nC, nG, nK, rSpot, SpotReg, class_names, gene_panel, label_map, eta_bar, mean_gene_reads_per_class } = diagnosticsMeta;
+  const { nC, nG, nK, rSpot, SpotReg, class_names, gene_panel, label_map, eta_bar, mean_gene_reads_per_class, log_prior } = diagnosticsMeta;
 
   // Map external cell ID to internal index
   let c = cellId;
@@ -280,8 +286,11 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
   }
 
   try {
-    // Query SQLite for this cell's data
-    const row = diagnosticsDb.prepare('SELECT scaled_means, theta_bar, gene_count, class_prob FROM cells WHERE cell_id = ?').get(c);
+    // Query SQLite for this cell's data. Include mrf column if present.
+    const selectCellCols = hasMrf
+      ? 'SELECT scaled_means, theta_bar, gene_count, class_prob, mrf FROM cells WHERE cell_id = ?'
+      : 'SELECT scaled_means, theta_bar, gene_count, class_prob FROM cells WHERE cell_id = ?';
+    const row = diagnosticsDb.prepare(selectCellCols).get(c);
     if (!row) {
       return { success: false, error: 'Cell not found in database: ' + c };
     }
@@ -291,6 +300,9 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
     const thetaBar = new Float32Array(row.theta_bar.buffer, row.theta_bar.byteOffset, nK);
     const geneCount = new Float32Array(row.gene_count.buffer, row.gene_count.byteOffset, nG);
     const classProb = new Float32Array(row.class_prob.buffer, row.class_prob.byteOffset, nK);
+    const mrf = (hasMrf && row.mrf)
+      ? new Float32Array(row.mrf.buffer, row.mrf.byteOffset, nK)
+      : null;
 
     // Find assigned class (argmax of classProb)
     let assignedIdx = 0;
@@ -314,6 +326,24 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
     const diff = new Float32Array(nG);
     for (let g = 0; g < nG; g++) {
       diff[g] = contr[g * nK + assignedIdx] - contr[g * nK + userIdx];
+    }
+
+    // Sum of gene log-likelihoods per class (across all genes)
+    const geneLoglikAll = new Float32Array(nK);
+    for (let k = 0; k < nK; k++) {
+      let s = 0;
+      for (let g = 0; g < nG; g++) s += contr[g * nK + k];
+      geneLoglikAll[k] = s;
+    }
+
+    // Reconstruct full posterior over K classes: softmax(geneLoglik + log_prior + mrf).
+    // Only possible when both log_prior (metadata) and per-cell mrf (cells table) are present.
+    let posterior = null;
+    const hasPosteriorInputs = Array.isArray(log_prior) && log_prior.length === nK && mrf !== null;
+    if (hasPosteriorInputs) {
+      const logPost = new Array(nK);
+      for (let k = 0; k < nK; k++) logPost[k] = geneLoglikAll[k] + log_prior[k] + mrf[k];
+      posterior = softmaxJS(logPost);
     }
 
     // Find top N and bottom N genes by difference
@@ -356,6 +386,20 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
       contrUser: contr[g * nK + userIdx]
     }));
 
+    // Log-posterior components for the two classes of interest.
+    // log_prior / mrf are only available when the DB was exported with them.
+    const components = {
+      geneLoglikAssigned: geneLoglikAll[assignedIdx],
+      geneLoglikUser: geneLoglikAll[userIdx],
+      logPriorAssigned: Array.isArray(log_prior) ? log_prior[assignedIdx] : null,
+      logPriorUser: Array.isArray(log_prior) ? log_prior[userIdx] : null,
+      mrfAssigned: mrf !== null ? mrf[assignedIdx] : null,
+      mrfUser: mrf !== null ? mrf[userIdx] : null
+    };
+
+    const posteriorAssigned = posterior !== null ? posterior[assignedIdx] : null;
+    const posteriorUser = posterior !== null ? posterior[userIdx] : null;
+
     return {
       success: true,
       cellId,
@@ -366,7 +410,10 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
       allData,
       topSum,
       bottomSum,
-      topN
+      topN,
+      components,
+      posteriorAssigned,
+      posteriorUser
     };
   } catch (err) {
     return { success: false, error: 'Query failed: ' + err.message };

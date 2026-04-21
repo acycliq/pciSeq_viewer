@@ -428,7 +428,17 @@
             </div>
             <div id="checkCellResultsPhase" style="display: none;">
                 <p id="checkCellSummary" class="check-cell-summary"></p>
-                <div id="checkCellPlot" class="check-cell-chart"></div>
+                <div class="check-cell-tabs" role="tablist">
+                    <button id="checkCellTabGenes" class="check-cell-tab active" data-tab="genes" type="button" role="tab">Genes</button>
+                    <button id="checkCellTabPosterior" class="check-cell-tab" data-tab="posterior" type="button" role="tab">Posterior</button>
+                </div>
+                <div id="checkCellPanelGenes" class="check-cell-tab-panel active" data-tab="genes" role="tabpanel">
+                    <div id="checkCellPlot" class="check-cell-chart"></div>
+                </div>
+                <div id="checkCellPanelPosterior" class="check-cell-tab-panel" data-tab="posterior" role="tabpanel" hidden>
+                    <div id="checkCellComponentsChart" class="check-cell-chart"></div>
+                    <div id="checkCellPosteriorChart" class="check-cell-chart"></div>
+                </div>
                 <details><summary>Gene Expression</summary>
                     <div id="checkCellExprTable" class="check-cell-table-wrap"></div>
                 </details>
