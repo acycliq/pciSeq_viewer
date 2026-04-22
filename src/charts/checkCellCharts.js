@@ -46,7 +46,7 @@ export function renderDivergingChart(container, data) {
         data: data.topData,
         title: 'Top ' + data.topN + ' contr for class: ' + data.assignedClass,
         subtitle: '(Sum: ' + data.topSum.toFixed(2) + ')',
-        color: '#38bdf8',
+        color: data.colorAssigned || '#38bdf8',
         tooltip: tooltip,
         fullData: data
     });
@@ -56,7 +56,7 @@ export function renderDivergingChart(container, data) {
         data: data.bottomData,
         title: 'Top ' + data.topN + ' contr for class: ' + data.userClass,
         subtitle: '(Sum: ' + data.bottomSum.toFixed(2) + ')',
-        color: '#fb7185',
+        color: data.colorUser || '#fb7185',
         tooltip: tooltip,
         fullData: data
     });
@@ -400,8 +400,8 @@ export function renderComponentsChart(container, data) {
             .attr('stroke', '#6b7280').attr('stroke-width', 1);
     }
 
-    const colorAssigned = '#38bdf8';
-    const colorUser = '#fb7185';
+    const colorAssigned = data.colorAssigned || '#38bdf8';
+    const colorUser = data.colorUser || '#fb7185';
 
     const tooltip = d3.select('#checkCellTooltip');
 
@@ -484,8 +484,8 @@ export function renderPosteriorChart(container, data) {
     const tooltip = d3.select('#checkCellTooltip');
 
     const rows = [
-        { label: data.assignedClass, value: data.posteriorAssigned * 100, color: '#38bdf8' },
-        { label: data.userClass,     value: data.posteriorUser * 100,     color: '#fb7185' }
+        { label: data.assignedClass, value: data.posteriorAssigned * 100, color: data.colorAssigned || '#38bdf8' },
+        { label: data.userClass,     value: data.posteriorUser * 100,     color: data.colorUser || '#fb7185' }
     ];
 
     const containerNode = container.node ? container.node() : container;

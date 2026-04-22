@@ -6,6 +6,7 @@
  */
 
 import { state } from './state/stateManager.js';
+import { getClassColor } from './cellInfoPanel/colorResolver.js';
 import { showNotification } from './ui/notification.js';
 import { getFormattedCellCoordinates } from '../utils/cellFormatting.js';
 import {
@@ -178,13 +179,18 @@ async function handleCompare() {
 // --- Results Rendering ---
 
 function renderResults(data) {
-    // Main title with cell ID. Posterior probabilities appear inline after each
-    // class name when available (DB exported with log_prior + mrf).
+    const colorAssigned = getClassColor(data.assignedClass);
+    const colorUser = getClassColor(data.userClass);
+    
+    // Attach to data object for charts to consume
+    data.colorAssigned = colorAssigned;
+    data.colorUser = colorUser;
+
     const summary = document.getElementById('checkCellSummary');
     if (summary) {
-        summary.innerHTML = '<span style="color:#87CEEB;font-weight:600;">' + escapeHtml(data.assignedClass) + '</span>' +
+        summary.innerHTML = '<span style="color:' + colorAssigned + ';font-weight:600;">' + escapeHtml(data.assignedClass) + '</span>' +
             ' <span style="color:#6b7280;margin:0 8px;">vs</span> ' +
-            '<span style="color:#db5c5c;font-weight:600;">' + escapeHtml(data.userClass) + '</span>';
+            '<span style="color:' + colorUser + ';font-weight:600;">' + escapeHtml(data.userClass) + '</span>';
     }
 
     // Tab 1 (Genes): D3 diverging bar chart of top gene contributions.
