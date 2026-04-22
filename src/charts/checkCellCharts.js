@@ -67,7 +67,7 @@ function renderSingleBarChart(container, opts) {
     const d3 = window.d3;
 
     const containerNode = container.node();
-    const width = containerNode ? containerNode.clientWidth : 400;
+    const width = Math.max(containerNode.clientWidth || 0, 400);
     const height = 300;
     const margin = { top: 50, right: 20, bottom: 70, left: 60 };
     const chartWidth = width - margin.left - margin.right;
@@ -336,7 +336,7 @@ export function renderComponentsChart(container, data) {
     ];
 
     const containerNode = container.node ? container.node() : container;
-    const width = containerNode.clientWidth || 400;
+    const width = Math.max(containerNode.clientWidth || 0, 400);
     const height = 300;
     const margin = { top: 50, right: 20, bottom: 40, left: 60 };
     const chartWidth = width - margin.left - margin.right;
@@ -489,7 +489,7 @@ export function renderPosteriorChart(container, data) {
     ];
 
     const containerNode = container.node ? container.node() : container;
-    const width = containerNode.clientWidth || 400;
+    const width = Math.max(containerNode.clientWidth || 0, 400);
     const height = 280;
     const margin = { top: 50, right: 20, bottom: 70, left: 60 };
     const chartWidth = width - margin.left - margin.right;

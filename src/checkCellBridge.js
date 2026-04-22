@@ -94,6 +94,9 @@ export function openCheckCellModal(cellLabel) {
     if (resultsPhase) resultsPhase.style.display = 'none';
     if (loading) loading.style.display = 'none';
 
+    // Reset to first tab so UI starts fresh
+    activateTab('genes');
+
     // Store current cell label on the panel
     panel.dataset.cellLabel = cellLabel;
 
