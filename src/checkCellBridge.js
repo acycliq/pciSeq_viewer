@@ -186,11 +186,15 @@ function renderResults(data) {
     data.colorAssigned = colorAssigned;
     data.colorUser = colorUser;
 
+    // Force white text for "Zero" class in the summary header for legibility
+    const displayColorAssigned = data.assignedClass === 'Zero' ? '#ffffff' : colorAssigned;
+    const displayColorUser = data.userClass === 'Zero' ? '#ffffff' : colorUser;
+
     const summary = document.getElementById('checkCellSummary');
     if (summary) {
-        summary.innerHTML = '<span style="color:' + colorAssigned + ';font-weight:600;">' + escapeHtml(data.assignedClass) + '</span>' +
+        summary.innerHTML = '<span style="color:' + displayColorAssigned + ';font-weight:600;">' + escapeHtml(data.assignedClass) + '</span>' +
             ' <span style="color:#6b7280;margin:0 8px;">vs</span> ' +
-            '<span style="color:' + colorUser + ';font-weight:600;">' + escapeHtml(data.userClass) + '</span>';
+            '<span style="color:' + displayColorUser + ';font-weight:600;">' + escapeHtml(data.userClass) + '</span>';
     }
 
     // Tab 1 (Genes): D3 diverging bar chart of top gene contributions.
