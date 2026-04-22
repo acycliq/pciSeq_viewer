@@ -3,18 +3,20 @@
  * Handles D3.js rendering and table generation for the Cell Inspector
  */
 
-/**
- * Render two side-by-side bar charts using D3.js
- */
-export function renderDivergingChart(container, data) {
+// --- Shared helpers ---
+
+export function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function truncate(str, max) {
+    return str.length > max ? str.substring(0, max - 2) + '...' : str;
+}
+
+// Lazily create one tooltip shared across all charts, so any chart can render
+// first without an ordering dependency on another.
+function getOrCreateTooltip() {
     const d3 = window.d3;
-    if (!d3) {
-        container.innerHTML = '<div style="padding:40px;text-align:center;color:#fb7185;">D3.js not loaded</div>';
-        return;
-    }
-
-    container.innerHTML = '';
-
     let tooltip = d3.select('#checkCellTooltip');
     if (tooltip.empty()) {
         tooltip = d3.select('body').append('div')
@@ -33,6 +35,84 @@ export function renderDivergingChart(container, data) {
             .style('box-shadow', '0 4px 12px rgba(0,0,0,0.4)')
             .style('opacity', 0);
     }
+    return tooltip;
+}
+
+function renderMessage(container, color, text) {
+    container.innerHTML = '<div style="padding:40px;text-align:center;color:' + color + ';">' + text + '</div>';
+}
+
+function drawGridlines(g, y, chartWidth) {
+    g.append('g')
+        .selectAll('line')
+        .data(y.ticks(5))
+        .enter()
+        .append('line')
+        .attr('x1', 0).attr('x2', chartWidth)
+        .attr('y1', d => y(d)).attr('y2', d => y(d))
+        .attr('stroke', '#374151')
+        .attr('stroke-dasharray', '2,2')
+        .attr('opacity', 0.4);
+}
+
+function drawZeroLine(g, y, yMin, yMax, chartWidth) {
+    if (yMin < 0 && yMax > 0) {
+        g.append('line')
+            .attr('x1', 0).attr('x2', chartWidth)
+            .attr('y1', y(0)).attr('y2', y(0))
+            .attr('stroke', '#6b7280').attr('stroke-width', 1);
+    }
+}
+
+function drawYAxisLabel(svg, text, margin, chartHeight) {
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -(margin.top + chartHeight / 2))
+        .attr('y', 14)
+        .attr('text-anchor', 'middle')
+        .style('fill', '#9ca3af')
+        .style('font-size', '12px')
+        .text(text);
+}
+
+// Wire up standard hover interactions on a bar selection: fade + show tooltip
+// on mouseover, follow pointer on mousemove, restore on mouseout.
+function attachBarHover(selection, tooltip, htmlFn) {
+    const d3 = window.d3;
+    selection
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event, d) {
+            d3.select(this).transition().duration(150).attr('fill-opacity', 0.8);
+            tooltip.html(htmlFn(d))
+                .style('left', (event.pageX + 12) + 'px')
+                .style('top', (event.pageY - 10) + 'px')
+                .style('opacity', 1);
+        })
+        .on('mousemove', function(event) {
+            tooltip
+                .style('left', (event.pageX + 12) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this).transition().duration(150).attr('fill-opacity', 1);
+            tooltip.style('opacity', 0);
+        });
+}
+
+// --- Charts ---
+
+/**
+ * Render two stacked bar charts (top/bottom gene contributions) using D3.js.
+ */
+export function renderDivergingChart(container, data) {
+    const d3 = window.d3;
+    if (!d3) {
+        renderMessage(container, '#fb7185', 'D3.js not loaded');
+        return;
+    }
+
+    container.innerHTML = '';
+    const tooltip = getOrCreateTooltip();
 
     const wrapper = d3.select(container)
         .append('div')
@@ -47,8 +127,7 @@ export function renderDivergingChart(container, data) {
         title: 'Top ' + data.topN + ' contr for class: ' + data.assignedClass,
         subtitle: '(Sum: ' + data.topSum.toFixed(2) + ')',
         color: data.colorAssigned || '#38bdf8',
-        tooltip: tooltip,
-        fullData: data
+        tooltip: tooltip
     });
 
     const bottomDiv = wrapper.append('div').style('width', '100%');
@@ -57,8 +136,7 @@ export function renderDivergingChart(container, data) {
         title: 'Top ' + data.topN + ' contr for class: ' + data.userClass,
         subtitle: '(Sum: ' + data.bottomSum.toFixed(2) + ')',
         color: data.colorUser || '#fb7185',
-        tooltip: tooltip,
-        fullData: data
+        tooltip: tooltip
     });
 }
 
@@ -122,30 +200,10 @@ function renderSingleBarChart(container, opts) {
     g.selectAll('.y-axis line').attr('stroke', '#4b5563');
     g.selectAll('.y-axis path').attr('stroke', 'none');
 
-    g.append('g')
-        .selectAll('line')
-        .data(y.ticks(5))
-        .enter()
-        .append('line')
-        .attr('x1', 0)
-        .attr('x2', chartWidth)
-        .attr('y1', d => y(d))
-        .attr('y2', d => y(d))
-        .attr('stroke', '#374151')
-        .attr('stroke-dasharray', '2,2')
-        .attr('opacity', 0.4);
+    drawGridlines(g, y, chartWidth);
+    drawZeroLine(g, y, yMin, yMax, chartWidth);
 
-    if (yMin < 0 && yMax > 0) {
-        g.append('line')
-            .attr('x1', 0)
-            .attr('x2', chartWidth)
-            .attr('y1', y(0))
-            .attr('y2', y(0))
-            .attr('stroke', '#6b7280')
-            .attr('stroke-width', 1);
-    }
-
-    g.selectAll('.bar')
+    const bars = g.selectAll('.bar')
         .data(data)
         .enter()
         .append('rect')
@@ -155,27 +213,14 @@ function renderSingleBarChart(container, opts) {
         .attr('y', d => d.diff >= 0 ? y(d.diff) : y(0))
         .attr('width', x.bandwidth())
         .attr('height', d => Math.abs(y(d.diff) - y(0)))
-        .attr('fill', color).attr('stroke', 'rgba(255,255,255,0.4)').attr('stroke-width', 1)
-        .style('cursor', 'pointer')
-        .on('mouseover', function(event, d) {
-            d3.select(this).transition().duration(150).attr('fill-opacity', 0.8);
-            tooltip.html(
-                '<div style="font-weight:600;">' + escapeHtml(d.gene) + '</div>' +
-                '<div>' + d.diff.toFixed(3) + '</div>'
-            )
-            .style('left', (event.pageX + 12) + 'px')
-            .style('top', (event.pageY - 10) + 'px')
-            .style('opacity', 1);
-        })
-        .on('mousemove', function(event) {
-            tooltip
-                .style('left', (event.pageX + 12) + 'px')
-                .style('top', (event.pageY - 10) + 'px');
-        })
-        .on('mouseout', function() {
-            d3.select(this).transition().duration(150).attr('fill-opacity', 1);
-            tooltip.style('opacity', 0);
-        });
+        .attr('fill', color)
+        .attr('stroke', 'rgba(255,255,255,0.4)')
+        .attr('stroke-width', 1);
+
+    attachBarHover(bars, tooltip, d =>
+        '<div style="font-weight:600;">' + escapeHtml(d.gene) + '</div>' +
+        '<div>' + d.diff.toFixed(3) + '</div>'
+    );
 
     g.selectAll('.gene-label')
         .data(data)
@@ -190,18 +235,7 @@ function renderSingleBarChart(container, opts) {
         .style('font-size', '12px')
         .text(d => d.gene);
 
-    svg.append('text')
-        .attr('transform', 'rotate(-90)')
-        .attr('x', -(margin.top + chartHeight / 2))
-        .attr('y', 14)
-        .attr('text-anchor', 'middle')
-        .style('fill', '#9ca3af')
-        .style('font-size', '12px')
-        .text('Log-Likelihood Difference');
-}
-
-function truncate(str, max) {
-    return str.length > max ? str.substring(0, max - 2) + '...' : str;
+    drawYAxisLabel(svg, 'Log-Likelihood Difference', margin, chartHeight);
 }
 
 export function buildExpressionTable(data) {
@@ -305,10 +339,6 @@ function sortTable(table, colIndex, sortType) {
     rows.forEach(row => tbody.appendChild(row));
 }
 
-function escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
 /**
  * Grouped bar chart of the three log-posterior components
  * (Gene LogLik / Log Prior / MRF) for the two classes.
@@ -316,7 +346,7 @@ function escapeHtml(str) {
 export function renderComponentsChart(container, data) {
     const d3 = window.d3;
     if (!d3) {
-        container.innerHTML = '<div style="padding:40px;text-align:center;color:#fb7185;">D3.js not loaded</div>';
+        renderMessage(container, '#fb7185', 'D3.js not loaded');
         return;
     }
     container.innerHTML = '';
@@ -325,7 +355,7 @@ export function renderComponentsChart(container, data) {
     const anyMissing = [c.geneLoglikAssigned, c.geneLoglikUser, c.logPriorAssigned, c.logPriorUser, c.mrfAssigned, c.mrfUser]
         .some(v => v === null || v === undefined || Number.isNaN(v));
     if (anyMissing) {
-        container.innerHTML = '<div style="padding:40px;text-align:center;color:#9ca3af;">Log-posterior components unavailable. Regenerate diagnostics.db with an updated pciSeq run to enable this view.</div>';
+        renderMessage(container, '#9ca3af', 'Log-posterior components unavailable. Regenerate diagnostics.db with an updated pciSeq run to enable this view.');
         return;
     }
 
@@ -345,8 +375,6 @@ export function renderComponentsChart(container, data) {
     const svg = d3.select(container).append('svg')
         .attr('width', width)
         .attr('height', height);
-
-
 
     const g = svg.append('g')
         .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
@@ -372,18 +400,7 @@ export function renderComponentsChart(container, data) {
         .nice()
         .range([chartHeight, 0]);
 
-    g.append('g')
-        .selectAll('line')
-        .data(y.ticks(5))
-        .enter()
-        .append('line')
-        .attr('x1', 0)
-        .attr('x2', chartWidth)
-        .attr('y1', d => y(d))
-        .attr('y2', d => y(d))
-        .attr('stroke', '#374151')
-        .attr('stroke-dasharray', '2,2')
-        .attr('opacity', 0.4);
+    drawGridlines(g, y, chartWidth);
 
     const yAxis = d3.axisLeft(y).ticks(5);
     g.append('g').call(yAxis)
@@ -393,17 +410,11 @@ export function renderComponentsChart(container, data) {
     g.selectAll('.domain').attr('stroke', 'none');
     g.selectAll('.tick line').attr('stroke', '#374151').attr('opacity', 0.4);
 
-    if (yMin < 0 && yMax > 0) {
-        g.append('line')
-            .attr('x1', 0).attr('x2', chartWidth)
-            .attr('y1', y(0)).attr('y2', y(0))
-            .attr('stroke', '#6b7280').attr('stroke-width', 1);
-    }
+    drawZeroLine(g, y, yMin, yMax, chartWidth);
 
+    const tooltip = getOrCreateTooltip();
     const colorAssigned = data.colorAssigned || '#38bdf8';
     const colorUser = data.colorUser || '#fb7185';
-
-    const tooltip = d3.select('#checkCellTooltip');
 
     const series = [
         { key: 'assigned', color: colorAssigned, label: data.assignedClass },
@@ -411,37 +422,24 @@ export function renderComponentsChart(container, data) {
     ];
 
     series.forEach(s => {
-        g.selectAll('.bar-' + s.key)
+        const bars = g.selectAll('.bar-' + s.key)
             .data(groups)
             .enter()
             .append('rect')
-        .attr('rx', 2)
-        .attr('x', d => x0(d.label) + x1(s.key))
+            .attr('rx', 2)
+            .attr('x', d => x0(d.label) + x1(s.key))
             .attr('y', d => d[s.key] >= 0 ? y(d[s.key]) : y(0))
             .attr('width', x1.bandwidth())
             .attr('height', d => Math.abs(y(d[s.key]) - y(0)))
             .attr('class', 'bar-' + s.key)
-            .attr('fill', s.color).attr('stroke', 'rgba(255,255,255,0.3)').attr('stroke-width', 1)
-            .style('cursor', 'pointer')
-            .on('mouseover', function(event, d) {
-                d3.select(this).transition().duration(150).attr('fill-opacity', 0.8);
-                tooltip.html(
-                    '<div style="font-weight:600;">' + escapeHtml(d.label) + ' (' + escapeHtml(s.label) + ')</div>' +
-                    '<div>' + d[s.key].toFixed(3) + '</div>'
-                )
-                .style('left', (event.pageX + 12) + 'px')
-                .style('top', (event.pageY - 10) + 'px')
-                .style('opacity', 1);
-            })
-            .on('mousemove', function(event) {
-                tooltip
-                    .style('left', (event.pageX + 12) + 'px')
-                    .style('top', (event.pageY - 10) + 'px');
-            })
-            .on('mouseout', function() {
-                d3.select(this).transition().duration(150).attr('fill-opacity', 1);
-                tooltip.style('opacity', 0);
-            });
+            .attr('fill', s.color)
+            .attr('stroke', 'rgba(255,255,255,0.3)')
+            .attr('stroke-width', 1);
+
+        attachBarHover(bars, tooltip, d =>
+            '<div style="font-weight:600;">' + escapeHtml(d.label) + ' (' + escapeHtml(s.label) + ')</div>' +
+            '<div>' + d[s.key].toFixed(3) + '</div>'
+        );
     });
 
     g.append('g')
@@ -453,14 +451,7 @@ export function renderComponentsChart(container, data) {
     g.selectAll('.domain').attr('stroke', 'none');
     g.selectAll('.tick line').attr('stroke', '#374151').attr('opacity', 0.4);
 
-    svg.append('text')
-        .attr('transform', 'rotate(-90)')
-        .attr('x', -(margin.top + chartHeight / 2))
-        .attr('y', 14)
-        .attr('text-anchor', 'middle')
-        .style('fill', '#9ca3af')
-        .style('font-size', '12px')
-        .text('Log-scale value');
+    drawYAxisLabel(svg, 'Log-scale value', margin, chartHeight);
 }
 
 /**
@@ -470,18 +461,18 @@ export function renderComponentsChart(container, data) {
 export function renderPosteriorChart(container, data) {
     const d3 = window.d3;
     if (!d3) {
-        container.innerHTML = '<div style="padding:40px;text-align:center;color:#fb7185;">D3.js not loaded</div>';
+        renderMessage(container, '#fb7185', 'D3.js not loaded');
         return;
     }
     container.innerHTML = '';
 
     if (data.posteriorAssigned === null || data.posteriorUser === null
         || data.posteriorAssigned === undefined || data.posteriorUser === undefined) {
-        container.innerHTML = '<div style="padding:40px;text-align:center;color:#9ca3af;">Posterior probabilities unavailable. Regenerate diagnostics.db with an updated pciSeq run to enable this view.</div>';
+        renderMessage(container, '#9ca3af', 'Posterior probabilities unavailable. Regenerate diagnostics.db with an updated pciSeq run to enable this view.');
         return;
     }
 
-    const tooltip = d3.select('#checkCellTooltip');
+    const tooltip = getOrCreateTooltip();
 
     const rows = [
         { label: data.assignedClass, value: data.posteriorAssigned * 100, color: data.colorAssigned || '#38bdf8' },
@@ -499,8 +490,6 @@ export function renderPosteriorChart(container, data) {
         .attr('width', width)
         .attr('height', height);
 
-
-
     const g = svg.append('g')
         .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
 
@@ -516,16 +505,7 @@ export function renderPosteriorChart(container, data) {
         .domain([0, yMax])
         .range([chartHeight, 0]);
 
-    g.append('g')
-        .selectAll('line')
-        .data(y.ticks(5))
-        .enter()
-        .append('line')
-        .attr('x1', 0).attr('x2', chartWidth)
-        .attr('y1', d => y(d)).attr('y2', d => y(d))
-        .attr('stroke', '#374151')
-        .attr('stroke-dasharray', '2,2')
-        .attr('opacity', 0.4);
+    drawGridlines(g, y, chartWidth);
 
     g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(v => v + '%'))
         .selectAll('text')
@@ -534,7 +514,7 @@ export function renderPosteriorChart(container, data) {
     g.selectAll('.domain').attr('stroke', 'none');
     g.selectAll('.tick line').attr('stroke', '#374151').attr('opacity', 0.4);
 
-    g.selectAll('.bar')
+    const bars = g.selectAll('.bar')
         .data(rows)
         .enter()
         .append('rect')
@@ -544,27 +524,14 @@ export function renderPosteriorChart(container, data) {
         .attr('width', x.bandwidth())
         .attr('height', d => chartHeight - y(d.value))
         .attr('class', 'bar')
-        .attr('fill', d => d.color).attr('stroke', 'rgba(255,255,255,0.3)').attr('stroke-width', 1)
-        .style('cursor', 'pointer')
-        .on('mouseover', function(event, d) {
-            d3.select(this).transition().duration(150).attr('fill-opacity', 0.8);
-            tooltip.html(
-                '<div style="font-weight:600;">' + escapeHtml(d.label) + '</div>' +
-                '<div>' + d.value.toFixed(1) + '%</div>'
-            )
-            .style('left', (event.pageX + 12) + 'px')
-            .style('top', (event.pageY - 10) + 'px')
-            .style('opacity', 1);
-        })
-        .on('mousemove', function(event) {
-            tooltip
-                .style('left', (event.pageX + 12) + 'px')
-                .style('top', (event.pageY - 10) + 'px');
-        })
-        .on('mouseout', function() {
-            d3.select(this).transition().duration(150).attr('fill-opacity', 1);
-            tooltip.style('opacity', 0);
-        });
+        .attr('fill', d => d.color)
+        .attr('stroke', 'rgba(255,255,255,0.3)')
+        .attr('stroke-width', 1);
+
+    attachBarHover(bars, tooltip, d =>
+        '<div style="font-weight:600;">' + escapeHtml(d.label) + '</div>' +
+        '<div>' + d.value.toFixed(1) + '%</div>'
+    );
 
     g.selectAll('.value-label')
         .data(rows)
@@ -589,12 +556,5 @@ export function renderPosteriorChart(container, data) {
         .style('font-size', '12px')
         .text(d => truncate(d.label, 22));
 
-    svg.append('text')
-        .attr('transform', 'rotate(-90)')
-        .attr('x', -(margin.top + chartHeight / 2))
-        .attr('y', 14)
-        .attr('text-anchor', 'middle')
-        .style('fill', '#9ca3af')
-        .style('font-size', '12px')
-        .text('Posterior Probability (%)');
+    drawYAxisLabel(svg, 'Posterior Probability (%)', margin, chartHeight);
 }

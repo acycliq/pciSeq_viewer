@@ -104,7 +104,7 @@ function updateCellInfoHeader(cellData, cellProperties) {
     }
 
     titleElement.innerHTML =
-        '<b><strong>Cell Num: </strong>' + cellNum +
+        '<b><strong>Cell: </strong>' + cellNum +
         ', <strong>Gene Counts: </strong>' + totalTrunc +
         coordsStr + '</b>';
 }

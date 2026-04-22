@@ -14,7 +14,8 @@ import {
     buildExpressionTable,
     buildContributionTable,
     renderComponentsChart,
-    renderPosteriorChart
+    renderPosteriorChart,
+    escapeHtml
 } from './charts/checkCellCharts.js';
 
 /**
@@ -58,6 +59,7 @@ export async function setupCheckCellBridge() {
  * @param {boolean} notify - Whether to show notification
  */
 function applyCheckCellState(stateData, notify) {
+    const wasConnected = state.checkCellConnected;
     if (stateData.enabled) {
         state.checkCellConnected = true;
         state.checkCellClasses = stateData.classes || [];
@@ -70,8 +72,8 @@ function applyCheckCellState(stateData, notify) {
         state.checkCellConnected = false;
         state.checkCellClasses = [];
         window.appState.labelMap = null;
-        if (notify && state.checkCellConnected) {
-            // Only notify on disconnect if we were previously connected
+        // Only log on the connected -> disconnected transition.
+        if (notify && wasConnected) {
             console.log('check_cell disabled');
         }
     }
@@ -237,11 +239,6 @@ function activateTab(tabName) {
     });
 }
 
-function formatPct(value) {
-    if (value === null || value === undefined || Number.isNaN(value)) return '';
-    return (value * 100).toFixed(1) + '%';
-}
-
 // --- Helpers ---
 
 function getAssignedClass(cellLabel) {
@@ -259,9 +256,3 @@ function getAssignedClass(cellLabel) {
     }
     return names[bestIdx] || null;
 }
-
-function escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-
