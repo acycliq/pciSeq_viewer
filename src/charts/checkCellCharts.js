@@ -155,7 +155,7 @@ function renderSingleBarChart(container, opts) {
         .attr('y', d => d.diff >= 0 ? y(d.diff) : y(0))
         .attr('width', x.bandwidth())
         .attr('height', d => Math.abs(y(d.diff) - y(0)))
-        .attr('fill', color)
+        .attr('fill', color).attr('stroke', 'rgba(255,255,255,0.4)').attr('stroke-width', 1)
         .style('cursor', 'pointer')
         .on('mouseover', function(event, d) {
             d3.select(this).transition().duration(150).attr('fill-opacity', 0.8);
@@ -421,7 +421,7 @@ export function renderComponentsChart(container, data) {
             .attr('width', x1.bandwidth())
             .attr('height', d => Math.abs(y(d[s.key]) - y(0)))
             .attr('class', 'bar-' + s.key)
-            .attr('fill', s.color)
+            .attr('fill', s.color).attr('stroke', 'rgba(255,255,255,0.3)').attr('stroke-width', 1)
             .style('cursor', 'pointer')
             .on('mouseover', function(event, d) {
                 d3.select(this).transition().duration(150).attr('fill-opacity', 0.8);
@@ -544,7 +544,7 @@ export function renderPosteriorChart(container, data) {
         .attr('width', x.bandwidth())
         .attr('height', d => chartHeight - y(d.value))
         .attr('class', 'bar')
-        .attr('fill', d => d.color)
+        .attr('fill', d => d.color).attr('stroke', 'rgba(255,255,255,0.3)').attr('stroke-width', 1)
         .style('cursor', 'pointer')
         .on('mouseover', function(event, d) {
             d3.select(this).transition().duration(150).attr('fill-opacity', 0.8);
