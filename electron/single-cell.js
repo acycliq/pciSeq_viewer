@@ -22,11 +22,27 @@ function init(mw, st) {
   mainWindow = mw;
   store = st;
 
-  // Auto-load if a path was previously saved
+  // 1. Try the explicitly saved path first
   const savedPath = store.get('scDataPath', '');
   if (savedPath && fs.existsSync(savedPath)) {
-    try { openDatabase(savedPath); } catch (e) {
-      console.warn('Failed to auto-load single cell DB:', e.message);
+    try { openDatabase(savedPath); return; } catch (e) {
+      console.warn('Failed to auto-load single cell DB from saved path:', e.message);
+    }
+  }
+
+  // 2. Fall back to looking next to diagnostics.db (covers first-launch case
+  //    where the user never went through Setup but the file is already there)
+  const diagnosticsDir = store.get('diagnosticsPath', store.get('checkCellPath', ''));
+  if (diagnosticsDir) {
+    const candidate = path.join(diagnosticsDir, 'raw_single_cell_data.db');
+    if (fs.existsSync(candidate)) {
+      try {
+        openDatabase(candidate);
+        store.set('scDataPath', candidate);
+        console.log('Auto-loaded single cell DB from diagnostics folder:', candidate);
+      } catch (e) {
+        console.warn('Failed to auto-load single cell DB from diagnostics folder:', e.message);
+      }
     }
   }
 }
