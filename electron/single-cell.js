@@ -78,7 +78,7 @@ function openViewWindow() {
   viewWindow = new BrowserWindow({
     width: 1200,
     height: 820,
-    parent: mainWindow,
+    // parent: mainWindow,  // omitted — setting a parent prevents maximising on double-click
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
