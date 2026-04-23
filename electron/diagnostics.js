@@ -456,10 +456,15 @@ ipcMain.handle('get-misread-meta', () => {
   };
 });
 
+function getMeta() {
+  return diagnosticsMeta;
+}
+
 module.exports = {
   init,
   openDiagnosticsDatabase,
   closeDiagnosticsDatabase,
   broadcastDiagnosticsState,
-  openDiagnosticsSetup
+  openDiagnosticsSetup,
+  getMeta
 };
