@@ -279,6 +279,26 @@ function registerCustomProtocol() {
   });
 }
 
+// Build the body text shown in the About dialog. When diagnostics.db is
+// connected we append a short "Loaded dataset" block describing the pciSeq
+// run that produced the data. Falls back to the viewer-only blurb otherwise.
+function buildAboutDetail(provenance) {
+  const lines = [
+    'Desktop transcriptomics viewer for visualizing spatial gene expression data.'
+  ];
+  if (provenance) {
+    lines.push(
+      '',
+      'Loaded dataset',
+      `Produced by pciSeq ${provenance.version || 'unknown'} (branch ${provenance.branch || 'unknown'}, commit ${provenance.commit || 'unknown'})`,
+      `Built ${provenance.build_date || 'unknown'}`,
+      `Run started ${provenance.created_at || 'unknown'}`,
+      `Run saved ${provenance.serialised_at || 'unknown'}`
+    );
+  }
+  return lines.join('\n');
+}
+
 // Create application menu
 function createMenu() {
   const template = [
@@ -555,11 +575,12 @@ function createMenu() {
           label: 'About pciSeq Viewer',
           click: () => {
             const packageJson = require('../package.json');
+            const provenance = diagnostics.getMeta()?.pciSeq_provenance || null;
             dialog.showMessageBox(mainWindow, {
               type: 'info',
               title: 'About pciSeq Viewer',
               message: `pciSeq Viewer v${packageJson.version}`,
-              detail: 'Desktop transcriptomics viewer for visualizing spatial gene expression data.'
+              detail: buildAboutDetail(provenance)
             });
           }
         }
