@@ -5,6 +5,9 @@
  * loading indicators, and polygon alias controls
  */
 
+import { getCellInfo } from '../data/tooltipDiagnostics.js';
+import { escapeHtml } from '../charts/checkCellCharts.js';
+
 // Note: Arrow-only runtime; no TSV-specific palette usage here
 
 /**
@@ -67,6 +70,94 @@ export function hideLoading(state, loadingElement) {
     } catch {}
 }
 
+// Monotonic counter bumped once per showTooltip call. Comparing the captured
+// seq against the latest one stored on the tooltip element ensures only the
+// most recent dispatch's async appends survive. Centralising the bump in
+// showTooltip means every dispatch (cell, spot, region, or empty space)
+// invalidates any in-flight appends from prior dispatches.
+let __diagSeq = 0;
+
+/**
+ * Append an HTML row to the open tooltip if this orchestration is still the
+ * latest. Guards against late async responses and against multiple onHover
+ * dispatches for the same picked object.
+ */
+function appendDiagnosticRow(tooltipElement, seq, html) {
+    if (tooltipElement.dataset.diagSeq !== seq) return;
+    tooltipElement.insertAdjacentHTML('beforeend', html);
+}
+
+function appendDiagnosticErrorRow(tooltipElement, seq, label, reason) {
+    appendDiagnosticRow(
+        tooltipElement,
+        seq,
+        `<strong>${escapeHtml(label)}:</strong> <span style="color:#c00">error: ${escapeHtml(reason)}</span>`
+    );
+}
+
+/**
+ * Add the assigned-class theta row to the cell tooltip. Silent when the
+ * diagnostics db is not connected. Surfaces every other failure both in
+ * DevTools and as a visible red row in the tooltip.
+ */
+function maybeAppendCellTheta(tooltipElement, seq, cellLabel) {
+    if (!window.appState?.checkCellConnected) return;
+
+    getCellInfo(cellLabel)
+        .then(info => {
+            appendDiagnosticRow(
+                tooltipElement,
+                seq,
+                `<strong>Theta:</strong> ${info.thetaHard.toFixed(3)}`
+            );
+        })
+        .catch(e => {
+            const reason = e?.message || 'unknown';
+            console.warn('tooltip diagnostics:', { kind: 'cell', cellLabel, error: reason });
+            appendDiagnosticErrorRow(tooltipElement, seq, 'Theta', reason);
+        });
+}
+
+/**
+ * Add the gamma_assigned row to the spot tooltip. Silent when the diagnostics
+ * db is not connected or the parent cell is background. Surfaces every other
+ * failure both in DevTools and as a visible red row in the tooltip.
+ */
+function maybeAppendSpotGamma(tooltipElement, seq, parentLabel, gene, spotId) {
+    if (!window.appState?.checkCellConnected) return;
+    if (!parentLabel || parentLabel === 0) return;
+
+    const genePanel = window.appState.genePanel;
+    if (!genePanel) {
+        const reason = 'genePanel missing on appState';
+        console.warn('tooltip diagnostics:', { kind: 'spot', spotId, parentLabel, gene, error: reason });
+        appendDiagnosticErrorRow(tooltipElement, seq, 'Gamma', reason);
+        return;
+    }
+
+    const geneIdx = genePanel.indexOf(gene);
+    if (geneIdx < 0) {
+        const reason = `gene not in panel: ${gene}`;
+        console.warn('tooltip diagnostics:', { kind: 'spot', spotId, parentLabel, gene, error: reason });
+        appendDiagnosticErrorRow(tooltipElement, seq, 'Gamma', reason);
+        return;
+    }
+
+    getCellInfo(parentLabel)
+        .then(info => {
+            appendDiagnosticRow(
+                tooltipElement,
+                seq,
+                `<strong>Gamma:</strong> ${info.gammaAssignedVec[geneIdx].toFixed(3)}`
+            );
+        })
+        .catch(e => {
+            const reason = e?.message || 'unknown';
+            console.warn('tooltip diagnostics:', { kind: 'spot', spotId, parentLabel, gene, error: reason });
+            appendDiagnosticErrorRow(tooltipElement, seq, 'Gamma', reason);
+        });
+}
+
 /**
  * Show tooltip with polygon or gene information
  * Displays contextual information when hovering over interactive elements
@@ -74,6 +165,11 @@ export function hideLoading(state, loadingElement) {
  * @param {HTMLElement} tooltipElement - Tooltip DOM element
  */
 export function showTooltip(info, tooltipElement) {
+    // Bump once per dispatch so any in-flight diagnostic appends from prior
+    // hovers see a fresh seq and skip themselves.
+    const seq = String(++__diagSeq);
+    tooltipElement.dataset.diagSeq = seq;
+
     if (info.picked && info.object) {
         let content = '';
 
@@ -164,6 +260,8 @@ export function showTooltip(info, tooltipElement) {
                             ${totalGeneCount}
                             ${colorHex}
                             ${internalLabel}`;
+
+                maybeAppendCellTheta(tooltipElement, seq, cellLabel);
             }
         } else if (info.object.gene) {
             // Gene tooltip - show enhanced gene spot information
@@ -210,6 +308,8 @@ export function showTooltip(info, tooltipElement) {
                       ${colorInfo}<strong>Coords:</strong> ${coords}<br>
                       <strong>Plane:</strong> ${planeId}<br>
                       ${parentInfo}${qualityInfo}`;
+
+            maybeAppendSpotGamma(tooltipElement, seq, info.object.neighbour, gene, info.object.spot_id);
         } else if (info.object.name) {
             // Region tooltip
             content = `<strong>Region:</strong> ${info.object.name}`;

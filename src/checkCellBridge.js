@@ -9,6 +9,7 @@ import { state } from './state/stateManager.js';
 import { getClassColor } from './cellInfoPanel/colorResolver.js';
 import { showNotification } from './ui/notification.js';
 import { getFormattedCellCoordinates } from '../utils/cellFormatting.js';
+import { clearTooltipCache } from './data/tooltipDiagnostics.js';
 import {
     renderDivergingChart,
     buildExpressionTable,
@@ -61,9 +62,16 @@ export async function setupCheckCellBridge() {
 function applyCheckCellState(stateData, notify) {
     const wasConnected = state.checkCellConnected;
     if (stateData.enabled) {
+        // Contract with the main process: the enabled payload must carry genePanel,
+        // because the spot tooltip needs it to resolve gene name -> index. A missing
+        // genePanel here is a main-process bug, not a hover-time recoverable state.
+        if (!Array.isArray(stateData.genePanel) || stateData.genePanel.length === 0) {
+            throw new Error('check_cell enabled payload missing genePanel');
+        }
         state.checkCellConnected = true;
         state.checkCellClasses = stateData.classes || [];
         window.appState.labelMap = stateData.labelMap || null;
+        window.appState.genePanel = stateData.genePanel;
         if (notify) {
             showNotification('check_cell connected (' + state.checkCellClasses.length + ' classes)', 'success');
         }
@@ -72,6 +80,8 @@ function applyCheckCellState(stateData, notify) {
         state.checkCellConnected = false;
         state.checkCellClasses = [];
         window.appState.labelMap = null;
+        window.appState.genePanel = null;
+        clearTooltipCache();
         // Only log on the connected -> disconnected transition.
         if (notify && wasConnected) {
             console.log('check_cell disabled');

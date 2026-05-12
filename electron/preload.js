@@ -34,6 +34,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkCellQuery: (params) => ipcRenderer.invoke('check-cell-binary-query', params),
   onCheckCellState: (handler) => ipcRenderer.on('check-cell-state', (_e, state) => handler(state)),
 
+  // Per-cell tooltip data (theta_bar[k*] + gamma_assigned) for hover tooltips
+  tooltipGetCellInfo: (cellLabel) => ipcRenderer.invoke('tooltip-get-cell-info', { cellLabel }),
+
   // check_spot (SQLite data, no Python required)
   getCheckSpotState: () => ipcRenderer.invoke('check-spot-get-state'),
   checkSpotQuery: (spotId) => ipcRenderer.invoke('check-spot-binary-query', { spotId }),

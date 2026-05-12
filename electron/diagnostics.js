@@ -82,7 +82,8 @@ function broadcastDiagnosticsState(enabled) {
       nC: diagnosticsMeta.nC,
       nG: diagnosticsMeta.nG,
       nK: diagnosticsMeta.nK,
-      labelMap: diagnosticsMeta.label_map || null
+      labelMap: diagnosticsMeta.label_map || null,
+      genePanel: diagnosticsMeta.gene_panel || null
     });
 
     // Send state for check_spot
@@ -429,10 +430,57 @@ ipcMain.handle('check-cell-get-state', () => {
       nC: diagnosticsMeta.nC,
       nG: diagnosticsMeta.nG,
       nK: diagnosticsMeta.nK,
-      labelMap: diagnosticsMeta.label_map || null
+      labelMap: diagnosticsMeta.label_map || null,
+      genePanel: diagnosticsMeta.gene_panel || null
     };
   }
   return { enabled: false };
+});
+
+// Per-cell tooltip data: theta_bar[k*] and gamma_assigned for the assigned class.
+// Used by the cell and spot hover tooltips. Returns explicit errors for known bad
+// inputs (missing in label_map, out-of-range, no row); other exceptions propagate
+// as unhandled rejections so they surface loudly during development.
+ipcMain.handle('tooltip-get-cell-info', (event, { cellLabel }) => {
+  if (!diagnosticsMeta || !diagnosticsDb) {
+    return { success: false, error: 'diagnostics db not connected' };
+  }
+
+  const { nC, nG, nK, label_map } = diagnosticsMeta;
+
+  let c = Number(cellLabel);
+  if (label_map && Object.keys(label_map).length > 0) {
+    const mapped = label_map[String(cellLabel)];
+    if (mapped === undefined) {
+      return { success: false, error: 'cellLabel not in label_map: ' + cellLabel };
+    }
+    c = mapped;
+  }
+  if (!Number.isInteger(c) || c < 0 || c >= nC) {
+    return { success: false, error: 'internal index out of range: ' + c };
+  }
+
+  const row = diagnosticsDb
+    .prepare('SELECT theta_bar, class_prob, gamma_assigned FROM cells WHERE cell_id = ?')
+    .get(c);
+  if (!row) {
+    return { success: false, error: 'cell row not found: ' + c };
+  }
+
+  const thetaBar      = new Float32Array(row.theta_bar.buffer,      row.theta_bar.byteOffset,      nK);
+  const classProb     = new Float32Array(row.class_prob.buffer,     row.class_prob.byteOffset,     nK);
+  const gammaAssigned = new Float32Array(row.gamma_assigned.buffer, row.gamma_assigned.byteOffset, nG);
+
+  let kStar = 0;
+  for (let k = 1; k < nK; k++) {
+    if (classProb[k] > classProb[kStar]) kStar = k;
+  }
+
+  return {
+    success: true,
+    thetaHard: thetaBar[kStar],
+    gammaAssignedVec: Array.from(gammaAssigned)
+  };
 });
 
 // Get current check_spot state (called by renderer on startup)
