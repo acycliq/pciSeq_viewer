@@ -180,7 +180,7 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
 /**
  * Create gene expression layers using IconLayer
  */
-export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, showTooltip, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, greyOutMisreads = false, hideMisreads = false) {
+export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, greyOutMisreads = false, hideMisreads = false) {
     if (!showGenes || !geneIconAtlas) return [];
 
     if (combineIntoSingleLayer) {
@@ -217,7 +217,6 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             id: 'genes-combined',
             data: combined,
             pickable: true,
-            onHover: showTooltip,
             onClick: (info) => {
                 if (!info?.object) return;
                 const evt = info.srcEvent || info.sourceEvent;
@@ -264,7 +263,6 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             data: filtered,
             visible: selectedGenes.has(gene),
             pickable: true,
-            onHover: showTooltip,
             onClick: (info) => {
                 if (!info?.object) return;
                 const evt = info.srcEvent || info.sourceEvent;

@@ -142,7 +142,6 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
                 state.geneIconMapping,
                 state.currentPlane,
                 state.geneSizeScale,
-                (info) => showTooltip(info, elements.tooltip),
                 bounds,
                 true, // combine into a single IconLayer at deep zoom
                 state.scoreThreshold,
