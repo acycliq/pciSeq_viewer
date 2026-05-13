@@ -149,11 +149,16 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
     };
 
     let intensityUpper = 1.0;
+    let scoreUpper = 1.0;
     try {
         const app = window.appState;
         if (app && Array.isArray(app.intensityRange)) {
             const hi = Number(app.intensityRange[1]);
             if (Number.isFinite(hi)) intensityUpper = hi;
+        }
+        if (app && Array.isArray(app.scoreRange)) {
+            const hi = Number(app.scoreRange[1]);
+            if (Number.isFinite(hi)) scoreUpper = hi;
         }
     } catch {}
 
@@ -171,8 +176,8 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         extensions: [new DataFilterExtension({ filterSize: use2D ? 2 : 1 })],
         filterEnabled: use2D || canFilterScore || canFilterIntensity,
         filterRange: use2D
-            ? [ [Number(scoreThreshold) || 0, 1.0], [Number(intensityThreshold) || 0, intensityUpper] ]
-            : canFilterScore ? [Number(scoreThreshold) || 0, 1.0] :
+            ? [ [Number(scoreThreshold) || 0, scoreUpper], [Number(intensityThreshold) || 0, intensityUpper] ]
+            : canFilterScore ? [Number(scoreThreshold) || 0, scoreUpper] :
               canFilterIntensity ? [Number(intensityThreshold) || 0, intensityUpper] : [0, 1.0]
     });
 }
