@@ -161,9 +161,8 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                         }
                     }
                 } catch {}
-                // Update intensity range only when intensities exist (UI min = min(0, intensityMin), max = intensityMax)
-                try {
-                    if (!hasIntensityFlag) throw new Error('No intensity present');
+                // Update intensity range when intensities exist (UI min = min(0, intensityMin), max = intensityMax)
+                if (hasIntensityFlag) {
                     const rawMinI = Number.isFinite(intensityMin) ? intensityMin : 0;
                     const rawMaxI = Number.isFinite(intensityMax) ? intensityMax : 1;
                     const uiMinI = Math.min(0, rawMinI);
@@ -174,25 +173,21 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                     if (sliderI) {
                         sliderI.min = String(uiMinI);
                         sliderI.max = String(uiMaxI);
-                        // Set an adaptive step for better control across ranges
-                        try {
-                            const range = (uiMaxI - uiMinI);
-                            let step = 0.01;
-                            if (range > 0 && range < 1) {
-                                // choose roughly 100 steps across the range
-                                step = Math.max(range / 100, 0.0001);
-                            } else if (range >= 1) {
-                                step = range / 100;
-                            }
-                            sliderI.step = String(step);
-                        } catch {}
+                        const range = uiMaxI - uiMinI;
+                        let step = 0.01;
+                        if (range > 0 && range < 1) {
+                            step = Math.max(range / 100, 0.0001);
+                        } else if (range >= 1) {
+                            step = range / 100;
+                        }
+                        sliderI.step = String(step);
                         if (window.appState.intensityThreshold === 0) {
                             sliderI.value = String(uiMinI);
                             window.appState.intensityThreshold = uiMinI;
                             if (valueI) valueI.textContent = Number(uiMinI).toFixed(2);
                         }
                     }
-                } catch {}
+                }
                 if (window?.advancedConfig?.().performance?.showPerformanceStats) {
                     console.log(` Prebuilt scatter cache in worker: points=${window.appState.arrowScatterCache.length}`);
                 }
