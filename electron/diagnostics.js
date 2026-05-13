@@ -83,7 +83,16 @@ function broadcastDiagnosticsState(enabled) {
       nG: diagnosticsMeta.nG,
       nK: diagnosticsMeta.nK,
       labelMap: diagnosticsMeta.label_map || null,
-      genePanel: diagnosticsMeta.gene_panel || null
+      genePanel: diagnosticsMeta.gene_panel || null,
+      // Fields below feed the spot-hover gamma chain log. Older diagnostics.db
+      // files lack Inefficiency / A_c; the renderer treats their absence as
+      // "chain not available" and silently skips emission.
+      // See notes/spot_hover_chain_spec.md.
+      Inefficiency:        diagnosticsMeta.Inefficiency ?? null,
+      A_c:                 diagnosticsMeta.A_c          ?? null,
+      eta_bar:             diagnosticsMeta.eta_bar      ?? null,
+      sc_mean_expression:  diagnosticsMeta.sc_mean_expression ?? null,
+      rSpot:               diagnosticsMeta.rSpot        ?? null
     });
 
     // Send state for check_spot
@@ -431,7 +440,13 @@ ipcMain.handle('check-cell-get-state', () => {
       nG: diagnosticsMeta.nG,
       nK: diagnosticsMeta.nK,
       labelMap: diagnosticsMeta.label_map || null,
-      genePanel: diagnosticsMeta.gene_panel || null
+      genePanel: diagnosticsMeta.gene_panel || null,
+      // Chain log fields, see notes/spot_hover_chain_spec.md
+      Inefficiency:        diagnosticsMeta.Inefficiency ?? null,
+      A_c:                 diagnosticsMeta.A_c          ?? null,
+      eta_bar:             diagnosticsMeta.eta_bar      ?? null,
+      sc_mean_expression:  diagnosticsMeta.sc_mean_expression ?? null,
+      rSpot:               diagnosticsMeta.rSpot        ?? null
     };
   }
   return { enabled: false };
@@ -461,7 +476,7 @@ ipcMain.handle('tooltip-get-cell-info', (event, { cellLabel }) => {
   }
 
   const row = diagnosticsDb
-    .prepare('SELECT theta_bar, class_prob, gamma_assigned FROM cells WHERE cell_id = ?')
+    .prepare('SELECT theta_bar, class_prob, gamma_assigned, gene_count FROM cells WHERE cell_id = ?')
     .get(c);
   if (!row) {
     return { success: false, error: 'cell row not found: ' + c };
@@ -470,6 +485,7 @@ ipcMain.handle('tooltip-get-cell-info', (event, { cellLabel }) => {
   const thetaBar      = new Float32Array(row.theta_bar.buffer,      row.theta_bar.byteOffset,      nK);
   const classProb     = new Float32Array(row.class_prob.buffer,     row.class_prob.byteOffset,     nK);
   const gammaAssigned = new Float32Array(row.gamma_assigned.buffer, row.gamma_assigned.byteOffset, nG);
+  const geneCount     = new Float32Array(row.gene_count.buffer,     row.gene_count.byteOffset,     nG);
 
   let kStar = 0;
   for (let k = 1; k < nK; k++) {
@@ -478,8 +494,11 @@ ipcMain.handle('tooltip-get-cell-info', (event, { cellLabel }) => {
 
   return {
     success: true,
-    thetaHard: thetaBar[kStar],
-    gammaAssignedVec: Array.from(gammaAssigned)
+    thetaHard:        thetaBar[kStar],
+    gammaAssignedVec: Array.from(gammaAssigned),
+    assignedClassIdx: kStar,
+    classProbHard:    classProb[kStar],
+    geneCountVec:     Array.from(geneCount)
   };
 });
 

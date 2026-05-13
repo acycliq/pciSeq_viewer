@@ -72,15 +72,46 @@ function applyCheckCellState(stateData, notify) {
         state.checkCellClasses = stateData.classes || [];
         window.appState.labelMap = stateData.labelMap || null;
         window.appState.genePanel = stateData.genePanel;
+
+        // Spot-hover gamma chain log. See notes/spot_hover_chain_spec.md.
+        // Older diagnostics.db files lack Inefficiency / A_c; gate the chain
+        // feature on their presence so the emitter is a no-op for old data.
+        window.appState.Inefficiency       = stateData.Inefficiency ?? null;
+        window.appState.A_c                = stateData.A_c          ?? null;
+        window.appState.eta_bar            = stateData.eta_bar      ?? null;
+        window.appState.sc_mean_expression = stateData.sc_mean_expression ?? null;
+        window.appState.rSpot              = stateData.rSpot        ?? null;
+        window.appState.classNames         = stateData.classes      ?? null;
+        window.appState.chainAvailable     = (
+            stateData.Inefficiency != null &&
+            Array.isArray(stateData.A_c) &&
+            Array.isArray(stateData.eta_bar) &&
+            Array.isArray(stateData.sc_mean_expression) &&
+            stateData.rSpot != null
+        );
+        // On by default once the chain feature is available. Power users can
+        // silence it from DevTools via window.appState.debugGammaChain = false.
+        if (window.appState.debugGammaChain === undefined) {
+            window.appState.debugGammaChain = true;
+        }
+
         if (notify) {
             showNotification('check_cell connected (' + state.checkCellClasses.length + ' classes)', 'success');
         }
-        console.log('check_cell enabled. Classes:', state.checkCellClasses.length);
+        console.log('check_cell enabled. Classes:', state.checkCellClasses.length,
+                    'chainAvailable=', window.appState.chainAvailable);
     } else {
         state.checkCellConnected = false;
         state.checkCellClasses = [];
         window.appState.labelMap = null;
         window.appState.genePanel = null;
+        window.appState.Inefficiency       = null;
+        window.appState.A_c                = null;
+        window.appState.eta_bar            = null;
+        window.appState.sc_mean_expression = null;
+        window.appState.rSpot              = null;
+        window.appState.classNames         = null;
+        window.appState.chainAvailable     = false;
         clearTooltipCache();
         // Only log on the connected -> disconnected transition.
         if (notify && wasConnected) {

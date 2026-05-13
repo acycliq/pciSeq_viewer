@@ -10,6 +10,99 @@ import { escapeHtml } from '../charts/checkCellCharts.js';
 
 // Note: Arrow-only runtime; no TSV-specific palette usage here
 
+// ----- Spot-hover gamma chain log (DevTools console only) -----
+//
+// Emits a collapsible breakdown of the per-(cell, gene) gamma chain whenever
+// a spot is hovered AND the user has flipped window.appState.debugGammaChain
+// to true. Silently no-ops otherwise. See notes/spot_hover_chain_spec.md.
+const CHAIN_HOVER_LOG_TTL_MS = 500;
+const _chainLogLastSeen = new Map();
+
+function _shouldLogChain(parentLabel, geneIdx) {
+    const key = `${parentLabel}::${geneIdx}`;
+    const now = Date.now();
+    const prev = _chainLogLastSeen.get(key);
+    if (prev && now - prev < CHAIN_HOVER_LOG_TTL_MS) return false;
+    _chainLogLastSeen.set(key, now);
+    return true;
+}
+
+function _resolveInternalCellIdx(externalLabel) {
+    const labelMap = window.appState?.labelMap;
+    if (labelMap && Object.keys(labelMap).length > 0) {
+        const mapped = labelMap[String(externalLabel)];
+        return (mapped !== undefined) ? Number(mapped) : null;
+    }
+    // sequential labels: external == internal
+    return Number(externalLabel);
+}
+
+function logGammaChain(parentLabel, geneIdx, gene, info) {
+    if (window.appState?.debugGammaChain !== true) return;
+    if (window.appState?.chainAvailable !== true) return;
+    if (!_shouldLogChain(parentLabel, geneIdx)) return;
+
+    const cInternal = _resolveInternalCellIdx(parentLabel);
+    if (cInternal === null) {
+        console.warn('[gamma chain] could not resolve internal index for label', parentLabel);
+        return;
+    }
+
+    const kStar       = info.assignedClassIdx;
+    const classProb   = info.classProbHard;
+    const thetaHard   = info.thetaHard;
+    const observed    = info.geneCountVec[geneIdx];
+    const gammaStored = info.gammaAssignedVec[geneIdx];
+
+    const inefficiency = window.appState.Inefficiency;
+    const aC           = window.appState.A_c[cInternal];
+    const etaG         = window.appState.eta_bar[geneIdx];
+    const rSpot        = window.appState.rSpot;
+    const scMeanExpr   = window.appState.sc_mean_expression;
+    const classNames   = window.appState.classNames || [];
+
+    // sc_mean_expression is shipped as a nested array (nG x nK), matching
+    // numpy .tolist() of a 2D ndarray. Access via [g][k].
+    const muRef = Array.isArray(scMeanExpr[geneIdx])
+        ? scMeanExpr[geneIdx][kStar]
+        : null;
+    if (muRef == null) {
+        console.warn('[gamma chain] sc_mean_expression shape unexpected at gene', geneIdx);
+        return;
+    }
+
+    // Running products along the chain.
+    const muAdj           = muRef * inefficiency;
+    const afterAc         = muAdj * aC;
+    const baselineAtTheta = afterAc * etaG;
+    const predicted       = baselineAtTheta * thetaHard;
+
+    // Independent gamma reconstruction from rSpot + observed + predicted.
+    const gammaCheck = (rSpot + observed) / (rSpot + predicted);
+    const matches    = Math.abs(gammaCheck - gammaStored)
+                       / Math.max(1e-9, Math.abs(gammaStored)) < 1e-3;
+
+    const className = classNames[kStar] ?? `k=${kStar}`;
+    const header = `[gamma chain] cell ${parentLabel}  k* = ${className} (p = ${classProb.toFixed(3)})  gene = ${gene}`;
+
+    // Use groupCollapsed so the chain stays folded by default.
+    console.groupCollapsed(header);
+    const f = (x, d = 4) => x.toFixed(d);
+    console.log(`  sc_mean_expression[g, k*]                =  ${f(muRef)}`);
+    console.log(`  × ${f(inefficiency)}  (Inefficiency)                 =   ${f(muAdj)}    mu_adj used internally`);
+    console.log(`  × ${f(aC)}  (A_c)                          =   ${f(afterAc)}    inside-cell-bonus normalisation`);
+    console.log(`  × ${f(etaG)}  (eta_g)                        =   ${f(baselineAtTheta, 2)}      gene efficiency`);
+    console.log(`  × ${f(thetaHard)}  (theta_bar[c, k*])             =   ${f(predicted, 2)}      predicted for this cell`);
+    console.log(`  observed N_{c, g}                        =  ${f(observed)}`);
+    const checkLine = `  gamma check  (rSpot + obs) / (rSpot + pred)  =  (${rSpot} + ${f(observed, 3)}) / (${rSpot} + ${f(predicted, 3)})  =  ${f(gammaCheck)}`;
+    if (matches) {
+        console.log(`${checkLine}  OK`);
+    } else {
+        console.warn(`${checkLine}  MISMATCH stored=${f(gammaStored)}`);
+    }
+    console.groupEnd();
+}
+
 /**
  * Hide the startup curtain and loading indicator, then reveal a screen by id.
  * Shared by the welcome screen, image-dims prompt and metadata-error screen.
@@ -150,6 +243,10 @@ function maybeAppendSpotGamma(tooltipElement, seq, parentLabel, gene, spotId) {
                 seq,
                 `<strong>Gamma:</strong> ${info.gammaAssignedVec[geneIdx].toFixed(3)}`
             );
+            // Best-effort console-only diagnostic. Never let it bubble up and
+            // affect the tooltip rendering.
+            try { logGammaChain(parentLabel, geneIdx, gene, info); }
+            catch (e) { console.warn('[gamma chain] emitter failed:', e); }
         })
         .catch(e => {
             const reason = e?.message || 'unknown';

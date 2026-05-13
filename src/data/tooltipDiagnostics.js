@@ -1,9 +1,19 @@
 /**
  * Tooltip diagnostics cache.
  *
- * Fetches per-cell tooltip data (theta_bar[k*] and gamma_assigned[:]) from the
- * Electron main process and memoises it for the lifetime of the current
- * diagnostics-db connection. Designed for use on every cell/spot hover.
+ * Fetches per-cell tooltip data from the Electron main process and memoises
+ * it for the lifetime of the current diagnostics-db connection. Designed for
+ * use on every cell/spot hover.
+ *
+ * Cached fields:
+ *   thetaHard          - theta_bar[c, k*]
+ *   gammaAssignedVec   - gamma_bar[c, :, k*] of length nG
+ *   assignedClassIdx   - k*, argmax of class_prob[c, :]
+ *   classProbHard      - class_prob[c, k*]
+ *   geneCountVec       - observed gene counts N_{c, g} of length nG
+ *
+ * The last three feed the spot-hover gamma chain log alongside the existing
+ * tooltip rows. See notes/spot_hover_chain_spec.md.
  */
 
 const CACHE_CAP = 1024;
@@ -22,7 +32,13 @@ const cache = new Map();
  * rejection into a visible error row in the tooltip.
  *
  * @param {number|string} cellLabel External (segmentation) cell label.
- * @returns {Promise<{ thetaHard: number, gammaAssignedVec: number[] }>}
+ * @returns {Promise<{
+ *   thetaHard: number,
+ *   gammaAssignedVec: number[],
+ *   assignedClassIdx: number,
+ *   classProbHard: number,
+ *   geneCountVec: number[]
+ * }>}
  */
 export async function getCellInfo(cellLabel) {
     const key = String(cellLabel);
@@ -34,8 +50,11 @@ export async function getCellInfo(cellLabel) {
     }
 
     const info = {
-        thetaHard: resp.thetaHard,
-        gammaAssignedVec: resp.gammaAssignedVec
+        thetaHard:        resp.thetaHard,
+        gammaAssignedVec: resp.gammaAssignedVec,
+        assignedClassIdx: resp.assignedClassIdx,
+        classProbHard:    resp.classProbHard,
+        geneCountVec:     resp.geneCountVec
     };
 
     if (cache.size >= CACHE_CAP) {
