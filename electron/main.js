@@ -143,7 +143,7 @@ function createWindow() {
 
   // Initialize modules
   diagnostics.init(mainWindow, store);
-  singleCell.init(mainWindow, store);
+  singleCell.init(mainWindow);
   dataLoader.init(mainWindow, store, diagnostics);
 }
 
@@ -363,13 +363,6 @@ function createMenu() {
                     diagnostics.broadcastDiagnosticsState(true);
                   }
 
-                  const scDbPath = path.join(diagnosticsDir, 'raw_single_cell_data.db');
-                  if (fs.existsSync(scDbPath)) {
-                    console.log('Auto-discovered single cell database:', scDbPath);
-                    singleCell.openDatabase(scDbPath);
-                    store.set('scDataPath', scDbPath);
-                  }
-
               } catch(e) { console.warn('Failed to auto-discover diagnostics:', e); }
 
               // Reload the window to use new data
@@ -532,10 +525,6 @@ function createMenu() {
     {
       label: 'Single Cell Data',
       submenu: [
-        {
-          label: 'Setup...',
-          click: () => { singleCell.openSetupWindow(); }
-        },
         {
           label: 'View...',
           click: () => { singleCell.openViewWindow(); }

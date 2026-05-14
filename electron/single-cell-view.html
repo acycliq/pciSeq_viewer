@@ -198,9 +198,7 @@
         const data = tab === 'ref' ? refData : implData;
 
         if (!data) {
-            const err = tab === 'ref'
-                ? 'Reference data not loaded. Use Single Cell Data → Setup... to select raw_single_cell_data.db.'
-                : 'Implied data not available. Use Diagnostics → Setup... to load diagnostics.db.';
+            const err = 'Diagnostics data not loaded. Use Diagnostics -> Setup... to load diagnostics.db.';
             container.innerHTML = `<div class="message error">${err}</div>`;
             document.getElementById('filterCount').textContent = '';
             return;
