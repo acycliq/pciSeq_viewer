@@ -115,6 +115,19 @@
         tbody tr:nth-child(even) td.gene-col { background: #131c2e; }
         tbody tr:nth-child(even):hover td { background: #1e293b; }
         .highlight { color: #fbbf24; }
+
+        /* Total row pinned at the bottom. Sum over all genes per class, never
+           changes with the gene filter, never participates in sorting (it
+           lives in tfoot, not tbody). */
+        tfoot { position: sticky; bottom: 0; z-index: 10; background: #1f2937; }
+        tfoot td {
+            font-weight: 600;
+            color: #fbbf24;
+            border-top: 2px solid #374151;
+            border-bottom: none;
+            background: #1f2937;
+        }
+        tfoot td.gene-col { color: #fbbf24; background: #1f2937; z-index: 15; }
     </style>
 </head>
 <body>
@@ -155,6 +168,19 @@
     const sortState = { ref: { col: -1, asc: true }, impl: { col: -1, asc: true } };
     let rowOrder = { ref: [], impl: [] };
 
+    // Total per class column = sum over all genes. Computed once at load
+    // because it does not change with the gene filter or sorting.
+    function computeColumnTotals(data) {
+        const { gene_panel, class_names, data: matrix } = data;
+        const totals = new Array(class_names.length).fill(0);
+        for (let g = 0; g < gene_panel.length; g++) {
+            for (let k = 0; k < class_names.length; k++) {
+                totals[k] += matrix[g][k];
+            }
+        }
+        return totals;
+    }
+
     async function init() {
         const [refRes, implRes] = await Promise.all([
             api.getReferenceData(),
@@ -163,10 +189,12 @@
 
         if (refRes.success) {
             refData = refRes;
+            refData.totals = computeColumnTotals(refData);
             rowOrder.ref = refData.gene_panel.map((_, i) => i);
         }
         if (implRes.success) {
             implData = implRes;
+            implData.totals = computeColumnTotals(implData);
             rowOrder.impl = implData.gene_panel.map((_, i) => i);
         }
 
@@ -300,6 +328,27 @@
         });
 
         table.appendChild(tbody);
+
+        // Total row at the bottom. Sums are over ALL genes (ignore the gene
+        // filter on purpose, so the totals stay stable as you type), but the
+        // class filter still applies, so only currently-visible columns appear.
+        const tfoot = document.createElement('tfoot');
+        const totalRow = document.createElement('tr');
+
+        const totalLabel = document.createElement('td');
+        totalLabel.textContent = 'Total';
+        totalLabel.className = 'gene-col';
+        totalRow.appendChild(totalLabel);
+
+        filteredClasses.forEach(k => {
+            const td = document.createElement('td');
+            td.textContent = data.totals[k].toFixed(3);
+            totalRow.appendChild(td);
+        });
+
+        tfoot.appendChild(totalRow);
+        table.appendChild(tfoot);
+
         return table;
     }
 
