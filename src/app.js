@@ -6,7 +6,7 @@
  */
 
 // === CONFIGURATION IMPORTS ===
-import { INITIAL_VIEW_STATE, MAX_PRELOAD, IMG_DIMENSIONS } from '../config/constants.js';
+import { INITIAL_VIEW_STATE, MAX_PRELOAD, IMG_DIMENSIONS, SPOT_PICKABLE_MIN_ZOOM } from '../config/constants.js';
 
 // === STATE AND DOM IMPORTS ===
 import { state } from './state/stateManager.js';
@@ -345,14 +345,19 @@ function handleViewStateChange({ viewState, interactionState }) {
     // Update scale bar when view changes
     updateScaleBar(viewState);
 
-    try { state.currentZoom = viewState.zoom; } catch {}
+    try {
+        state.currentZoom = viewState.zoom;
+        // Also stamp on window.appState so modules that read globals can gate
+        // behavior by zoom level without importing `state`.
+        if (window.appState) window.appState.currentZoom = viewState.zoom;
+    } catch {}
     const zoomChanged = (__lastViewZoom !== null) && (Math.abs((viewState.zoom ?? 0) - __lastViewZoom) > 1e-6);
     __lastViewZoom = viewState.zoom ?? __lastViewZoom;
 
     // Update layers based on zoom mode transitions
     try {
         const adv = window.advancedConfig ? window.advancedConfig() : { performance: { showPerformanceStats: false } };
-        const mode = (viewState.zoom < 7) ? 'pc' : 'icon';
+        const mode = (viewState.zoom < SPOT_PICKABLE_MIN_ZOOM) ? 'pc' : 'icon';
         const dragging = Boolean(interactionState && interactionState.isDragging);
         const interacting = Boolean(interactionState && (interactionState.isDragging || interactionState.isZooming));
 

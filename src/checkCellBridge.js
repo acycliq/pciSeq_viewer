@@ -73,45 +73,64 @@ function applyCheckCellState(stateData, notify) {
         window.appState.labelMap = stateData.labelMap || null;
         window.appState.genePanel = stateData.genePanel;
 
-        // Spot-hover gamma chain log. See notes/spot_hover_chain_spec.md.
-        // Older diagnostics.db files lack Inefficiency / A_c; gate the chain
-        // feature on their presence so the emitter is a no-op for old data.
+        // Spot-hover gamma chain log and cell-hover theta chain log.
+        // See notes/spot_hover_chain_spec.md.
+        // Older diagnostics.db files may lack some of these; gate each chain on
+        // its required fields so the emitters are no-ops for old data.
         window.appState.Inefficiency       = stateData.Inefficiency ?? null;
         window.appState.A_c                = stateData.A_c          ?? null;
         window.appState.eta_bar            = stateData.eta_bar      ?? null;
         window.appState.sc_mean_expression = stateData.sc_mean_expression ?? null;
         window.appState.rSpot              = stateData.rSpot        ?? null;
+        window.appState.rTheta             = stateData.rTheta       ?? null;
+        window.appState.SpotReg            = stateData.SpotReg      ?? null;
         window.appState.classNames         = stateData.classes      ?? null;
-        window.appState.chainAvailable     = (
+        window.appState.gammaChainAvailable = (
             stateData.Inefficiency != null &&
             Array.isArray(stateData.A_c) &&
             Array.isArray(stateData.eta_bar) &&
             Array.isArray(stateData.sc_mean_expression) &&
             stateData.rSpot != null
         );
-        // On by default once the chain feature is available. Power users can
-        // silence it from DevTools via window.appState.debugGammaChain = false.
+        // Theta chain needs everything the gamma chain needs, plus rTheta and
+        // SpotReg. Same auto-on behavior, separate silence flag.
+        window.appState.thetaChainAvailable = (
+            window.appState.gammaChainAvailable &&
+            stateData.rTheta != null &&
+            stateData.SpotReg != null
+        );
+        // On by default once each chain feature is available. Power users can
+        // silence them from DevTools:
+        //   window.appState.debugGammaChain = false
+        //   window.appState.debugThetaChain = false
         if (window.appState.debugGammaChain === undefined) {
             window.appState.debugGammaChain = true;
+        }
+        if (window.appState.debugThetaChain === undefined) {
+            window.appState.debugThetaChain = true;
         }
 
         if (notify) {
             showNotification('check_cell connected (' + state.checkCellClasses.length + ' classes)', 'success');
         }
         console.log('check_cell enabled. Classes:', state.checkCellClasses.length,
-                    'chainAvailable=', window.appState.chainAvailable);
+                    'gammaChainAvailable=', window.appState.gammaChainAvailable,
+                    'thetaChainAvailable=', window.appState.thetaChainAvailable);
     } else {
         state.checkCellConnected = false;
         state.checkCellClasses = [];
         window.appState.labelMap = null;
         window.appState.genePanel = null;
-        window.appState.Inefficiency       = null;
-        window.appState.A_c                = null;
-        window.appState.eta_bar            = null;
-        window.appState.sc_mean_expression = null;
-        window.appState.rSpot              = null;
-        window.appState.classNames         = null;
-        window.appState.chainAvailable     = false;
+        window.appState.Inefficiency        = null;
+        window.appState.A_c                 = null;
+        window.appState.eta_bar             = null;
+        window.appState.sc_mean_expression  = null;
+        window.appState.rSpot               = null;
+        window.appState.rTheta              = null;
+        window.appState.SpotReg             = null;
+        window.appState.classNames          = null;
+        window.appState.gammaChainAvailable = false;
+        window.appState.thetaChainAvailable = false;
         clearTooltipCache();
         // Only log on the connected -> disconnected transition.
         if (notify && wasConnected) {

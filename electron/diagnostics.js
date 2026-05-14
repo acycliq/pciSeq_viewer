@@ -84,15 +84,18 @@ function broadcastDiagnosticsState(enabled) {
       nK: diagnosticsMeta.nK,
       labelMap: diagnosticsMeta.label_map || null,
       genePanel: diagnosticsMeta.gene_panel || null,
-      // Fields below feed the spot-hover gamma chain log. Older diagnostics.db
-      // files lack Inefficiency / A_c; the renderer treats their absence as
-      // "chain not available" and silently skips emission.
+      // Fields below feed the spot-hover gamma chain and cell-hover theta chain
+      // logs. Older diagnostics.db files may lack some of these (Inefficiency,
+      // A_c, rTheta); the renderer treats their absence as "chain not available"
+      // and silently skips emission.
       // See notes/spot_hover_chain_spec.md.
       Inefficiency:        diagnosticsMeta.Inefficiency ?? null,
       A_c:                 diagnosticsMeta.A_c          ?? null,
       eta_bar:             diagnosticsMeta.eta_bar      ?? null,
       sc_mean_expression:  diagnosticsMeta.sc_mean_expression ?? null,
-      rSpot:               diagnosticsMeta.rSpot        ?? null
+      rSpot:               diagnosticsMeta.rSpot        ?? null,
+      rTheta:              diagnosticsMeta.rTheta       ?? null,
+      SpotReg:             diagnosticsMeta.SpotReg      ?? null
     });
 
     // Send state for check_spot
@@ -441,12 +444,14 @@ ipcMain.handle('check-cell-get-state', () => {
       nK: diagnosticsMeta.nK,
       labelMap: diagnosticsMeta.label_map || null,
       genePanel: diagnosticsMeta.gene_panel || null,
-      // Chain log fields, see notes/spot_hover_chain_spec.md
+      // Gamma chain and theta chain feeder fields. See notes/spot_hover_chain_spec.md.
       Inefficiency:        diagnosticsMeta.Inefficiency ?? null,
       A_c:                 diagnosticsMeta.A_c          ?? null,
       eta_bar:             diagnosticsMeta.eta_bar      ?? null,
       sc_mean_expression:  diagnosticsMeta.sc_mean_expression ?? null,
-      rSpot:               diagnosticsMeta.rSpot        ?? null
+      rSpot:               diagnosticsMeta.rSpot        ?? null,
+      rTheta:              diagnosticsMeta.rTheta       ?? null,
+      SpotReg:             diagnosticsMeta.SpotReg      ?? null
     };
   }
   return { enabled: false };

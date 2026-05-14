@@ -7,25 +7,39 @@
 
 import { getCellInfo } from '../data/tooltipDiagnostics.js';
 import { escapeHtml } from '../charts/checkCellCharts.js';
+import { SPOT_PICKABLE_MIN_ZOOM } from '../../config/constants.js';
 
 // Note: Arrow-only runtime; no TSV-specific palette usage here
 
-// ----- Spot-hover gamma chain log (DevTools console only) -----
+// ----- Hover chain logs (DevTools console only) -----
 //
-// Emits a collapsible breakdown of the per-(cell, gene) gamma chain whenever
-// a spot is hovered AND the user has flipped window.appState.debugGammaChain
-// to true. Silently no-ops otherwise. See notes/spot_hover_chain_spec.md.
+// Two console-only diagnostic logs share the helpers below:
+//
+//   - Gamma chain: per-(cell, gene), fired on spot hover. Walks the product
+//     sc_mean × Inefficiency × A_c × eta_g × theta -> predicted, then prints
+//     the closed-form check (rSpot + obs) / (rSpot + pred) and compares with
+//     the stored gamma_assigned.
+//
+//   - Theta chain: per-cell, fired on cell hover. Sums the per-gene baseline
+//     across the panel and prints alpha / beta = theta_bar, compared with
+//     the stored theta_bar.
+//
+// See notes/spot_hover_chain_spec.md for the full spec.
 const CHAIN_HOVER_LOG_TTL_MS = 500;
-const _chainLogLastSeen = new Map();
+const _gammaLogLastSeen = new Map();   // key: `${parentLabel}::${geneIdx}`
+const _thetaLogLastSeen = new Map();   // key: parentLabel
 
-function _shouldLogChain(parentLabel, geneIdx) {
-    const key = `${parentLabel}::${geneIdx}`;
+// Throttle: returns true if enough time has passed for this key, false otherwise.
+function _shouldLog(map, key) {
     const now = Date.now();
-    const prev = _chainLogLastSeen.get(key);
+    const prev = map.get(key);
     if (prev && now - prev < CHAIN_HOVER_LOG_TTL_MS) return false;
-    _chainLogLastSeen.set(key, now);
+    map.set(key, now);
     return true;
 }
+
+// Shared number formatter used in both chains.
+const _fmt = (x, d = 4) => x.toFixed(d);
 
 function _resolveInternalCellIdx(externalLabel) {
     const labelMap = window.appState?.labelMap;
@@ -37,10 +51,98 @@ function _resolveInternalCellIdx(externalLabel) {
     return Number(externalLabel);
 }
 
+// ----- Cell-hover theta chain -----
+//
+// Prints how theta_bar[c, k*] gets put together for the hovered cell:
+//
+//   obs        = sum over genes of N_{c, g}
+//   alpha      = obs + (rTheta - 1)
+//   expected   = sum over genes of  A_c[c] * gamma_bar[c, g, k*] * eta_g[g] * (sc_mean[g, k*] * Inefficiency + SpotReg)
+//   beta       = expected + rTheta
+//   theta_bar  = alpha / beta
+//
+// A theta_bar of 1 means the cell's total reads match the class-k* baseline,
+// > 1 means it has more, < 1 means it has fewer.
+function logThetaChain(parentLabel, info) {
+    if (window.appState?.debugThetaChain !== true) return;
+    if (window.appState?.thetaChainAvailable !== true) return;
+    // Cell polygons are pickable at every zoom, so without this guard the log
+    // would fire while the user is just panning the overview.
+    if ((window.appState?.currentZoom ?? 0) < SPOT_PICKABLE_MIN_ZOOM) return;
+    if (!_shouldLog(_thetaLogLastSeen, parentLabel)) return;
+
+    const cInternal = _resolveInternalCellIdx(parentLabel);
+    if (cInternal === null) {
+        console.warn('[theta chain] could not resolve internal index for label', parentLabel);
+        return;
+    }
+
+    const kStar       = info.assignedClassIdx;
+    const classProb   = info.classProbHard;
+    const thetaStored = info.thetaHard;
+    const geneCount   = info.geneCountVec;
+    const gammaVec    = info.gammaAssignedVec;
+
+    const inefficiency = window.appState.Inefficiency;
+    const aC           = window.appState.A_c[cInternal];
+    const etaBar       = window.appState.eta_bar;
+    const scMeanExpr   = window.appState.sc_mean_expression;
+    const rTheta       = window.appState.rTheta;
+    const spotReg      = window.appState.SpotReg;
+    const classNames   = window.appState.classNames || [];
+
+    // sc_mean_expression is shipped as a nested array (nG x nK), matching
+    // numpy .tolist() of a 2D ndarray. Bail out if the shape is unexpected.
+    if (!Array.isArray(scMeanExpr[0])) {
+        console.warn('[theta chain] sc_mean_expression shape unexpected');
+        return;
+    }
+
+    const nG = geneCount.length;
+
+    // alpha: total observed reads in the cell, plus the prior shape offset.
+    let obs = 0;
+    for (let g = 0; g < nG; g++) obs += geneCount[g];
+    const alpha = obs + (rTheta - 1);
+
+    // beta: per-gene baseline-at-theta=1 summed across genes, plus the prior rate.
+    //   per-gene baseline = A_c * gamma_bar[g] * eta_g[g] * (sc_mean[g, k*] * Inefficiency + SpotReg)
+    let expected = 0;
+    for (let g = 0; g < nG; g++) {
+        const mu_gk = scMeanExpr[g][kStar] * inefficiency + spotReg;
+        expected += aC * gammaVec[g] * etaBar[g] * mu_gk;
+    }
+    const beta = expected + rTheta;
+
+    const thetaCheck = alpha / beta;
+    const matches    = Math.abs(thetaCheck - thetaStored)
+                       / Math.max(1e-9, Math.abs(thetaStored)) < 1e-3;
+
+    const className = classNames[kStar] ?? `k=${kStar}`;
+    const header = `[theta chain] cell ${parentLabel}  k* = ${className} (p = ${classProb.toFixed(3)})`;
+
+    console.groupCollapsed(header);
+    console.log(`  obs       =  sum_g  N_{c, g}                                                                 =  ${_fmt(obs, 2)}`);
+    console.log(`  alpha     =  obs + (rTheta - 1)                                                              =  ${_fmt(alpha, 2)}`);
+    console.log(`  expected  =  sum_g  A_c * gamma_bar * eta_g * (sc_mean[g, k*] * Inefficiency + SpotReg)      =  ${_fmt(expected, 2)}`);
+    console.log(`  beta      =  expected + rTheta                                                               =  ${_fmt(beta, 2)}`);
+    const checkLine = `  theta_bar  =  alpha / beta  =  ${_fmt(alpha, 2)} / ${_fmt(beta, 2)}  =  ${_fmt(thetaCheck)}`;
+    if (matches) {
+        console.log(`${checkLine}  (matches stored ${_fmt(thetaStored)})  OK`);
+    } else {
+        console.warn(`${checkLine}  MISMATCH stored=${_fmt(thetaStored)}`);
+    }
+    console.groupEnd();
+}
+
+// ----- Spot-hover gamma chain -----
+//
+// Walks the per-(cell, gene) product that the model uses to predict a count,
+// then checks (rSpot + obs) / (rSpot + pred) against the stored gamma_assigned.
 function logGammaChain(parentLabel, geneIdx, gene, info) {
     if (window.appState?.debugGammaChain !== true) return;
-    if (window.appState?.chainAvailable !== true) return;
-    if (!_shouldLogChain(parentLabel, geneIdx)) return;
+    if (window.appState?.gammaChainAvailable !== true) return;
+    if (!_shouldLog(_gammaLogLastSeen, `${parentLabel}::${geneIdx}`)) return;
 
     const cInternal = _resolveInternalCellIdx(parentLabel);
     if (cInternal === null) {
@@ -87,18 +189,17 @@ function logGammaChain(parentLabel, geneIdx, gene, info) {
 
     // Use groupCollapsed so the chain stays folded by default.
     console.groupCollapsed(header);
-    const f = (x, d = 4) => x.toFixed(d);
-    console.log(`  sc_mean_expression[g, k*]                =  ${f(muRef)}`);
-    console.log(`  × ${f(inefficiency)}  (Inefficiency)                 =   ${f(muAdj)}    mu_adj used internally`);
-    console.log(`  × ${f(aC)}  (A_c)                          =   ${f(afterAc)}    inside-cell-bonus normalisation`);
-    console.log(`  × ${f(etaG)}  (eta_g)                        =   ${f(baselineAtTheta, 2)}      gene efficiency`);
-    console.log(`  × ${f(thetaHard)}  (theta_bar[c, k*])             =   ${f(predicted, 2)}      predicted for this cell`);
-    console.log(`  observed N_{c, g}                        =  ${f(observed)}`);
-    const checkLine = `  gamma check  (rSpot + obs) / (rSpot + pred)  =  (${rSpot} + ${f(observed, 3)}) / (${rSpot} + ${f(predicted, 3)})  =  ${f(gammaCheck)}`;
+    console.log(`  sc_mean_expression[g, k*]                =  ${_fmt(muRef)}`);
+    console.log(`  × ${_fmt(inefficiency)}  (Inefficiency)                 =   ${_fmt(muAdj)}    mu_adj used internally`);
+    console.log(`  × ${_fmt(aC)}  (A_c)                          =   ${_fmt(afterAc)}    inside-cell-bonus normalisation`);
+    console.log(`  × ${_fmt(etaG)}  (eta_g)                        =   ${_fmt(baselineAtTheta, 2)}      gene efficiency`);
+    console.log(`  × ${_fmt(thetaHard)}  (theta_bar[c, k*])             =   ${_fmt(predicted, 2)}      predicted for this cell`);
+    console.log(`  observed N_{c, g}                        =  ${_fmt(observed)}`);
+    const checkLine = `  gamma check  (rSpot + obs) / (rSpot + pred)  =  (${rSpot} + ${_fmt(observed, 3)}) / (${rSpot} + ${_fmt(predicted, 3)})  =  ${_fmt(gammaCheck)}`;
     if (matches) {
         console.log(`${checkLine}  OK`);
     } else {
-        console.warn(`${checkLine}  MISMATCH stored=${f(gammaStored)}`);
+        console.warn(`${checkLine}  MISMATCH stored=${_fmt(gammaStored)}`);
     }
     console.groupEnd();
 }
@@ -203,6 +304,10 @@ function maybeAppendCellTheta(tooltipElement, seq, cellLabel) {
                 seq,
                 `<strong>Theta:</strong> ${info.thetaHard.toFixed(3)}`
             );
+            // Best-effort console-only diagnostic. Never let it bubble up and
+            // affect the tooltip rendering.
+            try { logThetaChain(cellLabel, info); }
+            catch (e) { console.warn('[theta chain] emitter failed:', e); }
         })
         .catch(e => {
             const reason = e?.message || 'unknown';

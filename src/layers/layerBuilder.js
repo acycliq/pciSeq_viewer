@@ -6,7 +6,7 @@
  */
 
 import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
-import { IMG_DIMENSIONS, MAX_PRELOAD, INITIAL_VIEW_STATE } from '../../config/constants.js';
+import { IMG_DIMENSIONS, MAX_PRELOAD, INITIAL_VIEW_STATE, SPOT_PICKABLE_MIN_ZOOM } from '../../config/constants.js';
 import { showTooltip } from '../ui/uiHelpers.js';
 import { createTileLayer } from './tileLayerCreator.js';
 import { createPolygonLayers } from './polygonLayerCreator.js';
@@ -90,7 +90,7 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
     const layers = [];
     const zoom = (typeof state.currentZoom === 'number') ? state.currentZoom : INITIAL_VIEW_STATE.zoom;
 
-    if (zoom < 7) {
+    if (zoom < SPOT_PICKABLE_MIN_ZOOM) {
         try { console.log(`[layers] Using binary Scatterplot for spots at zoom ${zoom.toFixed(1)} (showGenes=${state.showGenes})`); } catch {}
         const pc = createArrowPointCloudLayer(
             state.currentPlane,

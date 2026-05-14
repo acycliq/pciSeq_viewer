@@ -63,6 +63,11 @@ export const INITIAL_VIEW_STATE = {
 export const MAX_PRELOAD = advancedUserConfig.performance.preloadRadius;
 export const MAX_TILE_CACHE = advancedUserConfig.performance.maxTileCache;
 
+// Below this zoom spots render as a non-pickable PointCloud. At or above it
+// they switch to a pickable IconLayer, which is also when the user is zoomed
+// in enough for the cell-hover theta chain log to be useful.
+export const SPOT_PICKABLE_MIN_ZOOM = 7;
+
 export const DEFAULT_STATE = {
     // Starting plane is set during app init to mid-plane based on manifest
     currentPlane: 0,
