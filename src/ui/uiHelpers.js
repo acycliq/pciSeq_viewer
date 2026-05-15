@@ -139,7 +139,7 @@ function logThetaChain(parentLabel, info) {
 //
 // Walks the per-(cell, gene) product that the model uses to predict a count,
 // then checks (rSpot + obs) / (rSpot + pred) against the stored gamma_assigned.
-function logGammaChain(parentLabel, geneIdx, gene, info) {
+function logGammaChain(spotId, parentLabel, geneIdx, gene, info) {
     if (window.appState?.debugGammaChain !== true) return;
     if (window.appState?.gammaChainAvailable !== true) return;
     if (!_shouldLog(_gammaLogLastSeen, `${parentLabel}::${geneIdx}`)) return;
@@ -185,7 +185,7 @@ function logGammaChain(parentLabel, geneIdx, gene, info) {
                        / Math.max(1e-9, Math.abs(gammaStored)) < 1e-3;
 
     const className = classNames[kStar] ?? `k=${kStar}`;
-    const header = `[gamma chain] cell ${parentLabel}  k* = ${className} (p = ${classProb.toFixed(3)})  gene = ${gene}`;
+    const header = `[gamma chain] spot ${spotId}  cell ${parentLabel}  k* = ${className} (p = ${classProb.toFixed(3)})  gene = ${gene}`;
 
     // Use groupCollapsed so the chain stays folded by default.
     console.groupCollapsed(header);
@@ -350,7 +350,7 @@ function maybeAppendSpotGamma(tooltipElement, seq, parentLabel, gene, spotId) {
             );
             // Best-effort console-only diagnostic. Never let it bubble up and
             // affect the tooltip rendering.
-            try { logGammaChain(parentLabel, geneIdx, gene, info); }
+            try { logGammaChain(spotId, parentLabel, geneIdx, gene, info); }
             catch (e) { console.warn('[gamma chain] emitter failed:', e); }
         })
         .catch(e => {
