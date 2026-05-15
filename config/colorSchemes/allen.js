@@ -6854,7 +6854,7 @@ function classColorsCodes_allen() {
             {className: '327 Oligo NN', IdentifiedType: '327 Oligo NN', color: '#E66A00'},
             {className: '328 OEC NN', IdentifiedType: '328 OEC NN', color: '#228833'},
             {className: '329 ABC NN', IdentifiedType: '329 ABC NN', color: '#CCBB44'},
-            {className: '330 VLMC NN', IdentifiedType: '330 VLMC NN', color: '#EE6677'},
+            {className: '330 VLMC NN', IdentifiedType: '330 VLMC NN', color: '#D81B60'},
             {className: '331 Peri NN', IdentifiedType: '331 Peri NN', color: '#AA3377'},
             {className: '332 SMC NN', IdentifiedType: '332 SMC NN', color: '#BBBBBB'},
             {className: '333 Endo NN', IdentifiedType: '333 Endo NN', color: '#A07038'},
