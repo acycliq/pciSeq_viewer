@@ -91,6 +91,58 @@ const GLYPH_DRAWERS = {
         ctx.closePath();
     },
 
+    // Capital T with golden-ratio crossbar (stem : crossbar = φ : 1)
+    tShapeTop: (ctx, p, r) => {
+        const PHI = 1.618;
+        const w = r / PHI;
+        ctx.beginPath();
+        ctx.moveTo(p.x - w, p.y - r);
+        ctx.lineTo(p.x, p.y - r);
+        ctx.lineTo(p.x, p.y + r);
+        ctx.lineTo(p.x, p.y - r);
+        ctx.lineTo(p.x + w, p.y - r);
+        ctx.lineTo(p.x - w, p.y - r);
+    },
+
+    // T flipped vertically — crossbar at the bottom
+    tShapeBottom: (ctx, p, r) => {
+        const PHI = 1.618;
+        const w = r / PHI;
+        ctx.beginPath();
+        ctx.moveTo(p.x - w, p.y + r);
+        ctx.lineTo(p.x, p.y + r);
+        ctx.lineTo(p.x, p.y - r);
+        ctx.lineTo(p.x, p.y + r);
+        ctx.lineTo(p.x + w, p.y + r);
+        ctx.lineTo(p.x - w, p.y + r);
+    },
+
+    // T rotated 90° — crossbar on the left
+    tShapeLeft: (ctx, p, r) => {
+        const PHI = 1.618;
+        const h = r / PHI;
+        ctx.beginPath();
+        ctx.moveTo(p.x - r, p.y - h);
+        ctx.lineTo(p.x - r, p.y);
+        ctx.lineTo(p.x + r, p.y);
+        ctx.lineTo(p.x - r, p.y);
+        ctx.lineTo(p.x - r, p.y + h);
+        ctx.lineTo(p.x - r, p.y - h);
+    },
+
+    // T rotated 90° — crossbar on the right
+    tShapeRight: (ctx, p, r) => {
+        const PHI = 1.618;
+        const h = r / PHI;
+        ctx.beginPath();
+        ctx.moveTo(p.x + r, p.y - h);
+        ctx.lineTo(p.x + r, p.y);
+        ctx.lineTo(p.x - r, p.y);
+        ctx.lineTo(p.x + r, p.y);
+        ctx.lineTo(p.x + r, p.y + h);
+        ctx.lineTo(p.x + r, p.y - h);
+    },
+
     // Radial markers with rounded line caps
     cross: (ctx, p, r) => {
         ctx.beginPath();
