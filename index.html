@@ -16,6 +16,8 @@
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
     <!-- RBush for spatial indexing -->
     <script src="https://unpkg.com/rbush@3.0.1/rbush.min.js"></script>
+    <!-- JSZip for bundling per-class PNG exports -->
+    <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
 
     <!-- Import glyph helpers -->
     <script src="src/glyphs/glyphPaths.js"></script>
@@ -333,6 +335,12 @@
                             <input type="range" id="geneCountMaxSlider" min="0" max="100" step="1" value="100"
                                    style="width: 80px; margin: 0 5px;">
                             <span id="geneCountMaxValue" style="font-size: 10px;">100</span>
+                        </div>
+                        <div class="control-item" style="margin-top: 8px;">
+                            <button id="exportPerClassBtn" style="font-size: 11px; padding: 3px 8px;">
+                                Export per-class PNGs
+                            </button>
+                            <span id="exportPerClassStatus" style="font-size: 10px; margin-left: 6px;"></span>
                         </div>
                     </div>
                 </div>

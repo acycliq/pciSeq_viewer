@@ -22,6 +22,8 @@ import {
     loadAllPlanesForProjection,
     prepareProjectionFromCaches
 } from '../data/cellProjectionLoader.js';
+import { exportPerClassPNGs } from '../data/cellProjectionExporter.js';
+import { selectCanvasRectangle } from '../ui/canvasRectSelector.js';
 
 // === MAIN SETUP FUNCTION ===
 
@@ -417,6 +419,47 @@ function setupCellProjectionToggle(state, updateLayersCallback) {
             scheduleUpdate();
         });
     }
+
+    setupPerClassExportButton(state, updateLayersCallback);
+}
+
+/**
+ * Wire the "Export per-class PNGs" button inside the Cell Projection controls.
+ * The button is only useful while projection mode is on (the controls block is
+ * hidden otherwise), so no extra enable/disable wiring is needed beyond the
+ * containing block's visibility.
+ */
+function setupPerClassExportButton(state, updateLayersCallback) {
+    const button = document.getElementById('exportPerClassBtn');
+    const statusEl = document.getElementById('exportPerClassStatus');
+    if (!button) return;
+
+    button.addEventListener('click', async () => {
+        if (!state.zProjectionCellMode) return;
+
+        const canvas = document.querySelector('#map canvas');
+        if (!canvas) {
+            console.warn('Per-class export aborted: deck.gl canvas not found');
+            return;
+        }
+
+        if (statusEl) statusEl.textContent = 'Drag a rectangle on the viewer';
+        const bounds = await selectCanvasRectangle({ canvas });
+        if (!bounds) {
+            if (statusEl) statusEl.textContent = '';
+            return;
+        }
+
+        button.disabled = true;
+        try {
+            await exportPerClassPNGs({ state, updateLayers: updateLayersCallback, bounds, statusEl });
+        } catch (err) {
+            console.error('Per-class PNG export failed:', err);
+            if (statusEl) statusEl.textContent = 'Export failed';
+        } finally {
+            button.disabled = false;
+        }
+    });
 }
 
 /**
