@@ -125,18 +125,16 @@ function waitForNextRender(deck) {
 
 /**
  * Crop the deck.gl canvas to the user-selected rectangle and return a PNG blob.
- * The crop is composited onto solid black so it blends with the slippy-map
- * tile background instead of producing a bright border around the tissue.
+ * Pixels deck.gl left transparent stay transparent in the PNG, so the saved
+ * image has no border around the tissue and composites cleanly onto any slide
+ * background.
  */
 function canvasRegionToBlob(sourceCanvas, bounds) {
     const out = document.createElement('canvas');
     out.width = bounds.width;
     out.height = bounds.height;
 
-    const ctx = out.getContext('2d');
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, bounds.width, bounds.height);
-    ctx.drawImage(
+    out.getContext('2d').drawImage(
         sourceCanvas,
         bounds.x, bounds.y, bounds.width, bounds.height,
         0, 0, bounds.width, bounds.height
