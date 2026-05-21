@@ -33,14 +33,23 @@ export function selectCanvasRectangle({ canvas, container = document.body }) {
 
         function cleanup() {
             overlay.remove();
-            window.removeEventListener('keydown', onKey);
+            window.removeEventListener('keydown', onKey, true);
         }
 
         function onKey(e) {
-            if (e.key === 'Escape') {
-                cleanup();
-                resolve(null);
-            }
+            if (e.key !== 'Escape') return;
+
+            // Two-step Esc: if a drawer/widget is open, let the global Esc
+            // handler close it first; only cancel selection on a follow-up Esc
+            // when nothing else is open to dismiss.
+            const widget = document.getElementById('cellClassWidget');
+            const panel = document.getElementById('controlsPanel');
+            const drawerOpen = (widget && !widget.classList.contains('hidden'))
+                            || (panel && !panel.classList.contains('collapsed'));
+            if (drawerOpen) return;
+
+            cleanup();
+            resolve(null);
         }
 
         overlay.addEventListener('mousedown', e => {
@@ -91,7 +100,7 @@ export function selectCanvasRectangle({ canvas, container = document.body }) {
             resolve(cssRectToCanvasPixels(canvas, cssX, cssY, cssW, cssH));
         });
 
-        window.addEventListener('keydown', onKey);
+        window.addEventListener('keydown', onKey, true);
     });
 }
 
