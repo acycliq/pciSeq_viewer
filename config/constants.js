@@ -55,7 +55,7 @@ export const INITIAL_VIEW_STATE = {
         }
         return _initialViewState.target;
     },
-    zoom: 4,
+    zoom: 2.0,
     minZoom: 0,
     maxZoom: 8
 };
