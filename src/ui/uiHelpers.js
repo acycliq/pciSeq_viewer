@@ -317,6 +317,33 @@ function maybeAppendCellTheta(tooltipElement, seq, cellLabel) {
 }
 
 /**
+ * Add the mrf_cap row to the cell tooltip. Silent when the diagnostics db is
+ * not connected. Shows "N/A" if the diagnostics db predates the
+ * effective_beta column (old runs). Surfaces every other failure both in
+ * DevTools and as a visible red row in the tooltip.
+ */
+function maybeAppendCellEffectiveBeta(tooltipElement, seq, cellLabel) {
+    if (!window.appState?.checkCellConnected) return;
+
+    getCellInfo(cellLabel)
+        .then(info => {
+            const value = info.effectiveBetaHard === null
+                ? 'N/A'
+                : info.effectiveBetaHard.toFixed(3);
+            appendDiagnosticRow(
+                tooltipElement,
+                seq,
+                `<br><strong>mrf_cap:</strong> ${value}`
+            );
+        })
+        .catch(e => {
+            const reason = e?.message || 'unknown';
+            console.warn('tooltip diagnostics:', { kind: 'cell-effective-beta', cellLabel, error: reason });
+            appendDiagnosticErrorRow(tooltipElement, seq, 'mrf_cap', reason);
+        });
+}
+
+/**
  * Add the gamma_assigned row to the spot tooltip. Silent when the diagnostics
  * db is not connected or the parent cell is background. Surfaces every other
  * failure both in DevTools and as a visible red row in the tooltip.
@@ -464,6 +491,7 @@ export function showTooltip(info, tooltipElement) {
                             ${internalLabel}`;
 
                 maybeAppendCellTheta(tooltipElement, seq, cellLabel);
+                maybeAppendCellEffectiveBeta(tooltipElement, seq, cellLabel);
             }
         } else if (info.object.gene) {
             // Gene tooltip - show enhanced gene spot information
