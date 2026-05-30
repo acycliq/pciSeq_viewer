@@ -22,10 +22,13 @@ npm run serve      # preview the production build
 One-time: in the repo, go to **Settings → Pages → Build and deployment →
 Source** and choose **GitHub Actions**.
 
-After that, every push to the `desktop_app` branch that touches `website/**`
-builds and publishes the site to:
+After that, every push to the `desktop_app` branch that touches `website/**` or viewer code (src, lib, etc.) builds and publishes the site. 
 
+The main viewer is hosted at:
     https://acycliq.github.io/pciSeq_viewer/
+
+The documentation is hosted at:
+    https://acycliq.github.io/pciSeq_viewer/docs/
 
 (Adjust the branch name in `deploy-docs.yml` and the `baseUrl`/`url` in
 `docusaurus.config.js` if needed.)

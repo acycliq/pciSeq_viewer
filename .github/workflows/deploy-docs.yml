@@ -11,6 +11,14 @@ on:
     branches: [desktop_app]
     paths:
       - 'website/**'
+      - 'src/**'
+      - 'lib/**'
+      - 'utils/**'
+      - 'config/**'
+      - 'arrow-loader/**'
+      - 'index.html'
+      - 'styles.css'
+      - 'config.js'
       - '.github/workflows/deploy-docs.yml'
   workflow_dispatch:
 
@@ -26,9 +34,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: website
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,12 +41,37 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: website/package-lock.json
-      - run: npm ci
-      - run: npm run build
+
+      - name: Build Docusaurus
+        working-directory: website
+        run: |
+          npm ci
+          npm run build
+
+      - name: Prepare combined deployment
+        run: |
+          mkdir -p deployment_payload/docs
+          
+          # 1. Copy Docusaurus build to /docs
+          cp -r website/build/* deployment_payload/docs/
+          
+          # 2. Copy viewer files to root
+          # Add files/dirs needed for the web viewer
+          cp index.html styles.css config.js deployment_payload/
+          [ -f icon.png ] && cp icon.png deployment_payload/
+          [ -f selection_tool.png ] && cp selection_tool.png deployment_payload/
+          
+          # Directories
+          cp -r src lib arrow-loader config utils deployment_payload/
+          [ -d voxel-viewer ] && cp -r voxel-viewer deployment_payload/
+          
+          # Add .nojekyll to prevent GitHub Pages from processing with Jekyll
+          touch deployment_payload/.nojekyll
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: website/build
+          path: deployment_payload
 
   deploy:
     needs: build

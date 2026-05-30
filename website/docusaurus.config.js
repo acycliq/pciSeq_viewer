@@ -12,7 +12,7 @@ const config = {
   // --- Where the site is served ---------------------------------------
   // Project site at https://acycliq.github.io/pciSeq_viewer/
   url: 'https://acycliq.github.io',
-  baseUrl: '/pciSeq_viewer/',
+  baseUrl: '/pciSeq_viewer/docs/',
 
   organizationName: 'acycliq',      // GitHub org/user
   projectName: 'pciSeq_viewer',     // repo name
