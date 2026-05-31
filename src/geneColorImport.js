@@ -5,7 +5,7 @@ import { state } from './state/stateManager.js';
 import { buildGeneIconAtlas } from './data/dataLoaders.js';
 
 const VALID_GLYPHS = new Set([
-  'star6','star5','diamond','square','triangleUp','triangleDown','triangleRight','triangleLeft','cross','plus','asterisk','circle','point'
+  'star6','star5','diamond','square','triangleUp','triangleDown','triangleRight','triangleLeft','tShapeTop','tShapeBottom','tShapeLeft','tShapeRight','cross','plus','asterisk','circle','point'
 ]);
 
 function normalizeEntries(arr) {

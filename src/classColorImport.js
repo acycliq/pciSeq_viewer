@@ -1,5 +1,7 @@
 // Class Colour Scheme Import Helpers
-// Applies user-provided JSON mapping { className: "#RRGGBB", ... } to state.cellClassColors
+// Applies a user-provided colour scheme to state.cellClassColors. The scheme can
+// be either an object map { className: "#RRGGBB", ... } or an array of
+// { className, color } objects (the same shape as the built-in colour schemes).
 
 import { state } from './state/stateManager.js';
 
@@ -13,11 +15,32 @@ function hexToRgb(hex) {
     }
 }
 
-// Apply a colour scheme object directly
+// Normalise an imported scheme into a plain { className: hex } map.
+// Accepts an object map { "ClassName": "#RRGGBB", ... } or an array of
+// { className, color } objects. The colour field may be spelled "color" or
+// "colour". Returns null if the shape is unusable.
+function toClassColorMap(scheme) {
+    if (Array.isArray(scheme)) {
+        const map = {};
+        for (const entry of scheme) {
+            if (entry && typeof entry === 'object' && entry.className) {
+                map[entry.className] = entry.color ?? entry.colour;
+            }
+        }
+        return map;
+    }
+    if (scheme && typeof scheme === 'object') {
+        return scheme;
+    }
+    return null;
+}
+
+// Apply a colour scheme to the cell-class colours.
 // Returns { appliedCount, notFoundClasses, pending }
 export function applyClassColorScheme(scheme, replaceMode = false) {
-    if (!scheme || typeof scheme !== 'object' || Array.isArray(scheme)) {
-        throw new Error('Invalid JSON format. Expected an object mapping class names to hex colours.');
+    const colorMap = toClassColorMap(scheme);
+    if (!colorMap) {
+        throw new Error('Invalid JSON format. Expected an object mapping class names to hex colours, or an array of {className, color} objects.');
     }
 
     // If classes are not discovered yet, stash and apply later
@@ -35,7 +58,7 @@ export function applyClassColorScheme(scheme, replaceMode = false) {
         state.cellClassColors.clear();
     }
 
-    for (const [name, hex] of Object.entries(scheme)) {
+    for (const [name, hex] of Object.entries(colorMap)) {
         if (!present.has(name)) {
             notFound.push(name);
             continue;

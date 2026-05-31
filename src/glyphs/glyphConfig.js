@@ -21,6 +21,10 @@
 //   triangleDown
 //   triangleRight
 //   triangleLeft
+//   tShapeTop
+//   tShapeBottom
+//   tShapeLeft
+//   tShapeRight
 //   cross
 //   plus
 //   asterisk
