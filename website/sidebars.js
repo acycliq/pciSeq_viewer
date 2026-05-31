@@ -3,7 +3,7 @@
 /**
  * Sidebar for the pciSeq Viewer documentation.
  * Manually curated so the order mirrors the natural user journey:
- * install -> prepare data -> load -> use -> troubleshoot -> contribute.
+ * install -> prepare data -> load -> use -> troubleshoot -> reference -> contribute.
  *
  * @type {import('@docusaurus/plugin-content-docs').SidebarsConfig}
  */
@@ -30,6 +30,14 @@ const sidebars = {
       ],
     },
     'troubleshooting',
+    {
+      type: 'category',
+      label: 'Reference',
+      items: [
+        'reference/configuration',
+        'reference/data-format',
+      ],
+    },
     {
       type: 'category',
       label: 'Contributing',

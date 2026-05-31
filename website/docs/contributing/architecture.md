@@ -34,3 +34,30 @@ File > Open Dataset
             └─ arrow-loader -> reads spots, cells, and boundaries
                  └─ deck.gl -> renders layers (tiles, polygons, icons)
 ```
+
+## Spot rendering and level of detail
+
+Spots are drawn one of two ways depending on zoom, with the switch decided in
+`handleViewStateChange` (`src/app.js`) against the `SPOT_PICKABLE_MIN_ZOOM`
+constant (`7`):
+
+- **Below zoom 7:** a single binary `ScatterplotLayer` (the "PointCloud") draws
+  every spot as a coloured dot. There is no culling here; one layer handles
+  millions of points.
+- **Zoom 7 and above:** `IconLayer`s draw the spots as per-gene glyphs.
+
+deck.gl's `onViewStateChange` fires continuously during pan and zoom, and the
+handler treats two cases differently:
+
+- **Crossing the threshold** (dots to glyphs, or back): it rebuilds the layers
+  immediately, even in the middle of a gesture, so the switch is instant.
+- **Already in glyph mode and panning:** it does not rebuild every frame. It
+  rebuilds on **pan end** (the drag is released), to re-crop the glyphs to the
+  new viewport.
+
+**Viewport culling (glyph mode only).** `getCurrentViewportTileBounds()`
+unprojects the screen corners to world coordinates, and `createGeneLayers`
+(`src/layers/spotLayerCreator.js`) keeps only the spots inside those bounds
+before building the `IconLayer`. Off-screen spots are dropped. If the viewport
+bounds are unavailable for a frame, it falls back to the `ScatterplotLayer`. The
+PointCloud path never culls, since it is cheap enough to draw everything.
