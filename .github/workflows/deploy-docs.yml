@@ -1,0 +1,93 @@
+# Builds the GitHub Pages site: the Docusaurus docs (from desktop_app, served at
+# the root) plus the web viewer (from master, served under /web_viewer).
+#
+# ============================================================================
+# KEEP IN SYNC WITH THE COPY OF THIS FILE ON THE desktop_app BRANCH.
+# The two copies must be identical below the `on:` block. They differ only in
+# the trigger: this copy (on master) fires on pushes to master; the desktop_app
+# copy fires on pushes to desktop_app. Every run rebuilds the WHOLE site, so if
+# you change the build/deploy steps here, copy the change to desktop_app's
+# deploy-docs.yml too, otherwise the two branches will publish different sites.
+# ============================================================================
+#
+# One-time setup in the repo:
+#   Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
+name: Deploy docs
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Docs come from desktop_app (master has no website/ folder).
+      - name: Check out the docs source from desktop_app
+        uses: actions/checkout@v4
+        with:
+          ref: desktop_app
+
+      # The web viewer comes from master.
+      - name: Check out the web viewer source from master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          path: viewer-master
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Build Docusaurus
+        working-directory: website
+        run: |
+          npm ci
+          npm run build
+
+      - name: Prepare combined deployment
+        run: |
+          mkdir -p deployment_payload/web_viewer
+
+          # 1. Docusaurus documentation site at the root (from desktop_app)
+          cp -r website/build/* deployment_payload/
+
+          # 2. Web viewer under /web_viewer (from the master branch checkout).
+          #    Data is fetched from Google Cloud Storage at runtime, so no
+          #    dataset files are bundled here.
+          cp viewer-master/index.html viewer-master/styles.css viewer-master/config.js deployment_payload/web_viewer/
+          for f in genes_datatable.html cellClassViewer.html slippy_map.html selection_tool.png; do
+            [ -f "viewer-master/$f" ] && cp "viewer-master/$f" deployment_payload/web_viewer/
+          done
+          cp -r viewer-master/src viewer-master/lib viewer-master/arrow-loader viewer-master/config viewer-master/utils deployment_payload/web_viewer/
+          [ -d viewer-master/voxel-viewer ] && cp -r viewer-master/voxel-viewer deployment_payload/web_viewer/
+
+          # Add .nojekyll to prevent GitHub Pages from processing with Jekyll
+          touch deployment_payload/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: deployment_payload
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
