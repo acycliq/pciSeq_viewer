@@ -2,22 +2,22 @@
  * Pin Controller Module
  *
  * Manages pin state for the cell info panel with two modes:
- * - Soft pin (Shift): panel stays visible and keeps updating on hover
+ * - Soft pin (Control): panel stays visible and keeps updating on hover
  * - Hard pin (Click): panel stays visible and does NOT update on hover
  *
- * Call init() once at startup to register the Shift key listener.
+ * Call init() once at startup to register the Control key listener.
  */
 
 let _panelPinned = false;   // any pin (soft or hard)
 let _panelFrozen = false;   // hard pin (frozen against hover updates)
 
 /**
- * Register the Ctrl key listener for pin toggling.
+ * Register the Control key listener for pin toggling.
  * Must be called explicitly during app initialization.
  */
 export function init() {
     document.addEventListener('keyup', (e) => {
-        if (e.key !== 'Shift') return;
+        if (e.key !== 'Control') return;
         const panel = document.getElementById('cellInfoPanel');
         if (!panel) return;
 
