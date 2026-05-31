@@ -10,19 +10,19 @@ A high-level map of the codebase for contributors.
 
 :::note[Scaffold]
 
-Fill in the specifics — this outline is seeded from the repo's top-level layout.
+Fill in the specifics, this outline is seeded from the repo's top-level layout.
 
 :::
 
 ## Stack
 
-- **Electron** desktop shell (main + renderer processes) — `electron/`
-- **Renderer / UI** — `src/`, `index.html`, `styles.css`
-- **Rendering** — deck.gl / voxel layers — `voxel-viewer/`
-- **Data loading** — Arrow/Feather ingestion — `arrow-loader/`
-- **Python helpers** — `python_converters/`, `generate_arrow_data.py`
-- **Config** — `config/`, `config.js`
-- **Build** — `build/`, `package.json`
+- **Electron** desktop shell (main + renderer processes), `electron/`
+- **Renderer / UI**, `src/`, `index.html`, `styles.css`
+- **Rendering**, deck.gl / voxel layers, `voxel-viewer/`
+- **Data loading**, Arrow/Feather ingestion, `arrow-loader/`
+- **Python helpers**, `python_converters/`, `generate_arrow_data.py`
+- **Config**, `config/`, `config.js`
+- **Build**, `build/`, `package.json`
 
 ## Process model
 

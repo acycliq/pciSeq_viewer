@@ -32,18 +32,17 @@ If it still won't run, install the `.deb` package instead.
 
 ## No background image appears
 
-The viewer expects `output.mbtiles` in the data folder. If you don't have one,
-provide image dimensions manually with an `image_dims.json` file next to your
-data folders:
-
-```json
-{ "width": 6411, "height": 4412, "plane_count": 102 }
-```
+When you open a dataset the viewer auto-discovers the first `.mbtiles` file in
+the folder (`stage_image()` writes `output.mbtiles`) and uses it for both the
+background tiles and the image dimensions. If no `.mbtiles` file is present, the
+viewer prompts you to enter the image **Width**, **Height**, and **Plane count**
+manually, spots, cells, and boundaries still render, just without a background
+image.
 
 See [Loading Data](/loading-data) for details.
 
 ## Arrow files from an older pciSeq
 
 Results from pciSeq `0.0.65` are compatible with the viewer. For
-`stage_image()` (background tiles) you need a newer pciSeq — see
+`stage_image()` (background tiles) you need a newer pciSeq, see
 [Preparing Your Data](/preparing-data#requirements).

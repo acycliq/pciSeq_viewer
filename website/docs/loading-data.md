@@ -26,14 +26,11 @@ description: Open a prepared dataset and set the voxel size.
 
 :::note[No MBTiles?]
 
-Add an `image_dims.json` file next to your data folders:
-
-```json
-{ "width": 6411, "height": 4412, "plane_count": 102 }
-```
-
-Width and height are in pixels. The app reads these dimensions from the MBTiles
-when present; otherwise it falls back to `image_dims.json`. Voxel size is always
+The viewer normally reads the image width, height, and plane count from the
+`.mbtiles` file. If the data folder has no `.mbtiles`, the viewer can't read
+those automatically, so it shows a dialog asking you to enter **Width**,
+**Height** (in pixels), and **Plane count** by hand. Spots, cells, and
+boundaries still render, just without a background image. Voxel size is always
 entered on the welcome screen.
 
 :::

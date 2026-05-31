@@ -15,7 +15,7 @@ transcriptomics data from [pciSeq](https://github.com/acycliq/pciSeq).
 :::tip[Already have pciSeq results?]
 
 If you ran cell typing with **pciSeq `0.0.65`**, your Arrow files are already
-compatible with the viewer — you can skip straight to
+compatible with the viewer, you can skip straight to
 [Step 2: Create Background Tiles](/preparing-data#step-2-create-background-tiles).
 You'll still need a newer pciSeq for `stage_image()`.
 
@@ -29,12 +29,12 @@ then follow the steps for your platform.
 
 ### Windows
 
-- **Installer:** `pciSeq_viewer-Setup-x.x.x.exe` — run it and follow the prompts.
+- **Installer:** `pciSeq_viewer-Setup-x.x.x.exe`, run it and follow the prompts.
 
 ### macOS
 
-- **Installer:** `pciSeq_viewer-x.x.x.dmg` — drag the app to Applications.
-- **Portable:** `pciSeq_viewer-x.x.x-mac.zip` — extract and run.
+- **Installer:** `pciSeq_viewer-x.x.x.dmg`, drag the app to Applications.
+- **Portable:** `pciSeq_viewer-x.x.x-mac.zip`, extract and run.
 
 :::warning[First launch on macOS]
 

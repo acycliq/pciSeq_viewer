@@ -1,21 +1,49 @@
 ---
-sidebar_position: 3
-title: Selection Tool
-description: Select regions and inspect the cells and genes inside them.
+sidebar_position: 5
+title: Selection & Regions
+description: Select an area of the map and import anatomical region boundaries.
 ---
 
-# Selection Tool
+# Selection & Regions
 
-:::info[TODO]
+The viewer offers two ways to work with areas of tissue: an interactive
+rectangle **selection tool**, and **region** boundaries you import from file.
 
-TODO: how to activate the selection tool, selection modes, and what information the selection surfaces.
+## Selection tool
+
+Turn on **Selection tool** in the **Tools** section of the controls drawer, then
+draw a rectangle on the map. The viewer clips the spots and cells inside the
+rectangle and opens them in the [3D voxel viewer](./voxel-viewer), so a
+selection is how you drill into a region in 3D.
+
+### Cancelling with Escape
+
+`Escape` is two-step while the selection tool is active:
+
+1. First `Escape` hides the controls drawer.
+2. Second `Escape` cancels the rectangle selection.
+
+:::note[Screenshot]
+
+Capture the selection tool mid-drag over a populated region. Save as
+`static/img/selection_tool.png` (the repo already ships a `selection_tool.png`
+you can reuse).
 
 :::
 
-![Selection tool](/img/selection_tool.png)
+## Regions
 
-:::note[Scaffold]
+The **Regions** section imports anatomical region boundaries so you can overlay
+named areas (for example brain structures) on the map.
 
-The repo already ships a `selection_tool.png` — copy it into `static/img/`.
+- **Import Regions**, load one or more boundary **CSV** files. Each becomes a
+  named region in the list.
+- **Region list**, every imported region has a visibility toggle and a delete
+  control. Imported regions are remembered between sessions.
+
+:::note[Screenshot]
+
+Capture the Regions section with a couple of imported regions toggled on over
+the map. Save as `static/img/regions.png`.
 
 :::

@@ -8,8 +8,8 @@ description: Generate Arrow files and background tiles for the viewer using Pyth
 
 Before using the viewer you prepare your data in Python in two steps:
 
-1. **Run pciSeq** — generates cell typing results (Arrow files).
-2. **Create background tiles** — converts your microscopy image to viewable tiles (MBTiles).
+1. **Run pciSeq**, generates cell typing results (Arrow files).
+2. **Create background tiles**, converts your microscopy image to viewable tiles (MBTiles).
 
 :::info[These functions live in pciSeq, not the viewer]
 
