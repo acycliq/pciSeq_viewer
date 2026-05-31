@@ -2,15 +2,15 @@
 
 A desktop application for visualizing spatial transcriptomics data from pciSeq.
 
-[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://acycliq.github.io/pciSeq_viewer/docs/)
-[![Live Viewer](https://img.shields.io/badge/viewer-online-green.svg)](https://acycliq.github.io/pciSeq_viewer/)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://acycliq.github.io/pciSeq_viewer/)
+[![Live Viewer](https://img.shields.io/badge/viewer-online-green.svg)](https://acycliq.github.io/pciSeq_viewer/web_viewer/)
 
 ![pciSeq Viewer Demo](https://github.com/user-attachments/assets/f67a473a-0f84-48e7-9b4f-27be841778aa)
 
 ## Resources
 
-- **[Full Documentation](https://acycliq.github.io/pciSeq_viewer/docs/)**: Step-by-step guides for data preparation, troubleshooting, and UI overview.
-- **[Web Viewer](https://acycliq.github.io/pciSeq_viewer/)**: Online version for quick exploration (best for hosted datasets).
+- **[Full Documentation](https://acycliq.github.io/pciSeq_viewer/)**: Step-by-step guides for data preparation, troubleshooting, and UI overview.
+- **[Web Viewer](https://acycliq.github.io/pciSeq_viewer/web_viewer/)**: Online version for quick exploration (best for hosted datasets).
 
 ## Installation
 
@@ -44,7 +44,7 @@ Download the latest release from [GitHub Releases](https://github.com/acycliq/pc
 
 ## Preparing Your Data
 
-Before using the viewer, you need to prepare your data using Python. For a detailed guide with more options, see the [Preparing Your Data](https://acycliq.github.io/pciSeq_viewer/docs/preparing-data) page in the documentation.
+Before using the viewer, you need to prepare your data using Python. For a detailed guide with more options, see the [Preparing Your Data](https://acycliq.github.io/pciSeq_viewer/preparing-data) page in the documentation.
 
 This involves two steps:
 

@@ -50,21 +50,20 @@ jobs:
 
       - name: Prepare combined deployment
         run: |
-          mkdir -p deployment_payload/docs
-          
-          # 1. Copy Docusaurus build to /docs
-          cp -r website/build/* deployment_payload/docs/
-          
-          # 2. Copy viewer files to root
-          # Add files/dirs needed for the web viewer
-          cp index.html styles.css config.js deployment_payload/
-          [ -f icon.png ] && cp icon.png deployment_payload/
-          [ -f selection_tool.png ] && cp selection_tool.png deployment_payload/
-          
+          mkdir -p deployment_payload/web_viewer
+
+          # 1. Docusaurus documentation site at the root
+          cp -r website/build/* deployment_payload/
+
+          # 2. Web viewer under /web_viewer
+          cp index.html styles.css config.js deployment_payload/web_viewer/
+          [ -f icon.png ] && cp icon.png deployment_payload/web_viewer/
+          [ -f selection_tool.png ] && cp selection_tool.png deployment_payload/web_viewer/
+
           # Directories
-          cp -r src lib arrow-loader config utils deployment_payload/
-          [ -d voxel-viewer ] && cp -r voxel-viewer deployment_payload/
-          
+          cp -r src lib arrow-loader config utils deployment_payload/web_viewer/
+          [ -d voxel-viewer ] && cp -r voxel-viewer deployment_payload/web_viewer/
+
           # Add .nojekyll to prevent GitHub Pages from processing with Jekyll
           touch deployment_payload/.nojekyll
 
