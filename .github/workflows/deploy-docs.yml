@@ -1,9 +1,17 @@
-# Builds the Docusaurus site in website/ and deploys it to GitHub Pages.
+# Builds the GitHub Pages site: the Docusaurus docs (from desktop_app, served at
+# the root) plus the web viewer (from master, served under /web_viewer).
+#
+# ============================================================================
+# KEEP IN SYNC WITH THE COPY OF THIS FILE ON THE master BRANCH.
+# The two copies must be identical below the `on:` block. They differ only in
+# the trigger: this copy (on desktop_app) fires on pushes to desktop_app; the
+# master copy fires on pushes to master. Every run rebuilds the WHOLE site, so
+# if you change the build/deploy steps here, copy the change to master's
+# deploy-docs.yml too, otherwise the two branches will publish different sites.
+# ============================================================================
 #
 # One-time setup in the repo:
 #   Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
-#
-# Adjust `branches` below if your default branch is not desktop_app.
 name: Deploy docs
 
 on:
@@ -11,14 +19,6 @@ on:
     branches: [desktop_app]
     paths:
       - 'website/**'
-      - 'src/**'
-      - 'lib/**'
-      - 'utils/**'
-      - 'config/**'
-      - 'arrow-loader/**'
-      - 'index.html'
-      - 'styles.css'
-      - 'config.js'
       - '.github/workflows/deploy-docs.yml'
   workflow_dispatch:
 
@@ -36,6 +36,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # The web viewer is a separate, browser-native app that lives on the
+      # master branch (it loads its data from Google Cloud Storage). The docs
+      # come from this branch; the viewer is taken from master.
+      - name: Check out the web viewer source from master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          path: viewer-master
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -52,17 +62,18 @@ jobs:
         run: |
           mkdir -p deployment_payload/web_viewer
 
-          # 1. Docusaurus documentation site at the root
+          # 1. Docusaurus documentation site at the root (from this branch)
           cp -r website/build/* deployment_payload/
 
-          # 2. Web viewer under /web_viewer
-          cp index.html styles.css config.js deployment_payload/web_viewer/
-          [ -f icon.png ] && cp icon.png deployment_payload/web_viewer/
-          [ -f selection_tool.png ] && cp selection_tool.png deployment_payload/web_viewer/
-
-          # Directories
-          cp -r src lib arrow-loader config utils deployment_payload/web_viewer/
-          [ -d voxel-viewer ] && cp -r voxel-viewer deployment_payload/web_viewer/
+          # 2. Web viewer under /web_viewer (from the master branch checkout).
+          #    Data is fetched from Google Cloud Storage at runtime, so no
+          #    dataset files are bundled here.
+          cp viewer-master/index.html viewer-master/styles.css viewer-master/config.js deployment_payload/web_viewer/
+          for f in genes_datatable.html cellClassViewer.html slippy_map.html selection_tool.png; do
+            [ -f "viewer-master/$f" ] && cp "viewer-master/$f" deployment_payload/web_viewer/
+          done
+          cp -r viewer-master/src viewer-master/lib viewer-master/arrow-loader viewer-master/config viewer-master/utils deployment_payload/web_viewer/
+          [ -d viewer-master/voxel-viewer ] && cp -r viewer-master/voxel-viewer deployment_payload/web_viewer/
 
           # Add .nojekyll to prevent GitHub Pages from processing with Jekyll
           touch deployment_payload/.nojekyll
