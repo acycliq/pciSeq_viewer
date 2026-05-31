@@ -30,14 +30,6 @@ pin / unpin it, so it keeps showing one cell while you move around the map.
 Hovering a cell also highlights it on the map, making it easy to keep track of
 the cell whose details you are reading.
 
-:::note[Screenshot]
-
-Capture the Cell Information panel for a cell with several candidate classes
-(showing the table, donut, and legend together). Save as
-`static/img/cell-info-panel.png`.
-
-:::
-
 ## Related
 
 - For per-cell **diagnostics** (comparing the assigned class against another),

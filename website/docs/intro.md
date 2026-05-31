@@ -30,6 +30,7 @@ then follow the steps for your platform.
 ### Windows
 
 - **Installer:** `pciSeq_viewer-Setup-x.x.x.exe`, run it and follow the prompts.
+- **Portable:** `pciSeq_viewer-x.x.x.exe`, no installation, just run the .exe.
 
 ### macOS
 

@@ -94,10 +94,3 @@ The Cell Classes and Genes panels can be **undocked** into their own window
 using the pop-out button in the panel header. This is handy on a second monitor
 while you navigate the map. Selections stay in sync between the docked panel and
 the undocked window.
-
-:::note[Screenshot]
-
-Capture the controls drawer with the Cell Classes and Genes sections expanded,
-plus an undocked gene window. Save as `static/img/genes-and-cells.png`.
-
-:::

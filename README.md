@@ -63,7 +63,7 @@ pip install git+https://github.com/acycliq/pciSeq.git@dev_3d
 > viewer. You can **skip Step 1** and jump straight to [Step 2: Create Background Tiles](#step-2-create-background-tiles-mbtiles).
 > However, `stage_image()` was added after `0.0.65`, so you still need to install the latest version for Step 2.
 
-For background image processing, you also need libvips:
+Background image processing uses pyvips, and the `pip install` above already bundles the libvips binaries (`pyvips[binary]`), so you usually don't need to install anything else. If pyvips can't find libvips on your system, install it manually:
 
 ```bash
 # macOS
@@ -185,8 +185,7 @@ After both steps, your data folder should look like this:
    - Cell boundaries from `arrow_boundaries/`
    - Cell information from `arrow_cells/`
 
-> No MBTiles? Add `image_dims.json` next to your data folders with:
-> `{ "width": 6411, "height": 4412, "plane_count": 102 }` (width and height are in pixels). The app reads width/height/plane_count from MBTiles when present; otherwise it uses `image_dims.json`. Voxel size is always entered in the welcome screen.
+> **No MBTiles?** If the data folder has no `.mbtiles` file, the viewer will prompt you to enter the image **Width**, **Height** (in pixels), and **Plane count** manually. Spots, cells, and boundaries still render, just without a background image. Voxel size is always entered on the welcome screen.
 
 ---
 

@@ -10,14 +10,6 @@ Once a dataset is loaded, the viewer gives you several coordinated ways to
 explore your spatial transcriptomics results in 3D. This page is a map of the
 interface; each feature has its own page with the details.
 
-:::note[Screenshots]
-
-The pages in this section describe behaviour verified against the code. Capture
-annotated screenshots/GIFs into `static/img/` and reference them as
-`/img/your-image.png` to make the pages easier to follow.
-
-:::
-
 ## The main window
 
 - **Map**, the central view: a slippy-map background (your MBTiles image) with

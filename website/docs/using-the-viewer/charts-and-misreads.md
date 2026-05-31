@@ -40,10 +40,3 @@ Display toggles:
 
 - **Grey out misreads**, keeps misread spots visible but de-emphasised.
 - **Hide misreads**, removes misread spots from the map entirely.
-
-:::note[Screenshot]
-
-Capture one cell-class chart and the Misreads section (charts + toggles). Save
-as `static/img/charts.png` and `static/img/misreads.png`.
-
-:::

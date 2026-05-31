@@ -63,10 +63,3 @@ The built-in schemes under `config/colorSchemes/` (for example `hippocampus.js`,
 `zeisel.js`, `allen.js`) are a useful reference for authoring your own.
 
 :::
-
-:::note[Screenshot]
-
-Capture the result of applying a custom scheme (map + legend recoloured). Save
-as `static/img/color-import.png`.
-
-:::

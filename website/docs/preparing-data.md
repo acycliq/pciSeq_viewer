@@ -27,7 +27,9 @@ Install the pciSeq Python package:
 pip install git+https://github.com/acycliq/pciSeq.git@dev_3d
 ```
 
-For background image processing you also need **libvips**:
+Background image processing uses **pyvips**. The `pip install` above pulls in `pyvips[binary]`, which bundles the libvips binaries, so on most setups you don't need to install anything extra.
+
+If pyvips can't find libvips on your machine (older setups, or a non-binary install), install it yourself:
 
 ```bash
 # macOS

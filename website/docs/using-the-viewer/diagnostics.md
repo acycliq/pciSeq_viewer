@@ -46,11 +46,3 @@ that your dataset has a `diagnostics/diagnostics.db`, or connect one via
 **Diagnostics → Setup…**.
 
 :::
-
-:::note[Screenshot]
-
-Capture both inspectors: the Cell Inspector mid-comparison and the Spot
-Inspector with its score table. Save as `static/img/check-cell.png` and
-`static/img/check-spot.png`.
-
-:::

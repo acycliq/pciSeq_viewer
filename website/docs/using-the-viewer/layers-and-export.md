@@ -42,12 +42,3 @@ reports progress.
 Bundling every class into a single ZIP avoids a save dialog popping up per file,
 which would otherwise freeze panning and zooming. The PNGs are exported with a
 transparent background.
-
-:::
-
-:::note[Screenshot]
-
-Capture the Layers section expanded with Cell projection on, and an example of
-the exported per-class PNGs. Save as `static/img/layers-and-export.png`.
-
-:::

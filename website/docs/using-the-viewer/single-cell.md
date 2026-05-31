@@ -30,10 +30,3 @@ Both tabs read from `diagnostics.db`. If it isn't loaded, the window reports
 [Diagnostics](./diagnostics)).
 
 :::
-
-:::note[Screenshot]
-
-Capture the Single Cell Data window on the Reference tab with a gene filter
-applied. Save as `static/img/single-cell.png`.
-
-:::

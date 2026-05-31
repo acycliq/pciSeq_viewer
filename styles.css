@@ -49,7 +49,7 @@
 }
 
 .cell-info-panel.pinned.frozen .cell-info-header::after {
-    content: 'Shift to resume hover';
+    content: 'Ctrl to resume hover';
     font-size: 10px;
     font-weight: 400;
     color: rgba(59, 130, 246, 0.6);
