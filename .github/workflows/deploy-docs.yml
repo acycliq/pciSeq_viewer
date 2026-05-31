@@ -35,11 +35,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # Docs come from desktop_app (master has no website/ folder).
+      - name: Check out the docs source from desktop_app
+        uses: actions/checkout@v4
+        with:
+          ref: desktop_app
 
-      # The web viewer is a separate, browser-native app that lives on the
-      # master branch (it loads its data from Google Cloud Storage). The docs
-      # come from this branch; the viewer is taken from master.
+      # The web viewer comes from master.
       - name: Check out the web viewer source from master
         uses: actions/checkout@v4
         with:
@@ -62,7 +64,7 @@ jobs:
         run: |
           mkdir -p deployment_payload/web_viewer
 
-          # 1. Docusaurus documentation site at the root (from this branch)
+          # 1. Docusaurus documentation site at the root (from desktop_app)
           cp -r website/build/* deployment_payload/
 
           # 2. Web viewer under /web_viewer (from the master branch checkout).
