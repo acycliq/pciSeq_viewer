@@ -44,7 +44,7 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       image: 'img/social-card.png',
-      colorMode: {defaultMode: 'light', respectPrefersColorScheme: true},
+      colorMode: {defaultMode: 'dark', respectPrefersColorScheme: false},
       navbar: {
         title: 'pciSeq Viewer',
         logo: {alt: 'pciSeq Viewer', src: 'img/logo.png'},
