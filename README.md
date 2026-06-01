@@ -15,16 +15,8 @@ follow the [Getting Started](https://acycliq.github.io/pciSeq_viewer/) guide.
 
 ## Documentation
 
-Full documentation is at **https://acycliq.github.io/pciSeq_viewer/**:
-
-- [Getting Started](https://acycliq.github.io/pciSeq_viewer/) - install and first run
-- [Preparing Your Data](https://acycliq.github.io/pciSeq_viewer/preparing-data) - generate the Arrow files and background tiles with pciSeq
-- [Loading Data](https://acycliq.github.io/pciSeq_viewer/loading-data) - open a dataset in the viewer
-- [Using the Viewer](https://acycliq.github.io/pciSeq_viewer/using-the-viewer/overview) - genes, cells, layers, diagnostics, and more
-- [Troubleshooting](https://acycliq.github.io/pciSeq_viewer/troubleshooting)
-- Reference: [Configuration](https://acycliq.github.io/pciSeq_viewer/reference/configuration) and [Data Format](https://acycliq.github.io/pciSeq_viewer/reference/data-format)
+Full documentation is at [docs](https://acycliq.github.io/pciSeq_viewer/).
 
 ## Web viewer
 
-An online version for quick exploration is hosted at
-[acycliq.github.io/pciSeq_viewer/web_viewer](https://acycliq.github.io/pciSeq_viewer/web_viewer/).
+An online version for quick exploration is hosted at [demo](https://acycliq.github.io/pciSeq_viewer/web_viewer/). Loading may take some time, as the data is fetched remotely.
