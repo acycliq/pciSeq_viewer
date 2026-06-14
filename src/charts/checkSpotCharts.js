@@ -12,6 +12,8 @@ export function renderTable(container, data) {
   const attn = data.attention.slice(0, nCells);
   const expr = data.exprFluct.slice(0, nCells);
   const cellIneff = data.cellInefficiency ? data.cellInefficiency.slice(0, nCells) : null;
+  const geneIneff = data.geneInefficiency ? data.geneInefficiency.slice(0, nCells) : null;
+  const bonus = data.bonus ? data.bonus.slice(0, nCells) : null;
   const misread = data.misread;
 
   const tableStyle = 'border-collapse: collapse; width: auto; min-width: 500px; font-family: inherit; font-size: 11px; margin-top: 10px; border: 1px solid rgba(255,255,255,0.05);';
@@ -28,6 +30,8 @@ export function renderTable(container, data) {
           <th style="${thStyle}">attention</th>
           <th style="${thStyle}">expr_fluct</th>
           <th style="${thStyle}">cell_inefficiency</th>
+          <th style="${thStyle}">gene_inefficiency</th>
+          <th style="${thStyle}">bonus</th>
           <th style="${thStyle}">sum</th>
         </tr>
       </thead>
@@ -35,7 +39,7 @@ export function renderTable(container, data) {
   `;
 
   for (let i = 0; i < nCells; i++) {
-    const sum = mvn[i] + attn[i] + expr[i] + (cellIneff ? cellIneff[i] : 0);
+    const sum = mvn[i] + attn[i] + expr[i] + (cellIneff ? cellIneff[i] : 0) + (geneIneff ? geneIneff[i] : 0) + (bonus ? bonus[i] : 0);
     html += `
       <tr class="check-spot-row-hover">
         <td style="${nameTdStyle}">${labels[i]}</td>
@@ -43,6 +47,8 @@ export function renderTable(container, data) {
         <td style="${tdStyle}">${attn[i].toFixed(3)}</td>
         <td style="${tdStyle}">${expr[i].toFixed(3)}</td>
         <td style="${tdStyle}">${cellIneff ? cellIneff[i].toFixed(3) : 'Null'}</td>
+        <td style="${tdStyle}">${geneIneff ? geneIneff[i].toFixed(3) : 'Null'}</td>
+        <td style="${tdStyle}">${bonus ? bonus[i].toFixed(3) : 'Null'}</td>
         <td style="${tdStyle} font-weight:bold; color:#fff">${sum.toFixed(3)}</td>
       </tr>
     `;
@@ -51,6 +57,8 @@ export function renderTable(container, data) {
   html += `
       <tr class="check-spot-row-hover">
         <td style="${nameTdStyle}">misread</td>
+        <td style="${tdStyle} color:#4b5563">Null</td>
+        <td style="${tdStyle} color:#4b5563">Null</td>
         <td style="${tdStyle} color:#4b5563">Null</td>
         <td style="${tdStyle} color:#4b5563">Null</td>
         <td style="${tdStyle} color:#4b5563">Null</td>
@@ -82,6 +90,8 @@ export function renderScores(container, data) {
   const attn = data.attention.slice(0, nCells);
   const expr = data.exprFluct.slice(0, nCells);
   const cellIneff = data.cellInefficiency ? data.cellInefficiency.slice(0, nCells) : null;
+  const geneIneff = data.geneInefficiency ? data.geneInefficiency.slice(0, nCells) : null;
+  const bonus = data.bonus ? data.bonus.slice(0, nCells) : null;
   const misread = data.misread;
 
   const containerWidth = container.clientWidth || 400;
@@ -115,8 +125,8 @@ export function renderScores(container, data) {
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
   const x = d3.scaleBand().domain(labels).range([0, w]).padding(0.3);
-  const stackedSums = mvn.map((v, i) => v + attn[i] + expr[i] + (cellIneff ? cellIneff[i] : 0));
-  const allValues = [...mvn, ...attn, ...expr, ...(cellIneff || []), misread, ...stackedSums];
+  const stackedSums = mvn.map((v, i) => v + attn[i] + expr[i] + (cellIneff ? cellIneff[i] : 0) + (geneIneff ? geneIneff[i] : 0) + (bonus ? bonus[i] : 0));
+  const allValues = [...mvn, ...attn, ...expr, ...(cellIneff || []), ...(geneIneff || []), ...(bonus || []), misread, ...stackedSums];
   const yMin = d3.min(allValues);
   const yMax = d3.max(allValues);
   const y = d3.scaleLinear().domain([Math.min(0, yMin * 1.1), Math.max(0, yMax * 1.1)]).range([h, 0]);
@@ -127,10 +137,10 @@ export function renderScores(container, data) {
   g.append('text').attr('transform', 'rotate(-90)').attr('y', -35).attr('x', -h / 2).attr('text-anchor', 'middle').style('fill', '#9ca3af').style('font-size', '12px').text('Log-Likelihood');
   g.append('g').attr('transform', `translate(0,${h})`).call(d3.axisBottom(x)).call(g => g.select('.domain').attr('stroke', '#4b5563')).selectAll('text').attr('transform', 'rotate(-45)').style('text-anchor', 'end').attr('dx', '-0.5em').attr('dy', '0.5em').style('fill', '#d1d5db').style('font-size', '12px');
 
-  const colors = { mvn: '#1f77b4', attn: '#ff7f0e', expr: '#2ca02c', cellIneff: '#9467bd', misread: '#db5c5c' };
+  const colors = { mvn: '#1f77b4', attn: '#ff7f0e', expr: '#2ca02c', cellIneff: '#9467bd', geneIneff: '#8c564b', bonus: '#e377c2', misread: '#db5c5c' };
 
   const drawSegment = (dataArray, bottomArray, colorClass, colorHex) => {
-      const labelsMap = { mvn: 'MVN LogLik', attn: 'Attention', expr: 'Expr Fluctuation', cellIneff: 'Cell Inefficiency' };
+      const labelsMap = { mvn: 'MVN LogLik', attn: 'Attention', expr: 'Expr Fluctuation', cellIneff: 'Cell Inefficiency', geneIneff: 'Gene Inefficiency', bonus: 'Inside-cell Bonus' };
       g.selectAll(`.bar-${colorClass}`)
           .data(dataArray)
           .enter().append('rect')
@@ -145,15 +155,21 @@ export function renderScores(container, data) {
           .on('mouseout', hideTooltip);
   };
 
-  const zeros = new Array(nCells).fill(0);
-  drawSegment(mvn, zeros, 'mvn', colors.mvn);
-  drawSegment(attn, mvn, 'attn', colors.attn);
-  const mvnPlusAttn = mvn.map((v, i) => v + attn[i]);
-  drawSegment(expr, mvnPlusAttn, 'expr', colors.expr);
-  if (cellIneff) {
-    const mvnPlusAttnPlusExpr = mvn.map((v, i) => v + attn[i] + expr[i]);
-    drawSegment(cellIneff, mvnPlusAttnPlusExpr, 'cellIneff', colors.cellIneff);
-  }
+  // stack the terms on top of each other, keeping a running cumulative as the bottom of
+  // the next segment. cellIneff, geneIneff and bonus are only in newer dbs, so skip any
+  // that are absent.
+  let bottom = new Array(nCells).fill(0);
+  const stackTerm = (arr, colorClass, colorHex) => {
+    if (!arr) return;
+    drawSegment(arr, bottom, colorClass, colorHex);
+    bottom = bottom.map((b, i) => b + arr[i]);
+  };
+  stackTerm(mvn, 'mvn', colors.mvn);
+  stackTerm(attn, 'attn', colors.attn);
+  stackTerm(expr, 'expr', colors.expr);
+  stackTerm(cellIneff, 'cellIneff', colors.cellIneff);
+  stackTerm(geneIneff, 'geneIneff', colors.geneIneff);
+  stackTerm(bonus, 'bonus', colors.bonus);
 
   const misreadX = x(labels[nCells]);
   if (misreadX !== undefined) {
@@ -174,6 +190,8 @@ export function renderScores(container, data) {
       { label: 'Attention', color: colors.attn },
       { label: 'Expr. Fluctuation', color: colors.expr },
       { label: cellIneff ? 'Cell Inefficiency' : 'Cell Inefficiency (N/A)', color: colors.cellIneff },
+      { label: geneIneff ? 'Gene Inefficiency' : 'Gene Inefficiency (N/A)', color: colors.geneIneff },
+      { label: bonus ? 'Inside-cell Bonus' : 'Inside-cell Bonus (N/A)', color: colors.bonus },
       { label: 'Misread Density', color: colors.misread }
   ];
 

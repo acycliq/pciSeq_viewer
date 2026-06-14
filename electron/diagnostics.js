@@ -9,6 +9,8 @@ let diagnosticsDb = null;
 let diagnosticsMeta = null;
 let diagnosticsSetupWindow = null;
 let hasCellInefficiency = false;
+let hasGeneInefficiency = false;
+let hasBonus = false;
 let hasMrf = false;
 let hasEffectiveBeta = false;
 
@@ -53,6 +55,8 @@ function openDiagnosticsDatabase(dbPath) {
   // Check if cell_inefficiency column exists in spots table
   const columns = diagnosticsDb.prepare("PRAGMA table_info(spots)").all();
   hasCellInefficiency = columns.some(col => col.name === 'cell_inefficiency');
+  hasGeneInefficiency = columns.some(col => col.name === 'gene_inefficiency');
+  hasBonus = columns.some(col => col.name === 'bonus');
 
   // Check if mrf column exists in cells table (needed for posterior reconstruction)
   const cellCols = diagnosticsDb.prepare("PRAGMA table_info(cells)").all();
@@ -61,7 +65,7 @@ function openDiagnosticsDatabase(dbPath) {
   // Check if effective_beta column exists in cells table (per-(cell, class) MRF cap)
   hasEffectiveBeta = cellCols.some(col => col.name === 'effective_beta');
 
-  console.log('Diagnostics DB loaded. nC=%d, nS=%d, hasCellInefficiency=%s, hasMrf=%s, hasEffectiveBeta=%s', diagnosticsMeta.nC, diagnosticsMeta.nS, hasCellInefficiency, hasMrf, hasEffectiveBeta);
+  console.log('Diagnostics DB loaded. nC=%d, nS=%d, hasCellInefficiency=%s, hasGeneInefficiency=%s, hasBonus=%s, hasMrf=%s, hasEffectiveBeta=%s', diagnosticsMeta.nC, diagnosticsMeta.nS, hasCellInefficiency, hasGeneInefficiency, hasBonus, hasMrf, hasEffectiveBeta);
   return diagnosticsMeta;
 }
 
@@ -72,6 +76,8 @@ function closeDiagnosticsDatabase() {
   }
   diagnosticsMeta = null;
   hasCellInefficiency = false;
+  hasGeneInefficiency = false;
+  hasBonus = false;
   hasMrf = false;
   hasEffectiveBeta = false;
 }
@@ -200,10 +206,13 @@ ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
   }
   try {
     const { gene_panel, label_map, misread_density, nN } = diagnosticsMeta;
-    const selectCols = hasCellInefficiency
-      ? 'SELECT gene_idx, x, y, z, neighbor_cell_ids, mvn_loglik, attention, expr_fluct, cell_inefficiency FROM spots WHERE spot_id = ?'
-      : 'SELECT gene_idx, x, y, z, neighbor_cell_ids, mvn_loglik, attention, expr_fluct FROM spots WHERE spot_id = ?';
-    const row = diagnosticsDb.prepare(selectCols).get(spotId);
+    // cell_inefficiency, gene_inefficiency and bonus are only in newer dbs, so add them
+    // to the query only when present.
+    const cols = ['gene_idx', 'x', 'y', 'z', 'neighbor_cell_ids', 'mvn_loglik', 'attention', 'expr_fluct'];
+    if (hasCellInefficiency) cols.push('cell_inefficiency');
+    if (hasGeneInefficiency) cols.push('gene_inefficiency');
+    if (hasBonus) cols.push('bonus');
+    const row = diagnosticsDb.prepare(`SELECT ${cols.join(', ')} FROM spots WHERE spot_id = ?`).get(spotId);
     if (!row) return { success: false, error: 'Spot not found in database: ' + spotId };
 
     // 1. Strict Gene Resolution
@@ -230,6 +239,12 @@ ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
     const cellIneff = (hasCellInefficiency && row.cell_inefficiency)
       ? new Float32Array(row.cell_inefficiency.buffer, row.cell_inefficiency.byteOffset, n)
       : null;
+    const geneIneff = (hasGeneInefficiency && row.gene_inefficiency)
+      ? new Float32Array(row.gene_inefficiency.buffer, row.gene_inefficiency.byteOffset, n)
+      : null;
+    const bonus = (hasBonus && row.bonus)
+      ? new Float32Array(row.bonus.buffer, row.bonus.byteOffset, n)
+      : null;
 
     // 4. Strict Label Mapping
     let neighborLabels = neighIds.map(id => id);
@@ -251,7 +266,7 @@ ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
 
     // 6. Probability Calculation
     const scores = new Array(n + 1);
-    for (let i = 0; i < n; i++) scores[i] = mvn[i] + attn[i] + expr[i] + (cellIneff ? cellIneff[i] : 0);
+    for (let i = 0; i < n; i++) scores[i] = mvn[i] + attn[i] + expr[i] + (cellIneff ? cellIneff[i] : 0) + (geneIneff ? geneIneff[i] : 0) + (bonus ? bonus[i] : 0);
     scores[n] = misreadVal;
 
     const probabilities = softmaxJS(scores);
@@ -267,6 +282,8 @@ ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
       attention: Array.from(attn),
       exprFluct: Array.from(expr),
       cellInefficiency: cellIneff ? Array.from(cellIneff) : null,
+      geneInefficiency: geneIneff ? Array.from(geneIneff) : null,
+      bonus: bonus ? Array.from(bonus) : null,
       misread: misreadVal,
       scores,
       probabilities
