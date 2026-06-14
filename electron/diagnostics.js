@@ -205,7 +205,7 @@ ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
     return { success: false, error: 'diagnostics data not loaded' };
   }
   try {
-    const { gene_panel, label_map, misread_density, nN } = diagnosticsMeta;
+    const { gene_panel, label_map, misread_density, log_rho_bar, nN } = diagnosticsMeta;
     // cell_inefficiency, gene_inefficiency and bonus are only in newer dbs, so add them
     // to the query only when present.
     const cols = ['gene_idx', 'x', 'y', 'z', 'neighbor_cell_ids', 'mvn_loglik', 'attention', 'expr_fluct'];
@@ -258,11 +258,17 @@ ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
       });
     }
 
-    // 5. Strict Misread Density
-    if (!misread_density || !(geneName in misread_density)) {
-        throw new Error(`Statistical parameter missing: misread_density for gene '${geneName}' not found`);
+    // 5. Background (misread) term. The model uses E[log rho] = log_rho_bar per gene
+    // (see spots_to_cell). Newer dbs export it; older dbs only have misread_density (the
+    // config input), so fall back to log(misread_density) there.
+    let misreadVal;
+    if (log_rho_bar && (geneName in log_rho_bar)) {
+        misreadVal = log_rho_bar[geneName];
+    } else if (misread_density && (geneName in misread_density)) {
+        misreadVal = Math.log(misread_density[geneName]);
+    } else {
+        throw new Error(`Statistical parameter missing: no log_rho_bar or misread_density for gene '${geneName}'`);
     }
-    const misreadVal = Math.log(misread_density[geneName]);
 
     // 6. Probability Calculation
     const scores = new Array(n + 1);
