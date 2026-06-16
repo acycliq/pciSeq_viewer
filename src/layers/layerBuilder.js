@@ -35,14 +35,17 @@ export function buildTileLayers(state, elements) {
     const start = Math.max(0, state.currentPlane - preloadBehind);
     const end = Math.min(totalPlanes - 1, state.currentPlane + preloadAhead);
 
+    const channel = state.currentChannel;
+
     for (let plane = start; plane <= end; plane++) {
         const opacity = plane === state.currentPlane ? 1 : 0;
-        const layerId = `tiles-${plane}`;
+        // Channel is part of the id so switching channels mounts fresh layers
+        const layerId = `tiles-${channel}-${plane}`;
 
         // Reuse existing layer instance or create new one
         let tileLayer = state.tileLayers.get(layerId);
         if (!tileLayer) {
-            tileLayer = createTileLayer(plane, opacity, state.tileCache, state.showTiles);
+            tileLayer = createTileLayer(channel, plane, opacity, state.tileCache, state.showTiles);
             state.tileLayers.set(layerId, tileLayer);
         } else {
             // Update existing layer's opacity and visibility

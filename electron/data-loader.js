@@ -5,7 +5,18 @@ const fs = require('fs');
 const Database = require('better-sqlite3');
 
 // Module state
-let mbtilesDb = null;
+//
+// Background tiles can come from several imaging channels (e.g. DAPI, GCaMP),
+// each stored in its own .mbtiles file. We keep one open database handle per
+// channel and a small registry describing the available channels.
+//
+// channels        - registry array of { id, label, path } entries
+// channelDbs      - open better-sqlite3 handles keyed by channel id
+// defaultChannelId - id of the channel selected first in the viewer
+let channels = [];
+const channelDbs = new Map();
+let defaultChannelId = null;
+
 let mainWindow = null;
 let store = null;
 let diagnostics = null;
@@ -16,16 +27,64 @@ function init(mw, st, diag) {
   diagnostics = diag;
 }
 
-// Open MBTiles database using better-sqlite3
-function openDatabase(mbtilesPath) {
-  if (mbtilesDb) {
-    try { mbtilesDb.close(); } catch (e) {}
-    mbtilesDb = null;
+// Build a channel descriptor from an .mbtiles file path.
+// The filename stem is the channel id; the label capitalises it for display.
+// Example: /data/dapi.mbtiles -> { id: 'dapi', label: 'Dapi', path: ... }
+function deriveChannel(mbtilesPath) {
+  const stem = path.basename(mbtilesPath, '.mbtiles');
+  const id = stem.toLowerCase();
+  const label = stem.charAt(0).toUpperCase() + stem.slice(1);
+  return { id, label, path: mbtilesPath };
+}
+
+// Close every open channel database and reset the registry.
+function closeAllChannels() {
+  for (const db of channelDbs.values()) {
+    try { db.close(); } catch (e) {}
+  }
+  channelDbs.clear();
+  channels = [];
+  defaultChannelId = null;
+}
+
+// Discover all .mbtiles files in a folder and open one channel per file.
+// The first channel (alphabetically) becomes the default selection.
+// Returns the channel registry array.
+function discoverChannels(folderPath) {
+  closeAllChannels();
+
+  const mbtilesFiles = fs.readdirSync(folderPath)
+    .filter(f => f.endsWith('.mbtiles'))
+    .sort();
+
+  for (const file of mbtilesFiles) {
+    const fullPath = path.join(folderPath, file);
+    const channel = deriveChannel(fullPath);
+    try {
+      const db = new Database(fullPath, { readonly: true, fileMustExist: true });
+      channelDbs.set(channel.id, db);
+      channels.push(channel);
+      console.log('Opened background channel:', channel.id, fullPath);
+    } catch (e) {
+      console.error('Failed to open background channel:', fullPath, e);
+    }
   }
 
+  defaultChannelId = channels.length > 0 ? channels[0].id : null;
+  return channels;
+}
+
+// Open a single .mbtiles file as the only channel (manual override from the menu).
+// Returns true on success.
+function openDatabase(mbtilesPath) {
+  closeAllChannels();
+
+  const channel = deriveChannel(mbtilesPath);
   try {
-    // Open in read-only mode
-    mbtilesDb = new Database(mbtilesPath, { readonly: true, fileMustExist: true });
+    const db = new Database(mbtilesPath, { readonly: true, fileMustExist: true });
+    channelDbs.set(channel.id, db);
+    channels.push(channel);
+    defaultChannelId = channel.id;
     console.log('Opened MBTiles database (disk-based):', mbtilesPath);
     return true;
   } catch (e) {
@@ -35,14 +94,23 @@ function openDatabase(mbtilesPath) {
 }
 
 function closeDatabase() {
-  if (mbtilesDb) {
-    try { mbtilesDb.close(); } catch (e) {}
-    mbtilesDb = null;
-  }
+  closeAllChannels();
 }
 
-function getDatabase() {
-  return mbtilesDb;
+// Return the open database handle for a channel id.
+// With no id (or unknown id) the default channel is used.
+function getDatabase(channelId) {
+  const id = channelId && channelDbs.has(channelId) ? channelId : defaultChannelId;
+  if (!id) return null;
+  return channelDbs.get(id) || null;
+}
+
+// Return the channel registry for the renderer (no file paths exposed).
+function getChannels() {
+  return {
+    channels: channels.map(c => ({ id: c.id, label: c.label })),
+    defaultChannelId
+  };
 }
 
 // === IPC Handlers ===
@@ -73,19 +141,13 @@ ipcMain.handle('select-data-folder', async () => {
 
     store.set('dataPath', selectedPath);
 
-    // Auto-discover MBTiles file in the data folder
+    // Auto-discover all MBTiles channels in the data folder
     try {
-      const files = fs.readdirSync(selectedPath);
-      const mbtilesFiles = files.filter(f => f.endsWith('.mbtiles'));
-
-      if (mbtilesFiles.length > 0) {
-        const autoMbtilesPath = path.join(selectedPath, mbtilesFiles[0]);
-        console.log('Auto-discovered MBTiles file:', autoMbtilesPath);
-
-        if (openDatabase(autoMbtilesPath)) {
-          store.set('mbtilesPath', autoMbtilesPath);
-          // Silent load - no popup
-        }
+      const discovered = discoverChannels(selectedPath);
+      if (discovered.length > 0) {
+        // Keep mbtilesPath pointing at the default channel for backward compatibility
+        store.set('mbtilesPath', discovered[0].path);
+        console.log('Discovered background channels:', discovered.map(c => c.id).join(', '));
       }
     } catch (e) {
       console.warn('Failed to auto-discover MBTiles:', e);
@@ -156,6 +218,11 @@ ipcMain.handle('get-paths', () => {
     tilesPath: store.get('tilesPath', ''),
     mbtilesPath: store.get('mbtilesPath', '')
   };
+});
+
+// Background tile channels available for the current dataset (e.g. DAPI, GCaMP).
+ipcMain.handle('get-tile-channels', () => {
+  return getChannels();
 });
 
 ipcMain.handle('set-voxel-size', (event, voxelSize) => {
@@ -232,19 +299,13 @@ ipcMain.handle('select-mbtiles-file', async () => {
 });
 
 ipcMain.handle('get-mbtiles-metadata', async () => {
-  const mbtilesPath = store.get('mbtilesPath', '');
-  if (!mbtilesPath) {
+  const db = getDatabase();
+  if (!db) {
     return { success: false, error: 'No MBTiles file configured' };
   }
 
   try {
-    if (!mbtilesDb) {
-      if (!openDatabase(mbtilesPath)) {
-        return { success: false, error: 'Failed to open database' };
-      }
-    }
-
-    const stmt = mbtilesDb.prepare('SELECT name, value FROM metadata');
+    const stmt = db.prepare('SELECT name, value FROM metadata');
     const rows = stmt.all();
 
     const metadata = {};
@@ -291,11 +352,13 @@ ipcMain.handle('get-dataset-metadata', async () => {
     source: null
   };
 
-  // Prefer MBTiles for image dimensions if available
-  const mbtilesPath = store.get('mbtilesPath', '');
-  if (mbtilesPath && mbtilesDb) {
+  // Prefer MBTiles for image dimensions if available.
+  // All channels share the same coordinate space, so the default channel's
+  // metadata is representative.
+  const db = getDatabase();
+  if (db) {
     try {
-      const stmt = mbtilesDb.prepare('SELECT name, value FROM metadata');
+      const stmt = db.prepare('SELECT name, value FROM metadata');
       const rows = stmt.all();
 
       rows.forEach(row => {
@@ -337,7 +400,7 @@ ipcMain.handle('get-dataset-metadata', async () => {
   }
 
   // Flag whether mbtiles is the source (renderer uses this to decide whether to prompt)
-  result.hasMbtiles = !!(mbtilesPath && mbtilesDb);
+  result.hasMbtiles = !!db;
 
   // Check required fields - all four are now required
   const hasRequired = result.imageWidth && result.imageHeight && result.planeCount && result.voxelSize;
@@ -351,6 +414,8 @@ ipcMain.handle('get-dataset-metadata', async () => {
 module.exports = {
   init,
   openDatabase,
+  discoverChannels,
   closeDatabase,
-  getDatabase
+  getDatabase,
+  getChannels
 };

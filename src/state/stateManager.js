@@ -7,6 +7,10 @@ const state = {
     deckglInstance: null,
     isLoading: false,
 
+    // Background channel currently shown (e.g. 'dapi', 'gcamp').
+    // Set during startup from the discovered channel registry.
+    currentChannel: null,
+
     // Layer visibility
     showTiles: DEFAULT_STATE.showTiles,
     showPolygons: DEFAULT_STATE.showPolygons,

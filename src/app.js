@@ -22,6 +22,7 @@ import Perf from '../utils/runtimePerf.js';
 // === UI IMPORTS ===
 import { showLoading, hideLoading, showTooltip, showScreen } from './ui/uiHelpers.js';
 import { showMetadataError } from './ui/metadataError.js';
+import { initChannelSwitcher } from './ui/channelSwitcher.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
 import { init as initCellInfoPanel } from './cellInfoPanel/index.js';
@@ -525,6 +526,13 @@ async function init() {
         return;
     }
 
+    // 2b. Discover background channels (DAPI, GCaMP, ...) and pick the default.
+    // currentChannel must be set before the first layer build.
+    const channelInfo = await window.electronAPI.getTileChannels();
+    if (channelInfo && channelInfo.defaultChannelId) {
+        state.currentChannel = channelInfo.defaultChannelId;
+    }
+
     state.polygonCache.clear();
 
     // 3. Initialize deck.gl
@@ -557,6 +565,7 @@ async function init() {
     await loadPolygonData(state.currentPlane, state.polygonCache, state.allCellClasses, state.cellDataMap);
 
     // 10. Finalize UI + layers
+    initChannelSwitcher(channelInfo, state, updateAllLayers);
     finalizeInitialization(updateAllLayers);
     preloadAdjacentPlanesInitial();
 

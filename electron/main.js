@@ -147,18 +147,17 @@ function createWindow() {
   dataLoader.init(mainWindow, store, diagnostics);
 }
 
-// Get tile from MBTiles database
-function getTileFromMBTiles(planeId, z, x, y) {
-  let mbtilesDb = dataLoader.getDatabase();
+// Get tile from the MBTiles database of a given background channel
+function getTileFromMBTiles(channel, planeId, z, x, y) {
+  let mbtilesDb = dataLoader.getDatabase(channel);
   if (!mbtilesDb) {
-    // Attempt to lazy-load if path is stored
-    const storedPath = store.get('mbtilesPath', '');
-    if (storedPath && fs.existsSync(storedPath)) {
-      if (!dataLoader.openDatabase(storedPath)) return null;
-      mbtilesDb = dataLoader.getDatabase();
-    } else {
-      return null;
+    // Safety net: re-discover channels from the stored data folder
+    const dataPath = store.get('dataPath', '');
+    if (dataPath && fs.existsSync(dataPath)) {
+      dataLoader.discoverChannels(dataPath);
+      mbtilesDb = dataLoader.getDatabase(channel);
     }
+    if (!mbtilesDb) return null;
   }
 
   try {
@@ -179,24 +178,25 @@ function getTileFromMBTiles(planeId, z, x, y) {
 // MBTiles protocol handler
 function registerMBTilesProtocol() {
   protocol.handle('mbtiles', (request) => {
-    // URL format: mbtiles://tiles/{plane}/{z}/{y}/{x}.jpg
+    // URL format: mbtiles://tiles/{channel}/{plane}/{z}/{y}/{x}.jpg
     // The "tiles" is a dummy hostname to avoid URL parsing issues with plane numbers
     const url = request.url.replace('mbtiles://', '');
     const parts = url.split('/');
 
-    // Expected parts: ["tiles", plane, z, y, "x.jpg"]
-    if (parts.length < 5) {
+    // Expected parts: ["tiles", channel, plane, z, y, "x.jpg"]
+    if (parts.length < 6) {
       console.error('Invalid mbtiles URL format:', request.url);
       return new Response('Invalid URL', { status: 400 });
     }
 
     // Skip parts[0] which is the dummy hostname "tiles"
-    const planeId = parseInt(parts[1]);
-    const z = parseInt(parts[2]);
-    const y = parseInt(parts[3]);
-    const x = parseInt(parts[4].replace(/\.(jpg|jpeg|png)$/i, ''));
+    const channel = parts[1];
+    const planeId = parseInt(parts[2]);
+    const z = parseInt(parts[3]);
+    const y = parseInt(parts[4]);
+    const x = parseInt(parts[5].replace(/\.(jpg|jpeg|png)$/i, ''));
 
-    const tileData = getTileFromMBTiles(planeId, z, x, y);
+    const tileData = getTileFromMBTiles(channel, planeId, z, x, y);
 
     if (tileData) {
       return new Response(Buffer.from(tileData), {
@@ -336,16 +336,11 @@ function createMenu() {
               store.set('dataPath', selectedPath);
               console.log('Data path set to:', selectedPath);
               
-              // Auto-discovery logic (duplicate logic, simplified for menu)
+              // Auto-discover all MBTiles channels in the data folder
               try {
-                  const files = fs.readdirSync(selectedPath);
-                  const mbtilesFiles = files.filter(f => f.endsWith('.mbtiles'));
-                  if (mbtilesFiles.length > 0) {
-                    const autoMbtilesPath = path.join(selectedPath, mbtilesFiles[0]);
-                    if (dataLoader.openDatabase(autoMbtilesPath)) {
-                        store.set('mbtilesPath', autoMbtilesPath);
-                        // Silent load
-                    }
+                  const discovered = dataLoader.discoverChannels(selectedPath);
+                  if (discovered.length > 0) {
+                    store.set('mbtilesPath', discovered[0].path);
                   }
               } catch(e) {}
 

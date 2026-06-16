@@ -70,7 +70,8 @@ function config() {
         voxelSize: meta?.voxelSize,
 
         // Background tiles via mbtiles:// protocol
-        backgroundTiles: "mbtiles://tiles/{plane}/{z}/{y}/{x}.jpg",
+        // {channel} selects the imaging channel (e.g. dapi, gcamp)
+        backgroundTiles: "mbtiles://tiles/{channel}/{plane}/{z}/{y}/{x}.jpg",
 
         // Arrow data files via app:// protocol
         arrowSpotsManifest: "app://arrow_spots/manifest.json",

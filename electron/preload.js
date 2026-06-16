@@ -11,6 +11,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectMBTilesFile: () => ipcRenderer.invoke('select-mbtiles-file'),
   getMBTilesMetadata: () => ipcRenderer.invoke('get-mbtiles-metadata'),
 
+  // Background tile channels (e.g. DAPI, GCaMP) discovered in the data folder
+  getTileChannels: () => ipcRenderer.invoke('get-tile-channels'),
+
   // Dataset metadata (combined MBTiles + metadata.json)
   getDatasetMetadata: () => ipcRenderer.invoke('get-dataset-metadata'),
   getMetadataJson: () => ipcRenderer.invoke('get-metadata-json'),

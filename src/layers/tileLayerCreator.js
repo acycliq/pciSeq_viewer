@@ -17,9 +17,9 @@ const { COORDINATE_SYSTEM, TileLayer, BitmapLayer } = deck;
  * Create a tile layer for background image display
  * Handles tile loading, caching, and rendering with opacity control
  */
-export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
+export function createTileLayer(channel, planeNum, opacity, tileCache, showTiles) {
     return new TileLayer({
-        id: `tiles-${planeNum}`,
+        id: `tiles-${channel}-${planeNum}`,
         pickable: false,
         tileSize: IMG_DIMENSIONS.tileSize,
         minZoom: 0,
@@ -31,7 +31,7 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
 
         getTileData: async ({index}) => {
             const {x, y, z} = index;
-            const cacheKey = `${planeNum}-${z}-${y}-${x}`;
+            const cacheKey = `${channel}-${planeNum}-${z}-${y}-${x}`;
 
             if (tileCache.has(cacheKey)) {
                 const cachedData = tileCache.get(cacheKey);
@@ -43,6 +43,7 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
 
             const urlPattern = getTileUrlPattern();
             const imageUrl = urlPattern
+                .replace('{channel}', channel)
                 .replace('{plane}', planeNum)
                 .replace('{z}', z)
                 .replace('{y}', y)
