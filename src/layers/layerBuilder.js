@@ -38,12 +38,15 @@ export function buildTileLayers(state, elements) {
     // Which channels to render and at what opacity. All discovered channels stay
     // mounted (kept warm) so a switch can cross-fade between already-loaded layers.
     // Fall back to the selected channel at full opacity before the map is populated.
-    const channelOpacity = Object.keys(state.channelOpacity).length > 0
-        ? state.channelOpacity
-        : { [state.currentChannel]: 1 };
+    let opacities = state.channelOpacity;
+    let channelIds = Object.keys(opacities);
+    if (channelIds.length === 0) {
+        opacities = { [state.currentChannel]: 1 };
+        channelIds = Object.keys(opacities);
+    }
 
-    for (const channel of Object.keys(channelOpacity)) {
-        const channelAlpha = channelOpacity[channel];
+    for (const channel of channelIds) {
+        const channelAlpha = opacities[channel];
         const isCurrent = channel === state.currentChannel;
 
         // The selected channel preloads neighbouring planes for fast stepping;

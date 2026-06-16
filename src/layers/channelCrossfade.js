@@ -39,6 +39,8 @@ export function crossfadeToChannel(toId, state, render) {
 
         state.channelOpacity[fromId] = fromStart * (1 - progress);
         state.channelOpacity[toId] = toStart + (1 - toStart) * progress;
+        // render() rebuilds the whole layer stack each frame (~12 frames over the
+        // fade). Fine at current scale; revisit if it stutters on very large spot sets.
         render();
 
         if (progress < 1) {

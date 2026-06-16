@@ -201,13 +201,19 @@ export function getTileUrlPattern() {
     return cfg?.backgroundTiles;
 }
 
-// Per-channel tint colours for the grayscale background tiles, keyed by channel id.
-// The colour multiplies the tile, so white leaves it grayscale and red makes a
-// red-on-luminance image. Channels not listed here stay grayscale.
+// Per-channel tint colours for the grayscale background tiles. The colour
+// multiplies the tile, so white leaves it grayscale and red makes a red-on-
+// luminance image. Channels not listed here stay grayscale.
+//
+// NOTE: keyed by channel id, which is the filename stem (e.g. 'gcamp'), NOT the
+// mbtiles 'name' label. A channel only tints if its file is named accordingly.
+// To revisit: drive the colour from mbtiles metadata so it follows the label.
+const NO_TINT = [255, 255, 255];
+
 export const CHANNEL_TINT_COLORS = {
     gcamp: [255, 0, 0]
 };
 
 export function getChannelTintColor(channelId) {
-    return CHANNEL_TINT_COLORS[channelId] || [255, 255, 255];
+    return CHANNEL_TINT_COLORS[channelId] || NO_TINT;
 }
