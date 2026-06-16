@@ -88,7 +88,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-windows:
-    runs-on: windows-latest
+    # pinned to 2022: windows-latest moved to Server 2025, where the node-gyp
+    # bundled with @electron/rebuild can't find Visual Studio to build better-sqlite3.
+    runs-on: windows-2022
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
