@@ -182,8 +182,15 @@ this file adds a `plane_id` column so each z-plane gets its own pyramid.
   `map` table and an `images` table, with the same columns.
 - `metadata`: name/value pairs. Standard keys (`format`, `minzoom`, `maxzoom`,
   `name`, `description`) plus custom ones: `planes` (comma-separated plane ids),
-  `plane_count`, `width`, `height`, and `voxel_size` (comma-separated x,y,z). The
-  viewer reads `width`, `height`, and `plane_count` from here.
+  `plane_count`, `width`, `height`, `voxel_size` (comma-separated x,y,z), and
+  `tint`. The viewer reads `width`, `height`, and `plane_count` from here; uses
+  `name` as the channel label; and uses `tint` (a `#RRGGBB` hex) to colour the
+  channel. A file with no `tint` key renders grayscale.
+
+When a dataset folder holds several `.mbtiles` files, each is a switchable
+background **channel**. The viewer discovers them per folder, labels each from
+its `name`, and tints each from its own `tint` - so N files give N independently
+coloured channels (e.g. a green GCaMP channel alongside a grayscale DAPI one).
 
 **2. Google (XYZ) tiling, not TMS.** The tiles are generated with libvips
 `dzsave(layout='google')`, so they follow the Google / OpenStreetMap slippy-map

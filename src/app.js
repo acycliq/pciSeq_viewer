@@ -6,7 +6,7 @@
  */
 
 // === CONFIGURATION IMPORTS ===
-import { INITIAL_VIEW_STATE, MAX_PRELOAD, IMG_DIMENSIONS, SPOT_PICKABLE_MIN_ZOOM } from '../config/constants.js';
+import { INITIAL_VIEW_STATE, MAX_PRELOAD, IMG_DIMENSIONS, SPOT_PICKABLE_MIN_ZOOM, setChannelTints } from '../config/constants.js';
 
 // === STATE AND DOM IMPORTS ===
 import { state } from './state/stateManager.js';
@@ -538,6 +538,8 @@ async function init() {
         channelInfo.channels.forEach(channel => {
             state.channelOpacity[channel.id] = channel.id === defaultId ? 1 : 0;
         });
+        // each channel's tint comes from its own mbtiles 'tint' metadata; no tint -> grayscale
+        setChannelTints(channelInfo.channels);
     }
 
     state.polygonCache.clear();

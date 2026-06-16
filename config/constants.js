@@ -202,18 +202,37 @@ export function getTileUrlPattern() {
 }
 
 // Per-channel tint colours for the grayscale background tiles. The colour
-// multiplies the tile, so white leaves it grayscale and red makes a red-on-
-// luminance image. Channels not listed here stay grayscale.
+// multiplies the tile, so white leaves it grayscale and e.g. green makes a
+// green-on-luminance image. Channels with no tint stay grayscale.
 //
-// NOTE: keyed by channel id, which is the filename stem (e.g. 'gcamp'), NOT the
-// mbtiles 'name' label. A channel only tints if its file is named accordingly.
-// To revisit: drive the colour from mbtiles metadata so it follows the label.
+// The tint is no longer hardcoded: each channel declares its own colour in its
+// mbtiles 'tint' metadata (written by pciSeq.stage_image), so N files give N
+// colours. setChannelTints() is called once after the channels are discovered.
 const NO_TINT = [255, 255, 255];
 
-export const CHANNEL_TINT_COLORS = {
-    gcamp: [255, 0, 0]
-};
+// '#RRGGBB' -> [r, g, b], or null if it is not a valid hex colour.
+function hexToRgb(hex) {
+    if (typeof hex !== 'string') return null;
+    const m = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+// channel id -> [r, g, b], populated from the mbtiles metadata at load time.
+let _channelTints = {};
+
+// Populate the tint map from the channel descriptors returned by
+// getTileChannels() (each is { id, label, tint }). Channels without a valid
+// tint are left out, so getChannelTintColor falls back to grayscale for them.
+export function setChannelTints(channels) {
+    _channelTints = {};
+    (channels || []).forEach(ch => {
+        const rgb = hexToRgb(ch && ch.tint);
+        if (rgb) _channelTints[ch.id] = rgb;
+    });
+}
 
 export function getChannelTintColor(channelId) {
-    return CHANNEL_TINT_COLORS[channelId] || NO_TINT;
+    return _channelTints[channelId] || NO_TINT;
 }

@@ -85,12 +85,29 @@ dapi_image = np.load('/path/to/dapi_image.npy')
 pciSeq.stage_image(
     img=dapi_image,
     out_dir='/path/to/my_dataset/pciSeq/data/viewer_data',
-    name='My Dataset',
+    name='dapi',
     description='DAPI staining, mouse cortex',
 )
 ```
 
-This writes `output.mbtiles` into the target directory.
+The file is named after `name` (e.g. `name='dapi'` writes `dapi.mbtiles`); if
+`name` is empty it falls back to `output.mbtiles`. The `name` is also the label
+shown for that channel in the viewer.
+
+### Multiple background channels and tints
+
+The viewer treats every `.mbtiles` in the `viewer_data` folder as a switchable
+background **channel**, so you can stage more than one (e.g. DAPI and GCaMP) by
+giving each a distinct `name`:
+
+```python
+pciSeq.stage_image(img=dapi,  out_dir=viewer_data, name='dapi')                    # grayscale
+pciSeq.stage_image(img=gcamp, out_dir=viewer_data, name='gcamp', tint='#00FF00')   # tinted green
+```
+
+`tint` is an optional `#RRGGBB` hex. The tiles stay grayscale; the hex is stored
+in the mbtiles metadata and the viewer uses it to colour that channel. Omit
+`tint` (as for DAPI above) to leave a channel grayscale.
 
 :::note[Requires pciSeq > 0.0.65]
 

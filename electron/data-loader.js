@@ -45,6 +45,15 @@ function readChannelName(db) {
   return name || null;
 }
 
+// Read the tint colour baked into the MBTiles metadata table by pciSeq.stage_image.
+// Each channel carries its own tint, so N files give N colours. Returns a
+// '#RRGGBB' string, or null when there is no (valid) tint -> renders grayscale.
+function readChannelTint(db) {
+  const row = db.prepare("SELECT value FROM metadata WHERE name = 'tint'").get();
+  const tint = row && row.value ? row.value.trim() : '';
+  return /^#[0-9a-fA-F]{6}$/.test(tint) ? tint.toUpperCase() : null;
+}
+
 // Make a label unique against the channels already in the registry, appending a
 // number when it collides so the switcher never shows two identical texts:
 // "Output" / "Output 2".
@@ -88,8 +97,9 @@ function openChannel(mbtilesPath) {
   try {
     const db = new Database(mbtilesPath, { readonly: true, fileMustExist: true });
     const label = uniqueLabel(readChannelName(db) || base.label);
+    const tint = readChannelTint(db);
     channelDbs.set(id, db);
-    channels.push({ id, label, path: mbtilesPath });
+    channels.push({ id, label, path: mbtilesPath, tint });
     console.log('Opened background channel:', id, mbtilesPath);
     return true;
   } catch (e) {
@@ -157,7 +167,7 @@ function getDatabase(channelId) {
 // Return the channel registry for the renderer (no file paths exposed).
 function getChannels() {
   return {
-    channels: channels.map(c => ({ id: c.id, label: c.label })),
+    channels: channels.map(c => ({ id: c.id, label: c.label, tint: c.tint })),
     defaultChannelId
   };
 }

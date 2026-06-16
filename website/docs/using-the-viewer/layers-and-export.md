@@ -11,8 +11,12 @@ drawn and offers two projection modes plus an image export.
 
 ## Base layers
 
-- **Dapi**, show/hide the background microscopy image (the MBTiles tiles).
-  Shortcut: `T`.
+- **Background**, show/hide the background microscopy image (the MBTiles tiles).
+  Shortcut: `T`. When a dataset has more than one background channel (e.g. DAPI
+  and GCaMP, one `.mbtiles` each), a channel switcher lets you cross-fade between
+  them. Each channel is labelled by its mbtiles `name` and tinted by its mbtiles
+  `tint` metadata, so e.g. a GCaMP channel can render green while DAPI stays
+  grayscale. Channels with no `tint` are shown grayscale.
 - **Cells**, show/hide the cell boundary polygons. Shortcut: `P`. An
   **Opacity** slider controls the polygon fill.
 
