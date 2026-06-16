@@ -47,6 +47,22 @@ function closeAllChannels() {
   defaultChannelId = null;
 }
 
+// Open one .mbtiles file and register it as a channel.
+// Returns true if the database opened successfully.
+function openChannel(mbtilesPath) {
+  const channel = deriveChannel(mbtilesPath);
+  try {
+    const db = new Database(mbtilesPath, { readonly: true, fileMustExist: true });
+    channelDbs.set(channel.id, db);
+    channels.push(channel);
+    console.log('Opened background channel:', channel.id, mbtilesPath);
+    return true;
+  } catch (e) {
+    console.error('Failed to open background channel:', mbtilesPath, e);
+    return false;
+  }
+}
+
 // Discover all .mbtiles files in a folder and open one channel per file.
 // The first channel (alphabetically) becomes the default selection.
 // Returns the channel registry array.
@@ -64,16 +80,7 @@ function discoverChannels(folderPath) {
   }
 
   for (const file of mbtilesFiles) {
-    const fullPath = path.join(folderPath, file);
-    const channel = deriveChannel(fullPath);
-    try {
-      const db = new Database(fullPath, { readonly: true, fileMustExist: true });
-      channelDbs.set(channel.id, db);
-      channels.push(channel);
-      console.log('Opened background channel:', channel.id, fullPath);
-    } catch (e) {
-      console.error('Failed to open background channel:', fullPath, e);
-    }
+    openChannel(path.join(folderPath, file));
   }
 
   defaultChannelId = channels.length > 0 ? channels[0].id : null;
@@ -85,18 +92,9 @@ function discoverChannels(folderPath) {
 function openDatabase(mbtilesPath) {
   closeAllChannels();
 
-  const channel = deriveChannel(mbtilesPath);
-  try {
-    const db = new Database(mbtilesPath, { readonly: true, fileMustExist: true });
-    channelDbs.set(channel.id, db);
-    channels.push(channel);
-    defaultChannelId = channel.id;
-    console.log('Opened MBTiles database (disk-based):', mbtilesPath);
-    return true;
-  } catch (e) {
-    console.error('Failed to open MBTiles database:', e);
-    return false;
-  }
+  const opened = openChannel(mbtilesPath);
+  defaultChannelId = channels.length > 0 ? channels[0].id : null;
+  return opened;
 }
 
 function closeDatabase() {
