@@ -147,13 +147,20 @@ function createWindow() {
   dataLoader.init(mainWindow, store, diagnostics);
 }
 
+// Data folder we have already tried to auto-discover channels for. Without this,
+// a dataset with no .mbtiles would re-scan the disk on every tile request.
+let discoveryAttemptedForPath = null;
+
 // Get tile from the MBTiles database of a given background channel
 function getTileFromMBTiles(channel, planeId, z, x, y) {
   let mbtilesDb = dataLoader.getDatabase(channel);
   if (!mbtilesDb) {
-    // Safety net: re-discover channels from the stored data folder
+    // Safety net: discover channels from the stored data folder, but only once
+    // per folder. Channels are normally discovered eagerly when the folder is
+    // selected, so this only runs as a fallback.
     const dataPath = store.get('dataPath', '');
-    if (dataPath && fs.existsSync(dataPath)) {
+    if (dataPath && dataPath !== discoveryAttemptedForPath && fs.existsSync(dataPath)) {
+      discoveryAttemptedForPath = dataPath;
       dataLoader.discoverChannels(dataPath);
       mbtilesDb = dataLoader.getDatabase(channel);
     }

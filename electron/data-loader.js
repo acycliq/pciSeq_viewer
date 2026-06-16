@@ -53,9 +53,15 @@ function closeAllChannels() {
 function discoverChannels(folderPath) {
   closeAllChannels();
 
-  const mbtilesFiles = fs.readdirSync(folderPath)
-    .filter(f => f.endsWith('.mbtiles'))
-    .sort();
+  let mbtilesFiles = [];
+  try {
+    mbtilesFiles = fs.readdirSync(folderPath)
+      .filter(f => f.endsWith('.mbtiles'))
+      .sort();
+  } catch (e) {
+    console.error('Failed to read data folder for MBTiles channels:', folderPath, e);
+    return channels;
+  }
 
   for (const file of mbtilesFiles) {
     const fullPath = path.join(folderPath, file);
