@@ -37,6 +37,27 @@ function deriveChannel(mbtilesPath) {
   return { id, label, path: mbtilesPath };
 }
 
+// Read the human-friendly channel name baked into the MBTiles metadata table.
+// Returns null when the file has no 'name' entry, or it is empty/whitespace.
+function readChannelName(db) {
+  const row = db.prepare("SELECT value FROM metadata WHERE name = 'name'").get();
+  const name = row && row.value ? row.value.trim() : '';
+  return name || null;
+}
+
+// Make a label unique against the channels already in the registry, appending a
+// number when it collides so the switcher never shows two identical texts:
+// "Output" / "Output 2".
+function uniqueLabel(baseLabel) {
+  let label = baseLabel;
+  let counter = 2;
+  while (channels.some(c => c.label === label)) {
+    label = `${baseLabel} ${counter}`;
+    counter++;
+  }
+  return label;
+}
+
 // Close every open channel database and reset the registry.
 function closeAllChannels() {
   for (const db of channelDbs.values()) {
@@ -50,23 +71,23 @@ function closeAllChannels() {
 // Open one .mbtiles file and register it as a channel.
 // Returns true if the database opened successfully.
 //
-// Colliding filenames (e.g. two files both named output.mbtiles) would derive
-// the same id, so duplicates get a numeric suffix: output / output-2, labelled
-// Output / Output 2.
+// The display label comes from the MBTiles 'name' metadata, falling back to the
+// filename when that is missing. Both id and label are made unique against the
+// registry so duplicates never clash: ids get a numeric suffix (output /
+// output-2), and so do labels (Output / Output 2).
 function openChannel(mbtilesPath) {
   const base = deriveChannel(mbtilesPath);
 
   let id = base.id;
-  let label = base.label;
   let counter = 2;
   while (channelDbs.has(id)) {
     id = `${base.id}-${counter}`;
-    label = `${base.label} ${counter}`;
     counter++;
   }
 
   try {
     const db = new Database(mbtilesPath, { readonly: true, fileMustExist: true });
+    const label = uniqueLabel(readChannelName(db) || base.label);
     channelDbs.set(id, db);
     channels.push({ id, label, path: mbtilesPath });
     console.log('Opened background channel:', id, mbtilesPath);
