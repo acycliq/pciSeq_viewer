@@ -49,13 +49,27 @@ function closeAllChannels() {
 
 // Open one .mbtiles file and register it as a channel.
 // Returns true if the database opened successfully.
+//
+// Colliding filenames (e.g. two files both named output.mbtiles) would derive
+// the same id, so duplicates get a numeric suffix: output / output-2, labelled
+// Output / Output 2.
 function openChannel(mbtilesPath) {
-  const channel = deriveChannel(mbtilesPath);
+  const base = deriveChannel(mbtilesPath);
+
+  let id = base.id;
+  let label = base.label;
+  let counter = 2;
+  while (channelDbs.has(id)) {
+    id = `${base.id}-${counter}`;
+    label = `${base.label} ${counter}`;
+    counter++;
+  }
+
   try {
     const db = new Database(mbtilesPath, { readonly: true, fileMustExist: true });
-    channelDbs.set(channel.id, db);
-    channels.push(channel);
-    console.log('Opened background channel:', channel.id, mbtilesPath);
+    channelDbs.set(id, db);
+    channels.push({ id, label, path: mbtilesPath });
+    console.log('Opened background channel:', id, mbtilesPath);
     return true;
   } catch (e) {
     console.error('Failed to open background channel:', mbtilesPath, e);
@@ -87,14 +101,24 @@ function discoverChannels(folderPath) {
   return channels;
 }
 
-// Open a single .mbtiles file as the only channel (manual override from the menu).
-// Returns true on success.
-function openDatabase(mbtilesPath) {
+// Replace the whole registry with the given .mbtiles files (manual override
+// from the menu). The first file becomes the default channel.
+// Returns the channel registry array.
+function openChannels(mbtilesPaths) {
   closeAllChannels();
 
-  const opened = openChannel(mbtilesPath);
+  for (const mbtilesPath of mbtilesPaths) {
+    openChannel(mbtilesPath);
+  }
+
   defaultChannelId = channels.length > 0 ? channels[0].id : null;
-  return opened;
+  return channels;
+}
+
+// Open a single .mbtiles file as the only channel.
+// Returns true on success.
+function openDatabase(mbtilesPath) {
+  return openChannels([mbtilesPath]).length > 0;
 }
 
 function closeDatabase() {
@@ -418,6 +442,7 @@ ipcMain.handle('get-dataset-metadata', async () => {
 module.exports = {
   init,
   openDatabase,
+  openChannels,
   discoverChannels,
   closeDatabase,
   getDatabase,

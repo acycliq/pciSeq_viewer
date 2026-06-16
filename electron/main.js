@@ -399,46 +399,48 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+Shift+O',
           click: async () => {
             const result = await dialog.showOpenDialog(mainWindow, {
-              properties: ['openFile'],
-              title: 'Select MBTiles File',
-              message: 'Choose the .mbtiles file containing background tiles',
+              properties: ['openFile', 'multiSelections'],
+              title: 'Select MBTiles File(s)',
+              message: 'Choose one or more .mbtiles files for the background channels',
               filters: [
                 { name: 'MBTiles', extensions: ['mbtiles'] },
                 { name: 'All Files', extensions: ['*'] }
               ]
             });
 
-            if (!result.canceled && result.filePaths.length > 0) {
-              const selectedPath = result.filePaths[0];
+            if (result.canceled || result.filePaths.length === 0) {
+              return;
+            }
 
+            // Validate every selected file before replacing anything
+            const invalidFiles = [];
+            for (const filePath of result.filePaths) {
               try {
-                // Validate using better-sqlite3
-                const testDb = new Database(selectedPath, { readonly: true, fileMustExist: true });
+                const testDb = new Database(filePath, { readonly: true, fileMustExist: true });
                 const stmt = testDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND (name='tiles' OR name='map')");
                 const hasTable = stmt.get();
                 testDb.close();
-
-                if (!hasTable) {
-                  dialog.showErrorBox(
-                    'Invalid MBTiles File',
-                    'The selected file does not appear to be a valid MBTiles database (missing tiles table).'
-                  );
-                  return;
-                }
-
-                store.set('mbtilesPath', selectedPath);
-                dataLoader.openDatabase(selectedPath);
-
-                // Reload the window to use new tiles
-                if (mainWindow) {
-                  mainWindow.reload();
-                }
+                if (!hasTable) invalidFiles.push(filePath);
               } catch (e) {
-                dialog.showErrorBox(
-                  'Invalid MBTiles File',
-                  `Failed to open file: ${e.message}`
-                );
+                invalidFiles.push(filePath);
               }
+            }
+
+            if (invalidFiles.length > 0) {
+              dialog.showErrorBox(
+                'Invalid MBTiles File',
+                `These files are not valid MBTiles databases:\n${invalidFiles.join('\n')}`
+              );
+              return;
+            }
+
+            // Replace the current channels with the selected files
+            store.set('mbtilesPath', result.filePaths[0]);
+            dataLoader.openChannels(result.filePaths);
+
+            // Reload the window to use the new channels
+            if (mainWindow) {
+              mainWindow.reload();
             }
           }
         },
