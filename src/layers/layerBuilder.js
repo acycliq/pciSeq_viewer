@@ -32,31 +32,44 @@ export function buildTileLayers(state, elements) {
     const preloadBehind = direction === -1 ? MAX_PRELOAD + 1 : MAX_PRELOAD;
 
     const totalPlanes = window.appState.totalPlanes;
-    const start = Math.max(0, state.currentPlane - preloadBehind);
-    const end = Math.min(totalPlanes - 1, state.currentPlane + preloadAhead);
+    const windowStart = Math.max(0, state.currentPlane - preloadBehind);
+    const windowEnd = Math.min(totalPlanes - 1, state.currentPlane + preloadAhead);
 
-    const channel = state.currentChannel;
+    // Which channels to render and at what opacity. All discovered channels stay
+    // mounted (kept warm) so a switch can cross-fade between already-loaded layers.
+    // Fall back to the selected channel at full opacity before the map is populated.
+    const channelOpacity = Object.keys(state.channelOpacity).length > 0
+        ? state.channelOpacity
+        : { [state.currentChannel]: 1 };
 
-    for (let plane = start; plane <= end; plane++) {
-        const opacity = plane === state.currentPlane ? 1 : 0;
-        // Channel is part of the id so switching channels mounts fresh layers
-        const layerId = `tiles-${channel}-${plane}`;
+    for (const channel of Object.keys(channelOpacity)) {
+        const channelAlpha = channelOpacity[channel];
+        const isCurrent = channel === state.currentChannel;
 
-        // Reuse existing layer instance or create new one
-        let tileLayer = state.tileLayers.get(layerId);
-        if (!tileLayer) {
-            tileLayer = createTileLayer(channel, plane, opacity, state.tileCache, state.showTiles);
+        // The selected channel preloads neighbouring planes for fast stepping;
+        // other channels only keep the current plane warm (one invisible layer).
+        const planeStart = isCurrent ? windowStart : state.currentPlane;
+        const planeEnd = isCurrent ? windowEnd : state.currentPlane;
+
+        for (let plane = planeStart; plane <= planeEnd; plane++) {
+            // Only the current plane is visible; multiply by the channel's fade opacity
+            const planeOpacity = (plane === state.currentPlane ? 1 : 0) * channelAlpha;
+            const layerId = `tiles-${channel}-${plane}`;
+
+            // Reuse existing layer instance or create new one
+            let tileLayer = state.tileLayers.get(layerId);
+            if (!tileLayer) {
+                tileLayer = createTileLayer(channel, plane, planeOpacity, state.tileCache, state.showTiles);
+            } else {
+                // Update existing layer's opacity and visibility
+                tileLayer = tileLayer.clone({
+                    opacity: planeOpacity,
+                    visible: state.showTiles
+                });
+            }
             state.tileLayers.set(layerId, tileLayer);
-        } else {
-            // Update existing layer's opacity and visibility
-            tileLayer = tileLayer.clone({
-                opacity: opacity,
-                visible: state.showTiles
-            });
-            state.tileLayers.set(layerId, tileLayer);
+            layers.push(tileLayer);
         }
-
-        layers.push(tileLayer);
     }
 
     return layers;

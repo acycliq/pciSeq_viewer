@@ -200,3 +200,14 @@ export function getTileUrlPattern() {
     const cfg = window.config ? window.config() : null;
     return cfg?.backgroundTiles;
 }
+
+// Per-channel tint colours for the grayscale background tiles, keyed by channel id.
+// The colour multiplies the tile, so white leaves it grayscale and red makes a
+// red-on-luminance image. Channels not listed here stay grayscale.
+export const CHANNEL_TINT_COLORS = {
+    gcamp: [255, 0, 0]
+};
+
+export function getChannelTintColor(channelId) {
+    return CHANNEL_TINT_COLORS[channelId] || [255, 255, 255];
+}

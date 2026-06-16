@@ -8,12 +8,14 @@
  * Wiring:
  *   - channel list comes from the main process via
  *     window.electronAPI.getTileChannels() (passed in as channelInfo).
- *   - on selection it sets state.currentChannel and calls renderCallback
- *     (updateAllLayers), the same render path the layer toggles use.
+ *   - on selection it cross-fades to the chosen channel (crossfadeToChannel),
+ *     which animates state.channelOpacity and calls renderCallback (updateAllLayers).
  *
  * The control hides itself when the dataset has fewer than two channels,
  * so single-channel datasets look exactly as before.
  */
+
+import { crossfadeToChannel } from '../layers/channelCrossfade.js';
 
 const CONTAINER_ID = 'channelSwitcher';
 
@@ -44,8 +46,7 @@ export function initChannelSwitcher(channelInfo, state, renderCallback) {
 
         radio.addEventListener('change', () => {
             if (!radio.checked) return;
-            state.currentChannel = channel.id;
-            renderCallback();
+            crossfadeToChannel(channel.id, state, renderCallback);
         });
 
         const text = document.createElement('span');

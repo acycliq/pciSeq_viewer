@@ -7,9 +7,18 @@ const state = {
     deckglInstance: null,
     isLoading: false,
 
-    // Background channel currently shown (e.g. 'dapi', 'gcamp').
+    // Background channel currently selected (e.g. 'dapi', 'gcamp').
     // Set during startup from the discovered channel registry.
     currentChannel: null,
+
+    // Render opacity per channel id (0..1). Drives the background tile layers and
+    // is the source of truth for which channels stay mounted (kept warm). All
+    // discovered channels live here; the selected one is 1, the others 0, and a
+    // switch cross-fades between them. Populated at startup.
+    channelOpacity: {},
+
+    // Handle for the in-flight channel cross-fade animation (so it can be cancelled).
+    channelFadeRAF: null,
 
     // Layer visibility
     showTiles: DEFAULT_STATE.showTiles,

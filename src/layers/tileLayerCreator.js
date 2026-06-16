@@ -6,7 +6,8 @@
 import {
     IMG_DIMENSIONS,
     MAX_TILE_CACHE,
-    getTileUrlPattern
+    getTileUrlPattern,
+    getChannelTintColor
 } from '../../config/constants.js';
 import { clamp } from '../../utils/coordinateTransform.js';
 import { loadImage } from '../data/dataLoaders.js';
@@ -93,7 +94,8 @@ export function createTileLayer(channel, planeNum, opacity, tileCache, showTiles
                     clamp(bottom, 0, height),
                     clamp(right, 0, width),
                     clamp(top, 0, height)
-                ]
+                ],
+                tintColor: getChannelTintColor(channel)
             });
         }
     });

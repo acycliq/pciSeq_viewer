@@ -527,10 +527,17 @@ async function init() {
     }
 
     // 2b. Discover background channels (DAPI, GCaMP, ...) and pick the default.
-    // currentChannel must be set before the first layer build.
+    // currentChannel and channelOpacity must be set before the first layer build.
+    // Every channel starts mounted (kept warm) - the default at full opacity, the
+    // rest at 0 so they load invisibly and are ready to cross-fade in on switch.
     const channelInfo = await window.electronAPI.getTileChannels();
-    if (channelInfo && channelInfo.defaultChannelId) {
-        state.currentChannel = channelInfo.defaultChannelId;
+    if (channelInfo && channelInfo.channels && channelInfo.channels.length > 0) {
+        const defaultId = channelInfo.defaultChannelId;
+        state.currentChannel = defaultId;
+        state.channelOpacity = {};
+        channelInfo.channels.forEach(channel => {
+            state.channelOpacity[channel.id] = channel.id === defaultId ? 1 : 0;
+        });
     }
 
     state.polygonCache.clear();
