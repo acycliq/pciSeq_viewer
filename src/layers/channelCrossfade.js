@@ -15,7 +15,7 @@
  *   - calls render() (updateAllLayers) each animation frame.
  */
 
-const FADE_MS = 250;
+const FADE_MS = 200;
 
 export function crossfadeToChannel(toId, state, render) {
     const fromId = state.currentChannel;
