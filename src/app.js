@@ -6,7 +6,7 @@
  */
 
 // === CONFIGURATION IMPORTS ===
-import { INITIAL_VIEW_STATE, MAX_PRELOAD, IMG_DIMENSIONS } from '../config/constants.js';
+import { INITIAL_VIEW_STATE, MAX_PRELOAD, IMG_DIMENSIONS, getTileChannels } from '../config/constants.js';
 
 // === STATE AND DOM IMPORTS ===
 import { state } from './state/stateManager.js';
@@ -21,6 +21,7 @@ import Perf from '../utils/runtimePerf.js';
 
 // === UI IMPORTS ===
 import { showLoading, hideLoading, showTooltip } from './ui/uiHelpers.js';
+import { initChannelSwitcher } from './ui/channelSwitcher.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
 import {
@@ -454,6 +455,15 @@ async function init() {
     // Initialize deck.gl instance
     state.deckglInstance = initializeDeckGL(handleViewStateChange, handleHover);
 
+    // Background channels (base layers): pick the default and seed per-channel
+    // opacity so every channel stays mounted (default visible, others hidden).
+    // Must run before the first layer build so buildTileLayers has a channel.
+    const channelInfo = getTileChannels();
+    state.currentChannel = channelInfo.defaultChannelId;
+    channelInfo.channels.forEach(channel => {
+        state.channelOpacity[channel.id] = channel.id === channelInfo.defaultChannelId ? 1 : 0;
+    });
+
     // Setup all UI event listeners
     setupEventHandlers(elements, state, handlePlaneUpdate, updateAllLayers);
     setupAdvancedKeyboardShortcuts(state, handlePlaneUpdate, updateAllLayers);
@@ -484,6 +494,9 @@ async function init() {
 
     // Finalize initialization (populate UI, update layers)
     finalizeInitialization(updateAllLayers);
+
+    // Build the basemap switcher (stays hidden for single-channel datasets)
+    initChannelSwitcher(channelInfo, state, updateAllLayers);
 
     // Preload adjacent planes in background
     preloadAdjacentPlanesInitial();

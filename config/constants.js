@@ -103,7 +103,50 @@ export const GENE_SIZE_CONFIG = {
 // Helper function to get polygon file URL for a specific plane
 // Removed TSV polygon file URL helper (Arrow-only)
 
-// Helper function to get tile URL pattern
-export function getTileUrlPattern() {
-    return userConfig.backgroundTiles;
+// Background tile channels (base layers) defined by the user in config.js.
+// The first channel is the default selection.
+const tileChannels = userConfig.channels || [];
+
+// Find a channel by id. Falls back to the first (default) channel when the id
+// is missing or unknown, so callers always get a usable channel.
+function findChannel(channelId) {
+    return tileChannels.find(channel => channel.id === channelId) || tileChannels[0] || null;
+}
+
+// Tile URL pattern (with {plane}/{z}/{y}/{x} placeholders) for a given channel.
+export function getTileUrlPattern(channelId) {
+    const channel = findChannel(channelId);
+    return channel ? channel.tiles : null;
+}
+
+// Channel registry for the renderer: the ids and labels to show in the basemap
+// switcher, plus which channel is selected first. The channel switcher UI uses
+// this to build its radio group.
+export function getTileChannels() {
+    return {
+        channels: tileChannels.map(channel => ({ id: channel.id, label: channel.label })),
+        defaultChannelId: tileChannels.length > 0 ? tileChannels[0].id : null
+    };
+}
+
+// Default tint: white is a no-op when multiplied onto a tile, so channels
+// without a tint render exactly as their source image.
+const NO_TINT = [255, 255, 255];
+
+// '#RRGGBB' -> [r, g, b], or null when it is not a valid hex colour.
+function hexToRgb(hex) {
+    if (typeof hex !== 'string') return null;
+    const match = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
+    if (!match) return null;
+    const value = parseInt(match[1], 16);
+    return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+}
+
+// Tint colour [r, g, b] for a channel, multiplied onto its tiles by the
+// BitmapLayer (tintColor). Read from the channel's optional "tint" hex string in
+// config. Grayscale tiles take the colour (e.g. red GCaMP); RGB tiles with no
+// tint are left unchanged.
+export function getChannelTint(channelId) {
+    const channel = findChannel(channelId);
+    return hexToRgb(channel && channel.tint) || NO_TINT;
 }

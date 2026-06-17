@@ -10,6 +10,7 @@ import {
     MAX_TILE_CACHE,
     GENE_SIZE_CONFIG,
     getTileUrlPattern,
+    getChannelTint,
     ARROW_MANIFESTS
 } from '../../config/constants.js';
 import {
@@ -228,13 +229,20 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
 
     try { const adv = window.advancedConfig ? window.advancedConfig() : null; if (adv?.performance?.showPerformanceStats) console.log(`Arrow binary scatter: points=${length}, baseScale=${baseScale}, geneSizeScale=${geneSizeScale}, uniform=${uniformMarkerSize}`); } catch {}
 
-    // Upper bounds for filter ranges
+    // Upper bounds for filter ranges. Both come from the dataset's real value
+    // range (set on load) so spots are never filtered out just for exceeding 1.0;
+    // OMP scores in particular can run well above 1.0.
     let intensityUpper = 1.0;
+    let scoreUpper = 1.0;
     try {
         const app = (typeof window !== 'undefined') ? window.appState : null;
         if (app && Array.isArray(app.intensityRange)) {
             const hi = Number(app.intensityRange[1]);
             if (Number.isFinite(hi)) intensityUpper = hi;
+        }
+        if (app && Array.isArray(app.scoreRange)) {
+            const hi = Number(app.scoreRange[1]);
+            if (Number.isFinite(hi)) scoreUpper = hi;
         }
     } catch {}
 
@@ -257,9 +265,9 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         extensions: [new DataFilterExtension({ filterSize: use2D ? 2 : 1 })],
         filterEnabled: use2D || canFilterScore || canFilterIntensity,
         filterRange: use2D
-            ? [ [Number(scoreThreshold) || 0, 1.0], [Number(intensityThreshold) || 0, Number(intensityUpper)] ]
+            ? [ [Number(scoreThreshold) || 0, Number(scoreUpper)], [Number(intensityThreshold) || 0, Number(intensityUpper)] ]
             : canFilterScore
-                ? [Number(scoreThreshold) || 0, 1.0]
+                ? [Number(scoreThreshold) || 0, Number(scoreUpper)]
                 : canFilterIntensity
                     ? [Number(intensityThreshold) || 0, Number(intensityUpper)]
                     : [0, 1.0]
@@ -269,15 +277,16 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
 /**
  * Create a tile layer for background image display
  * Handles tile loading, caching, and rendering with opacity control
+ * @param {string} channel - Channel id selecting the tile source URL
  * @param {number} planeNum - Plane number for tile source
  * @param {number} opacity - Layer opacity (0-1)
  * @param {Map} tileCache - Cache for loaded tiles
  * @param {boolean} showTiles - Whether tiles should be visible
  * @returns {TileLayer} Configured tile layer
  */
-export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
+export function createTileLayer(channel, planeNum, opacity, tileCache, showTiles) {
     return new TileLayer({
-        id: `tiles-${planeNum}`,
+        id: `tiles-${channel}-${planeNum}`,
         pickable: false, // Tiles don't need mouse interaction
         tileSize: IMG_DIMENSIONS.tileSize,
         minZoom: 0,
@@ -290,7 +299,7 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
         // Async tile data loading with caching
         getTileData: async ({index}) => {
             const {x, y, z} = index;
-            const cacheKey = `${planeNum}-${z}-${y}-${x}`;
+            const cacheKey = `${channel}-${planeNum}-${z}-${y}-${x}`;
 
             // Return cached tile if available (instant return!)
             if (tileCache.has(cacheKey)) {
@@ -303,8 +312,8 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
                 return await cachedData;
             }
 
-            // Load new tile using configured URL pattern
-            const urlPattern = getTileUrlPattern();
+            // Load new tile using the selected channel's URL pattern
+            const urlPattern = getTileUrlPattern(channel);
             const imageUrl = urlPattern
                 .replace('{plane}', planeNum)
                 .replace('{z}', z)
@@ -362,7 +371,9 @@ export function createTileLayer(planeNum, opacity, tileCache, showTiles) {
                     clamp(bottom, 0, height),
                     clamp(right, 0, width),
                     clamp(top, 0, height)
-                ]
+                ],
+                // Multiply the tile by the channel's tint colour (white = unchanged).
+                tintColor: getChannelTint(channel)
             });
         }
     });

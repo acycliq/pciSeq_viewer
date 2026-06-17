@@ -122,17 +122,20 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
                 const { positions, colors, planes, geneIds, scores, intensities, filterPairs, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity } = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
                 window.appState.arrowScatterCache = { positions, colors, planes, geneIds, scores, intensities, filterPairs, length: (positions?.length||0)/3 };
                 hasIntensityFlag = Boolean(hasIntensity);
-                // Update score range with dataset min (UI min = min(0, scoreMin), max remains 1.0)
+                // Update score range from the dataset (UI min = min(0, scoreMin),
+                // UI max = the dataset's real max). OMP scores are not bounded to
+                // 1.0, so reading the actual max keeps high-score spots visible.
                 try {
                     const rawMin = Number.isFinite(scoreMin) ? scoreMin : 0;
                     const uiMin = Math.min(0, rawMin);
-                    window.appState.scoreRange = [uiMin, 1.0];
+                    const uiMax = Number.isFinite(scoreMax) ? scoreMax : 1.0;
+                    window.appState.scoreRange = [uiMin, uiMax];
                     // Adjust slider bounds and default value to show all by default
                     const slider = document.getElementById('scoreFilterSlider');
                     const valueEl = document.getElementById('scoreFilterValue');
                     if (slider) {
                         slider.min = String(uiMin);
-                        slider.max = '1.0';
+                        slider.max = String(uiMax);
                         if (window.appState.scoreThreshold === 0) {
                             // If user hasn't changed it yet, set to min to include negatives
                             slider.value = String(uiMin);

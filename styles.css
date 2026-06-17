@@ -1798,3 +1798,35 @@ body {
     transition: opacity 0.15s ease;
     opacity: 0;
 }
+
+/* Background channel switcher (top-right basemap selector: HC / DAPI / ...) */
+.channel-switcher {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    background: rgba(31, 41, 55, 0.95);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    color: #e8e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 12px;
+}
+
+.channel-switcher .channel-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.channel-switcher .channel-option input {
+    cursor: pointer;
+    margin: 0;
+}

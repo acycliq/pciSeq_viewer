@@ -34,6 +34,18 @@ const state = {
     // Layer persistence for better performance
     tileLayers: new Map(), // Cache tile layer instances
 
+    // Background channel (base layer) currently selected. Set during startup
+    // from the channel registry in config; the first channel is the default.
+    currentChannel: null,
+
+    // Render opacity per channel id (0..1). The selected channel is 1, the
+    // others 0. Drives the background tile layers and the cross-fade between
+    // channels, and is the source of truth for which channels stay mounted.
+    channelOpacity: {},
+
+    // Handle for the in-flight channel cross-fade animation, so it can be cancelled.
+    channelFadeRAF: null,
+
     // Performance tracking
     polygonLoadTimes: new Map(),
     lastCleanupTime: Date.now(),
