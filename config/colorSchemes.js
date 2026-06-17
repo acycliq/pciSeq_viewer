@@ -16,7 +16,7 @@
  */
 
 // Change this line to switch color schemes
-const CLASS_COLOURS = classColorsCodes_allen();
+const CLASS_COLOURS = classColorsCodes_tasic();
 
 // Make it available globally (this is what the app uses)
 window.classColorsCodes = () => CLASS_COLOURS;
