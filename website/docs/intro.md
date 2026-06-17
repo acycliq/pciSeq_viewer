@@ -16,7 +16,7 @@ transcriptomics data from [pciSeq](https://github.com/acycliq/pciSeq).
 
 If you ran cell typing with **pciSeq `0.0.65`**, your Arrow files are already
 compatible with the viewer, you can skip straight to
-[Step 2: Create Background Tiles](/preparing-data#step-2-create-background-tiles).
+[Step 2: Create Background Tiles](/docs/preparing-data#step-2-create-background-tiles).
 You'll still need a newer pciSeq for `stage_image()`.
 
 :::
@@ -41,7 +41,7 @@ then follow the steps for your platform.
 
 macOS may show a security warning the first time. Right-click the app and
 choose **Open** to bypass Gatekeeper. See
-[Troubleshooting](/troubleshooting#macos-app-wont-open) if it still won't open.
+[Troubleshooting](/docs/troubleshooting#macos-app-wont-open) if it still won't open.
 
 :::
 
@@ -62,6 +62,6 @@ choose **Open** to bypass Gatekeeper. See
 
 ## Next steps
 
-1. [Prepare your data](/preparing-data) with the pciSeq Python package.
-2. [Load it into the viewer](/loading-data).
-3. [Explore](/using-the-viewer/overview) cells, genes, and boundaries in 3D.
+1. [Prepare your data](/docs/preparing-data) with the pciSeq Python package.
+2. [Load it into the viewer](/docs/loading-data).
+3. [Explore](/docs/using-the-viewer/overview) cells, genes, and boundaries in 3D.

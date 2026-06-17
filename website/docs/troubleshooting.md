@@ -39,10 +39,10 @@ viewer prompts you to enter the image **Width**, **Height**, and **Plane count**
 manually, spots, cells, and boundaries still render, just without a background
 image.
 
-See [Loading Data](/loading-data) for details.
+See [Loading Data](/docs/loading-data) for details.
 
 ## Arrow files from an older pciSeq
 
 Results from pciSeq `0.0.65` are compatible with the viewer. For
 `stage_image()` (background tiles) you need a newer pciSeq, see
-[Preparing Your Data](/preparing-data#requirements).
+[Preparing Your Data](/docs/preparing-data#requirements).

@@ -28,7 +28,7 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
-          routeBasePath: '/',          // docs ARE the site (served at root)
+          routeBasePath: '/docs',      // docs live under /docs; landing page owns the root
           sidebarPath: './sidebars.js',
           // Point the "Edit this page" links at the docs source in the repo.
           // NOTE: branch is set to desktop_app to match the current default branch.
@@ -45,6 +45,13 @@ const config = {
     ({
       image: 'img/social-card.png',
       colorMode: {defaultMode: 'dark', respectPrefersColorScheme: false},
+      announcementBar: {
+        id: 'under-construction',
+        content: 'Under construction... these docs are a work in progress.',
+        backgroundColor: '#1a4576',
+        textColor: '#ffffff',
+        isCloseable: true,
+      },
       navbar: {
         title: 'pciSeq Viewer',
         logo: {alt: 'pciSeq Viewer', src: 'img/logo.png'},
@@ -68,9 +75,9 @@ const config = {
           {
             title: 'Docs',
             items: [
-              {label: 'Getting Started', to: '/'},
-              {label: 'Preparing Your Data', to: '/preparing-data'},
-              {label: 'Troubleshooting', to: '/troubleshooting'},
+              {label: 'Getting Started', to: '/docs'},
+              {label: 'Preparing Your Data', to: '/docs/preparing-data'},
+              {label: 'Troubleshooting', to: '/docs/troubleshooting'},
             ],
           },
           {

@@ -52,4 +52,4 @@ Installers are built and published by GitHub Actions, but the workflow is trigge
 - **Platforms:** Windows (NSIS `.exe`), macOS (DMG, ZIP), Linux (AppImage, DEB).
 - **Release:** the workflow attaches the artifacts to a GitHub release, marked as a pre-release when that input is set.
 
-The macOS build is **not** code-signed. The workflow sets `CSC_IDENTITY_AUTO_DISCOVERY: false`, so there are no signing certificates or secrets involved, which is why users get the Gatekeeper warning on first launch (see [Troubleshooting](/troubleshooting#macos-app-wont-open)).
+The macOS build is **not** code-signed. The workflow sets `CSC_IDENTITY_AUTO_DISCOVERY: false`, so there are no signing certificates or secrets involved, which is why users get the Gatekeeper warning on first launch (see [Troubleshooting](/docs/troubleshooting#macos-app-wont-open)).

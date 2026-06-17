@@ -4,6 +4,11 @@
  * Swap the values below for your own brand colours.
  */
 
+/* Fonts: Inter for text, JetBrains Mono for code.
+   Imported from Google Fonts for the mockup; for production these would
+   be self-hosted so the site has no external font dependency. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
 :root {
   --ifm-color-primary: #2563a8;
   --ifm-color-primary-dark: #215997;
@@ -14,6 +19,16 @@
   --ifm-color-primary-lightest: #3a7fcd;
   --ifm-code-font-size: 95%;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+
+  /* Typography */
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --ifm-heading-font-weight: 700;
+  --ifm-h1-font-size: 2.4rem;
+
+  /* A little more breathing room and softer corners than the defaults */
+  --ifm-global-radius: 8px;
+  --ifm-navbar-shadow: 0 1px 0 var(--ifm-color-emphasis-200);
 }
 
 [data-theme='dark'] {
@@ -25,4 +40,134 @@
   --ifm-color-primary-lighter: #a6d0ff;
   --ifm-color-primary-lightest: #dfeeff;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+
+  --ifm-background-color: #0e1116;
+  --ifm-background-surface-color: #161b22;
+}
+
+/* Tighter heading rhythm reads more "designed" than the stock spacing. */
+.markdown h1,
+.markdown h2 {
+  letter-spacing: -0.02em;
+}
+
+.markdown h2 {
+  margin-top: 2.5rem;
+}
+
+/* Code blocks: subtle border so they sit on the page rather than float. */
+.theme-code-block {
+  border: 1px solid var(--ifm-color-emphasis-200);
+  box-shadow: none;
+}
+
+/* Navbar brand a touch bolder. */
+.navbar__title {
+  font-weight: 700;
+}
+
+/* ===================================================================
+ * Docs pages
+ * Restyle the doc layout itself (sidebar, content, links, callouts,
+ * tables) so the pages read as "designed", not stock Docusaurus.
+ * =================================================================== */
+
+/* --- Left sidebar --------------------------------------------------- */
+
+.menu {
+  padding: 1rem 0.75rem !important;
+  font-size: 0.92rem;
+}
+
+/* Category labels: small, spaced, uppercase — a common "docs" cue. */
+.menu__list-item-collapsible > .menu__link,
+.menu__list .menu__list-item-collapsible .menu__link--sublist {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.menu__link {
+  border-radius: var(--ifm-global-radius);
+  padding: 0.4rem 0.75rem;
+}
+
+/* Active page: filled pill plus a left accent bar. */
+.menu__link--active:not(.menu__link--sublist) {
+  background: var(--ifm-color-primary-lightest);
+  color: var(--ifm-color-primary-darkest);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--ifm-color-primary);
+}
+
+[data-theme='dark'] .menu__link--active:not(.menu__link--sublist) {
+  background: rgba(111, 180, 255, 0.12);
+  color: var(--ifm-color-primary-lightest);
+}
+
+/* --- Content column ------------------------------------------------- */
+
+/* A measured line length reads better than the full-width default. */
+.theme-doc-markdown {
+  max-width: 50rem;
+  line-height: 1.7;
+}
+
+/* Section headings get a hairline rule, like the reference sites. */
+.markdown h2 {
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+/* Body links: underline on hover instead of always-on, cleaner read. */
+.markdown a:not(.card) {
+  text-decoration: none;
+  font-weight: 500;
+}
+.markdown a:not(.card):hover {
+  text-decoration: underline;
+}
+
+/* Inline code: subtle chip so it stands apart from prose. */
+.markdown :not(pre) > code {
+  background: var(--ifm-color-emphasis-100);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  padding: 0.12rem 0.35rem;
+}
+
+/* --- Callouts (admonitions) ----------------------------------------- */
+
+/* Flatter look: tinted background, single left accent bar, soft corner. */
+.theme-admonition {
+  border: none;
+  border-left: 4px solid var(--ifm-color-primary);
+  border-radius: var(--ifm-global-radius);
+}
+
+/* --- Tables --------------------------------------------------------- */
+
+.markdown table {
+  display: table;
+  width: 100%;
+  border-radius: var(--ifm-global-radius);
+  overflow: hidden;
+}
+
+.markdown table thead {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.markdown table thead th {
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--ifm-color-emphasis-700);
+}
+
+/* --- Right-hand table of contents ----------------------------------- */
+
+.table-of-contents__link--active {
+  font-weight: 600;
 }
