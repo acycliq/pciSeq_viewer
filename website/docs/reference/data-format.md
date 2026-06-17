@@ -182,10 +182,11 @@ this file adds a `plane_id` column so each z-plane gets its own pyramid.
   `map` table and an `images` table, with the same columns.
 - `metadata`: name/value pairs. Standard keys (`format`, `minzoom`, `maxzoom`,
   `name`, `description`) plus custom ones: `planes` (comma-separated plane ids),
-  `plane_count`, `width`, `height`, `voxel_size` (comma-separated x,y,z), and
-  `tint`. The viewer reads `width`, `height`, and `plane_count` from here; uses
-  `name` as the channel label; and uses `tint` (a `#RRGGBB` hex) to colour the
-  channel. A file with no `tint` key renders grayscale.
+  `plane_count`, `width`, `height`, and `tint`. The viewer reads `width`,
+  `height`, and `plane_count` from here; uses `name` as the channel label; and
+  uses `tint` (a `#RRGGBB` hex) to colour the channel. A file with no `tint` key
+  renders grayscale. (Voxel size is not read from the mbtiles; it comes from the
+  welcome screen.)
 
 When a dataset folder holds several `.mbtiles` files, each is a switchable
 background **channel**. The viewer discovers them per folder, labels each from
