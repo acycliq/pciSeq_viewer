@@ -1,173 +1,174 @@
 /**
- * pciSeq Viewer docs theme.
- * A calm teal/indigo palette suited to a scientific visualization tool.
- * Swap the values below for your own brand colours.
+ * pciSeq Viewer — Brand-Aligned "Zen" Theme.
+ * Professional Emerald Green accents matched to the Viewer UI.
  */
 
-/* Fonts: Inter for text, JetBrains Mono for code.
-   Imported from Google Fonts for the mockup; for production these would
-   be self-hosted so the site has no external font dependency. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Fonts: Geist for that modern, precise feel.
+   Two @fontsource packages that declare the 'Geist Sans' / 'Geist Mono'
+   families used below. Imported from jsDelivr for the mockup; for
+   production these would be self-hosted so there's no external dependency. */
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/geist-sans/index.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/geist-mono/index.css');
 
 :root {
-  --ifm-color-primary: #2563a8;
-  --ifm-color-primary-dark: #215997;
-  --ifm-color-primary-darker: #1f548f;
-  --ifm-color-primary-darkest: #1a4576;
-  --ifm-color-primary-light: #2a6db9;
-  --ifm-color-primary-lighter: #2d72c1;
-  --ifm-color-primary-lightest: #3a7fcd;
-  --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  /* pciSeq Emerald Green Palette */
+  --ifm-color-primary: #10b981; /* Emerald 500 - Matches professional bio-tech tools */
+  --ifm-color-primary-dark: #059669;
+  --ifm-color-primary-darker: #047857;
+  --ifm-color-primary-darkest: #064e3b;
+  --ifm-color-primary-light: #34d399;
+  --ifm-color-primary-lighter: #6ee7b7;
+  --ifm-color-primary-lightest: #a7f3d0;
 
   /* Typography */
-  --ifm-font-family-base: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --ifm-font-family-monospace: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --ifm-font-family-base: 'Geist Sans', system-ui, -apple-system, sans-serif;
+  --ifm-font-family-monospace: 'Geist Mono', ui-monospace, monospace;
   --ifm-heading-font-weight: 700;
-  --ifm-h1-font-size: 2.4rem;
-
-  /* A little more breathing room and softer corners than the defaults */
-  --ifm-global-radius: 8px;
-  --ifm-navbar-shadow: 0 1px 0 var(--ifm-color-emphasis-200);
+  
+  /* Layout & Spacing */
+  --ifm-global-radius: 6px;
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-navbar-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --ifm-footer-background-color: #f3f4f7;
+  
+  /* Sidebar */
+  --ifm-menu-color: #555;
+  --ifm-menu-color-active: #10b981;
 }
 
 [data-theme='dark'] {
-  --ifm-color-primary: #6fb4ff;
-  --ifm-color-primary-dark: #4ba1ff;
-  --ifm-color-primary-darker: #389aff;
-  --ifm-color-primary-darkest: #0080ff;
-  --ifm-color-primary-light: #93c7ff;
-  --ifm-color-primary-lighter: #a6d0ff;
-  --ifm-color-primary-lightest: #dfeeff;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-color-primary: #10b981;
+  --ifm-color-primary-dark: #059669;
+  --ifm-color-primary-darker: #047857;
+  --ifm-color-primary-darkest: #064e3b;
+  
+  --ifm-background-color: #0c0c0e;
+  --ifm-background-surface-color: #161618;
+  --ifm-navbar-background-color: #0c0c0e;
+  --ifm-footer-background-color: #0c0c0e;
 
-  --ifm-background-color: #0e1116;
-  --ifm-background-surface-color: #161b22;
+  --ifm-color-emphasis-200: #2a2a2e;
+  --ifm-menu-color: #a0a0a8;
 }
 
-/* Tighter heading rhythm reads more "designed" than the stock spacing. */
-.markdown h1,
-.markdown h2 {
-  letter-spacing: -0.02em;
-}
-
-.markdown h2 {
-  margin-top: 2.5rem;
-}
-
-/* Code blocks: subtle border so they sit on the page rather than float. */
-.theme-code-block {
-  border: 1px solid var(--ifm-color-emphasis-200);
-  box-shadow: none;
-}
-
-/* Navbar brand a touch bolder. */
-.navbar__title {
-  font-weight: 700;
-}
-
-/* ===================================================================
- * Docs pages
- * Restyle the doc layout itself (sidebar, content, links, callouts,
- * tables) so the pages read as "designed", not stock Docusaurus.
- * =================================================================== */
-
-/* --- Left sidebar --------------------------------------------------- */
-
-.menu {
-  padding: 1rem 0.75rem !important;
-  font-size: 0.92rem;
-}
-
-/* Category labels: small, spaced, uppercase — a common "docs" cue. */
-.menu__list-item-collapsible > .menu__link,
-.menu__list .menu__list-item-collapsible .menu__link--sublist {
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  color: var(--ifm-color-emphasis-600);
-}
-
-.menu__link {
-  border-radius: var(--ifm-global-radius);
-  padding: 0.4rem 0.75rem;
-}
-
-/* Active page: filled pill plus a left accent bar. */
-.menu__link--active:not(.menu__link--sublist) {
-  background: var(--ifm-color-primary-lightest);
-  color: var(--ifm-color-primary-darkest);
-  font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--ifm-color-primary);
-}
-
-[data-theme='dark'] .menu__link--active:not(.menu__link--sublist) {
-  background: rgba(111, 180, 255, 0.12);
-  color: var(--ifm-color-primary-lightest);
-}
-
-/* --- Content column ------------------------------------------------- */
-
-/* A measured line length reads better than the full-width default. */
-.theme-doc-markdown {
-  max-width: 50rem;
-  line-height: 1.7;
-}
-
-/* Section headings get a hairline rule, like the reference sites. */
-.markdown h2 {
-  padding-bottom: 0.4rem;
+/* --- Navbar --- */
+.navbar {
   border-bottom: 1px solid var(--ifm-color-emphasis-200);
 }
 
-/* Body links: underline on hover instead of always-on, cleaner read. */
-.markdown a:not(.card) {
-  text-decoration: none;
-  font-weight: 500;
-}
-.markdown a:not(.card):hover {
-  text-decoration: underline;
+.navbar__brand {
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
-/* Inline code: subtle chip so it stands apart from prose. */
-.markdown :not(pre) > code {
-  background: var(--ifm-color-emphasis-100);
-  border: 1px solid var(--ifm-color-emphasis-200);
-  padding: 0.12rem 0.35rem;
+/* --- Clean, Structured Sidebar -------------------------------------- */
+
+.menu {
+  padding: 2rem 1rem !important;
 }
 
-/* --- Callouts (admonitions) ----------------------------------------- */
-
-/* Flatter look: tinted background, single left accent bar, soft corner. */
-.theme-admonition {
-  border: none;
-  border-left: 4px solid var(--ifm-color-primary);
-  border-radius: var(--ifm-global-radius);
+.menu__link {
+  font-size: 0.95rem;
+  font-weight: 400;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
 }
 
-/* --- Tables --------------------------------------------------------- */
-
-.markdown table {
-  display: table;
-  width: 100%;
-  border-radius: var(--ifm-global-radius);
-  overflow: hidden;
+.menu__link--active:not(.menu__link--sublist) {
+  background: transparent !important;
+  color: var(--ifm-color-primary) !important;
+  font-weight: 700;
+  position: relative;
 }
 
-.markdown table thead {
-  background: var(--ifm-color-emphasis-100);
+/* The Left-bar indicator for active items */
+.menu__link--active:not(.menu__link--sublist)::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 20%;
+  height: 60%;
+  width: 2px;
+  background-color: var(--ifm-color-primary);
 }
 
-.markdown table thead th {
+.menu__list-item-collapsible > .menu__link,
+.menu__list .menu__list-item-collapsible .menu__link--sublist {
   text-transform: uppercase;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  color: var(--ifm-color-emphasis-700);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #333;
+  letter-spacing: 0.05em;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
-/* --- Right-hand table of contents ----------------------------------- */
-
-.table-of-contents__link--active {
-  font-weight: 600;
+[data-theme='dark'] .menu__list-item-collapsible > .menu__link {
+  color: #eee;
 }
+
+/* --- Content Typography (The "Research" Look) ----------------------- */
+
+.theme-doc-markdown {
+  max-width: 840px;
+  margin: 0 auto;
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: #333;
+}
+
+[data-theme='dark'] .theme-doc-markdown {
+  color: #e0e0e0;
+}
+
+.markdown h1 {
+  font-size: 2.75rem;
+  font-weight: 800;
+  margin-bottom: 2rem;
+}
+
+.markdown h2 {
+  font-size: 1.85rem;
+  margin-top: 4rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+/* Tables: Simple, Research-grade */
+.markdown table {
+  border: 1px solid var(--ifm-color-emphasis-200);
+  width: 100%;
+}
+
+.markdown table th {
+  background: var(--ifm-color-emphasis-100);
+  font-weight: 700;
+  text-align: left;
+}
+
+/* Admonitions: Professional subtle borders */
+.theme-admonition {
+  border: 1px solid var(--ifm-color-emphasis-200) !important;
+  border-left: 4px solid var(--ifm-color-primary) !important;
+  background: transparent !important;
+}
+
+/* Button override for pciSeq Green.
+   Scoped with :not(.button--outline) so it only styles the solid buttons.
+   Without this, the green background leaks onto outline buttons and hides
+   their (also green) text until hover. */
+.button--primary:not(.button--outline) {
+  --ifm-button-background-color: var(--ifm-color-primary);
+  --ifm-button-border-color: var(--ifm-color-primary);
+  box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.39);
+}
+
+/* --- Footer --------------------------------------------------------- */
+
+/* With only two link columns, Infima gives each half the footer width, so
+   "Project" lands in the middle. Keep that stable two-column layout and
+   simply right-align the second column so its content sits at the edge. */
+.footer__links .footer__col:last-child {
+  text-align: right;
+}
+

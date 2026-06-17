@@ -3,45 +3,33 @@ import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
+import CodeBlock from '@theme/CodeBlock';
 
 import styles from './index.module.css';
 
-/**
- * Landing page for the pciSeq Viewer docs site.
- *
- * Layout mirrors a typical product landing page:
- *   hero (title + tagline + CTAs + demo) -> feature cards -> platform row.
- * It links into the docs, which now live under /docs.
- *
- * This is a presentation-only page; all content text lives here so the
- * docs themselves stay focused on instructions.
- */
+const QUICK_START_CODE = `import pciSeq
 
-// Feature cards shown below the hero. Edit this list to change the grid.
+# 1. Run cell typing and save the results to disk
+pciSeq.fit(spots=spots, coo=masks, scRNAseq=sc, opts={
+    'save_data': True,
+    'output_path': './my_dataset'
+})
+
+# 2. Open pciSeq Viewer and load the ./my_dataset
+#    folder to explore the results in 3D.`;
+
 const FEATURES = [
   {
-    title: 'Built for big datasets',
-    body: 'Explore up to 20 million spots across 100+ stacked planes without the browser breaking a sweat.',
+    title: 'GPU rendering with deck.gl',
+    body: 'Spots, cell boundaries, and the background image are drawn on the GPU. Spots use a lighter representation when zoomed out so large datasets stay interactive.',
   },
   {
-    title: 'Fast, fluid 3D',
-    body: 'Zoom, pan and move through the z-stack with no perceptible lag. Background tiles and cell masks stay in sync.',
+    title: 'Volumetric 3D view',
+    body: 'Select a region and render it as a 3D volume rather than a stack of 2D planes.',
   },
   {
-    title: 'Genes and cell types',
-    body: 'Every spot is coloured by gene, every cell by predicted type. Show or hide either with a click.',
-  },
-  {
-    title: 'Aligned by design',
-    body: 'Spots, segmentation boundaries and background tiles line up perfectly on every plane.',
-  },
-  {
-    title: 'Selection and export',
-    body: 'Draw a region of interest, inspect the cells inside it, and export what you select.',
-  },
-  {
-    title: 'Runs on your desktop',
-    body: 'A native app for Windows, macOS and Linux. Your data never leaves your machine.',
+    title: 'Runs locally',
+    body: 'A desktop application for Windows, macOS, and Linux. Data is read from local files and stays on your machine.',
   },
 ];
 
@@ -60,15 +48,37 @@ function Hero() {
           </Link>
           <Link
             className={clsx('button button--secondary button--lg', styles.heroButton)}
-            href="https://github.com/acycliq/pciSeq_viewer/releases/latest">
-            Download
+            to="/docs/api/python-fit">
+            API Reference
           </Link>
         </div>
         <div className={styles.heroMedia}>
-          <img src="img/demo.gif" alt="pciSeq Viewer in action" loading="lazy" />
+          <img src="img/demo.gif" alt="pciSeq Viewer demo" />
         </div>
       </div>
     </header>
+  );
+}
+
+function QuickStart() {
+  return (
+    <section className={styles.quickStart}>
+      <div className={styles.quickStartInner}>
+        <div className={styles.quickStartContent}>
+          <Heading as="h2">Loading data from pciSeq</Heading>
+          <p>
+            The viewer reads the output of the pciSeq Python package directly.
+            Run your analysis, save the results, then open the folder in the viewer.
+          </p>
+          <Link className="button button--outline button--primary" to="/docs/preparing-data">
+            Data preparation guide →
+          </Link>
+        </div>
+        <div className={styles.quickStartCode}>
+          <CodeBlock language="python">{QUICK_START_CODE}</CodeBlock>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -95,8 +105,10 @@ export default function Home() {
     <Layout title={siteConfig.title} description={siteConfig.tagline}>
       <Hero />
       <main>
+        <QuickStart />
         <Features />
       </main>
     </Layout>
   );
 }
+

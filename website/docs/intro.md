@@ -7,7 +7,7 @@ description: Install pciSeq Viewer on Windows, macOS, or Linux.
 
 # pciSeq Viewer
 
-A fast, interactive desktop application for visualizing 3D spatial
+An interactive desktop application for visualizing 3D spatial
 transcriptomics data from [pciSeq](https://github.com/acycliq/pciSeq).
 
 ![pciSeq Viewer demo](/img/demo.gif)

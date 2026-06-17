@@ -32,19 +32,31 @@ const sidebars = {
     'troubleshooting',
     {
       type: 'category',
-      label: 'Reference',
-      items: [
-        'reference/configuration',
-        'reference/data-format',
-      ],
-    },
-    {
-      type: 'category',
       label: 'Contributing',
       link: {type: 'doc', id: 'contributing/architecture'},
       items: [
         'contributing/architecture',
         'contributing/building-releases',
+      ],
+    },
+  ],
+  apiSidebar: [
+    {
+      type: 'category',
+      label: 'Python API',
+      collapsed: false,
+      items: [
+        'api/python-fit',
+        'api/python-stage-image',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Specifications',
+      collapsed: false,
+      items: [
+        'reference/data-format',
+        'reference/configuration',
       ],
     },
   ],

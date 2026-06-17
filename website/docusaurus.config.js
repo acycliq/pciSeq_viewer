@@ -4,7 +4,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'pciSeq Viewer',
-  tagline: 'Fast, interactive desktop app for exploring 3D spatial transcriptomics results from pciSeq',
+  tagline: 'Interactive desktop application for exploring 3D spatial transcriptomics results from pciSeq',
   favicon: 'img/favicon.ico',
 
   future: {v4: true},
@@ -47,16 +47,18 @@ const config = {
       colorMode: {defaultMode: 'dark', respectPrefersColorScheme: false},
       announcementBar: {
         id: 'under-construction',
-        content: 'Under construction... these docs are a work in progress.',
-        backgroundColor: '#1a4576',
+        content: 'Work in progress: these docs are still being written.',
+        backgroundColor: '#10b981',
         textColor: '#ffffff',
         isCloseable: true,
       },
       navbar: {
         title: 'pciSeq Viewer',
         logo: {alt: 'pciSeq Viewer', src: 'img/logo.png'},
+        hideOnScroll: true,
         items: [
           {type: 'docSidebar', sidebarId: 'docsSidebar', position: 'left', label: 'Docs'},
+          {type: 'docSidebar', sidebarId: 'apiSidebar', position: 'left', label: 'API'},
           {
             href: 'https://github.com/acycliq/pciSeq_viewer/releases/latest',
             label: 'Download',
@@ -70,7 +72,7 @@ const config = {
         ],
       },
       footer: {
-        style: 'dark',
+        style: 'light',
         links: [
           {
             title: 'Docs',
@@ -89,11 +91,11 @@ const config = {
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} acycliq. Built with Docusaurus.`,
+        copyright: `© ${new Date().getFullYear()} acycliq.`,
       },
       prism: {
         theme: prismThemes.github,
-        darkTheme: prismThemes.dracula,
+        darkTheme: prismThemes.vsDark,
         additionalLanguages: ['python', 'bash', 'json'],
       },
     }),
