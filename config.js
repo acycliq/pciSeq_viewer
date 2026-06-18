@@ -36,7 +36,7 @@ function config() {
                 id: "gcamp",
                 label: "GCaMP",
                 tiles: "https://storage.googleapis.com/maxs_data/BZ008_S10_tile10/tiles/S10_tile10_gcamp/plane_{plane}/{z}/{y}/{x}.jpg",
-                tint: "#ff0000"
+                tint: "00ff00"
             }
         ],
 
