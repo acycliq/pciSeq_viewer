@@ -24,6 +24,8 @@ import {
 } from '../data/cellProjectionLoader.js';
 import { exportPerClassPNGs } from '../data/cellProjectionExporter.js';
 import { selectCanvasRectangle } from '../ui/canvasRectSelector.js';
+import { unfreeze as unfreezeCellInfoPanel } from '../cellInfoPanel/index.js';
+import { isFrozen as isCellInfoFrozen } from '../cellInfoPanel/panelState.js';
 
 // === MAIN SETUP FUNCTION ===
 
@@ -529,6 +531,10 @@ function handleCellProjectionDisable(state, updateLayersCallback) {
 function setupEscapeKeyHandler(elements) {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
+            // Resume live hover updates if the cell info panel is frozen.
+            if (typeof isCellInfoFrozen === 'function' && isCellInfoFrozen()) {
+                unfreezeCellInfoPanel();
+            }
             if (!elements.cellClassWidget.classList.contains('hidden')) {
                 window.hideCellClassWidget();
             }

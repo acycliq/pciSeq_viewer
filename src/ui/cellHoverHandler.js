@@ -5,8 +5,8 @@
  * Extracts cell data and updates the cell info panel.
  */
 
-import { update, show, hide } from '../cellInfoPanel/index.js';
-import { isFrozen, pin } from '../cellInfoPanel/pinController.js';
+import { update, freezeOnCell } from '../cellInfoPanel/index.js';
+import { isFrozen } from '../cellInfoPanel/panelState.js';
 import { getClassColor } from '../cellInfoPanel/colorResolver.js';
 
 /**
@@ -15,29 +15,25 @@ import { getClassColor } from '../cellInfoPanel/colorResolver.js';
  * @param {Object} info - Hover info from deck.gl
  */
 export function handleCellHover(info) {
-    // Freeze hover updates only when hard pinned (frozen)
+    // Frozen: content is locked — ignore hover entirely.
     if (typeof isFrozen === 'function' && isFrozen()) return;
 
-    if (info.picked && info.object && info.object.properties) {
-        const cellLabel = info.object.properties.label;
+    // Over empty map: keep showing the last visited cell (panel never clears).
+    if (!info.picked || !info.object || !info.object.properties) return;
 
-        // Look up full cell data from the global state
-        let fullCellData = null;
-        if (window.appState && window.appState.cellDataMap) {
-            const cellId = parseInt(cellLabel);
-            fullCellData = window.appState.cellDataMap.get(cellId);
-        }
+    const cellLabel = info.object.properties.label;
 
-        if (fullCellData) {
-            const cellData = buildCellInfoData(fullCellData, cellLabel);
-            update(cellData);
-            show();
-        } else {
-            console.warn('No full cell data found for cell:', cellLabel);
-        }
+    // Look up full cell data from the global state
+    let fullCellData = null;
+    if (window.appState && window.appState.cellDataMap) {
+        const cellId = parseInt(cellLabel);
+        fullCellData = window.appState.cellDataMap.get(cellId);
+    }
+
+    if (fullCellData) {
+        update(buildCellInfoData(fullCellData, cellLabel));
     } else {
-        // Unpinned: allow hide on mouse-out
-        hide();
+        console.warn('No full cell data found for cell:', cellLabel);
     }
 }
 
@@ -99,8 +95,9 @@ function buildCellInfoData(fullCellData, cellLabel) {
 }
 
 /**
- * Click handler: update panel to clicked cell and hard-pin it.
- * Ctrl+Click is reserved for diagnostics and should NOT pin the panel.
+ * Click handler: update the panel to the clicked cell, auto-maximize, and
+ * freeze it so the user can move onto the panel and inspect without it changing.
+ * Ctrl+Click is reserved for diagnostics and should NOT freeze the panel.
  */
 export function handleCellClick(info) {
     if (!info || !info.object || !info.object.properties) return;
@@ -122,8 +119,5 @@ export function handleCellClick(info) {
     }
     if (!fullCellData) return;
 
-    const cellData = buildCellInfoData(fullCellData, cellLabel);
-    update(cellData);
-    show();
-    if (typeof pin === 'function') pin();
+    freezeOnCell(buildCellInfoData(fullCellData, cellLabel));
 }

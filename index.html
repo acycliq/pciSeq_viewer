@@ -520,7 +520,8 @@
                     <tr><td><kbd>P</kbd></td><td>Toggle cell polygons</td></tr>
                     <tr><td><kbd>Ctrl+L</kbd></td><td>Toggle lines (current-plane cells, all-plane spots)</td></tr>
                     <tr><td><kbd>Ctrl+F</kbd></td><td>Cell search</td></tr>
-                    <tr><td><kbd>Ctrl</kbd> (hold)</td><td>Pin / unpin cell info panel</td></tr>
+                    <tr><td><kbd>Click</kbd> a cell</td><td>Freeze cell info panel (move onto it to inspect)</td></tr>
+                    <tr><td><kbd>Esc</kbd> / click empty map</td><td>Unfreeze cell info panel (resume hover)</td></tr>
                     <tr><td><kbd>Escape</kbd></td><td>Close panels and modals</td></tr>
                 </tbody>
             </table>
@@ -531,7 +532,7 @@
     <div id="cellInfoPanel" class="cell-info-panel">
         <div class="cell-info-header">
             <span id="cellInfoTitle">Cell Information</span>
-            <button id="cellInfoClose" class="widget-close-btn">&times;</button>
+            <button id="cellInfoToggle" class="widget-close-btn" title="Minimize" aria-label="Minimize panel">&ndash;</button>
         </div>
         <div class="cell-info-content">
             <div class="cell-info-layout">

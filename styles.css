@@ -31,29 +31,26 @@
     visibility: visible;
 }
 
-.cell-info-panel.pinned {
+/* Frozen (click-to-freeze): blue accent + hint on how to resume live updates. */
+.cell-info-panel.frozen {
     border-color: rgba(59, 130, 246, 0.4);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.2);
 }
 
-.cell-info-panel.pinned .cell-info-header {
+.cell-info-panel.frozen .cell-info-header {
     border-bottom-color: rgba(59, 130, 246, 0.3);
 }
 
-.cell-info-panel.pinned:not(.frozen) .cell-info-header::after {
-    content: 'Shift to unpin';
+.cell-info-panel.frozen:not(.minimized) .cell-info-header #cellInfoTitle::after {
+    content: ' • frozen — Esc or click map to resume';
     font-size: 10px;
     font-weight: 400;
-    color: rgba(59, 130, 246, 0.6);
-    margin-left: 8px;
+    color: rgba(59, 130, 246, 0.7);
 }
 
-.cell-info-panel.pinned.frozen .cell-info-header::after {
-    content: 'Ctrl to resume hover';
-    font-size: 10px;
-    font-weight: 400;
-    color: rgba(59, 130, 246, 0.6);
-    margin-left: 8px;
+/* Minimized: collapse to the header strip only. */
+.cell-info-panel.minimized .cell-info-content {
+    display: none;
 }
 
 .cell-info-header {

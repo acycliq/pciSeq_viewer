@@ -25,6 +25,7 @@ import { RectangularSelector } from '../ui/rectangularSelector.js';
 import { applyPendingClassColorSchemeIfAny } from '../classColorImport.js';
 import { populateCellClassDrawer } from '../cellClassDrawer.js';
 import { populateGeneDrawer } from '../geneDrawer.js';
+import { unfreeze as unfreezeCellInfoPanel } from '../cellInfoPanel/index.js';
 import Perf from '../../utils/runtimePerf.js';
 
 // Extract deck.gl components
@@ -51,6 +52,15 @@ export function initializeDeckGL(onViewStateChange, onHover) {
         },
         onViewStateChange: onViewStateChange,
         onHover: onHover,
+        onClick: (info) => {
+            // Click on empty map (no cell picked) unfreezes the cell info panel,
+            // returning it to live hover updates. Skipped while the rectangular
+            // selector is active, where empty-map clicks drive selection instead.
+            if (info && info.object) return; // cell clicks handled by the layer
+            const selecting = window.appState?.rectangularSelector?.isActive;
+            if (selecting) return;
+            unfreezeCellInfoPanel();
+        },
         getCursor: ({ isHovering }) => {
             try {
                 const active = window.appState?.rectangularSelector?.isActive;
