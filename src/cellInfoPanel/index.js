@@ -58,8 +58,6 @@ export function update(cellProperties) {
         CellGeneCount: cellProperties.CellGeneCount || []
     };
 
-    console.log('Updating cell info with data:', cellData);
-
     if (!cellData.Genenames || cellData.Genenames.length === 0 ||
         !cellData.CellGeneCount || cellData.CellGeneCount.length === 0) {
         console.error('CRITICAL: Cell ' + (cellData.cell_id || cellProperties.id) +

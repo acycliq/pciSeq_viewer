@@ -20,27 +20,14 @@ function initDonut() {
     const cornerRadius = 3;
     const padAngle = 0.015;
 
-    const width = +d3.select("#cellInfoChart").select("svg").attr("width");
-    const height = +d3.select("#cellInfoChart").select("svg").attr("height");
+    const svgEl = d3.select("#cellInfoChart").select("svg");
+    const width = +svgEl.attr("width");
+    const height = +svgEl.attr("height");
     const radius = Math.min(width, height) / 2;
 
-    const svg = d3.select("#cellInfoChart")
-        .select("svg")
-        .attr("width", width)
-        .attr("height", height)
+    const svg = svgEl
         .append("g")
         .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
-
-    svg.append("defs").append("pattern")
-        .attr('id', 'myPattern')
-        .attr("width", 4)
-        .attr("height", 4)
-        .attr('patternUnits', "userSpaceOnUse")
-        .append('path')
-        .attr('fill', 'none')
-        .attr('stroke', '#335553')
-        .attr('stroke-width', '1')
-        .attr('d', 'M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2');
 
     svg.append("g")
         .attr("class", "slices");
@@ -78,12 +65,12 @@ function initDonut() {
  * @param {Object} dataset - Cell data with ClassName[] and Prob[]
  */
 export function renderDonut(dataset) {
-    console.log('donutchart called with dataset:', dataset);
-
     const percentFormat = d3.format('.2%');
 
-    if (!dataset || !dataset.ClassName || !dataset.Prob) {
-        console.warn('Missing ClassName or Prob data:', dataset);
+    if (!dataset || !dataset.ClassName || !dataset.Prob ||
+        dataset.ClassName.length === 0 || dataset.Prob.length === 0) {
+        // Nothing to draw — clear any existing slices so a stale donut isn't left behind.
+        d3.select('#cellInfoChart').select('.slices').selectAll('path.slice').remove();
         return;
     }
 
@@ -105,8 +92,13 @@ export function renderDonut(dataset) {
         .data(donutData.pie(data), donutData.key);
 
     slice.enter()
-        .insert('path')
+        .append('path')
         .attr('class', 'slice')
+        .each(function(d) {
+            // Seed the tween start so newly entering slices grow in from a zero-width
+            // wedge at their start angle instead of popping into place.
+            this._current = { startAngle: d.startAngle, endAngle: d.startAngle };
+        })
         .attr('data-class', function(d) { return d.data.label; })
         .on('mouseenter', function(event, d) {
             highlightClass(d.data.label);
@@ -125,10 +117,12 @@ export function renderDonut(dataset) {
         })
         .merge(slice)
         .attr('data-class', function(d) { return d.data.label; })
+        .attr('role', 'img')
+        .attr('aria-label', function(d) { return d.data.label + ': ' + percentFormat(d.data.value); })
         .style('fill', function(d) { return getClassColor(d.data.label); })
         .transition().duration(1000)
         .attrTween('d', function(d) {
-            this._current = this._current || d;
+            this._current = this._current || { startAngle: d.startAngle, endAngle: d.startAngle };
             const interpolate = d3.interpolate(this._current, d);
             this._current = interpolate(1);
             return function(t) {
