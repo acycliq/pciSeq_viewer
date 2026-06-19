@@ -20,7 +20,7 @@
   /* Typography */
   --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --ifm-font-family-monospace: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --ifm-heading-font-weight: 700;
+  --ifm-heading-font-weight: 600;
   
   /* Layout & Spacing */
   --ifm-global-radius: 6px;
@@ -110,7 +110,7 @@
   max-width: 840px;
   margin: 0 auto;
   font-size: 1.05rem;
-  line-height: 1.8;
+  line-height: 1.6; /* raise (e.g. to 1.8) for more space between lines */
   color: #333;
 }
 
@@ -119,13 +119,14 @@
 }
 
 .markdown h1 {
-  font-size: 2.75rem;
-  font-weight: 800;
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   margin-bottom: 2rem;
 }
 
 .markdown h2 {
-  font-size: 1.85rem;
+  font-size: 1.35rem;
   margin-top: 4rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--ifm-color-emphasis-200);
