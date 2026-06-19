@@ -38,7 +38,11 @@ A hex color code (e.g., `'#00FF00'`). If provided, the grayscale tiles will be t
 
 ## Requirements
 
-This function requires **libvips**. On most systems, the `pyvips` binary bundle handles this automatically. If you encounter errors, you may need to install libvips manually:
+This function requires **libvips** for image tiling. pciSeq declares `pyvips[binary]`
+as a dependency, so `pip install pciSeq` automatically installs the `pyvips` wheel with
+a prebuilt libvips binary bundled in. No separate libvips installation is required.
+
+If a prebuilt binary is unavailable for your platform, install libvips manually:
 
 ```bash
 # macOS
