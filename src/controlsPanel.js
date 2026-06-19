@@ -12,7 +12,7 @@ function updateScaleBarOffset() {
     if (!scaleBar) return;
     const isCollapsed = elements.controlsPanel.classList.contains('collapsed');
     const drawerWidth = elements.controlsPanel.offsetWidth || 300;
-    const railWidth = 16; // keep in sync with CSS --rail-width
+    const railWidth = 28; // keep in sync with CSS --rail-width
     const margin = 20; // visual gap from drawer/rail
     const left = (isCollapsed ? railWidth : drawerWidth) + margin;
     scaleBar.style.left = `${left}px`;
