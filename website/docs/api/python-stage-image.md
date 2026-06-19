@@ -9,8 +9,10 @@ description: API reference for generating background tiles.
 Converts a microscopy image (or z-stack) into a multi-plane **MBTiles** file. The viewer uses these tiles to provide a high-performance slippy map background.
 
 ```python
-pciSeq.stage_image(img, out_dir, name='', description='', tint=None)
+pciSeq.stage_image(img, out_dir=None, name=None, description=None, tint=None)
 ```
+
+Advanced arguments (rarely needed): `zoom_levels=8`, `plane_prefix="plane_"`, `use_buffer=True`.
 
 ## Parameters
 
@@ -20,13 +22,13 @@ The image data to be tiled. Supported shapes:
 - `(Z, H, W)`: For a 3D z-stack.
 - `(H, W)`: For a 2D image.
 
-### `out_dir`
+### `out_dir` (optional)
 **Type:** `str`  
-The directory where the `.mbtiles` file will be saved. Usually this is the `viewer_data` folder.
+The directory where the `.mbtiles` file will be saved. Usually this is the `viewer_data` folder. If omitted, the file is written to a system temp directory.
 
 ### `name` (optional)
 **Type:** `str`  
-The name of the image channel (e.g., "DAPI", "GCaMP"). This is shown as a label in the viewer's layer control.
+The name of the image channel (e.g., "DAPI", "GCaMP"). Shown as the channel label in the viewer, and also used as the output filename (`name='dapi'` writes `dapi.mbtiles`; if empty, the file is `output.mbtiles`).
 
 ### `description` (optional)
 **Type:** `str`  

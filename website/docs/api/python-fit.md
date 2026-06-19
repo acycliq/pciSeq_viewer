@@ -35,10 +35,9 @@ Configuration options for the fit. To generate data for the viewer, the followin
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `save_data` | `bool` | `False` | Must be `True` to write the Arrow files. |
-| `output_path` | `str` | `tempdir` | The root folder where results will be written. |
-| `max_iter` | `int` | `200` | Maximum number of EM iterations. |
-| `p_outlier` | `float` | `0.01` | Probability that a spot is an outlier. |
+| `save_data` | `bool` | `True` | Writes the Arrow files the viewer reads (on by default). |
+| `output_path` | `str` | `"default"` | Root folder for the results. Defaults to a system temp directory. |
+| `max_iter` | `int` | `1000` | Maximum number of cell-typing iterations. |
 
 ## Returns
 
