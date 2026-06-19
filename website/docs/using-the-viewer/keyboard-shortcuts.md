@@ -18,10 +18,9 @@ Shortcuts** (or press `Ctrl+/`).
 | `P` | Toggle cell polygons |
 | `Ctrl+L` | Toggle lines (current-plane cells, all-plane spots) |
 | `Ctrl+F` | Cell search |
-| `Ctrl` (hold) | Pin / unpin the cell info panel |
 | `Ctrl`+Click | Open the Cell / Spot Inspector (needs diagnostics) |
 | `/` | Focus the active filter box |
-| `Escape` | Close panels and modals |
+| `Escape` | Close panels and modals; unfreeze the cell panel |
 
 :::note[Escape with the selection tool]
 

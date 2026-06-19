@@ -20,10 +20,12 @@ The panel has three columns:
 - **Class legend**, the colours for the classes in the donut, scrollable when a
   cell has many candidate classes.
 
-## Pinning the panel
+## Freezing the panel
 
-By default the panel follows whichever cell you hover. **Hold `Ctrl`** to
-pin / unpin it, so it keeps showing one cell while you move around the map.
+By default the panel follows whichever cell you hover. **Click a cell** to
+freeze the panel on it, so it keeps showing that cell while you move around the
+map. Press **`Esc`** or click an empty part of the map to unfreeze and resume
+following the cursor.
 
 ## Highlighting
 

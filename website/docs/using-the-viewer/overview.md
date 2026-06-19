@@ -42,7 +42,8 @@ interface; each feature has its own page with the details.
 
 - Hovering a cell updates the
   **[Cell Information panel](./cell-info-panel)**, a gene-count table, donut
-  chart, and class legend for that cell. Hold `Ctrl` to pin it.
+  chart, and class legend for that cell. Click a cell to freeze the panel on it
+  (`Esc` or an empty-map click unfreezes).
 - With the diagnostics database connected, **Ctrl+Click** a cell or a spot opens
   the **[Cell / Spot Inspector](./diagnostics)** for deeper per-object
   diagnostics.
