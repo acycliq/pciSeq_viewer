@@ -1,5 +1,10 @@
-import clsx from 'clsx';
+/**
+ * Landing page.
+ * Calm and factual: a short intro, what the viewer does, and a quick start.
+ * Styling is deliberately restrained (see index.module.css).
+ */
 import Link from '@docusaurus/Link';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
@@ -15,100 +20,44 @@ pciSeq.fit(spots=spots, coo=masks, scRNAseq=sc, opts={
     'output_path': './my_dataset'
 })
 
-# 2. Open pciSeq Viewer and load the ./my_dataset
-#    folder to explore the results in 3D.`;
-
-const FEATURES = [
-  {
-    title: 'GPU rendering with deck.gl',
-    body: 'Spots, cell boundaries, and the background image are drawn on the GPU. Spots use a lighter representation when zoomed out so large datasets stay interactive.',
-  },
-  {
-    title: 'Volumetric 3D view',
-    body: 'Select a region and render it as a 3D volume rather than a stack of 2D planes.',
-  },
-  {
-    title: 'Runs locally',
-    body: 'A desktop application for Windows, macOS, and Linux. Data is read from local files and stays on your machine.',
-  },
-];
-
-function Hero() {
-  const {siteConfig} = useDocusaurusContext();
-  return (
-    <header className={styles.hero}>
-      <div className={styles.heroInner}>
-        <Heading as="h1" className={styles.heroTitle}>
-          {siteConfig.title}
-        </Heading>
-        <p className={styles.heroTagline}>{siteConfig.tagline}</p>
-        <div className={styles.heroButtons}>
-          <Link className={clsx('button button--primary button--lg', styles.heroButton)} to="/docs">
-            Get Started
-          </Link>
-          <Link
-            className={clsx('button button--secondary button--lg', styles.heroButton)}
-            to="/docs/api/python-fit">
-            API Reference
-          </Link>
-        </div>
-        <div className={styles.heroMedia}>
-          <img src="img/demo.gif" alt="pciSeq Viewer demo" />
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function QuickStart() {
-  return (
-    <section className={styles.quickStart}>
-      <div className={styles.quickStartInner}>
-        <div className={styles.quickStartContent}>
-          <Heading as="h2">Loading data from pciSeq</Heading>
-          <p>
-            The viewer reads the output of the pciSeq Python package directly.
-            Run your analysis, save the results, then open the folder in the viewer.
-          </p>
-          <Link className="button button--outline button--primary" to="/docs/preparing-data">
-            Data preparation guide →
-          </Link>
-        </div>
-        <div className={styles.quickStartCode}>
-          <CodeBlock language="python">{QUICK_START_CODE}</CodeBlock>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Features() {
-  return (
-    <section className={styles.features}>
-      <div className={styles.featuresGrid}>
-        {FEATURES.map((feature) => (
-          <div key={feature.title} className={styles.featureCard}>
-            <Heading as="h3" className={styles.featureTitle}>
-              {feature.title}
-            </Heading>
-            <p className={styles.featureBody}>{feature.body}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
+# 2. Open pciSeq Viewer and load ./my_dataset to explore in 3D.`;
 
 export default function Home() {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout title={siteConfig.title} description={siteConfig.tagline}>
-      <Hero />
-      <main>
-        <QuickStart />
-        <Features />
-      </main>
+      <div className={styles.wrap}>
+        <Heading as="h1" className={styles.title}>{siteConfig.title}</Heading>
+        <p className={styles.tagline}>{siteConfig.tagline}</p>
+
+        <div className={styles.actions}>
+          <Link className={styles.primary} to="/docs">Read the docs</Link>
+          <Link className={styles.primary} to="/docs/api/python-fit">API reference</Link>
+        </div>
+
+        <img className={styles.shot} src={useBaseUrl('/img/demo.gif')} alt="pciSeq Viewer demo" />
+
+        <section className={styles.section}>
+          <Heading as="h2" className={styles.h2}>About</Heading>
+          <ul className={styles.whatList}>
+            <li><strong>Explore your results in space.</strong> Pan and zoom a large tissue image through its z-stack, with every gene spot and cell boundary drawn on top: spots coloured per gene, cells coloured by predicted type, with show/hide filters for both.</li>
+            <li><strong>Inspect any cell or spot.</strong> Hover a cell for its gene counts, class probabilities, and a quick chart; with diagnostics data connected, see why a cell or spot was assigned the way it was.</li>
+            <li><strong>Drop into 3D.</strong> Select a region and render it as a true 3D volume instead of a stack of planes.</li>
+            <li><strong>Built for scale, runs locally.</strong> GPU-rendered with deck.gl so large datasets (millions of spots) stay interactive: a desktop app for Windows, macOS and Linux, with your data staying on your machine.</li>
+          </ul>
+        </section>
+
+        <section className={styles.section}>
+          <Heading as="h2" className={styles.h2}>Loading data from pciSeq</Heading>
+          <p className={styles.lead}>
+            The viewer reads the output of the pciSeq Python package directly. Run
+            your analysis, save the results, then open the folder in the viewer.
+          </p>
+          <div className={styles.code}>
+            <CodeBlock language="python">{QUICK_START_CODE}</CodeBlock>
+          </div>
+        </section>
+      </div>
     </Layout>
   );
 }
-

@@ -1,185 +1,67 @@
 /**
- * Styles for the landing page (src/pages/index.js).
- * PyTorch-inspired: Clean, white, high-contrast.
+ * Landing page styles (src/pages/index.js).
+ * Restrained on purpose: modest type sizes, no uppercase, no dramatic shadows,
+ * thin theme-aware borders. Uses Infima --ifm-* vars so light/dark just work.
  */
 
-/* --- Hero ----------------------------------------------------------- */
-
-.hero {
-  padding: 5rem 1rem 4rem;
-  background: #ffffff;
-  text-align: center;
-}
-
-[data-theme='dark'] .hero {
-  background: #111111;
-}
-
-.heroInner {
-  max-width: 900px;
+.wrap {
+  max-width: 820px;
   margin: 0 auto;
+  padding: 4rem 1.25rem 5rem;
 }
 
-.heroTitle {
-  font-size: clamp(3.5rem, 10vw, 5rem);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  margin-bottom: 1.25rem;
-  color: #111111;
-  line-height: 0.95;
+.title {
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.75rem;
 }
 
-[data-theme='dark'] .heroTitle {
-  color: #ffffff;
+.tagline {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--ifm-color-emphasis-700);
+  max-width: 42rem;
+  margin: 0 0 1.75rem;
 }
 
-.heroTagline {
-  font-size: clamp(1.25rem, 3vw, 1.6rem);
-  line-height: 1.5;
-  max-width: 44rem;
-  margin: 0 auto 2.25rem;
-  color: #555555;
-}
-
-[data-theme='dark'] .heroTagline {
-  color: #a0a0a0;
-}
-
-.heroButtons {
+.actions {
   display: flex;
   gap: 1.5rem;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 3rem;
-}
-
-.heroButton {
-  font-weight: 700;
-  border-radius: 4px; /* PyTorch uses smaller radius */
-  padding: 0.8rem 1.5rem;
-  text-transform: uppercase;
-  font-size: 0.9rem;
-  letter-spacing: 0.05em;
-}
-
-.heroMedia img {
-  width: 100%;
-  max-width: 1040px;
-  border-radius: 4px;
-  border: 1px solid #e1e1e1;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-}
-
-[data-theme='dark'] .heroMedia img {
-  border-color: #2a2a2a;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-}
-
-/* --- Feature grid --------------------------------------------------- */
-
-.features {
-  padding: 4rem 1rem;
-  background: #f3f4f7;
-  border-top: 1px solid #e1e1e1;
-}
-
-[data-theme='dark'] .features {
-  background: #000000;
-  border-color: #2a2a2e;
-}
-
-.featuresGrid {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: 2.5rem;
-}
-
-.featureCard {
-  padding: 0;
-  background: transparent;
-  text-align: left;
-}
-
-.featureTitle {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-  letter-spacing: -0.02em;
-  color: #111111;
-}
-
-[data-theme='dark'] .featureTitle {
-  color: #ffffff;
-}
-
-.featureBody {
-  margin: 0;
-  color: #555555;
-  line-height: 1.7;
-  font-size: 1.05rem;
-}
-
-[data-theme='dark'] .featureBody {
-  color: #a0a0a8;
-}
-
-/* --- Quick Start (Jest Style) --------------------------------------- */
-
-.quickStart {
-  padding: 4rem 1rem;
-  background: #ffffff;
-}
-
-[data-theme='dark'] .quickStart {
-  background: #111111;
-}
-
-.quickStartInner {
-  max-width: 1100px;
-  margin: 0 auto;
-  display: flex;
   align-items: center;
-  gap: 3rem;
-  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
 }
 
-.quickStartContent {
-  flex: 1;
-  min-width: 320px;
-  text-align: left;
+.primary { font-weight: 500; }
+
+.shot {
+  width: 100%;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 6px;
 }
 
-.quickStartContent h2 {
-  font-size: 2.5rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  margin-bottom: 1.5rem;
+.section { margin-top: 3rem; }
+
+.h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
 }
 
-.quickStartContent p {
-  font-size: 1.2rem;
-  color: #555;
-  margin-bottom: 1.5rem;
-  line-height: 1.6;
+.lead {
+  color: var(--ifm-color-emphasis-700);
+  line-height: 1.7;
 }
 
-[data-theme='dark'] .quickStartContent p {
-  color: #a0a0a8;
+.whatList {
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0 0;
+  display: grid;
+  gap: 1rem;
 }
 
-.quickStartCode {
-  flex: 1.5;
-  min-width: 320px;
-}
+.whatList li { line-height: 1.6; color: var(--ifm-color-emphasis-700); }
+.whatList strong { font-weight: 600; color: var(--ifm-font-color-base); }
 
-.quickStartCode pre {
-  margin: 0;
-  border-radius: 8px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
-}
-
-[data-theme='dark'] .quickStartCode pre {
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-}
+.code { margin-top: 1.5rem; }
