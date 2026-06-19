@@ -191,7 +191,8 @@ this file adds a `plane_id` column so each z-plane gets its own pyramid.
 When a dataset folder holds several `.mbtiles` files, each is a switchable
 background **channel**. The viewer discovers them per folder, labels each from
 its `name`, and tints each from its own `tint` - so N files give N independently
-coloured channels (e.g. a green GCaMP channel alongside a grayscale DAPI one).
+coloured channels you switch between (e.g. a green GCaMP channel or a grayscale
+DAPI one), shown one at a time with a smooth cross-fade.
 
 **2. Google (XYZ) tiling, not TMS.** The tiles are generated with libvips
 `dzsave(layout='google')`, so they follow the Google / OpenStreetMap slippy-map
