@@ -23,13 +23,13 @@ A JSON **array** of objects, one per gene:
 
 ```json
 [
-  { "gene": "Gad1", "color": "#1f77b4", "glyphName": "star6" },
-  { "gene": "Slc17a7", "color": "#d62728", "glyphName": "triangleUp" }
+  { "gene": "Gad1", "colour": "#1f77b4", "glyphName": "star6" },
+  { "gene": "Slc17a7", "colour": "#d62728", "glyphName": "triangleUp" }
 ]
 ```
 
 - `gene`, the gene name (must match a gene in your dataset).
-- `color`, a 6-digit hex colour.
+- `colour`, a 6-digit hex colour (`color` is also accepted).
 - `glyphName`, the marker shape. One of the 17 supported names:
   `star6`, `star5`, `diamond`, `square`, `triangleUp`, `triangleDown`,
   `triangleRight`, `triangleLeft`, `tShapeTop`, `tShapeBottom`, `tShapeLeft`,

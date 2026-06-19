@@ -1,5 +1,6 @@
 // Gene colour + glyph importer
-// Accepts JSON array: [{ gene, color: '#RRGGBB', glyphName }]
+// Accepts JSON array: [{ gene, colour: '#RRGGBB', glyphName }]
+// The colour field may be spelled "colour" or "color" (both accepted).
 
 import { state } from './state/stateManager.js';
 import { buildGeneIconAtlas } from './data/dataLoaders.js';
@@ -9,12 +10,13 @@ const VALID_GLYPHS = new Set([
 ]);
 
 function normalizeEntries(arr) {
-  if (!Array.isArray(arr)) throw new Error('Invalid JSON format. Expected an array of {gene,color,glyphName}');
+  if (!Array.isArray(arr)) throw new Error('Invalid JSON format. Expected an array of {gene,colour,glyphName}');
   const out = [];
   for (const it of arr) {
     if (!it || typeof it !== 'object') continue;
     const gene = String(it.gene || '').trim();
-    const color = String(it.color || '').trim();
+    // Accept either spelling; prefer 'colour'.
+    const color = String(it.colour ?? it.color ?? '').trim();
     const glyph = String(it.glyphName || 'circle').trim();
     if (!gene || !/^#?[0-9a-fA-F]{6}$/.test(color)) continue;
     const hex = color.startsWith('#') ? color : `#${color}`;
