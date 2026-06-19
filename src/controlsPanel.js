@@ -18,16 +18,25 @@ function updateScaleBarOffset() {
     scaleBar.style.left = `${left}px`;
 }
 
+function updateRailTooltip() {
+    const icon = document.getElementById('railToggleIcon');
+    if (!icon) return;
+    const isCollapsed = elements.controlsPanel.classList.contains('collapsed');
+    icon.dataset.tooltip = isCollapsed ? 'Open controls' : 'Close controls';
+}
+
 function showControlsPanel() {
     elements.controlsPanel.classList.remove('collapsed');
     updateAriaExpanded();
     updateScaleBarOffset();
+    updateRailTooltip();
 }
 
 function hideControlsPanel() {
     elements.controlsPanel.classList.add('collapsed');
     updateAriaExpanded();
     updateScaleBarOffset();
+    updateRailTooltip();
 }
 
 function toggleControlsPanel() {

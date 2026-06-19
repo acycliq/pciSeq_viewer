@@ -155,11 +155,13 @@
     <!-- Controls Panel (collapsed by default; gutter with embedded hamburger) -->
     <div id="controlsPanel" class="controls-panel collapsed" role="complementary" aria-label="Controls drawer">
         <!-- Clickable rail gutter to expand/collapse -->
-        <div id="controlsRail" class="controls-rail" title="Toggle controls" role="button" aria-label="Toggle controls drawer" tabindex="0">
+        <div id="controlsRail" class="controls-rail" role="button" aria-label="Toggle controls drawer" tabindex="0">
             <div class="rail-content">
                 <!-- Panel toggle. Chevron points out (open) when collapsed, flips in
-                     (close) when expanded - state driven purely by the .collapsed class. -->
-                <span class="rail-icon" aria-hidden="true">
+                     (close) when expanded - state driven purely by the .collapsed class.
+                     Tooltip lives on the icon (small) so it anchors correctly, not on
+                     the full-height rail. -->
+                <span id="railToggleIcon" class="rail-icon" data-tooltip="Open controls" aria-hidden="true">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
                          stroke="currentColor" stroke-width="2"
                          stroke-linecap="round" stroke-linejoin="round">

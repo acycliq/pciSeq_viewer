@@ -2396,3 +2396,24 @@ body {
     cursor: pointer;
     margin: 0;
 }
+
+/* App-wide tooltip bubble (Gemini-style pill), shared by src/ui/tooltip.js */
+.app-tooltip {
+    position: fixed;
+    z-index: 4000;
+    pointer-events: none;
+    max-width: 280px;
+    padding: 6px 10px;
+    background: rgba(31, 41, 55, 0.97);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    color: #f5f5fa;
+    font-size: 12px;
+    line-height: 1.3;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+.app-tooltip.visible { opacity: 1; }

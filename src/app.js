@@ -23,6 +23,7 @@ import Perf from '../utils/runtimePerf.js';
 import { showLoading, hideLoading, showTooltip, showScreen } from './ui/uiHelpers.js';
 import { showMetadataError } from './ui/metadataError.js';
 import { initChannelSwitcher } from './ui/channelSwitcher.js';
+import { initTooltips } from './ui/tooltip.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
 import { init as initCellInfoPanel } from './cellInfoPanel/index.js';
@@ -588,6 +589,9 @@ async function init() {
 
 // === DOM CONTENT LOADED HANDLER ===
 document.addEventListener('DOMContentLoaded', () => {
+    // Styled tooltip bubble shared across the app (replaces native title boxes)
+    initTooltips();
+
     // Initialize cell info panel (close button + color scheme)
     initCellInfoPanel();
 
