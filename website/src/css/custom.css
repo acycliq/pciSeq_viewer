@@ -3,12 +3,9 @@
  * Professional Emerald Green accents matched to the Viewer UI.
  */
 
-/* Fonts: Geist for that modern, precise feel.
-   Two @fontsource packages that declare the 'Geist Sans' / 'Geist Mono'
-   families used below. Imported from jsDelivr for the mockup; for
-   production these would be self-hosted so there's no external dependency. */
-@import url('https://cdn.jsdelivr.net/npm/@fontsource/geist-sans/index.css');
-@import url('https://cdn.jsdelivr.net/npm/@fontsource/geist-mono/index.css');
+/* Fonts: Inter, matching the viewer app's UI font (config/constants.js).
+   Loaded from Google Fonts, same source and weights as the app. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
   /* pciSeq Emerald Green Palette */
@@ -21,8 +18,8 @@
   --ifm-color-primary-lightest: #a7f3d0;
 
   /* Typography */
-  --ifm-font-family-base: 'Geist Sans', system-ui, -apple-system, sans-serif;
-  --ifm-font-family-monospace: 'Geist Mono', ui-monospace, monospace;
+  --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ifm-font-family-monospace: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --ifm-heading-font-weight: 700;
   
   /* Layout & Spacing */
