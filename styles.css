@@ -1304,7 +1304,7 @@ body {
     --drawer-accent-strong: #16a34a;
     --drawer-accent-weak: rgba(34, 197, 94, 0.08);
     --drawer-width: 300px;  /* full drawer width */
-    --rail-width: 16px;     /* always-visible gutter */
+    --rail-width: 28px;     /* always-visible gutter (fits the toggle + search icons) */
 }
 
 /* Clickable gutter rail */
@@ -1326,20 +1326,35 @@ body {
 .controls-panel.collapsed .controls-rail { left: auto; right: 0; }
 .controls-rail:hover { background: #1f1f1f; box-shadow: inset 0 0 0 1px var(--drawer-accent-weak); }
 
-/* Rail inner content */
-.rail-content { width: 100%; display: flex; flex-direction: column; align-items: center; }
+/* Rail inner content: stacked icons (panel toggle, then search) */
+.rail-content { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 14px; }
 
-/* 3x3 grip dots */
-.rail-grip {
-    width: 10px;
-    height: 10px;
-    display: grid;
-    grid-template-columns: repeat(3, 2px);
-    grid-template-rows: repeat(3, 2px);
-    gap: 2px;
+/* Panel toggle icon - white so it reads clearly against the dark rail */
+.rail-icon { color: #e8e8f0; display: flex; }
+.controls-rail:hover .rail-icon { color: #ffffff; }
+
+/* Chevron points out (open hint) by default; flip it in when the drawer is open */
+.controls-panel:not(.collapsed) .rail-icon .chevron {
+    transform: scaleX(-1);
+    transform-origin: center;
+    transform-box: fill-box;
 }
-.rail-grip span { width: 2px; height: 2px; background: var(--drawer-muted); border-radius: 50%; display: block; }
-.controls-rail:hover .rail-grip span { background: var(--drawer-accent); }
+
+/* Search button in the rail. Styled by id to override the generic
+   `.controls-panel button` drawer-button rule (width/padding/border), which
+   would otherwise squash the icon into a tiny box. */
+#railSearchBtn {
+    width: auto;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    color: #e8e8f0;
+    display: flex;
+}
+#railSearchBtn:hover { background: none; color: #ffffff; }
 
 /* Controls Panel: align with pciSeq_3d sidebar layout */
 .controls-panel {

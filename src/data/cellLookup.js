@@ -220,17 +220,34 @@ function setupCellLookupUI() {
         input.value = '';
     }
 
-    // Ctrl+F opens the bar
+    // Open if closed, close if open. Shared by Ctrl+F and the rail search button.
+    function toggleBar() {
+        if (input.style.display === 'block') {
+            closeBar();
+        } else {
+            openBar();
+        }
+    }
+
+    // Expose the toggle so the rail magnifying-glass button can trigger the same action.
+    window.cellLookup.toggleSearch = toggleBar;
+
+    // Ctrl+F toggles the bar
     document.addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key === 'f') {
             e.preventDefault();
-            if (input.style.display === 'block') {
-                closeBar();
-            } else {
-                openBar();
-            }
+            toggleBar();
         }
     });
+
+    // Rail magnifying-glass button toggles the bar without toggling the drawer
+    const searchBtn = document.getElementById('railSearchBtn');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleBar();
+        });
+    }
 
     // Escape closes
     input.addEventListener('keydown', (e) => {
