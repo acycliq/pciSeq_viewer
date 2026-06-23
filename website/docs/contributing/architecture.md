@@ -1,5 +1,4 @@
 ---
-sidebar_position: 1
 title: Architecture
 description: How the pciSeq Viewer codebase is organised.
 ---

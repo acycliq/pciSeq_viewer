@@ -1,4 +1,4 @@
-# Builds the GitHub Pages site: the Docusaurus docs (from desktop_app, served at
+# Builds the GitHub Pages site: the VitePress docs (from desktop_app, served at
 # the root) plus the web viewer (from master, served under /web_viewer).
 #
 # ============================================================================
@@ -54,18 +54,18 @@ jobs:
           cache: npm
           cache-dependency-path: website/package-lock.json
 
-      - name: Build Docusaurus
+      - name: Build VitePress
         working-directory: website
         run: |
           npm ci
-          npm run build
+          npm run docs:build
 
       - name: Prepare combined deployment
         run: |
           mkdir -p deployment_payload/web_viewer
 
-          # 1. Docusaurus documentation site at the root (from desktop_app)
-          cp -r website/build/* deployment_payload/
+          # 1. VitePress documentation site at the root (from desktop_app)
+          cp -r website/.vitepress/dist/* deployment_payload/
 
           # 2. Web viewer under /web_viewer (from the master branch checkout).
           #    Data is fetched from Google Cloud Storage at runtime, so no

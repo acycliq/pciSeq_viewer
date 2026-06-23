@@ -1,5 +1,4 @@
 ---
-sidebar_position: 1
 title: Configuration Reference
 description: Every tunable setting in the viewer and what it controls.
 ---

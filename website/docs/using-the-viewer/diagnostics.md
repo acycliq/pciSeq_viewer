@@ -1,5 +1,4 @@
 ---
-sidebar_position: 8
 title: Diagnostics (Cell & Spot Inspectors)
 description: Inspect why a cell or spot was assigned as it was, using the diagnostics database.
 ---
@@ -10,6 +9,13 @@ The viewer can read a per-run **diagnostics database** (`diagnostics.db`,
 produced during data preparation) to explain *why* pciSeq assigned a cell or
 spot the way it did. Two inspectors surface this: **check_cell** and
 **check_spot**.
+
+::: tip Python equivalent
+The Cell and Spot Inspectors present the same diagnostics as pciSeq's
+[`check_cell`](https://acycliq.github.io/pciSeq_3d/api/reference#check-cell) and
+[`check_spot`](https://acycliq.github.io/pciSeq_3d/api/reference#check-spot)
+methods. Refer to the pciSeq API reference to compute them programmatically.
+:::
 
 ## Connecting the diagnostics database
 
@@ -39,7 +45,7 @@ neighbouring cells and the per-cell scores pciSeq used to assign it (such as the
 multivariate-normal term, attention, and expression fluctuation), as tables and
 charts.
 
-:::note[Requires diagnostics data]
+::: info Requires diagnostics data
 
 If Ctrl+Click does nothing, the diagnostics database is not connected. Check
 that your dataset has a `diagnostics/diagnostics.db`, or connect one via

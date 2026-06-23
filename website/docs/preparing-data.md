@@ -1,5 +1,4 @@
 ---
-sidebar_position: 2
 title: Preparing Your Data
 description: Generate Arrow files and background tiles for the viewer using Python.
 ---
@@ -11,7 +10,7 @@ Before using the viewer you prepare your data in Python in two steps:
 1. **Run pciSeq**, generates cell typing results (Arrow files).
 2. **Create background tiles**, converts your microscopy image to viewable tiles (MBTiles).
 
-:::info[These functions live in pciSeq, not the viewer]
+::: info These functions live in pciSeq, not the viewer
 
 `pciSeq.fit()` and `pciSeq.stage_image()` belong to the
 [pciSeq Python package](https://github.com/acycliq/pciSeq). The viewer only
@@ -109,7 +108,7 @@ pciSeq.stage_image(img=gcamp, out_dir=viewer_data, name='gcamp', tint='#00FF00')
 in the mbtiles metadata and the viewer uses it to colour that channel. Omit
 `tint` (as for DAPI above) to leave a channel grayscale.
 
-:::note[Requires pciSeq > 0.0.65]
+::: info Requires pciSeq > 0.0.65
 
 `stage_image()` was added after `0.0.65`. If `out_dir` is omitted, the file is
 written to the system temp directory (`/tmp` on Linux, `/var/folders/...` on macOS).

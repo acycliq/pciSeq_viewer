@@ -1,6 +1,4 @@
 ---
-slug: /
-sidebar_position: 1
 title: Getting Started
 description: Install pciSeq Viewer on Windows, macOS, or Linux.
 ---
@@ -12,12 +10,12 @@ transcriptomics data from [pciSeq](https://github.com/acycliq/pciSeq).
 
 ![pciSeq Viewer demo](/img/demo.gif)
 
-:::tip[Already have pciSeq results?]
+::: tip Existing pciSeq results
 
-If you ran cell typing with **pciSeq `0.0.65`**, your Arrow files are already
-compatible with the viewer, you can skip straight to
+If cell typing was run with **pciSeq `0.0.65`**, the Arrow files are already
+compatible with the viewer, and you can proceed to
 [Step 2: Create Background Tiles](/docs/preparing-data#step-2-create-background-tiles).
-You'll still need a newer pciSeq for `stage_image()`.
+A newer pciSeq is still required for `stage_image()`.
 
 :::
 
@@ -37,7 +35,7 @@ then follow the steps for your platform.
 - **Installer:** `pciSeq_viewer-x.x.x.dmg`, drag the app to Applications.
 - **Portable:** `pciSeq_viewer-x.x.x-mac.zip`, extract and run.
 
-:::warning[First launch on macOS]
+::: warning First launch on macOS
 
 macOS may show a security warning the first time. Right-click the app and
 choose **Open** to bypass Gatekeeper. See

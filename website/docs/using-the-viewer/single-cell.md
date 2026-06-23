@@ -1,5 +1,4 @@
 ---
-sidebar_position: 9
 title: Single Cell Data
 description: Compare the scRNA-seq reference against the model's implied counts.
 ---
@@ -17,13 +16,15 @@ two tabs:
 
 - **Reference (scRNA-seq)**, `sc_mean_expression`: the scRNA-seq atlas, i.e. the
   mean expression per gene per cell class.
-- **Implied (spatial data)**, `mean_gene_reads_per_class`: what the model
-  expects the gene reads per class to be, derived from your spatial data.
+- **Implied (spatial data)**, [`mean_gene_reads_per_class`](https://acycliq.github.io/pciSeq_3d/api/reference#cells-mean-gene-reads-per-class):
+  what the model expects the gene reads per class to be, derived from your
+  spatial data. This is the quantity computed by pciSeq's
+  `mean_gene_reads_per_class` method on the fitted model.
 
 Both tabs show a grid of genes (rows) by cell classes (columns), with
 **gene** and **class** filter boxes to narrow the view.
 
-:::note[Requires diagnostics data]
+::: info Requires diagnostics data
 
 Both tabs read from `diagnostics.db`. If it isn't loaded, the window reports
 *"Diagnostics data not loaded"*. Connect one via **Diagnostics → Setup…** (see

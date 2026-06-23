@@ -1,5 +1,4 @@
 ---
-sidebar_position: 11
 title: Keyboard Shortcuts
 description: Every keyboard shortcut in the viewer.
 ---
@@ -22,7 +21,7 @@ Shortcuts** (or press `Ctrl+/`).
 | `/` | Focus the active filter box |
 | `Escape` | Close panels and modals; unfreeze the cell panel |
 
-:::note[Escape with the selection tool]
+::: info Escape with the selection tool
 
 While the [selection tool](./selection-tool) is active, `Escape` is two-step:
 the first press hides the controls drawer, the second cancels the rectangle

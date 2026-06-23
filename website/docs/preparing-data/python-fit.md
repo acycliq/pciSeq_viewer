@@ -1,10 +1,15 @@
 ---
-sidebar_position: 1
 title: pciSeq.fit()
-description: API reference for the cell typing engine.
+description: The pciSeq function that produces the data the viewer reads.
 ---
 
 # pciSeq.fit()
+
+::: info Part of the pciSeq package
+`pciSeq.fit()` lives in the [pciSeq](https://github.com/acycliq/pciSeq) Python
+package, not the viewer. It is documented here because it is how you produce the
+data the viewer reads. For the full, canonical reference see the pciSeq docs.
+:::
 
 The primary entry point for the pciSeq pipeline. This function performs cell typing on spatial transcriptomics data and, if configured, saves the results in the Arrow format required by the viewer.
 

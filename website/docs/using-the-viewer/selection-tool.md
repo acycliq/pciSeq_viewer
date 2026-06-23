@@ -1,5 +1,4 @@
 ---
-sidebar_position: 5
 title: Selection & Regions
 description: Select an area of the map and import anatomical region boundaries.
 ---

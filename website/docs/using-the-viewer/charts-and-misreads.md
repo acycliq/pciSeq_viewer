@@ -1,5 +1,4 @@
 ---
-sidebar_position: 6
 title: Charts & Misreads
 description: Cell-class and gene distribution charts, plus misread diagnostics.
 ---

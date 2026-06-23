@@ -1,5 +1,4 @@
 ---
-sidebar_position: 2
 title: Genes & Cell Classes
 description: Show, hide, filter, and size gene spots and cell classes.
 ---
@@ -31,10 +30,10 @@ The list can be resized by dragging its bottom edge.
 
 Fine-tune how spots are drawn:
 
-- **Size**, a slider scaling spot glyph size (`0.5`–`3.0`).
-- **Score Filter**, hides spots below the chosen detection score (`0`–`1`).
+- **Size**, a slider scaling spot glyph size (`0.5` to `3.0`).
+- **Score Filter**, hides spots below the chosen detection score (`0` to `1`).
 - **Intensity Filter**, hides spots below the chosen detection intensity
-  (`0`–`1`).
+  (`0` to `1`).
 - **Uniform Size**, when on, all spots are drawn the same size instead of
   scaling with z-distance.
 - **Distribution**, opens the gene distribution chart (see
@@ -91,6 +90,6 @@ You can assign any of these shapes to a gene through
 ## Pop-out windows
 
 The Cell Classes and Genes panels can be **undocked** into their own window
-using the pop-out button in the panel header. This is handy on a second monitor
+using the pop-out button in the panel header. This is useful on a second monitor
 while you navigate the map. Selections stay in sync between the docked panel and
 the undocked window.

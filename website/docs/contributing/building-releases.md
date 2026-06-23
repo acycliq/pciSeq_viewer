@@ -1,5 +1,4 @@
 ---
-sidebar_position: 2
 title: Building & Releases
 description: Local development build and the release pipeline.
 ---

@@ -1,5 +1,4 @@
 ---
-sidebar_position: 2
 title: Data Format Specification
 description: The Arrow file layout the viewer reads, for generating data without the pciSeq Python package.
 ---
@@ -120,7 +119,7 @@ One row per cell. Note the **uppercase** `X`, `Y`, `Z` for the centroid.
 | `gene_names` | list&lt;string&gt; | Genes detected in the cell |
 | `gene_counts` | list&lt;float32&gt; | Counts matching `gene_names` |
 
-:::note[No class_dict.json needed]
+::: info No class_dict.json needed
 
 Cell-class names live directly in the `class_name` list column. A separate
 `class_dict.json` is a legacy artefact and is not required, the current
@@ -140,7 +139,7 @@ plane number). One row per polygon.
 | `plane_id` | uint16 | Plane index for this polygon |
 | `label` | int32 | The cell id (segmentation label) the polygon outlines |
 
-:::warning[Every plane needs a shard, even empty ones]
+::: warning Every plane needs a shard, even empty ones
 
 There must be one shard per plane, with no gaps in the plane numbering. If a
 plane has no polygons, you still write a `boundaries_plane_XX.feather` with the

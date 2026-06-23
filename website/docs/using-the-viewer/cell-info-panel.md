@@ -1,5 +1,4 @@
 ---
-sidebar_position: 3
 title: Cell Information Panel
 description: Inspect a single cell's gene counts, class probabilities, and legend.
 ---

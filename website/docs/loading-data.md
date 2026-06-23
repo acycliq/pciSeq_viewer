@@ -1,5 +1,4 @@
 ---
-sidebar_position: 3
 title: Loading Data in the Viewer
 description: Open a prepared dataset and set the voxel size.
 ---
@@ -24,13 +23,13 @@ description: Open a prepared dataset and set the voxel size.
    - Cell boundaries from `arrow_boundaries/`
    - Cell information from `arrow_cells/`
 
-:::note[No MBTiles?]
+::: info Datasets without an MBTiles file
 
 The viewer normally reads the image width, height, and plane count from the
-`.mbtiles` file. If the data folder has no `.mbtiles`, the viewer can't read
-those automatically, so it shows a dialog asking you to enter **Width**,
-**Height** (in pixels), and **Plane count** by hand. Spots, cells, and
-boundaries still render, just without a background image. Voxel size is always
+`.mbtiles` file. If the data folder has no `.mbtiles`, those values cannot be
+read automatically, and the viewer shows a dialog asking you to enter **Width**,
+**Height** (in pixels), and **Plane count** manually. Spots, cells, and
+boundaries still render, without a background image. Voxel size is always
 entered on the welcome screen.
 
 :::

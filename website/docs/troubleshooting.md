@@ -1,5 +1,4 @@
 ---
-sidebar_position: 4
 title: Troubleshooting
 description: Fixes for common installation and data-loading issues.
 ---
@@ -30,7 +29,7 @@ When you open a dataset the viewer auto-discovers every `.mbtiles` file in the
 folder as a switchable background channel (`stage_image()` writes one per channel)
 and reads the image dimensions from the first one. If no `.mbtiles` file is
 present, the viewer prompts you to enter the image **Width**, **Height**, and
-**Plane count** manually, spots, cells, and boundaries still render, just without
+**Plane count** manually. Spots, cells, and boundaries still render, without
 a background image.
 
 See [Loading Data](/docs/loading-data) for details.

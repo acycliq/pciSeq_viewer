@@ -1,5 +1,4 @@
 ---
-sidebar_position: 10
 title: Custom Colours
 description: Import your own gene and cell-class colour schemes as JSON.
 ---
@@ -57,7 +56,7 @@ Class names must match the classes in your dataset; entries whose names don't
 match are reported and skipped. Any cell class left without a colour is drawn in
 the default grey, `#C0C0C0`.
 
-:::tip[Reference schemes]
+::: tip Reference schemes
 
 The built-in schemes under `config/colorSchemes/` (for example `hippocampus.js`,
 `zeisel.js`, `allen.js`) are a useful reference for authoring your own.

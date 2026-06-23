@@ -1,5 +1,4 @@
 ---
-sidebar_position: 4
 title: Layers & Export
 description: Toggle background tiles and polygons, project across z, and export per-class images.
 ---
@@ -23,7 +22,7 @@ drawn and offers two projection modes plus an image export.
 ## All Planes (z-projection)
 
 - **All Planes** toggle, overlays information from other z-planes onto the
-  current view, with an **Overlay** opacity slider (`10%`–`80%`). Use it to see
+  current view, with an **Overlay** opacity slider (`10%` to `80%`). Use it to see
   structure that spans several planes without leaving the current one.
 
 ## Cell Projection
@@ -41,10 +40,10 @@ exporter isolates that class, lets the map redraw, captures the canvas, then
 restores your original selection at the end. The status text next to the button
 reports progress.
 
-:::tip[Why one ZIP?]
+::: tip Why a single ZIP
 
-Bundling every class into a single ZIP avoids a save dialog popping up per file,
-which would otherwise freeze panning and zooming. The PNGs are exported with a
+Bundling every class into a single ZIP avoids a per-file save dialog, which
+would otherwise interrupt panning and zooming. The PNGs are exported with a
 transparent background.
 
 :::

@@ -1,5 +1,4 @@
 ---
-sidebar_position: 7
 title: 3D Voxel Viewer
 description: Render a selected region of the dataset as voxels in true 3D.
 ---
