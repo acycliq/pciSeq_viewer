@@ -11,8 +11,8 @@ export default defineConfig({
   // Project site at https://acycliq.github.io/pciSeq_viewer/
   base: '/pciSeq_viewer/',
 
-  // dark by default, like the old site
-  appearance: 'dark',
+  // light by default, with the toggle still available (respects the OS too)
+  appearance: true,
 
   // the docs are still being written and some links point at pages that move
   // around, so don't fail the build on a dead link
@@ -22,8 +22,16 @@ export default defineConfig({
   srcExclude: ['README.md'],
 
   head: [
-    ['link', { rel: 'icon', href: '/pciSeq_viewer/img/favicon.ico' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/pciSeq_viewer/img/logo.svg' }],
+    ['link', { rel: 'icon', type: 'image/x-icon', href: '/pciSeq_viewer/img/favicon.ico' }],
+    ['link', { rel: 'apple-touch-icon', href: '/pciSeq_viewer/img/logo.png' }],
+    ['meta', { name: 'theme-color', content: '#10b981' }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:title', content: 'pciSeq Viewer' }],
+    ['meta', { property: 'og:description', content: 'Interactive desktop application for exploring 3D spatial transcriptomics results from pciSeq' }],
     ['meta', { property: 'og:image', content: 'https://acycliq.github.io/pciSeq_viewer/img/social-card.png' }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:image', content: 'https://acycliq.github.io/pciSeq_viewer/img/social-card.png' }],
   ],
 
   themeConfig: {

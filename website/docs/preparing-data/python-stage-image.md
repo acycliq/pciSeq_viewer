@@ -8,8 +8,9 @@ description: The pciSeq function that generates the viewer's background tiles.
 ::: info Part of the pciSeq package
 `pciSeq.stage_image()` lives in the [pciSeq](https://github.com/acycliq/pciSeq)
 Python package, not the viewer. It is documented here because it is how you
-produce the background tiles the viewer reads. For the full, canonical reference
-see the pciSeq docs.
+produce the background tiles the viewer reads. See
+[`stage_image`](https://acycliq.github.io/pciSeq_3d/api/reference#stage-image)
+in the pciSeq API reference for the canonical signature.
 :::
 
 Converts a microscopy image (or z-stack) into a multi-plane **MBTiles** file. The viewer uses these tiles to provide a high-performance slippy map background.

@@ -8,7 +8,9 @@ description: The pciSeq function that produces the data the viewer reads.
 ::: info Part of the pciSeq package
 `pciSeq.fit()` lives in the [pciSeq](https://github.com/acycliq/pciSeq) Python
 package, not the viewer. It is documented here because it is how you produce the
-data the viewer reads. For the full, canonical reference see the pciSeq docs.
+data the viewer reads. See
+[`fit`](https://acycliq.github.io/pciSeq_3d/api/reference#fit) in the pciSeq API
+reference for the canonical signature.
 :::
 
 The primary entry point for the pciSeq pipeline. This function performs cell typing on spatial transcriptomics data and, if configured, saves the results in the Arrow format required by the viewer.

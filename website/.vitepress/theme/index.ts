@@ -3,6 +3,7 @@
 import { h } from 'vue'
 import DefaultTheme from 'vitepress/theme'
 import AnnouncementBar from './AnnouncementBar.vue'
+import NotFound from './NotFound.vue'
 import './custom.css'
 
 export default {
@@ -10,6 +11,7 @@ export default {
   Layout() {
     return h(DefaultTheme.Layout, null, {
       'layout-top': () => h(AnnouncementBar),
+      'not-found': () => h(NotFound),
     })
   },
 }
