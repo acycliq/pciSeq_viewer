@@ -15,13 +15,18 @@ export function calculateScaleBar(viewState) {
     const voxelSize = config.voxelSize;
     const resolution = voxelSize[0]; // microns per pixel in original image
 
-    // Deck.gl coordinate system: image is mapped to 256x256 coordinate space
-    // So 1 deck.gl unit = imageWidth/256 image pixels
-    const deckglUnitsPerImagePixel = 256 / config.imageWidth;
+    // Deck.gl coordinate system: the image is mapped into a 256-unit tile space
+    // along its LONGER side (see transformToTileCoordinates), so the conversion
+    // has to use the long side, not the width. For landscape images width is the
+    // long side so it looks right, but for portrait images it would be wrong.
+    const longSide = Math.max(config.imageWidth, config.imageHeight);
+
+    // So 1 deck.gl unit = longSide/256 image pixels
+    const deckglUnitsPerImagePixel = 256 / longSide;
 
     // Convert from deck.gl coordinates to microns
-    // 1 deck.gl unit = (imageWidth/256) image pixels = (imageWidth/256) * resolution microns
-    const micronsPerDeckglUnit = (config.imageWidth / 256) * resolution;
+    // 1 deck.gl unit = (longSide/256) image pixels = (longSide/256) * resolution microns
+    const micronsPerDeckglUnit = (longSide / 256) * resolution;
 
     // Account for zoom level
     const micronsPerPixel = micronsPerDeckglUnit / Math.pow(2, viewState.zoom);
