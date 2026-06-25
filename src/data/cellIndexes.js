@@ -17,12 +17,10 @@ export function buildGeneSpotIndexes(geneDataMap, cellToSpotsIndex, spotToParent
     spotToParentsIndex.clear();
 
     let totalSpots = 0;
-    let globalSpotIndex = 0;
 
     geneDataMap.forEach((spots, geneName) => {
         spots.forEach((spot, spotIndex) => {
-            const spot_id = globalSpotIndex;
-            globalSpotIndex++;
+            const spot_id = spot.spot_id;
             totalSpots++;
 
             // Index 1: Cell parent -> spots
