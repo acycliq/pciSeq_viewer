@@ -19,7 +19,7 @@ export function buildGeneSpotIndexes(geneDataMap, cellToSpotsIndex, spotToParent
     let totalSpots = 0;
 
     geneDataMap.forEach((spots, geneName) => {
-        spots.forEach((spot, spotIndex) => {
+        spots.forEach((spot) => {
             const spot_id = spot.spot_id;
             totalSpots++;
 
