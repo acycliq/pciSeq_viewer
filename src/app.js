@@ -495,7 +495,19 @@ function showImageDimsPrompt() {
 // === MAIN INITIALIZATION (Electron-specific) ===
 async function init() {
     showLoading(state, elements.loadingIndicator);
+    try {
+        await runInit();
+    } catch (err) {
+        // A failure anywhere in the pipeline must still drop the curtain and
+        // surface an error, otherwise the app hangs on the loading overlay.
+        console.error('Initialization failed:', err);
+        try { hideLoading(state, elements.loadingIndicator); } catch {}
+        try { removeCurtain(); } catch {}
+        try { showMetadataError(null, err?.message || String(err)); } catch {}
+    }
+}
 
+async function runInit() {
     // 1. Check for data path (Electron empty-state)
     const paths = await window.electronAPI.getPaths();
     if (!paths.dataPath) { 
@@ -671,5 +683,5 @@ window.addEventListener('load', async () => {
     }
 
     // Start main initialization
-    init();
+    init().catch(err => console.error('init() failed:', err));
 });

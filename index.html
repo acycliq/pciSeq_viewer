@@ -93,12 +93,13 @@
                     <circle cx="12" cy="16" r="0.5" fill="currentColor"/>
                 </svg>
             </div>
-            <h2>Missing Dataset Metadata</h2>
-            <p class="metadata-error-subtitle">The MBTiles file is missing required information</p>
+            <h2 id="metadataErrorTitle">Missing Dataset Metadata</h2>
+            <p class="metadata-error-subtitle" id="metadataErrorSubtitle">The MBTiles file is missing required information</p>
+            <p class="metadata-error-message" id="metadataErrorMessage" style="display:none"></p>
             <div class="metadata-error-details" id="metadataErrorDetails">
                 <!-- Filled dynamically -->
             </div>
-            <div class="metadata-error-help">
+            <div class="metadata-error-help" id="metadataErrorHelp">
                 <h4>How to fix this:</h4>
                 <p>Voxel size must be provided by the user in the welcome screen.</p>
                 <ol>
