@@ -9,14 +9,14 @@ import { state } from './state/stateManager.js';
 import { getClassColor } from './cellInfoPanel/colorResolver.js';
 import { showNotification } from './ui/notification.js';
 import { getFormattedCellCoordinates } from '../utils/cellFormatting.js';
+import { escapeHtml } from '../utils/domSafe.js';
 import { clearTooltipCache } from './data/tooltipDiagnostics.js';
 import {
     renderDivergingChart,
     buildExpressionTable,
     buildContributionTable,
     renderComponentsChart,
-    renderPosteriorChart,
-    escapeHtml
+    renderPosteriorChart
 } from './charts/checkCellCharts.js';
 
 /**
@@ -185,7 +185,7 @@ export function openCheckCellModal(cellLabel) {
     const cell = state.cellDataMap ? state.cellDataMap.get(Number(cellLabel)) : null;
     const coordStr = getFormattedCellCoordinates(cell, true);
 
-    if (title) title.innerHTML = 'Cell ' + cellLabel + coordStr;
+    if (title) title.innerHTML = 'Cell ' + escapeHtml(cellLabel) + coordStr;
 
     // Slide in
     panel.classList.remove('collapsed');

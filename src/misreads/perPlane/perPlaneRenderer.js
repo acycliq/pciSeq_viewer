@@ -1,4 +1,5 @@
 import { showTooltip, moveTooltip, hideTooltip } from '../../ui/chartTooltip.js';
+import { escapeHtml } from '../../../utils/domSafe.js';
 
 const MARGIN     = { top: 36, right: 20, bottom: 40, left: 50 };
 const C_MISREAD  = '#e05252';
@@ -8,7 +9,7 @@ export function renderPerPlane(container, data, geneName) {
     container.innerHTML = '';
 
     if (!data.length) {
-        container.innerHTML = `<div class="glass-loader">No data found for <strong>${geneName}</strong>.</div>`;
+        container.innerHTML = `<div class="glass-loader">No data found for <strong>${escapeHtml(geneName)}</strong>.</div>`;
         return;
     }
 

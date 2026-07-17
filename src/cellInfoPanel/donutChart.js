@@ -7,6 +7,7 @@
 
 import { getClassColor } from './colorResolver.js';
 import { highlightClass, clearHighlight } from './highlight.js';
+import { escapeHtml } from '../../utils/domSafe.js';
 
 // Module-scoped D3 state — holds the pie layout, arc generator, tooltip, and SVG group.
 // Initialized lazily on first render.
@@ -109,7 +110,7 @@ export function renderDonut(dataset) {
                 .style('top', (event.pageY - 25) + 'px')
                 .style('display', 'inline-block')
                 .style('opacity', 0.8)
-                .html(d.data.label + '<br>' + percentFormat(d.data.value));
+                .html(escapeHtml(d.data.label) + '<br>' + percentFormat(d.data.value));
         })
         .on('mouseleave', function() {
             clearHighlight();

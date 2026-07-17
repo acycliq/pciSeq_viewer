@@ -8,6 +8,7 @@
 import { WidgetBase } from './ui/widgetBase.js';
 import { state } from './state/stateManager.js';
 import { getRegionBoundaries, getVisibleRegions } from './regionsManager.js';
+import { escapeHtml } from '../utils/domSafe.js';
 
 class CellClassDistributionWidget extends WidgetBase {
     constructor() {
@@ -273,7 +274,7 @@ class CellClassDistributionWidget extends WidgetBase {
                     const pct = d.total > 0 ? ((d.h / d.total) * 100).toFixed(1) : '0.0';
                     
                     tooltip.innerHTML = `
-                        <div style="font-weight:600;margin-bottom:2px">${d.cls}</div>
+                        <div style="font-weight:600;margin-bottom:2px">${escapeHtml(d.cls)}</div>
                         <div style="color:#aaa">Plane ${d.z}</div>
                         <div>Count: ${d.h}</div>
                         <div style="color:#aaa;font-size:11px;margin-top:2px">${pct}% of plane</div>
@@ -355,7 +356,7 @@ class CellClassDistributionWidget extends WidgetBase {
             row.className = 'glass-legend-item';
             row.innerHTML = `
                 <div class="glass-legend-swatch" style="background:${getClassColor(cls)}"></div>
-                <div class="glass-legend-name" title="${cls}">${cls}</div>
+                <div class="glass-legend-name" title="${escapeHtml(cls)}">${escapeHtml(cls)}</div>
             `;
             legendDiv.appendChild(row);
         });

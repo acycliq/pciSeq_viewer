@@ -5,9 +5,7 @@
 
 // --- Shared helpers ---
 
-export function escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+import { escapeHtml } from '../../utils/domSafe.js';
 
 function truncate(str, max) {
     return str.length > max ? str.substring(0, max - 2) + '...' : str;

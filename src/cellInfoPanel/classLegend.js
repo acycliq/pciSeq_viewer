@@ -7,6 +7,7 @@
 
 import { getClassColor } from './colorResolver.js';
 import { highlightClass, clearHighlight } from './highlight.js';
+import { escapeHtml } from '../../utils/domSafe.js';
 
 /**
  * Render the class legend for a cell.
@@ -32,9 +33,10 @@ export function renderClassLegend(cellData) {
         const r = rows[j];
         const color = getClassColor(r.name);
         const pct = (r.prob * 100).toFixed(1) + '%';
-        html += '<div class="legend-row" data-class="' + r.name + '">'
+        const safeName = escapeHtml(r.name);
+        html += '<div class="legend-row" data-class="' + safeName + '">'
               + '<span class="legend-dot" style="background:' + color + '"></span>'
-              + '<span class="legend-name" title="' + r.name + '">' + r.name + '</span>'
+              + '<span class="legend-name" title="' + safeName + '">' + safeName + '</span>'
               + '<span class="legend-prob">' + pct + '</span>'
               + '</div>';
     }

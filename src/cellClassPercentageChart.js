@@ -8,6 +8,7 @@
 import { WidgetBase } from './ui/widgetBase.js';
 import { state } from './state/stateManager.js';
 import { getRegionBoundaries } from './regionsManager.js';
+import { escapeHtml } from '../utils/domSafe.js';
 
 class CellClassPercentageWidget extends WidgetBase {
     constructor() {
@@ -201,7 +202,7 @@ class CellClassPercentageWidget extends WidgetBase {
             .on('mouseenter', function(e, d) {
                 d3.select(this).attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 1.5);
                 tooltip.innerHTML = `
-                    <div style="font-weight:600;margin-bottom:2px">${d.className}</div>
+                    <div style="font-weight:600;margin-bottom:2px">${escapeHtml(d.className)}</div>
                     <div>Count: ${d.count.toLocaleString()}</div>
                     <div style="color:#aaa">${d.percentage.toFixed(1)}%</div>
                 `;

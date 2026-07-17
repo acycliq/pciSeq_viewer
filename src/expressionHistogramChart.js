@@ -16,6 +16,7 @@
 
 import { WidgetBase } from './ui/widgetBase.js';
 import { state } from './state/stateManager.js';
+import { escapeHtml } from '../utils/domSafe.js';
 
 class ExpressionHistogramWidget extends WidgetBase {
     constructor() {
@@ -355,7 +356,7 @@ class ExpressionHistogramWidget extends WidgetBase {
                     d3.select(this).attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 1.5);
                     const pct = displayedWeight > 0 ? ((d.count / displayedWeight) * 100).toFixed(1) : '0.0';
                     tooltip.innerHTML = `
-                        <div style="font-weight:600;margin-bottom:2px">${className}</div>
+                        <div style="font-weight:600;margin-bottom:2px">${escapeHtml(className)}</div>
                         <div>Gene Reads: ${d.bin}</div>
                         <div>Cell Count: ${d.count.toFixed(1)}</div>
                         <div style="color:#aaa;font-size:11px;margin-top:2px">${pct}% of class</div>

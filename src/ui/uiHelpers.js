@@ -6,7 +6,7 @@
  */
 
 import { getCellInfo } from '../data/tooltipDiagnostics.js';
-import { escapeHtml } from '../charts/checkCellCharts.js';
+import { escapeHtml } from '../../utils/domSafe.js';
 import { SPOT_PICKABLE_MIN_ZOOM } from '../../config/constants.js';
 
 // Note: Arrow-only runtime; no TSV-specific palette usage here
@@ -480,11 +480,11 @@ export function showTooltip(info, tooltipElement) {
                     }
                 }
 
-                content =  `<strong>Cell Label:</strong> ${cellLabel}<br>
+                content =  `<strong>Cell Label:</strong> ${escapeHtml(cellLabel)}<br>
                             ${cellCoords}
                             ${centroidPlane}
                             <strong>Polygon Plane:</strong> ${planeId}<br>
-                            <strong>Cell Class:</strong> ${cellClass}<br>
+                            <strong>Cell Class:</strong> ${escapeHtml(cellClass)}<br>
                             ${classProb}
                             ${totalGeneCount}
                             ${colorHex}
@@ -534,7 +534,7 @@ export function showTooltip(info, tooltipElement) {
                 qualityInfo += `<strong>Intensity:</strong> ${info.object.intensity.toFixed(3)}<br>`;
             }
 
-            content = `${spotInfo}<strong>Gene:</strong> ${gene}<br>
+            content = `${spotInfo}<strong>Gene:</strong> ${escapeHtml(gene)}<br>
                       ${colorInfo}<strong>Coords:</strong> ${coords}<br>
                       <strong>Plane:</strong> ${planeId}<br>
                       ${parentInfo}${qualityInfo}`;
@@ -542,7 +542,7 @@ export function showTooltip(info, tooltipElement) {
             maybeAppendSpotGamma(tooltipElement, seq, info.object.neighbour, gene, info.object.spot_id);
         } else if (info.object.name) {
             // Region tooltip
-            content = `<strong>Region:</strong> ${info.object.name}`;
+            content = `<strong>Region:</strong> ${escapeHtml(info.object.name)}`;
         }
 
         if (content) {

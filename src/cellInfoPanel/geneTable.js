@@ -5,6 +5,8 @@
  * Expects cellData with Genenames[] and CellGeneCount[].
  */
 
+import { escapeHtml } from '../../utils/domSafe.js';
+
 /**
  * Truncate a number to two decimal places (no rounding).
  * @param {number|string} v - The value to format
@@ -43,7 +45,7 @@ export function renderGeneTable(cellData) {
     for (let j = 0; j < rows.length; j++) {
         const r = rows[j];
         html += '<tr>' +
-                '<td>' + r.gene + '</td>' +
+                '<td>' + escapeHtml(r.gene) + '</td>' +
                 '<td style="text-align:right; white-space:nowrap; padding-left: 40px;">' + formatCount(r.count) + '</td>' +
                 '</tr>';
     }
