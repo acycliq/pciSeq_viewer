@@ -1,7 +1,7 @@
 // Unified module worker for Arrow decoding (spots, cells, boundaries)
 // Keep logs minimal; toggle via DEBUG flag
 
-import { tableFromIPC } from 'https://cdn.jsdelivr.net/npm/apache-arrow@12.0.1/+esm';
+import { tableFromIPC } from '../../lib/vendor/apache-arrow-12.0.1.esm.js';
 
 const DEBUG = false;
 

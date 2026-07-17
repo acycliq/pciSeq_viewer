@@ -3,25 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- CSP: only load from our own origin (app://). mbtiles: is the tile
+         protocol; blob:/data: are for deck.gl workers and canvas textures.
+         'unsafe-eval' is required because turf.js uses new Function(). -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-eval';
+        style-src 'self' 'unsafe-inline';
+        font-src 'self';
+        img-src 'self' data: blob: app: mbtiles:;
+        media-src 'self' blob:;
+        connect-src 'self' app: mbtiles: blob: data:;
+        worker-src 'self' blob:;
+        child-src 'self' blob:;
+        object-src 'none';
+        base-uri 'self';
+    ">
     <title>Viewer</title>
-    <!-- Inter UI font (loaded from Google Fonts, like the other CDN libs below) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+    <!-- Inter UI font (vendored, was Google Fonts) -->
+    <link rel="stylesheet" href="lib/vendor/inter.css">
     <link rel="stylesheet" href="styles.css">
     <!-- Load configuration first -->
     <script src="config.js"></script>
     <script src="config/advanced.js"></script>
-    <script src="https://unpkg.com/deck.gl@8.8.27/dist.min.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- Libraries vendored under lib/vendor (were CDN) -->
+    <script src="lib/vendor/deck.gl-8.8.27.min.js"></script>
+    <script src="lib/vendor/d3.v7.min.js"></script>
     <!-- d3-dsv removed; Arrow-only runtime does not parse TSV -->
-    <script src="https://unpkg.com/d3-array@3"></script>
+    <script src="lib/vendor/d3-array-3.min.js"></script>
     <!-- Turf.js for geometric operations -->
-    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <script src="lib/vendor/turf-6.min.js"></script>
     <!-- RBush for spatial indexing -->
-    <script src="https://unpkg.com/rbush@3.0.1/rbush.min.js"></script>
+    <script src="lib/vendor/rbush-3.0.1.min.js"></script>
     <!-- JSZip for bundling per-class PNG exports -->
-    <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="lib/vendor/jszip-3.10.1.min.js"></script>
 
     <!-- Import glyph helpers -->
     <script src="src/glyphs/glyphPaths.js"></script>
@@ -576,45 +591,8 @@
         </div>
     </div>
 
-    <script>
-        (function() {
-            const btn = document.getElementById('aboutBtn');
-            const modalBg = document.getElementById('aboutModal');
-            const closeBtn = document.getElementById('aboutClose');
-
-            if (!btn || !modalBg) return;
-
-            const open = () => modalBg.classList.add('active');
-            const close = () => modalBg.classList.remove('active');
-
-            btn.addEventListener('click', open);
-            if (closeBtn) closeBtn.addEventListener('click', close);
-            modalBg.addEventListener('click', (e) => { if (e.target === modalBg) close(); });
-            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
-        })();
-
-        // Keyboard Shortcuts modal wiring
-        (function() {
-            const modalBg = document.getElementById('shortcutsModal');
-            const closeBtn = document.getElementById('shortcutsClose');
-            if (!modalBg) return;
-
-            const open = () => modalBg.classList.add('active');
-            const close = () => modalBg.classList.remove('active');
-
-            if (closeBtn) closeBtn.addEventListener('click', close);
-            modalBg.addEventListener('click', (e) => { if (e.target === modalBg) close(); });
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') close();
-                if (e.key === '/' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); open(); }
-            });
-
-            // Electron IPC trigger
-            if (window.electronAPI && window.electronAPI.onShowShortcuts) {
-                window.electronAPI.onShowShortcuts(() => open());
-            }
-        })();
-    </script>
+    <!-- Modal wiring moved to an external file so the strict CSP can forbid inline scripts -->
+    <script src="src/ui/modalWiring.js"></script>
 
 
     <script type="module" src="src/app.js"></script>

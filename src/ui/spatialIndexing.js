@@ -5,7 +5,7 @@
  * Uses Web Workers for background processing of Arrow boundary data.
  */
 
-import RBush from 'https://cdn.jsdelivr.net/npm/rbush@3.0.1/+esm';
+import RBush from '../../lib/vendor/rbush-3.0.1.esm.js';
 
 /**
  * Process Arrow boundaries in main thread for spatial indexing
@@ -15,7 +15,7 @@ import RBush from 'https://cdn.jsdelivr.net/npm/rbush@3.0.1/+esm';
  */
 export async function processArrowBoundariesForSpatialIndex(manifestUrl, img) {
     // Import Arrow dynamically
-    const { tableFromIPC } = await import('https://cdn.jsdelivr.net/npm/apache-arrow@12.0.1/+esm');
+    const { tableFromIPC } = await import('../../lib/vendor/apache-arrow-12.0.1.esm.js');
 
     const manifest = await fetch(manifestUrl).then(r => r.json());
     const baseDir = manifestUrl.substring(0, manifestUrl.lastIndexOf('/') + 1);

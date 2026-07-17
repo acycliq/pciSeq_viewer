@@ -3,7 +3,7 @@
 // Posts back a serialized RBush tree via toJSON for main-thread rehydration.
 
 // Import RBush only - Arrow processing will be done in main thread
-importScripts('https://unpkg.com/rbush@3.0.1/rbush.min.js');
+importScripts('../../lib/vendor/rbush-3.0.1.min.js');
 
 // Simple function to build RBush spatial index from pre-processed cell data
 function buildSpatialIndex(cellBounds) {

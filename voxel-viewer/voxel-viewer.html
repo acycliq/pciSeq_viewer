@@ -89,13 +89,10 @@
         </div>
     </div>
 
-    <!-- Import d3.js -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-
-    <!-- Import deck.gl and luma.gl -->
-    <script src="https://unpkg.com/deck.gl@8.1.0/dist.min.js"></script>
-    <script src="https://unpkg.com/@luma.gl/core@8.1.0/dist.min.js"></script>
-    <script src="https://unpkg.com/@luma.gl/engine@8.1.0/dist.min.js"></script>
+    <!-- d3 and deck.gl, vendored (were CDN). deck.gl bundles luma.gl, reached
+         via deck.Texture2D/Model/CubeGeometry; the luma CDN tags 404'd and were removed. -->
+    <script src="../lib/vendor/d3.v7.min.js"></script>
+    <script src="../lib/vendor/deck.gl-8.1.0.min.js"></script>
 
     <!-- Import dataset (using existing name for stability) -->
     <script src="sample-data.js"></script>
