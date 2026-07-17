@@ -61,7 +61,15 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
         buffers._tileTransformed = true;
     }
 
-    if (!arrowGeojsonCache.has(planeNum)) {
+    // The per-cell class is baked into the cached features. If cellDataMap has
+    // not populated yet (async cell load still in flight), computeMostProbableClass
+    // returns 'Generic'/'Unknown'; caching that would freeze the wrong classes for
+    // the plane's whole lifetime. Record whether cell data was ready at build time
+    // and rebuild once it becomes available.
+    const cellDataReady = !!(cellDataMap && cellDataMap.size > 0);
+    const cached = arrowGeojsonCache.get(planeNum);
+    const needsBuild = !cached || (cached._builtWithCellData === false && cellDataReady);
+    if (needsBuild) {
         const { positions, startIndices, length, labels } = buffers;
         const features = [];
         for (let pi = 0; pi < length; pi++) {
@@ -82,7 +90,9 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
                 properties: { plane_id: planeNum, label, cellClass }
             });
         }
-        arrowGeojsonCache.set(planeNum, { type: 'FeatureCollection', features });
+        const featureCollection = { type: 'FeatureCollection', features };
+        featureCollection._builtWithCellData = cellDataReady;
+        arrowGeojsonCache.set(planeNum, featureCollection);
     }
 
     const geojsonFromArrow = arrowGeojsonCache.get(planeNum);
