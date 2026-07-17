@@ -120,10 +120,26 @@ async function buildSpatialIndex(cellBoundaryIndex, appState) {
     let processedCells = 0;
     const totalCells = cellBoundaryIndex.size;
     const entries = Array.from(cellBoundaryIndex.entries());
+
+    // Prebuild a label -> feature lookup per plane. Without this, calculateCellBounds
+    // does a linear features.find() for every (cell, plane) pair, which is O(cells x
+    // features) and stalls the UI for a long time on large datasets. First feature
+    // wins on duplicate labels, matching the old find() behaviour.
+    const featureByLabelByPlane = new Map();
+    for (const [planeId, geojson] of appState.polygonCache) {
+        if (!geojson?.features) continue;
+        const byLabel = new Map();
+        for (const feature of geojson.features) {
+            const label = parseInt(feature.properties.label);
+            if (!byLabel.has(label)) byLabel.set(label, feature);
+        }
+        featureByLabelByPlane.set(planeId, byLabel);
+    }
+
     // Calculate bounding boxes for each cell in small batches
     for (let i = 0; i < entries.length; i++) {
         const [cellId, planes] = entries[i];
-        const bounds = calculateCellBounds(cellId, planes, appState.polygonCache);
+        const bounds = calculateCellBounds(cellId, planes, featureByLabelByPlane);
 
         if (bounds) {
             // Insert into RBush spatial index
@@ -150,21 +166,19 @@ async function buildSpatialIndex(cellBoundaryIndex, appState) {
  * Calculate maximum bounding box for a cell across all its planes
  * @param {number} cellId - Cell ID
  * @param {number[]} planes - Array of plane IDs where cell exists
- * @param {Map} polygonCache - Polygon cache
+ * @param {Map} featureByLabelByPlane - planeId -> Map(label -> feature) lookup
  * @returns {Object|null} {minX, minY, maxX, maxY} or null if no bounds found
  */
-function calculateCellBounds(cellId, planes, polygonCache) {
+function calculateCellBounds(cellId, planes, featureByLabelByPlane) {
     let minX = Infinity, minY = Infinity;
     let maxX = -Infinity, maxY = -Infinity;
     let foundBounds = false;
 
     // Look through all planes where this cell exists
     for (const planeId of planes) {
-        const geojson = polygonCache.get(planeId);
-        if (geojson?.features) {
-            const cellFeature = geojson.features.find(feature =>
-                parseInt(feature.properties.label) === cellId
-            );
+        const byLabel = featureByLabelByPlane.get(planeId);
+        if (byLabel) {
+            const cellFeature = byLabel.get(cellId);
 
             if (cellFeature && cellFeature.geometry?.coordinates?.[0]) {
                 // Get bounds of this cell on this plane
