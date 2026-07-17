@@ -163,6 +163,13 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
         }
     } catch {}
 
+    // A Map keeps the same identity when its entries change, so passing the Map
+    // itself as an updateTrigger would not re-run getFillColor after a runtime
+    // colour import. Derive a token from the contents so the trigger changes
+    // whenever a class colour (or the set of coloured classes) does.
+    let colorToken = '';
+    for (const [cls, rgb] of (cellClassColors || [])) colorToken += cls + ':' + rgb + ';';
+
     return new GeoJsonLayer({
         id: `polygons-${planeNum}`,
         data: filteredData,
@@ -181,7 +188,7 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
             }
             return [192, 192, 192, alpha];
         },
-        updateTriggers: { getFillColor: [cellClassColors, polygonOpacity], data: [selectedCellClasses] }
+        updateTriggers: { getFillColor: [colorToken, polygonOpacity], data: [selectedCellClasses] }
     });
 }
 
