@@ -41,6 +41,19 @@ function getListColumnAsArrays(table, name) {
   return out;
 }
 
+// Hard-misread fallback for Arrow files without an is_hard_misread column:
+// background (the last prob column) wins the argmax. Mirrors the JS-side
+// isHardMisread in src/misreads/misreadUtils.js.
+function probIsHardMisread(p) {
+  if (!p || p.length === 0) return false;
+  const last = p.length - 1;
+  let maxIdx = 0;
+  for (let i = 1; i <= last; i++) {
+    if (p[i] > p[maxIdx]) maxIdx = i;
+  }
+  return maxIdx === last;
+}
+
 function uniqueTransferList(list) {
   const out = [];
   const seen = new Set();
@@ -283,9 +296,11 @@ self.onmessage = async (e) => {
         const omp_score = getTypedColumn(table, 'omp_score');
         const omp_intensity = getTypedColumn(table, 'omp_intensity');
         const is_hard_misread = getTypedColumn(table, 'is_hard_misread');
+        // Only needed to derive the misread flag when the column is absent.
+        const neighbour_prob = is_hard_misread ? null : getListColumnAsArrays(table, 'neighbour_prob');
         const n = x ? x.length : 0;
         if (!n) continue;
-        shards.push({ x, y, plane_id, gene_id, omp_score, omp_intensity, is_hard_misread, n });
+        shards.push({ x, y, plane_id, gene_id, omp_score, omp_intensity, is_hard_misread, neighbour_prob, n });
         total += n;
       }
       const positions = new Float32Array(total * 3);
@@ -331,7 +346,9 @@ self.onmessage = async (e) => {
           colors[4*off + 1] = col[1] | 0;
           colors[4*off + 2] = col[2] | 0;
           colors[4*off + 3] = 255;
-          misreadFlags[off] = sh.is_hard_misread ? (sh.is_hard_misread[i] ? 1 : 0) : 0;
+          misreadFlags[off] = sh.is_hard_misread
+            ? (sh.is_hard_misread[i] ? 1 : 0)
+            : (probIsHardMisread(sh.neighbour_prob ? sh.neighbour_prob[i] : null) ? 1 : 0);
           off++;
         }
       }
