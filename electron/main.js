@@ -137,6 +137,22 @@ function createWindow() {
     console.log('Page loaded successfully');
   });
 
+  // Security: the renderer only ever lives at app://index.html. Deny in-app
+  // popups (opening any http(s) link in the user's default browser instead),
+  // and block navigation to anything that is not our own app:// origin.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith('app://')) {
+      event.preventDefault();
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -214,6 +230,14 @@ function registerMBTilesProtocol() {
   });
 }
 
+// Return true when `child` is the same as, or inside, `parent`. Used to stop the
+// app:// handler from serving files outside the folder a request is routed to,
+// e.g. a URL with ../ segments trying to escape the data/tiles/app directory.
+function isPathInside(child, parent) {
+  const rel = path.relative(path.resolve(parent), child);
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+
 // Custom protocol handler
 function registerCustomProtocol() {
   protocol.handle('app', (request) => {
@@ -242,6 +266,7 @@ function registerCustomProtocol() {
     const tilesPath = store.get('tilesPath', '');
 
     let filePath;
+    let baseDir;
 
     // Route Arrow data files to user-selected data folder
     // Handles: arrow_spots/, arrow_cells/, arrow_boundaries/
@@ -250,11 +275,13 @@ function registerCustomProtocol() {
         console.error('Data path not configured');
         return new Response('Not found', { status: 404 });
       }
+      baseDir = dataPath;
       filePath = path.join(dataPath, url);
     }
     // Route tile requests (Unified handler for Loose Files and MBTiles)
     else if (url.startsWith('tiles/')) {
       if (tilesPath) {
+         baseDir = tilesPath;
          const cleanUrl = url.replace('tiles/', '');
          // Try "tiles_{plane}" convention
          const parts = cleanUrl.split('/');
@@ -276,13 +303,22 @@ function registerCustomProtocol() {
     }
     // Route app files to bundled application directory
     else {
-      filePath = path.join(__dirname, '..', url);
+      baseDir = path.join(__dirname, '..');
+      filePath = path.join(baseDir, url);
     }
 
-    console.log('Serving file:', filePath);
+    // Keep the request inside the folder it was routed to. path.join already
+    // normalizes away ../ segments; reject anything that still lands outside.
+    const resolvedPath = path.resolve(filePath);
+    if (!isPathInside(resolvedPath, baseDir)) {
+      console.error('Blocked path traversal attempt:', request.url);
+      return new Response('Forbidden', { status: 403 });
+    }
+
+    console.log('Serving file:', resolvedPath);
 
     // net.fetch with file:// URLs handles MIME types automatically
-    return net.fetch(pathToFileURL(filePath).href);
+    return net.fetch(pathToFileURL(resolvedPath).href);
   });
 }
 
