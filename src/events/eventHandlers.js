@@ -501,8 +501,8 @@ async function handleCellProjectionEnable(state, updateLayersCallback) {
     // If caches are already full, skip plane load and only prepare/flatten features
     try {
         const totalPlanes = window.appState.totalPlanes;
-        const { arrowGeojsonCache } = await import('../layers/boundaryCache.js');
-        if (arrowGeojsonCache && arrowGeojsonCache.size >= totalPlanes) {
+        const { projectionGeojsonCache } = await import('../layers/boundaryCache.js');
+        if (projectionGeojsonCache && projectionGeojsonCache.size >= totalPlanes) {
             await prepareProjectionFromCaches(state);
             updateLayersCallback();
             return;

@@ -22,7 +22,7 @@ export async function loadAllPlanesForProjection(state, updateLayersCallback) {
 
     // Load Arrow boundaries for all planes
     const { loadBoundariesPlane } = await import('../../arrow-loader/lib/arrow-loaders.js');
-    const { arrowBoundaryCache, arrowGeojsonCache } = await import('../layers/boundaryCache.js');
+    const { arrowBoundaryCache, projectionGeojsonCache } = await import('../layers/boundaryCache.js');
     const { transformToTileCoordinates } = await import('../../utils/coordinateTransform.js');
     const { IMG_DIMENSIONS } = await import('../../config/constants.js');
 
@@ -41,10 +41,10 @@ export async function loadAllPlanesForProjection(state, updateLayersCallback) {
             }
 
             // Build GeoJSON cache for this plane
-            if (!arrowGeojsonCache.has(plane)) {
+            if (!projectionGeojsonCache.has(plane)) {
                 const buffers = arrowBoundaryCache.get(plane);
                 if (buffers) {
-                    buildGeoJsonCacheForPlane(plane, buffers, state, arrowGeojsonCache, transformToTileCoordinates, IMG_DIMENSIONS);
+                    buildGeoJsonCacheForPlane(plane, buffers, state, projectionGeojsonCache, transformToTileCoordinates, IMG_DIMENSIONS);
                 }
             }
         } catch (error) {
@@ -57,10 +57,10 @@ export async function loadAllPlanesForProjection(state, updateLayersCallback) {
         loadingIndicator.style.display = 'none';
     }
 
-    console.log(`Finished loading all ${totalPlanes} planes. arrowGeojsonCache has ${arrowGeojsonCache.size} planes cached.`);
+    console.log(`Finished loading all ${totalPlanes} planes. projectionGeojsonCache has ${projectionGeojsonCache.size} planes cached.`);
 
     // Build flattened features array
-    buildFlattenedProjectionFeatures(state, arrowGeojsonCache);
+    buildFlattenedProjectionFeatures(state, projectionGeojsonCache);
 
     // Update layers
     updateLayersCallback();
@@ -69,7 +69,7 @@ export async function loadAllPlanesForProjection(state, updateLayersCallback) {
 /**
  * Build GeoJSON cache for a single plane
  */
-export function buildGeoJsonCacheForPlane(plane, buffers, state, arrowGeojsonCache, transformToTileCoordinates, IMG_DIMENSIONS) {
+export function buildGeoJsonCacheForPlane(plane, buffers, state, geojsonCache, transformToTileCoordinates, IMG_DIMENSIONS) {
     // Transform coordinates to tile space if needed
     if (!buffers._tileTransformed) {
         const src = buffers.positions;
@@ -115,7 +115,7 @@ export function buildGeoJsonCacheForPlane(plane, buffers, state, arrowGeojsonCac
         });
     }
 
-    arrowGeojsonCache.set(plane, { type: 'FeatureCollection', features });
+    geojsonCache.set(plane, { type: 'FeatureCollection', features });
     console.log(`Built GeoJSON cache for plane ${plane}: ${features.length} features`);
 }
 
@@ -163,10 +163,10 @@ export function extractCellProperties(label, state) {
 /**
  * Build flattened projection features array from cache
  */
-export function buildFlattenedProjectionFeatures(state, arrowGeojsonCache) {
+export function buildFlattenedProjectionFeatures(state, geojsonCache) {
     try {
         const flat = [];
-        for (const fc of arrowGeojsonCache.values()) {
+        for (const fc of geojsonCache.values()) {
             if (fc && Array.isArray(fc.features)) flat.push(...fc.features);
         }
         state.cellProjectionFeatures = flat;
@@ -190,9 +190,9 @@ export async function prepareProjectionFromCaches(state) {
     }
 
     try {
-        const { arrowGeojsonCache } = await import('../layers/boundaryCache.js');
+        const { projectionGeojsonCache } = await import('../layers/boundaryCache.js');
         const flat = [];
-        for (const fc of arrowGeojsonCache.values()) {
+        for (const fc of projectionGeojsonCache.values()) {
             if (fc && Array.isArray(fc.features)) flat.push(...fc.features);
         }
         state.cellProjectionFeatures = flat;
