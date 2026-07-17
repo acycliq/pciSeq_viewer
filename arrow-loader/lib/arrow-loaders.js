@@ -5,34 +5,49 @@ let nextId = 1;
 const pending = new Map();
 let config = null;
 
+function ensureWorker() {
+  if (worker) return worker;
+  // Resolve worker URL relative to this module file, not the document
+  const workerUrl = new URL('../workers/arrow-worker.js', import.meta.url);
+  const w = new Worker(workerUrl, { type: 'module' });
+  w.onmessage = (e) => {
+    const { id, ok, type, ...rest } = e.data || {};
+    const resolver = pending.get(id);
+    if (!resolver) return;
+    pending.delete(id);
+    if (ok) resolver.resolve(rest); else resolver.reject(new Error(rest.error || 'Worker error'));
+  };
+  w.onerror = (err) => {
+    // A worker-level error (e.g. a failed import) is fatal: the worker is dead.
+    // Reject everyone waiting, then drop it so the next call() spins up a fresh
+    // worker instead of posting into a dead one and hanging forever.
+    console.error('[arrow-loader] Worker error:', err);
+    const error = new Error(err?.message || 'Arrow worker crashed');
+    for (const [, { reject }] of pending) reject(error);
+    pending.clear();
+    try { w.terminate(); } catch {}
+    if (worker === w) worker = null;
+  };
+  worker = w;
+  return worker;
+}
+
 export function initArrow(configIn) {
   config = configIn || {};
-  if (!worker) {
-    // Resolve worker URL relative to this module file, not the document
-    const workerUrl = new URL('../workers/arrow-worker.js', import.meta.url);
-    worker = new Worker(workerUrl, { type: 'module' });
-    worker.onmessage = (e) => {
-      const { id, ok, type, ...rest } = e.data || {};
-      const resolver = pending.get(id);
-      if (!resolver) return;
-      pending.delete(id);
-      if (ok) resolver.resolve(rest); else resolver.reject(new Error(rest.error || 'Worker error'));
-    };
-    worker.onerror = (err) => {
-      // Surface errors to all pending callers
-      console.error('[arrow-loader] Worker error:', err);
-      for (const [, { reject }] of pending) reject(err);
-      pending.clear();
-    };
-  }
+  ensureWorker();
 }
 
 function call(type, payload) {
-  if (!worker) throw new Error('Arrow worker not initialized. Call initArrow(config) first.');
+  const w = ensureWorker();
   const id = nextId++;
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject });
-    worker.postMessage({ id, type, payload });
+    try {
+      w.postMessage({ id, type, payload });
+    } catch (e) {
+      pending.delete(id);
+      reject(e);
+    }
   });
 }
 
