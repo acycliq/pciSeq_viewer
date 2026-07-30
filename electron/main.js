@@ -106,6 +106,23 @@ protocol.registerSchemesAsPrivileged([
   }
 ]);
 
+// The voxel viewer is one of our own pages and it is opened as a popup on
+// purpose: it reads the selected spots and cells straight off window.opener
+// and calls back into the main window for cell metadata, so it has to keep
+// that link. A window built here in main would have no opener at all.
+// Two urls turn up because the selector opens a blank window first and only
+// sets the real address once it has worked out what is inside the selection.
+function isVoxelViewerPopup(url, frameName) {
+  if (frameName !== 'chunkViewer') {
+    return false;
+  }
+  if (url === 'about:blank') {
+    return true;
+  }
+  const withoutQuery = url.split('?')[0];
+  return url.startsWith('app://') && withoutQuery.endsWith('/voxel-viewer/voxel-viewer.html');
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -140,10 +157,29 @@ function createWindow() {
   // Security: the renderer only ever lives at app://index.html. Deny in-app
   // popups (opening any http(s) link in the user's default browser instead),
   // and block navigation to anything that is not our own app:// origin.
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+  // The voxel viewer is the one allowed popup, see isVoxelViewerPopup.
+  mainWindow.webContents.setWindowOpenHandler(({ url, frameName }) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       shell.openExternal(url);
+      return { action: 'deny' };
     }
+
+    if (isVoxelViewerPopup(url, frameName)) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 1200,
+          height: 800,
+          title: 'Chunk viewer',
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            webSecurity: true
+          }
+        }
+      };
+    }
+
     return { action: 'deny' };
   });
 
