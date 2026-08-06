@@ -20,6 +20,7 @@ import { initColorScheme, getGeneColor } from './colorResolver.js';
 import { renderDonut } from './donutChart.js';
 import { renderClassLegend } from './classLegend.js';
 import { renderGeneTable, renderSpotGeneTable } from './geneTable.js';
+import { initColourTab, setColourSpot } from './colourTab.js';
 import { getFormattedCellCoordinates } from '../../utils/cellFormatting.js';
 import { escapeHtml } from '../../utils/domSafe.js';
 import {
@@ -63,6 +64,7 @@ export function init() {
 
     initPanelState();
     initColorScheme();
+    initColourTab();
 }
 
 /**
@@ -185,6 +187,7 @@ function updateCellInfoHeader(cellData, cellProperties) {
  */
 export function updateSpot(spotData) {
     setLastSpot(spotData);
+    setColourSpot(spotData);
     updateSpotHeader(spotData);
     if (isMinimized()) return;
     renderSpotBody(spotData);
@@ -197,6 +200,7 @@ export function updateSpot(spotData) {
  */
 export function freezeOnSpot(spotData) {
     setLastSpot(spotData);
+    setColourSpot(spotData);
     maximize();
     renderSpotBody(spotData);
     updateSpotHeader(spotData);
@@ -225,10 +229,13 @@ function updateSpotHeader(spotData) {
 
     const id = (spotData.spot_id != null) ? spotData.spot_id : '?';
     const topGene = escapeHtml(String(spotData.topGene || 'Unknown'));
-    const prob = (typeof spotData.topProb === 'number') ? ' - Prob=' + spotData.topProb.toFixed(2) : '';
+    const prob = (typeof spotData.topProb === 'number') ? ' | Prob=' + spotData.topProb.toFixed(2) : '';
+    const coords = (typeof spotData.x === 'number' && typeof spotData.y === 'number')
+        ? ' | (x: ' + Math.round(spotData.x) + ', y: ' + Math.round(spotData.y) + ')' : '';
 
-    // Same format whether minimized or maximized: "Spot: <id> - <gene> - Prob=0.79".
+    // Same format whether minimized or maximized:
+    // "Spot: <id> | <gene> | Prob=0.79 | (x: 4709, y: 2220)".
     titleElement.innerHTML =
         '<b><strong>Spot: </strong>' + id +
-        ' - <strong>' + topGene + '</strong>' + prob + '</b>';
+        ' | <strong>' + topGene + '</strong>' + prob + coords + '</b>';
 }

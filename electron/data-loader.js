@@ -470,6 +470,45 @@ ipcMain.handle('get-dataset-metadata', async () => {
   };
 });
 
+// --- Per-spot raw colours (viewer colour tab) ---------------------------- //
+// spot_colours.bin is (N, R, C) float32, row-major by spot_id. Too large to load
+// whole (~1.3 GB), so we read one spot's R*C floats on demand. colours_meta.json
+// (next to arrow_spots) gives R, C, n_spots. Cached per data folder.
+let _coloursMeta = null;
+let _coloursMetaFor = null;
+
+function loadColoursMeta(dataPath) {
+  if (_coloursMeta && _coloursMetaFor === dataPath) return _coloursMeta;
+  const metaPath = path.join(dataPath, 'arrow_spots', 'colours_meta.json');
+  _coloursMeta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+  _coloursMetaFor = dataPath;
+  return _coloursMeta;
+}
+
+ipcMain.handle('read-spot-colours', (event, spotId) => {
+  try {
+    const dataPath = store.get('dataPath', '');
+    if (!dataPath) return { success: false, error: 'no data path configured' };
+    const meta = loadColoursMeta(dataPath);
+    const R = meta.R, C = meta.C, n = meta.n_spots;
+    const sid = Number(spotId);
+    if (!Number.isInteger(sid) || sid < 0 || sid >= n) {
+      return { success: false, error: `spot_id ${spotId} out of range [0, ${n})` };
+    }
+    const count = R * C;
+    const bytes = count * 4;
+    const fd = fs.openSync(path.join(dataPath, 'spot_colours.bin'), 'r');
+    const buf = Buffer.allocUnsafe(bytes);
+    fs.readSync(fd, buf, 0, bytes, sid * bytes);
+    fs.closeSync(fd);
+    const values = new Array(count);
+    for (let i = 0; i < count; i++) values[i] = buf.readFloatLE(i * 4);
+    return { success: true, R, C, values };
+  } catch (err) {
+    return { success: false, error: String(err && err.message || err) };
+  }
+});
+
 module.exports = {
   init,
   openDatabase,

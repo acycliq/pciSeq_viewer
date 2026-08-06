@@ -45,6 +45,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkSpotQuery: (spotId) => ipcRenderer.invoke('check-spot-binary-query', { spotId }),
   onCheckSpotState: (handler) => ipcRenderer.on('check-spot-state', (_e, state) => handler(state)),
 
+  // Per-spot raw colours for the colour tab: reads one spot's R*C floats on demand
+  readSpotColours: (spotId) => ipcRenderer.invoke('read-spot-colours', spotId),
+
   // Import colour schemes from menu
   onImportGeneColors: (handler) => ipcRenderer.on('import-gene-colors', (_e, data) => handler(data)),
   onImportClassColors: (handler) => ipcRenderer.on('import-class-colors', (_e, data) => handler(data)),

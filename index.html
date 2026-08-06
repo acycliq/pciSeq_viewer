@@ -573,20 +573,48 @@
             <button id="cellInfoToggle" class="widget-close-btn" title="Minimize" aria-label="Minimize panel">&ndash;</button>
         </div>
         <div class="cell-info-content">
-            <div class="cell-info-layout">
-                <!-- LEFT: Gene Counts Table -->
-                <div class="cell-info-column cell-info-genes">
-                    <table id="geneCountsTable" class="display compact"></table>
-                </div>
-                <!-- CENTER: Donut Chart (clean, no labels) -->
-                <div class="cell-info-column cell-info-donut">
-                    <div id="cellInfoChart">
-                        <svg width="180" height="180"></svg>
+            <!-- Tabs (spot mode only): Genes = donut, Colours = observed vs bled code -->
+            <div id="cellInfoTabs" class="cell-info-tabs">
+                <button class="cell-info-tab active" data-tab="genes">Genes</button>
+                <button class="cell-info-tab" data-tab="colours">Colours</button>
+            </div>
+            <!-- TAB: Genes (donut + table + legend) -->
+            <div id="cellInfoTabGenes" class="cell-info-tabpane active">
+                <div class="cell-info-layout">
+                    <!-- LEFT: Gene Counts Table -->
+                    <div class="cell-info-column cell-info-genes">
+                        <table id="geneCountsTable" class="display compact"></table>
+                    </div>
+                    <!-- CENTER: Donut Chart (clean, no labels) -->
+                    <div class="cell-info-column cell-info-donut">
+                        <div id="cellInfoChart">
+                            <svg width="180" height="180"></svg>
+                        </div>
+                    </div>
+                    <!-- RIGHT: Class Legend (scrollable) -->
+                    <div class="cell-info-column cell-info-legend">
+                        <div id="classLegend"></div>
                     </div>
                 </div>
-                <!-- RIGHT: Class Legend (scrollable) -->
-                <div class="cell-info-column cell-info-legend">
-                    <div id="classLegend"></div>
+            </div>
+            <!-- TAB: Colours (observed 7xC vs a gene's bled code) -->
+            <div id="cellInfoTabColours" class="cell-info-tabpane">
+                <div class="colour-tab">
+                    <div class="bled-gene-picker">
+                        <input id="bledGeneSearch" class="bled-gene-search" type="text"
+                               placeholder="Gene (type to search)..." autocomplete="off" spellcheck="false">
+                        <div id="bledGeneList" class="bled-gene-list"></div>
+                    </div>
+                    <div class="colour-heatmaps">
+                        <div class="colour-hm">
+                            <div class="colour-hm-title">Observed</div>
+                            <div id="obsHeatmap" class="heatmap"></div>
+                        </div>
+                        <div class="colour-hm">
+                            <div class="colour-hm-title" id="bledHmTitle">Bled Code</div>
+                            <div id="bledHeatmap" class="heatmap"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -47,9 +47,146 @@
 }
 
 /* Spot mode: the class legend is cell-only, so drop that column and reclaim
-   the space for the donut. */
+   the space for the donut. Also hold a stable width so tab switches don't jump. */
 .cell-info-panel.spot-mode .cell-info-legend {
     display: none;
+}
+.cell-info-panel.spot-mode {
+    min-width: 360px;
+}
+
+/* --- Panel tabs (spot mode: Genes | Colours) --- */
+.cell-info-tabs {
+    display: none;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+.cell-info-panel.spot-mode .cell-info-tabs {
+    display: flex;
+}
+.cell-info-tab {
+    background: rgba(255, 255, 255, 0.05);
+    color: #cbd5e1;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-family: var(--app-font);
+    cursor: pointer;
+}
+.cell-info-tab.active {
+    background: rgba(59, 130, 246, 0.35);
+    color: #fff;
+}
+.cell-info-tabpane {
+    display: none;
+}
+.cell-info-tabpane.active {
+    display: block;
+}
+/* Cell mode never uses tabs: always show the Genes pane, never the Colours pane. */
+.cell-info-panel:not(.spot-mode) #cellInfoTabGenes {
+    display: block;
+}
+.cell-info-panel:not(.spot-mode) #cellInfoTabColours {
+    display: none;
+}
+
+/* --- Colour tab (observed vs bled code) --- */
+.colour-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.bled-gene-picker {
+    position: relative;
+}
+.bled-gene-search {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 5px 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: #e8e8f0;
+    font-size: 12px;
+    font-family: var(--app-font);
+}
+.bled-gene-list {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    max-height: 160px;
+    overflow-y: auto;
+    margin-top: 2px;
+    background: rgba(17, 24, 39, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+}
+.bled-gene-list.open {
+    display: block;
+}
+.bled-gene-item {
+    padding: 4px 8px;
+    font-size: 12px;
+    color: #cbd5e1;
+    cursor: pointer;
+}
+.bled-gene-item:hover {
+    background: rgba(59, 130, 246, 0.25);
+}
+.bled-gene-item.sel {
+    color: #fff;
+    font-weight: 600;
+}
+.bled-gene-empty {
+    padding: 6px 8px;
+    font-size: 11px;
+    color: #6b7280;
+}
+.colour-heatmaps {
+    display: flex;
+    gap: 28px;
+}
+.colour-hm {
+    flex: 1 1 0;
+    min-width: 0;
+}
+.colour-hm-title {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-bottom: 4px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.heatmap .hm-grid {
+    display: grid;
+    gap: 1px;
+}
+.hm-cell {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    min-width: 7px;
+    border-radius: 1px;
+}
+.hm-collabel,
+.hm-rowlabel {
+    font-size: 8px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.hm-msg {
+    font-size: 11px;
+    color: #6b7280;
+    padding: 10px;
+    text-align: center;
 }
 
 .cell-info-header {
