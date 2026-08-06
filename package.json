@@ -1,6 +1,6 @@
 {
-  "name": "pciSeq_viewer",
-  "version": "0.0.9-alpha.2",
+  "name": "spot_viewer",
+  "version": "0.0.1",
   "description": "Desktop viewer for visualizing spatial transcriptomics data",
   "main": "electron/main.js",
   "scripts": {
@@ -18,8 +18,8 @@
     "build:win:portable": "electron-builder --win portable"
   },
   "build": {
-    "appId": "com.pciseq.viewer",
-    "productName": "pciSeq_viewer",
+    "appId": "com.pciseq.spot_viewer",
+    "productName": "spot_viewer",
     "files": [
       "index.html",
       "styles.css",
