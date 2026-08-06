@@ -471,8 +471,8 @@ ipcMain.handle('get-dataset-metadata', async () => {
 });
 
 // --- Per-spot raw colours (viewer colour tab) ---------------------------- //
-// spot_colours.bin is (N, R, C) float32, row-major by spot_id. Too large to load
-// whole (~1.3 GB), so we read one spot's R*C floats on demand. colours_meta.json
+// diagnostics/diagnostics.bin is (N, R, C) float32, row-major by spot_id. Too large
+// to load whole (~1.3 GB), so we read one spot's R*C floats on demand. colours_meta.json
 // (next to arrow_spots) gives R, C, n_spots. Cached per data folder.
 let _coloursMeta = null;
 let _coloursMetaFor = null;
@@ -497,7 +497,7 @@ ipcMain.handle('read-spot-colours', (event, spotId) => {
     }
     const count = R * C;
     const bytes = count * 4;
-    const fd = fs.openSync(path.join(dataPath, 'spot_colours.bin'), 'r');
+    const fd = fs.openSync(path.join(dataPath, 'diagnostics', 'diagnostics.bin'), 'r');
     const buf = Buffer.allocUnsafe(bytes);
     fs.readSync(fd, buf, 0, bytes, sid * bytes);
     fs.closeSync(fd);
