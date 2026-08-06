@@ -41,15 +41,14 @@
     border-bottom-color: rgba(59, 130, 246, 0.3);
 }
 
-.cell-info-panel.frozen:not(.minimized) .cell-info-header #cellInfoTitle::after {
-    content: ' • frozen — Esc or click map to resume';
-    font-size: 10px;
-    font-weight: 400;
-    color: rgba(59, 130, 246, 0.7);
-}
-
 /* Minimized: collapse to the header strip only. */
 .cell-info-panel.minimized .cell-info-content {
+    display: none;
+}
+
+/* Spot mode: the class legend is cell-only, so drop that column and reclaim
+   the space for the donut. */
+.cell-info-panel.spot-mode .cell-info-legend {
     display: none;
 }
 

@@ -53,3 +53,34 @@ export function renderGeneTable(cellData) {
 
     tableEl.innerHTML = html;
 }
+
+/**
+ * Render the per-spot gene-probability table (spot mode). Left column of the
+ * panel; mirrors the cell table but shows gene -> probability.
+ * @param {Object} spotData - Spot data with ClassName[] (gene names) and Prob[]
+ */
+export function renderSpotGeneTable(spotData) {
+    const tableEl = document.getElementById('geneCountsTable');
+    if (!tableEl) return;
+
+    const names = Array.isArray(spotData.ClassName) ? spotData.ClassName : [];
+    const probs = Array.isArray(spotData.Prob) ? spotData.Prob : [];
+    const N = Math.min(names.length, probs.length);
+
+    const rows = [];
+    for (let i = 0; i < N; i++) rows.push({ gene: names[i] || '', prob: Number(probs[i]) || 0 });
+    rows.sort((a, b) => b.prob - a.prob);
+
+    let html = '';
+    html += '<thead><tr><th>Gene</th><th style="text-align:right; padding-left: 40px;">Prob</th></tr></thead>';
+    html += '<tbody>';
+    for (let j = 0; j < rows.length; j++) {
+        html += '<tr>' +
+                '<td>' + escapeHtml(rows[j].gene) + '</td>' +
+                '<td style="text-align:right; white-space:nowrap; padding-left: 40px;">' + rows[j].prob.toFixed(3) + '</td>' +
+                '</tr>';
+    }
+    html += '</tbody>';
+
+    tableEl.innerHTML = html;
+}

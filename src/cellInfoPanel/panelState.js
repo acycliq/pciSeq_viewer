@@ -16,19 +16,42 @@
 let _minimized = false;   // collapsed to strip
 let _frozen = false;      // content locked against hover
 let _lastCell = null;     // last cell data passed to the panel
+let _lastSpot = null;     // last spot data passed to the panel
+let _mode = 'cell';       // 'cell' or 'spot': which payload the panel is showing
 
 function panelEl() {
     return document.getElementById('cellInfoPanel');
 }
 
-/** Cache the most recently seen cell data. */
+/** Cache the most recently seen cell data. Switches the panel to cell mode. */
 export function setLastCell(cellData) {
     _lastCell = cellData;
+    _mode = 'cell';
+    const panel = panelEl();
+    if (panel) panel.classList.remove('spot-mode');
 }
 
 /** The most recently seen cell data, or null if none yet. */
 export function getLastCell() {
     return _lastCell;
+}
+
+/** Cache the most recently seen spot data. Switches the panel to spot mode. */
+export function setLastSpot(spotData) {
+    _lastSpot = spotData;
+    _mode = 'spot';
+    const panel = panelEl();
+    if (panel) panel.classList.add('spot-mode');
+}
+
+/** The most recently seen spot data, or null if none yet. */
+export function getLastSpot() {
+    return _lastSpot;
+}
+
+/** Which payload the panel currently shows: 'cell' or 'spot'. */
+export function getMode() {
+    return _mode;
 }
 
 export function isMinimized() {

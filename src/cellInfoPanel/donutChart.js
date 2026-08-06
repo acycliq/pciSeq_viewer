@@ -62,11 +62,15 @@ function initDonut() {
 }
 
 /**
- * Render or update the donut chart with cell classification data.
- * @param {Object} dataset - Cell data with ClassName[] and Prob[]
+ * Render or update the donut chart with class/gene probability data.
+ * @param {Object} dataset - Data with ClassName[] (slice labels) and Prob[] (values)
+ * @param {Object} [opts] - { colorFor?: (label) => hex }: slice color resolver;
+ *                          defaults to getClassColor (cell classes). Spot mode
+ *                          passes a gene-color resolver so slices match the map.
  */
-export function renderDonut(dataset) {
+export function renderDonut(dataset, opts = {}) {
     const percentFormat = d3.format('.2%');
+    const colorFor = (opts && typeof opts.colorFor === 'function') ? opts.colorFor : getClassColor;
 
     if (!dataset || !dataset.ClassName || !dataset.Prob ||
         dataset.ClassName.length === 0 || dataset.Prob.length === 0) {
@@ -120,7 +124,7 @@ export function renderDonut(dataset) {
         .attr('data-class', function(d) { return d.data.label; })
         .attr('role', 'img')
         .attr('aria-label', function(d) { return d.data.label + ': ' + percentFormat(d.data.value); })
-        .style('fill', function(d) { return getClassColor(d.data.label); })
+        .style('fill', function(d) { return colorFor(d.data.label); })
         .transition().duration(1000)
         .attrTween('d', function(d) {
             this._current = this._current || { startAngle: d.startAngle, endAngle: d.startAngle };

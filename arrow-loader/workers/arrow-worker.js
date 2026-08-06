@@ -41,6 +41,31 @@ function getListColumnAsArrays(table, name) {
   return out;
 }
 
+// Flatten a ragged list column into a compact CSR: one contiguous `values`
+// typed array + a per-row `offsets` (Uint32Array, length rows+1). Row i spans
+// values[offsets[i] .. offsets[i+1]]. Keeps millions of small per-spot lists as
+// two flat buffers (transferable) instead of an array-of-arrays. Returns null
+// when the column is absent.
+function listColumnToFlat(table, name, Ctor) {
+  const col = table.getChild(name);
+  if (!col) return null;
+  const n = col.length;
+  const offsets = new Uint32Array(n + 1);
+  const rows = new Array(n);
+  let total = 0;
+  for (let i = 0; i < n; i++) {
+    const v = col.get(i);
+    const a = (v && typeof v.toArray === 'function') ? v.toArray() : (v || []);
+    rows[i] = a;
+    total += a.length;
+    offsets[i + 1] = total;
+  }
+  const values = new Ctor(total);
+  let off = 0;
+  for (let i = 0; i < n; i++) { values.set(rows[i], off); off += rows[i].length; }
+  return { values, offsets };
+}
+
 // Hard-misread fallback for Arrow files without an is_hard_misread column:
 // background (the last prob column) wins the argmax. Mirrors the JS-side
 // isHardMisread in src/misreads/misreadUtils.js.
@@ -98,9 +123,18 @@ async function handleLoadSpots(cfg) {
     const is_hard_misread = getTypedColumn(table, 'is_hard_misread');
     const neighbour_array = getListColumnAsArrays(table, 'neighbour_array');
     const neighbour_prob = getListColumnAsArrays(table, 'neighbour_prob');
-    const payload = { x, y, z, plane_id, gene_id, spot_id, neighbour_array, neighbour_prob, omp_score, omp_intensity, is_hard_misread };
+    // Per-spot gene distribution (spot_caller export): flattened to CSR typed
+    // arrays. gene_array (gene ids) and gene_probs share identical row lengths,
+    // so one offsets array (from gene_array) indexes both.
+    const geneArrFlat = listColumnToFlat(table, 'gene_array', Int32Array);
+    const geneProbFlat = listColumnToFlat(table, 'gene_probs', Float32Array);
+    const spot_gene_ids = geneArrFlat ? geneArrFlat.values : null;
+    const spot_gene_probs = geneProbFlat ? geneProbFlat.values : null;
+    const spot_gene_offsets = geneArrFlat ? geneArrFlat.offsets : null;
+    const payload = { x, y, z, plane_id, gene_id, spot_id, neighbour_array, neighbour_prob, omp_score, omp_intensity, is_hard_misread,
+                      spot_gene_ids, spot_gene_probs, spot_gene_offsets };
     // collect transfers
-    [x,y,z,plane_id,gene_id,spot_id,omp_score,omp_intensity,is_hard_misread].forEach(a => a && transfers.push(a.buffer));
+    [x,y,z,plane_id,gene_id,spot_id,omp_score,omp_intensity,is_hard_misread,spot_gene_ids,spot_gene_probs,spot_gene_offsets].forEach(a => a && transfers.push(a.buffer));
     shards.push(payload);
   }
   return { shards, transfers: uniqueTransferList(transfers) };

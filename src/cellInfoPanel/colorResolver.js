@@ -74,3 +74,34 @@ export function getClassColor(className) {
     // 3) Default gray
     return '#C0C0C0';
 }
+
+// --- Gene colors (spot mode) -------------------------------------------- //
+// Spot donut slices are colored by gene using the same glyph palette as the
+// map markers (glyphSettings), so the donut matches the dots on screen. Built
+// lazily and cached; 'Generic' is the fallback entry.
+let _geneColorMap = null;
+
+function ensureGeneColorMap() {
+    if (_geneColorMap) return _geneColorMap;
+    _geneColorMap = new Map();
+    try {
+        if (typeof glyphSettings === 'function') {
+            for (const s of glyphSettings()) {
+                if (s && s.gene) _geneColorMap.set(s.gene, s.color);
+            }
+        }
+    } catch (e) {}
+    return _geneColorMap;
+}
+
+/**
+ * Resolve the display color for a gene, matching the map's glyph palette.
+ * @param {string} geneName
+ * @returns {string} hex color string
+ */
+export function getGeneColor(geneName) {
+    const map = ensureGeneColorMap();
+    const c = map.get(geneName);
+    if (c) return c;
+    return map.get('Generic') || '#C0C0C0';
+}

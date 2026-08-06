@@ -16,11 +16,12 @@
  *   unfreeze()             - resume hover updates (Esc / empty-map click)
  */
 
-import { initColorScheme } from './colorResolver.js';
+import { initColorScheme, getGeneColor } from './colorResolver.js';
 import { renderDonut } from './donutChart.js';
 import { renderClassLegend } from './classLegend.js';
-import { renderGeneTable } from './geneTable.js';
+import { renderGeneTable, renderSpotGeneTable } from './geneTable.js';
 import { getFormattedCellCoordinates } from '../../utils/cellFormatting.js';
+import { escapeHtml } from '../../utils/domSafe.js';
 import {
     init as initPanelState,
     minimize,
@@ -29,7 +30,10 @@ import {
     unfreeze as unfreezeState,
     isMinimized,
     setLastCell,
-    getLastCell
+    getLastCell,
+    setLastSpot,
+    getLastSpot,
+    getMode
 } from './panelState.js';
 
 // Re-export so map handlers (Esc, empty-map click) can resume hover updates.
@@ -43,16 +47,17 @@ export function init() {
     const toggleBtn = document.getElementById('cellInfoToggle');
     if (toggleBtn) {
         toggleBtn.addEventListener('click', () => {
-            const last = getLastCell();
+            const spotMode = getMode() === 'spot';
+            const last = spotMode ? getLastSpot() : getLastCell();
             if (isMinimized()) {
                 maximize();
-                // Re-render the cached cell now that the body is visible again.
-                if (last) renderBody(last);
+                // Re-render the cached payload now that the body is visible again.
+                if (last) { spotMode ? renderSpotBody(last) : renderBody(last); }
             } else {
                 minimize();
             }
             // Header switches between full and compact form with the state.
-            if (last) updateCellInfoHeader(last, last);
+            if (last) { spotMode ? updateSpotHeader(last) : updateCellInfoHeader(last, last); }
         });
     }
 
@@ -166,4 +171,64 @@ function updateCellInfoHeader(cellData, cellProperties) {
         '<b><strong>Cell: </strong>' + cellNum +
         ', <strong>Gene Counts: </strong>' + totalTrunc +
         coordsStr + '</b>';
+}
+
+// === Spot mode ============================================================ //
+// The same panel, driven by a hovered spot instead of a cell. The donut shows
+// the per-spot gene-probability distribution (gene_array / gene_probs), colored
+// by gene to match the map markers. Cell mode above is untouched.
+
+/**
+ * Live update from spot hover. Caches the spot, keeps the header strip current,
+ * and renders the donut + gene/prob table only when maximized.
+ * @param {Object} spotData - from spotHoverHandler: { spot_id, topGene, topProb, ClassName[], Prob[], ... }
+ */
+export function updateSpot(spotData) {
+    setLastSpot(spotData);
+    updateSpotHeader(spotData);
+    if (isMinimized()) return;
+    renderSpotBody(spotData);
+}
+
+/**
+ * Update + auto-maximize + freeze on a clicked spot, so the user can move onto
+ * the panel and inspect the donut/table without it changing.
+ * @param {Object} spotData - spot data from the click event
+ */
+export function freezeOnSpot(spotData) {
+    setLastSpot(spotData);
+    maximize();
+    renderSpotBody(spotData);
+    updateSpotHeader(spotData);
+    freeze();
+}
+
+/**
+ * Render the spot body: gene-colored donut + gene/prob table. The class legend
+ * (cell-only) is cleared in spot mode.
+ * @param {Object} spotData - Normalized spot data
+ */
+function renderSpotBody(spotData) {
+    renderDonut(spotData, { colorFor: getGeneColor });
+    renderSpotGeneTable(spotData);
+    const legend = document.getElementById('classLegend');
+    if (legend) legend.innerHTML = '';
+}
+
+/**
+ * Update the panel header for a spot: "Spot: <id> <topGene> p=0.98".
+ * @param {Object} spotData - Spot data with spot_id, topGene, topProb
+ */
+function updateSpotHeader(spotData) {
+    const titleElement = document.getElementById('cellInfoTitle');
+    if (!titleElement) return;
+
+    const id = (spotData.spot_id != null) ? spotData.spot_id : '?';
+    const topGene = escapeHtml(String(spotData.topGene || 'Unknown'));
+    const prob = (typeof spotData.topProb === 'number') ? ' - Prob=' + spotData.topProb.toFixed(2) : '';
+
+    // Same format whether minimized or maximized: "Spot: <id> - <gene> - Prob=0.79".
+    titleElement.innerHTML =
+        '<b><strong>Spot: </strong>' + id +
+        ' - <strong>' + topGene + '</strong>' + prob + '</b>';
 }

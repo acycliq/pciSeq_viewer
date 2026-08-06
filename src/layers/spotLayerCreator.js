@@ -13,6 +13,7 @@ import {
     transformFromTileCoordinates
 } from '../../utils/coordinateTransform.js';
 import { ensureArrowInitialized } from './arrowInit.js';
+import { handleSpotHover, handleSpotClick } from '../ui/spotHoverHandler.js';
 
 const { COORDINATE_SYSTEM, IconLayer, DataFilterExtension, ScatterplotLayer } = deck;
 
@@ -222,6 +223,7 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             id: 'genes-combined',
             data: combined,
             pickable: true,
+            onHover: handleSpotHover,
             onClick: (info) => {
                 if (!info?.object) return;
                 const evt = info.srcEvent || info.sourceEvent;
@@ -229,6 +231,8 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
                 if (ctrl && window.appState?.checkSpotConnected && typeof window.openCheckSpotModal === 'function') {
                     const spotId = info.object.spot_id ?? info.object.spotId;
                     if (spotId != null) window.openCheckSpotModal(spotId);
+                } else {
+                    handleSpotClick(info);
                 }
             },
             coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
@@ -268,6 +272,7 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
             data: filtered,
             visible: selectedGenes.has(gene),
             pickable: true,
+            onHover: handleSpotHover,
             onClick: (info) => {
                 if (!info?.object) return;
                 const evt = info.srcEvent || info.sourceEvent;
@@ -275,6 +280,8 @@ export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIcon
                 if (ctrl && window.appState?.checkSpotConnected && typeof window.openCheckSpotModal === 'function') {
                     const spotId = info.object.spot_id ?? info.object.spotId;
                     if (spotId != null) window.openCheckSpotModal(spotId);
+                } else {
+                    handleSpotClick(info);
                 }
             },
             coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
