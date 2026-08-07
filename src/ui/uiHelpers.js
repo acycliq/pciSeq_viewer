@@ -8,6 +8,7 @@
 import { getCellInfo } from '../data/tooltipDiagnostics.js';
 import { escapeHtml } from '../../utils/domSafe.js';
 import { SPOT_PICKABLE_MIN_ZOOM } from '../../config/constants.js';
+import { getSpotDistribution } from './spotHoverHandler.js';
 
 // Note: Arrow-only runtime; no TSV-specific palette usage here
 
@@ -505,6 +506,16 @@ export function showTooltip(info, tooltipElement) {
                 spotInfo = `<strong>Spot ID:</strong> ${info.object.spot_id}<br>`;
             }
 
+            // Probability of the called gene, from the per-spot distribution (gene_probs).
+            let geneProbInfo = '';
+            if (info.object.spot_id !== undefined) {
+                const dist = getSpotDistribution(info.object.spot_id);
+                if (dist && Array.isArray(dist.names)) {
+                    const idx = dist.names.indexOf(gene);
+                    if (idx >= 0) geneProbInfo = `<strong>Gene Prob:</strong> ${dist.probs[idx].toFixed(3)}<br>`;
+                }
+            }
+
             // Get color information
             let colorInfo = '';
             if (typeof glyphSettings === 'function') {
@@ -535,7 +546,7 @@ export function showTooltip(info, tooltipElement) {
             }
 
             content = `${spotInfo}<strong>Gene:</strong> ${escapeHtml(gene)}<br>
-                      ${colorInfo}<strong>Coords:</strong> ${coords}<br>
+                      ${geneProbInfo}${colorInfo}<strong>Coords:</strong> ${coords}<br>
                       <strong>Plane:</strong> ${planeId}<br>
                       ${parentInfo}${qualityInfo}`;
 
