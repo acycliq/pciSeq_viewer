@@ -84,13 +84,11 @@ let _geneColorMap = null;
 function ensureGeneColorMap() {
     if (_geneColorMap) return _geneColorMap;
     _geneColorMap = new Map();
-    try {
-        if (typeof glyphSettings === 'function') {
-            for (const s of glyphSettings()) {
-                if (s && s.gene) _geneColorMap.set(s.gene, s.color);
-            }
+    if (typeof glyphSettings === 'function') {
+        for (const s of glyphSettings()) {
+            if (s && s.gene) _geneColorMap.set(s.gene, s.color);
         }
-    } catch (e) {}
+    }
     return _geneColorMap;
 }
 

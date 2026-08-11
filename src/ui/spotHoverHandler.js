@@ -11,6 +11,9 @@
 import { updateSpot, freezeOnSpot } from '../cellInfoPanel/index.js';
 import { isFrozen } from '../cellInfoPanel/panelState.js';
 
+// Warn only once when a shard breaks the contiguity contract, not on every hover.
+let _warnedNonContiguous = false;
+
 /**
  * Look up a spot's gene distribution from the CSR arrays carried on the loaded
  * arrow shards (spot_gene_ids / spot_gene_probs / spot_gene_offsets). Returns
@@ -31,6 +34,18 @@ export function getSpotDistribution(spotId) {
         const last = ids[ids.length - 1];
         if (spotId < first || spotId > last) continue;      // not in this shard
         if (!sh.spot_gene_ids || !sh.spot_gene_offsets) return null;  // no distribution in data
+
+        // Row indexing below requires spot_id to be a contiguous ascending arange
+        // within the shard (spot_caller export contract). The endpoint check is
+        // O(1) and catches filtered/gapped ids that would silently return the
+        // wrong spot's distribution.
+        if (last - first !== ids.length - 1) {
+            if (!_warnedNonContiguous) {
+                _warnedNonContiguous = true;
+                console.warn('spot_id is not a contiguous arange within a shard; per-spot gene distributions disabled');
+            }
+            return null;
+        }
 
         const row = spotId - first;                         // spot_id is a contiguous arange
         const start = sh.spot_gene_offsets[row];

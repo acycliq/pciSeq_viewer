@@ -24,7 +24,9 @@ const SPOTS_BASE = 'app://arrow_spots/';
 let _activeTab = 'genes';
 let _spot = null;            // current spot { spot_id, topGene, ... }
 let _selectedGene = null;    // gene whose bled code is shown
+let _manualGene = null;      // gene the user picked in the typeahead; survives hover until the box is cleared
 let _observed = null;        // { R, C, values:number[] } for the current spot
+let _observedSpotId = null;  // spot the _observed grid belongs to
 let _bled = null;            // { R, C, G, values: Float32Array } loaded once
 let _geneNames = [];
 let _nameToId = new Map();
@@ -62,7 +64,15 @@ export function initColourTab() {
     const search = document.getElementById('bledGeneSearch');
     if (search) {
         const deb = debounce((term) => renderGeneList(term), 200);
-        search.addEventListener('input', (e) => deb(e.target.value));
+        search.addEventListener('input', (e) => {
+            // Clearing the box resumes following the hovered spot's top gene.
+            if (e.target.value === '' && _manualGene) {
+                _manualGene = null;
+                _selectedGene = _spot ? _spot.topGene : null;
+                drawBoth();
+            }
+            deb(e.target.value);
+        });
         search.addEventListener('focus', (e) => renderGeneList(e.target.value));
         search.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -90,7 +100,8 @@ function switchTab(tab) {
 /** Called by the panel when the current spot changes (hover / click-to-freeze). */
 export function setColourSpot(spotData) {
     _spot = spotData;
-    if (spotData && spotData.topGene) _selectedGene = spotData.topGene;
+    // Follow the spot's top gene unless the user picked a gene to compare across spots.
+    if (spotData && spotData.topGene) _selectedGene = _manualGene || spotData.topGene;
     if (_activeTab === 'colours') refreshColours();
 }
 
@@ -101,14 +112,19 @@ const _debouncedObserved = debounce(async (spotId, token) => {
         if (token !== _fetchToken) return;               // a newer spot superseded this read
         if (!res || !res.success) {
             _observed = null;
+            _observedSpotId = null;
             setHeatmapMessage('obsHeatmap', (res && res.error) || 'no colours');
+            drawBoth();     // still refresh the bled code (unscaled) for the new spot
             return;
         }
         _observed = { R: res.R, C: res.C, values: res.values };
+        _observedSpotId = spotId;
         drawBoth();
     } catch (e) {
         _observed = null;
+        _observedSpotId = null;
         setHeatmapMessage('obsHeatmap', String(e && e.message || e));
+        drawBoth();
     }
 }, 120);
 
@@ -124,10 +140,23 @@ async function refreshColours() {
     if (!_selectedGene) _selectedGene = _spot.topGene;
     const search = document.getElementById('bledGeneSearch');
     if (search && document.activeElement !== search) search.value = _selectedGene || '';
+    if (_observedSpotId === _spot.spot_id) {
+        drawBoth();     // same spot (tab switch / gene change): redraw right away
+        return;
+    }
+    // Spot changed: leave both grids on screen and redraw them together once the
+    // observed read lands, so the panel updates in one step instead of two. The
+    // in-place cell update in renderHeatmap crossfades old colours to new ones.
+    // Drawing nothing here also means the bled code is never brightness-scaled
+    // against the previous spot's observed values.
+    _observed = null;
     _fetchToken++;
-    setHeatmapMessage('obsHeatmap', 'loading...');
     _debouncedObserved(_spot.spot_id, _fetchToken);
-    drawBoth();                                          // draw bled now; observed follows
+    if (!document.querySelector('#obsHeatmap .hm-grid')) {
+        // First open: there are no grids to keep on screen yet.
+        setHeatmapMessage('obsHeatmap', 'loading...');
+        setHeatmapMessage('bledHeatmap', 'loading...');
+    }
 }
 
 function bledFor(geneName) {
@@ -178,6 +207,20 @@ function renderHeatmap(id, grid, scale) {
     const el = document.getElementById(id);
     if (!el) return;
     const { R, C, values } = grid;
+
+    // Reuse the existing grid when the shape matches: updating cell colours in
+    // place lets the background-color transition crossfade old to new, instead
+    // of rebuilding the DOM (which would make colours snap).
+    const cells = el.querySelectorAll('.hm-grid .hm-cell');
+    if (cells.length === R * C) {
+        for (let i = 0; i < cells.length; i++) {
+            const v = values[i];
+            cells[i].style.background = scale(v);
+            cells[i].title = 'R' + (Math.floor(i / C) + 1) + ' C' + ((i % C) + 1) + ': ' + v.toFixed(3);
+        }
+        return;
+    }
+
     let html = '<div class="hm-grid" style="grid-template-columns: auto repeat(' + C + ', 1fr);">';
     html += '<div class="hm-corner"></div>';
     for (let c = 0; c < C; c++) html += '<div class="hm-collabel">' + (c + 1) + '</div>';
@@ -220,6 +263,7 @@ function renderGeneList(term) {
 
 function selectGene(name) {
     _selectedGene = name;
+    _manualGene = name;
     const search = document.getElementById('bledGeneSearch');
     if (search) search.value = name;
     closeGeneList();

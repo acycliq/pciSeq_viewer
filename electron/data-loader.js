@@ -499,8 +499,11 @@ ipcMain.handle('read-spot-colours', (event, spotId) => {
     const bytes = count * 4;
     const fd = fs.openSync(path.join(dataPath, 'diagnostics', 'diagnostics.bin'), 'r');
     const buf = Buffer.allocUnsafe(bytes);
-    fs.readSync(fd, buf, 0, bytes, sid * bytes);
+    const bytesRead = fs.readSync(fd, buf, 0, bytes, sid * bytes);
     fs.closeSync(fd);
+    if (bytesRead !== bytes) {
+      return { success: false, error: `diagnostics.bin too short for spot_id ${sid}: read ${bytesRead} of ${bytes} bytes (check colours_meta.json n_spots)` };
+    }
     const values = new Array(count);
     for (let i = 0; i < count; i++) values[i] = buf.readFloatLE(i * 4);
     return { success: true, R, C, values };

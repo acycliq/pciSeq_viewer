@@ -66,6 +66,22 @@ function listColumnToFlat(table, name, Ctor) {
   return { values, offsets };
 }
 
+// Flatten a ragged list column's values using offsets already computed from a
+// sibling column with identical row lengths. Single pass, no second offsets
+// array: cheaper than listColumnToFlat on the load hot path. Returns null when
+// the column is absent.
+function listColumnValues(table, name, Ctor, offsets) {
+  const col = table.getChild(name);
+  if (!col) return null;
+  const values = new Ctor(offsets[offsets.length - 1]);
+  for (let i = 0; i < col.length; i++) {
+    const v = col.get(i);
+    const a = (v && typeof v.toArray === 'function') ? v.toArray() : (v || []);
+    values.set(a, offsets[i]);
+  }
+  return values;
+}
+
 // Hard-misread fallback for Arrow files without an is_hard_misread column:
 // background (the last prob column) wins the argmax. Mirrors the JS-side
 // isHardMisread in src/misreads/misreadUtils.js.
@@ -125,12 +141,12 @@ async function handleLoadSpots(cfg) {
     const neighbour_prob = getListColumnAsArrays(table, 'neighbour_prob');
     // Per-spot gene distribution (spot_caller export): flattened to CSR typed
     // arrays. gene_array (gene ids) and gene_probs share identical row lengths,
-    // so one offsets array (from gene_array) indexes both.
+    // so one offsets array (from gene_array) indexes both. Without gene_array
+    // the probs are unusable, so they are skipped too.
     const geneArrFlat = listColumnToFlat(table, 'gene_array', Int32Array);
-    const geneProbFlat = listColumnToFlat(table, 'gene_probs', Float32Array);
     const spot_gene_ids = geneArrFlat ? geneArrFlat.values : null;
-    const spot_gene_probs = geneProbFlat ? geneProbFlat.values : null;
     const spot_gene_offsets = geneArrFlat ? geneArrFlat.offsets : null;
+    const spot_gene_probs = geneArrFlat ? listColumnValues(table, 'gene_probs', Float32Array, geneArrFlat.offsets) : null;
     const payload = { x, y, z, plane_id, gene_id, spot_id, neighbour_array, neighbour_prob, omp_score, omp_intensity, is_hard_misread,
                       spot_gene_ids, spot_gene_probs, spot_gene_offsets };
     // collect transfers

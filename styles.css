@@ -173,6 +173,7 @@
     aspect-ratio: 1 / 1;
     min-width: 7px;
     border-radius: 1px;
+    transition: background-color 180ms ease;
 }
 .hm-collabel,
 .hm-rowlabel {
