@@ -13,6 +13,10 @@ let hasGeneInefficiency = false;
 let hasBonus = false;
 let hasMrf = false;
 let hasEffectiveBeta = false;
+// Cells the tie freezing pinned carry their own eta_bar and log_prior, from
+// the iteration they were pinned on. Without those the component chart cannot
+// rebuild the class we are showing for them, see the frozen_* columns.
+let hasFrozen = false;
 
 // References from main.js (set via init)
 let mainWindow = null;
@@ -65,7 +69,10 @@ function openDiagnosticsDatabase(dbPath) {
   // Check if effective_beta column exists in cells table (per-(cell, class) MRF cap)
   hasEffectiveBeta = cellCols.some(col => col.name === 'effective_beta');
 
-  console.log('Diagnostics DB loaded. nC=%d, nS=%d, hasCellInefficiency=%s, hasGeneInefficiency=%s, hasBonus=%s, hasMrf=%s, hasEffectiveBeta=%s', diagnosticsMeta.nC, diagnosticsMeta.nS, hasCellInefficiency, hasGeneInefficiency, hasBonus, hasMrf, hasEffectiveBeta);
+  // Check if the tie freezing columns exist (older DBs will not have them)
+  hasFrozen = cellCols.some(col => col.name === 'frozen_eta_bar');
+
+  console.log('Diagnostics DB loaded. nC=%d, nS=%d, hasCellInefficiency=%s, hasGeneInefficiency=%s, hasBonus=%s, hasMrf=%s, hasEffectiveBeta=%s, hasFrozen=%s', diagnosticsMeta.nC, diagnosticsMeta.nS, hasCellInefficiency, hasGeneInefficiency, hasBonus, hasMrf, hasEffectiveBeta, hasFrozen);
   return diagnosticsMeta;
 }
 
@@ -80,6 +87,7 @@ function closeDiagnosticsDatabase() {
   hasBonus = false;
   hasMrf = false;
   hasEffectiveBeta = false;
+  hasFrozen = false;
 }
 
 function broadcastDiagnosticsState(enabled) {
@@ -328,9 +336,11 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
 
   try {
     // Query SQLite for this cell's data. Include mrf column if present.
-    const selectCellCols = hasMrf
-      ? 'SELECT scaled_means, theta_bar, gene_count, class_prob, mrf FROM cells WHERE cell_id = ?'
-      : 'SELECT scaled_means, theta_bar, gene_count, class_prob FROM cells WHERE cell_id = ?';
+    const baseCols = hasMrf
+      ? 'scaled_means, theta_bar, gene_count, class_prob, mrf'
+      : 'scaled_means, theta_bar, gene_count, class_prob';
+    const frozenCols = hasFrozen ? ', frozen_eta_bar, frozen_log_prior, frozen_iter' : '';
+    const selectCellCols = 'SELECT ' + baseCols + frozenCols + ' FROM cells WHERE cell_id = ?';
     const row = diagnosticsDb.prepare(selectCellCols).get(c);
     if (!row) {
       return { success: false, error: 'Cell not found in database: ' + c };
@@ -345,6 +355,21 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
       ? new Float32Array(row.mrf.buffer, row.mrf.byteOffset, nK)
       : null;
 
+    // A pinned cell keeps the class it had partway through the run, but
+    // eta_bar and log_prior in the metadata are from the end of it, so they
+    // would not rebuild that class. When the cell carries its own copies we
+    // use those instead. theta_bar, gene_count and mrf above are already the
+    // pinned values, the exporter writes them into the ordinary columns.
+    const frozenIter = (hasFrozen && row.frozen_iter !== null && row.frozen_iter !== undefined)
+      ? row.frozen_iter
+      : null;
+    const etaBarCell = (hasFrozen && row.frozen_eta_bar)
+      ? new Float32Array(row.frozen_eta_bar.buffer, row.frozen_eta_bar.byteOffset, nG)
+      : eta_bar;
+    const logPriorCell = (hasFrozen && row.frozen_log_prior)
+      ? new Float32Array(row.frozen_log_prior.buffer, row.frozen_log_prior.byteOffset, nK)
+      : log_prior;
+
     // Find assigned class (argmax of classProb)
     let assignedIdx = 0;
     for (let k = 1; k < nK; k++) {
@@ -357,7 +382,7 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
     for (let g = 0; g < nG; g++) {
       for (let k = 0; k < nK; k++) {
         const idx = g * nK + k;
-        const scaledExp = scaledMeans[idx] * eta_bar[g] * thetaBar[k] + SpotReg;
+        const scaledExp = scaledMeans[idx] * etaBarCell[g] * thetaBar[k] + SpotReg;
         const pNegBin = scaledExp / (rSpot + scaledExp);
         contr[idx] = geneCount[g] * Math.log(pNegBin) + rSpot * Math.log(1 - pNegBin);
       }
@@ -380,10 +405,10 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
     // Reconstruct full posterior over K classes: softmax(geneLoglik + log_prior + mrf).
     // Only possible when both log_prior (metadata) and per-cell mrf (cells table) are present.
     let posterior = null;
-    const hasPosteriorInputs = Array.isArray(log_prior) && log_prior.length === nK && mrf !== null;
+    const hasPosteriorInputs = logPriorCell != null && logPriorCell.length === nK && mrf !== null;
     if (hasPosteriorInputs) {
       const logPost = new Array(nK);
-      for (let k = 0; k < nK; k++) logPost[k] = geneLoglikAll[k] + log_prior[k] + mrf[k];
+      for (let k = 0; k < nK; k++) logPost[k] = geneLoglikAll[k] + logPriorCell[k] + mrf[k];
       posterior = softmaxJS(logPost);
     }
 
@@ -432,8 +457,8 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
     const components = {
       geneLoglikAssigned: geneLoglikAll[assignedIdx],
       geneLoglikUser: geneLoglikAll[userIdx],
-      logPriorAssigned: Array.isArray(log_prior) ? log_prior[assignedIdx] : null,
-      logPriorUser: Array.isArray(log_prior) ? log_prior[userIdx] : null,
+      logPriorAssigned: logPriorCell != null ? logPriorCell[assignedIdx] : null,
+      logPriorUser: logPriorCell != null ? logPriorCell[userIdx] : null,
       mrfAssigned: mrf !== null ? mrf[assignedIdx] : null,
       mrfUser: mrf !== null ? mrf[userIdx] : null
     };
@@ -454,7 +479,10 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
       topN,
       components,
       posteriorAssigned,
-      posteriorUser
+      posteriorUser,
+      // null unless this cell was pinned by the tie freezing, in which case it
+      // is the iteration the numbers above come from rather than the last one
+      frozenIter
     };
   } catch (err) {
     return { success: false, error: 'Query failed: ' + err.message };
