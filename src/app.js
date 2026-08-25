@@ -586,14 +586,14 @@ async function runInit() {
     initializeRectangularSelector();
 
     // 8. Spots. Progressive: drop the curtain now and draw shards as they land,
-    //    nearest plane first, with a corner pill counting them. Otherwise the
+    //    plane 0 upwards, with a corner pill counting them. Otherwise the
     //    curtain stays until everything is in.
     const progressiveSpots = Boolean(window.advancedConfig?.().performance?.progressiveSpots);
     if (progressiveSpots) {
         updateAllLayers();
         hideLoading(state, elements.loadingIndicator);
         removeCurtain();
-        await streamSpotsIntoScatterCache(state.currentPlane, state.selectedGenes, (loadedRows, totalRows) => {
+        await streamSpotsIntoScatterCache(state.selectedGenes, (loadedRows, totalRows) => {
             showLoadStatus(`Spots ${loadedRows.toLocaleString()} / ${totalRows.toLocaleString()}`);
             updateAllLayers();
         });

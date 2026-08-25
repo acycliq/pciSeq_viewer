@@ -8,9 +8,9 @@
  * `cache.length` points, so bumping `length` after each append is all the
  * rendering side needs.
  *
- * Shards arrive nearest-plane-first (the worker orders them centre-out from
- * the current plane), so they are packed in arrival order, not manifest order.
- * Nothing indexes into the cache by original row, so this is safe.
+ * Shards are packed in arrival order. With parallel fetches that can differ
+ * from manifest order; nothing indexes into the cache by original row, so
+ * this is safe.
  *
  * Wiring:
  *   - reads   ARROW_MANIFESTS (config/constants.js), window.config()
@@ -30,12 +30,11 @@ const SHARD_CONCURRENCY = 4;
 
 /**
  * Stream all spot shards into window.appState.arrowScatterCache.
- * @param {number} currentPlane - Shards nearest this plane are loaded first
  * @param {Set<string>} selectedGenes - Seeded with every gene name so spots are visible
  * @param {Function} onShard - Called as onShard(loadedRows, totalRows) after each shard is appended
  * @returns {Promise<void>} Resolves once every shard has been appended
  */
-export async function streamSpotsIntoScatterCache(currentPlane, selectedGenes, onShard) {
+export async function streamSpotsIntoScatterCache(selectedGenes, onShard) {
     initArrow({
         spotsManifest: ARROW_MANIFESTS.spotsManifest,
         cellsManifest: ARROW_MANIFESTS.cellsManifest,
@@ -63,7 +62,7 @@ export async function streamSpotsIntoScatterCache(currentPlane, selectedGenes, o
     const t0 = performance.now();
 
     await streamSpotsScatter(
-        { manifestUrl, img, geneIdColors, currentPlane, concurrency: SHARD_CONCURRENCY },
+        { manifestUrl, img, geneIdColors, concurrency: SHARD_CONCURRENCY },
         (chunk) => {
             appendChunk(cache, chunk);
             accumulateStats(stats, chunk);

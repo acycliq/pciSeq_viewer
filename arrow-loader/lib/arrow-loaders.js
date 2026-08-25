@@ -96,8 +96,8 @@ export async function buildSpotsScatterCache({ manifestUrl, img, geneIdColors })
 // shard at a time ({ n, positions, colors, geneIds, planes, scores, intensities,
 // misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, plane, shardsDone,
 // shardsTotal }); the returned promise resolves once every shard has been sent.
-// payload: { manifestUrl, img, geneIdColors, currentPlane, concurrency }
-export function streamSpotsScatter({ manifestUrl, img, geneIdColors, currentPlane, concurrency }, onChunk) {
+// payload: { manifestUrl, img, geneIdColors, concurrency }
+export function streamSpotsScatter({ manifestUrl, img, geneIdColors, concurrency }, onChunk) {
   if (!manifestUrl) throw new Error('spots manifestUrl is required');
-  return call('streamSpotsScatter', { manifestUrl, img, geneIdColors, currentPlane, concurrency }, onChunk);
+  return call('streamSpotsScatter', { manifestUrl, img, geneIdColors, concurrency }, onChunk);
 }

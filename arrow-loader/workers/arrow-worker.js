@@ -390,21 +390,14 @@ async function handleBuildSpotsScatterCache(cfg) {
   };
 }
 
-// Shards nearest the current plane first, then alternating outwards, so the
-// plane the user is looking at lands on screen before the rest of the stack.
-function orderShardsCentreOut(manifest, currentPlane) {
-  const entries = manifest.shards.map((s, index) => ({ index, plane: s.plane }));
-  entries.sort((a, b) => Math.abs(a.plane - currentPlane) - Math.abs(b.plane - currentPlane));
-  return entries.map(e => e.index);
-}
-
 // Streaming: one progress message per shard as it decodes, then a final done
-// message. The main thread appends each chunk into a preallocated cache.
+// message. Shards go in manifest order (plane 0 upwards for per-plane shards);
+// the main thread appends each chunk into a preallocated cache.
 async function handleStreamSpotsScatter(id, type, cfg) {
-  const { manifestUrl, img, geneIdColors, currentPlane, concurrency } = cfg || {};
+  const { manifestUrl, img, geneIdColors, concurrency } = cfg || {};
   const manifest = await loadManifest(manifestUrl);
   const shardUrls = resolveShardUrls(manifestUrl, manifest);
-  const queue = orderShardsCentreOut(manifest, currentPlane || 0);
+  const queue = shardUrls.map((url, index) => index);
   const shardsTotal = queue.length;
   let shardsDone = 0;
 
