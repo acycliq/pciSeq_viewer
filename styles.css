@@ -1236,6 +1236,23 @@ body {
     gap: 12px;
 }
 
+/* Progress pill above the scale bar (spot stream / gene indexing) */
+.load-status {
+    position: absolute;
+    bottom: 60px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
+    z-index: 10;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: none;
+}
+
 .scale-bar-line {
     width: 100px;
     height: 2px;

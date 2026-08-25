@@ -225,12 +225,19 @@ export function showScreen(screenId) {
  * @param {HTMLElement} loadingElement - Loading indicator DOM element
  */
 /**
- * Replace the message in the loading indicator (e.g. a progress counter).
- * hideLoading restores the default text.
+ * Show a short progress message in the corner pill (#loadStatus). Used while
+ * spots stream in and genes are indexed, when the map is already usable.
  */
-export function setLoadingText(text) {
-    const textEl = document.getElementById('loadingText');
-    if (textEl) textEl.textContent = text;
+export function showLoadStatus(text) {
+    const pill = document.getElementById('loadStatus');
+    if (!pill) return;
+    pill.textContent = text;
+    pill.style.display = 'block';
+}
+
+export function hideLoadStatus() {
+    const pill = document.getElementById('loadStatus');
+    if (pill) pill.style.display = 'none';
 }
 
 export function showLoading(state, loadingElement) {
@@ -262,7 +269,6 @@ export function showLoading(state, loadingElement) {
 export function hideLoading(state, loadingElement) {
     state.isLoading = false;
     loadingElement.style.display = 'none';
-    setLoadingText('Loading...');
 
     try {
         if (state._loadingTimerId) {

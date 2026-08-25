@@ -20,7 +20,7 @@ import { debounce } from '../utils/common.js';
 import Perf from '../utils/runtimePerf.js';
 
 // === UI IMPORTS ===
-import { showLoading, hideLoading, setLoadingText, showTooltip, showScreen } from './ui/uiHelpers.js';
+import { showLoading, hideLoading, showLoadStatus, hideLoadStatus, showTooltip, showScreen } from './ui/uiHelpers.js';
 import { showMetadataError } from './ui/metadataError.js';
 import { initChannelSwitcher } from './ui/channelSwitcher.js';
 import { initTooltips } from './ui/tooltip.js';
@@ -586,17 +586,18 @@ async function runInit() {
     initializeRectangularSelector();
 
     // 8. Spots. Progressive: drop the curtain now and draw shards as they land,
-    //    nearest plane first, with the loading box showing a spot counter.
-    //    Otherwise the curtain stays until everything is in.
+    //    nearest plane first, with a corner pill counting them. Otherwise the
+    //    curtain stays until everything is in.
     const progressiveSpots = Boolean(window.advancedConfig?.().performance?.progressiveSpots);
     if (progressiveSpots) {
         updateAllLayers();
+        hideLoading(state, elements.loadingIndicator);
         removeCurtain();
         await streamSpotsIntoScatterCache(state.currentPlane, state.selectedGenes, (loadedRows, totalRows) => {
-            setLoadingText(`Spots ${loadedRows.toLocaleString()} / ${totalRows.toLocaleString()}`);
+            showLoadStatus(`Spots ${loadedRows.toLocaleString()} / ${totalRows.toLocaleString()}`);
             updateAllLayers();
         });
-        setLoadingText('Indexing genes...');
+        showLoadStatus('Indexing genes...');
     }
 
     // 9. Per-gene spot objects + indexes (gene drawer, cell info panel, icon layers)
@@ -611,6 +612,7 @@ async function runInit() {
     buildGlobalZProjection(state).catch(err => console.warn('Z-projection failed:', err));
     try { setupBoundariesReadyListener(updateAllLayers, state); } catch {}
 
+    hideLoadStatus();
     hideLoading(state, elements.loadingIndicator);
     removeCurtain();
 }
