@@ -11,9 +11,14 @@ function ensureWorker() {
   const workerUrl = new URL('../workers/arrow-worker.js', import.meta.url);
   const w = new Worker(workerUrl, { type: 'module' });
   w.onmessage = (e) => {
-    const { id, ok, type, ...rest } = e.data || {};
+    const { id, ok, type, progress, ...rest } = e.data || {};
     const resolver = pending.get(id);
     if (!resolver) return;
+    // Streaming handlers post many progress messages before their final reply.
+    if (ok && progress) {
+      if (resolver.onProgress) resolver.onProgress(rest);
+      return;
+    }
     pending.delete(id);
     if (ok) resolver.resolve(rest); else resolver.reject(new Error(rest.error || 'Worker error'));
   };
@@ -37,11 +42,11 @@ export function initArrow(configIn) {
   ensureWorker();
 }
 
-function call(type, payload) {
+function call(type, payload, onProgress = null) {
   const w = ensureWorker();
   const id = nextId++;
   return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject });
+    pending.set(id, { resolve, reject, onProgress });
     try {
       w.postMessage({ id, type, payload });
     } catch (e) {
@@ -87,3 +92,12 @@ export async function buildSpotsScatterCache({ manifestUrl, img, geneIdColors })
   return { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity };
 }
 
+// Stream the spots scatter cache shard by shard. onChunk receives one decoded
+// shard at a time ({ n, positions, colors, geneIds, planes, scores, intensities,
+// misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, plane, shardsDone,
+// shardsTotal }); the returned promise resolves once every shard has been sent.
+// payload: { manifestUrl, img, geneIdColors, currentPlane, concurrency }
+export function streamSpotsScatter({ manifestUrl, img, geneIdColors, currentPlane, concurrency }, onChunk) {
+  if (!manifestUrl) throw new Error('spots manifestUrl is required');
+  return call('streamSpotsScatter', { manifestUrl, img, geneIdColors, currentPlane, concurrency }, onChunk);
+}

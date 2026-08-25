@@ -14,7 +14,8 @@ import { showLoading, hideLoading, showTooltip } from '../ui/uiHelpers.js';
 import {
     loadGeneData,
     loadCellData,
-    loadPolygonData
+    loadPolygonData,
+    prebuildScatterCache
 } from '../data/dataLoaders.js';
 import {
     assignColorsToCellClasses,
@@ -95,12 +96,18 @@ export function initializePlaneSlider(totalPlanes, startingPlane) {
 
 /**
  * Initialize gene data and icon atlas
+ * @param {boolean} scatterCacheReady - True when the binary scatter cache was
+ *   already streamed in (progressive path), so it must not be rebuilt here
  * @returns {Promise<void>}
  */
-export async function initializeGeneData() {
+export async function initializeGeneData(scatterCacheReady = false) {
     const { atlas, mapping } = await loadGeneData(state.geneDataMap, state.selectedGenes);
     state.geneIconAtlas = atlas;
     state.geneIconMapping = mapping;
+
+    if (!scatterCacheReady) {
+        await prebuildScatterCache();
+    }
 
     // Sync dataset capability flags from worker-populated appState
     try {
@@ -280,8 +287,7 @@ export function preloadAdjacentPlanesInitial() {
  * @param {Function} updateAllLayers - Function to update all layers
  */
 export function finalizeInitialization(updateAllLayers) {
-    // Ensure all cell classes are selected
-    state.allCellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
+    selectAllCellClasses();
 
     // Populate the cell class drawer with ranked list
     populateCellClassDrawer();
@@ -294,6 +300,14 @@ export function finalizeInitialization(updateAllLayers) {
 
     // Mark interactive for Arrow path
     try { Perf.markInteractive('arrow', { plane: state.currentPlane }); } catch {}
+}
+
+/**
+ * Select every cell class. Polygons are hidden while the selection is empty,
+ * so this must run before the first boundary draw.
+ */
+export function selectAllCellClasses() {
+    state.allCellClasses.forEach(cellClass => state.selectedCellClasses.add(cellClass));
 }
 
 /**

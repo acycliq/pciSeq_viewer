@@ -224,6 +224,15 @@ export function showScreen(screenId) {
  * @param {Object} state - Application state object
  * @param {HTMLElement} loadingElement - Loading indicator DOM element
  */
+/**
+ * Replace the message in the loading indicator (e.g. a progress counter).
+ * hideLoading restores the default text.
+ */
+export function setLoadingText(text) {
+    const textEl = document.getElementById('loadingText');
+    if (textEl) textEl.textContent = text;
+}
+
 export function showLoading(state, loadingElement) {
     state.isLoading = true;
     loadingElement.style.display = 'block';
@@ -253,6 +262,7 @@ export function showLoading(state, loadingElement) {
 export function hideLoading(state, loadingElement) {
     state.isLoading = false;
     loadingElement.style.display = 'none';
+    setLoadingText('Loading...');
 
     try {
         if (state._loadingTimerId) {

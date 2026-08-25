@@ -34,6 +34,85 @@ function getArrowSpotBinaryCache() {
 }
 
 /**
+ * Per-spot radius factor 1/sqrt(1 + dz) from the current plane, cached on
+ * window.appState. When the same scatter cache has simply grown (progressive
+ * loading), only the newly appended range is computed.
+ */
+function getRadiusFactors(planes, length, currentPlane) {
+    const app = window.appState || (window.appState = {});
+    const cacheObj = app._scatterRadiiCache || (app._scatterRadiiCache = {});
+    const cur = (currentPlane || 0) | 0;
+    const sameSource = Boolean(cacheObj.factors) && cacheObj.planesBuffer === planes.buffer && cacheObj.plane === cur;
+    if (sameSource && cacheObj.length === length) return cacheObj.factors;
+
+    if (!sameSource) {
+        cacheObj.factors = new Float32Array(planes.length);
+        cacheObj.planesBuffer = planes.buffer;
+        cacheObj.plane = cur;
+        cacheObj.length = 0;
+    }
+    const factors = cacheObj.factors;
+    for (let i = cacheObj.length; i < length; i++) {
+        const dz = Math.abs((planes[i] | 0) - cur);
+        factors[i] = 1 / Math.sqrt(1 + dz);
+    }
+    cacheObj.length = length;
+    return factors;
+}
+
+/**
+ * RGBA buffer with alpha masked by gene selection and misread handling, cached
+ * on window.appState. Rebuilt from scratch when the selection or flags change;
+ * extended in place when the scatter cache has grown (progressive loading).
+ */
+function getMaskedColors(colors, geneIds, misreadFlags, length, selectedGenes, greyOutMisreads, hideMisreads) {
+    const app = window.appState || (window.appState = {});
+    const maskCache = app._geneMaskCache || (app._geneMaskCache = {});
+    const geneDict = app.arrowGeneDict || {};
+    const totalGenes = Object.keys(geneDict).length;
+    const selectedKey = selectedGenes ? Array.from(selectedGenes).sort().join('|') : '';
+    const cacheKey = `${selectedKey}_${greyOutMisreads ? 1 : 0}_${hideMisreads ? 1 : 0}`;
+    const sameSource = Boolean(maskCache.buffer) && maskCache.sourceBuffer === colors.buffer && maskCache.cacheKey === cacheKey;
+    if (sameSource && maskCache.length === length) return maskCache.buffer;
+
+    if (!sameSource) {
+        maskCache.buffer = new Uint8Array(colors.length);
+        maskCache.sourceBuffer = colors.buffer;
+        maskCache.cacheKey = cacheKey;
+        maskCache.length = 0;
+    }
+    const masked = maskCache.buffer;
+    const noneSelected = Boolean(selectedGenes) && selectedGenes.size === 0;
+    const allSelected = !selectedGenes || selectedGenes.size >= totalGenes;
+    for (let i = maskCache.length; i < length; i++) {
+        const base = 4 * i;
+        masked[base + 0] = colors[base + 0];
+        masked[base + 1] = colors[base + 1];
+        masked[base + 2] = colors[base + 2];
+        const isMisread = misreadFlags && misreadFlags[i];
+        if (isMisread && hideMisreads) {
+            masked[base + 3] = 0;
+            continue;
+        }
+        if (isMisread && greyOutMisreads) {
+            masked[base + 0] = 160;
+            masked[base + 1] = 160;
+            masked[base + 2] = 160;
+        }
+        if (noneSelected) {
+            masked[base + 3] = 0;
+        } else if (allSelected) {
+            masked[base + 3] = 255;
+        } else {
+            const name = geneDict[geneIds[i]];
+            masked[base + 3] = (name && selectedGenes.has(name)) ? 255 : 0;
+        }
+    }
+    maskCache.length = length;
+    return masked;
+}
+
+/**
  * Create a high-performance ScatterplotLayer for Arrow-loaded spots
  */
 export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, greyOutMisreads = false, hideMisreads = false) {
@@ -43,94 +122,8 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
     const { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, length } = cache;
     const baseScale = (GENE_SIZE_CONFIG?.BASE_SIZE || 12) / 10;
     
-    let radiusFactors = null;
-    if (!uniformMarkerSize) {
-        try {
-            const app = (typeof window !== 'undefined') ? window.appState || (window.appState = {}) : {};
-            const cacheObj = app._scatterRadiiCache || (app._scatterRadiiCache = {});
-            const needsInit = !cacheObj.factors || cacheObj.length !== length ||
-                             cacheObj.planesBuffer !== planes.buffer || cacheObj.plane !== (currentPlane || 0);
-
-            if (needsInit) {
-                const cur = (currentPlane || 0) | 0;
-                const factors = new Float32Array(length);
-                for (let i = 0; i < length; i++) {
-                    const dz = Math.abs(((planes[i] | 0) - cur));
-                    factors[i] = 1 / Math.sqrt(1 + dz);
-                }
-                cacheObj.factors = factors;
-                cacheObj.length = length;
-                cacheObj.plane = cur;
-                cacheObj.planesBuffer = planes.buffer;
-            }
-            radiusFactors = cacheObj.factors;
-        } catch {
-            radiusFactors = new Float32Array(length);
-            const cur = (currentPlane || 0) | 0;
-            for (let i = 0; i < length; i++) {
-                const dz = Math.abs(((planes[i] | 0) - cur));
-                radiusFactors[i] = 1 / Math.sqrt(1 + dz);
-            }
-        }
-    }
-
-    let maskedColors;
-    try {
-        const app = (typeof window !== 'undefined') ? window.appState || (window.appState = {}) : {};
-        const maskCache = app._geneMaskCache || (app._geneMaskCache = {});
-        const geneDict = app.arrowGeneDict || {};
-        const totalGenes = Object.keys(geneDict).length;
-        const selectedKey = selectedGenes ? Array.from(selectedGenes).sort().join('|') : '';
-        const cacheKey = `${selectedKey}_${length}_${colors.buffer}_${greyOutMisreads ? 1 : 0}_${hideMisreads ? 1 : 0}`;
-
-        if (!maskCache.buffer || maskCache.cacheKey !== cacheKey || maskCache.length !== length) {
-            if (selectedGenes && selectedGenes.size > 0) {
-                const allSelected = selectedGenes.size >= totalGenes;
-                maskedColors = new Uint8Array(colors);
-                for (let i = 0; i < length; i++) {
-                    const isMisread = misreadFlags && misreadFlags[i];
-                    if (isMisread && hideMisreads) {
-                        maskedColors[4*i + 3] = 0;
-                        continue;
-                    }
-                    if (isMisread && greyOutMisreads) {
-                        maskedColors[4*i + 0] = 160;
-                        maskedColors[4*i + 1] = 160;
-                        maskedColors[4*i + 2] = 160;
-                    }
-                    if (!allSelected) {
-                        const name = geneDict[geneIds[i]];
-                        maskedColors[4*i + 3] = (name && selectedGenes.has(name)) ? 255 : 0;
-                    } else {
-                        maskedColors[4*i + 3] = 255;
-                    }
-                }
-            } else {
-                maskedColors = new Uint8Array(colors);
-                const alpha = (selectedGenes && selectedGenes.size === 0) ? 0 : 255;
-                for (let i = 0; i < length; i++) {
-                    const isMisread = misreadFlags && misreadFlags[i];
-                    if (isMisread && hideMisreads) {
-                        maskedColors[4*i + 3] = 0;
-                        continue;
-                    }
-                    if (isMisread && greyOutMisreads) {
-                        maskedColors[4*i + 0] = 160;
-                        maskedColors[4*i + 1] = 160;
-                        maskedColors[4*i + 2] = 160;
-                    }
-                    maskedColors[4*i + 3] = alpha;
-                }
-            }
-            maskCache.buffer = maskedColors;
-            maskCache.cacheKey = cacheKey;
-            maskCache.length = length;
-        } else {
-            maskedColors = maskCache.buffer;
-        }
-    } catch (e) {
-        console.warn('Gene mask caching failed:', e);
-    }
+    const radiusFactors = uniformMarkerSize ? null : getRadiusFactors(planes, length, currentPlane);
+    const maskedColors = getMaskedColors(colors, geneIds, misreadFlags, length, selectedGenes, greyOutMisreads, hideMisreads);
 
     const canFilterScore = Boolean(scores) && hasScores;
     const canFilterIntensity = Boolean(intensities) && hasIntensity;
@@ -140,7 +133,7 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         length,
         attributes: {
             getPosition: { value: positions, size: 3 },
-            getFillColor: { value: maskedColors || colors, size: 4 },
+            getFillColor: { value: maskedColors, size: 4 },
             getRadius: uniformMarkerSize ? { constant: 1 } : { value: radiusFactors, size: 1 },
             ...(use2D ? { getFilterValue: { value: filterPairs, size: 2 } } : 
                canFilterScore ? { getFilterValue: { value: scores, size: 1 } } :

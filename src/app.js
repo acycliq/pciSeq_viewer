@@ -20,7 +20,7 @@ import { debounce } from '../utils/common.js';
 import Perf from '../utils/runtimePerf.js';
 
 // === UI IMPORTS ===
-import { showLoading, hideLoading, showTooltip, showScreen } from './ui/uiHelpers.js';
+import { showLoading, hideLoading, setLoadingText, showTooltip, showScreen } from './ui/uiHelpers.js';
 import { showMetadataError } from './ui/metadataError.js';
 import { initChannelSwitcher } from './ui/channelSwitcher.js';
 import { initTooltips } from './ui/tooltip.js';
@@ -38,6 +38,7 @@ import {
     initializePolygonHighlighter,
     initializeRectangularSelector,
     initializeCellData,
+    selectAllCellClasses,
     finalizeInitialization,
     preloadAdjacentPlanesInitial,
     removeCurtain
@@ -61,6 +62,7 @@ import {
     loadPolygonData,
     loadCellData,
 } from './data/dataLoaders.js';
+import { streamSpotsIntoScatterCache } from './data/spotStreamLoader.js';
 import { buildGeneSpotIndexes, assignColorsToCellClasses } from './data/cellIndexes.js';
 
 // === EVENT HANDLING IMPORTS ===
@@ -572,22 +574,36 @@ async function runInit() {
     const startingPlane = Math.floor(totalPlanes / 2);
     initializePlaneSlider(totalPlanes, startingPlane);
 
-    // 6. Load gene data + indexes
-    await initializeGeneData();
-    buildGeneSpotIndexes(state.geneDataMap, state.cellToSpotsIndex, state.spotToParentsIndex);
+    // 6. Cell data + colors, then boundaries for the current plane. Cells are
+    //    one small file, so tiles and coloured polygons can show before spots.
+    await initializeCellData();
+    selectAllCellClasses();
+    await loadPolygonData(state.currentPlane, state.polygonCache, state.allCellClasses, state.cellDataMap);
+    initChannelSwitcher(channelInfo, state, updateAllLayers);
 
-    // 7. Initialize interactions
+    // 7. Initialize interactions (index maps are filled in place later)
     initializePolygonHighlighter();
     initializeRectangularSelector();
 
-    // 8. Load cell data + colors
-    await initializeCellData();
+    // 8. Spots. Progressive: drop the curtain now and draw shards as they land,
+    //    nearest plane first, with the loading box showing a spot counter.
+    //    Otherwise the curtain stays until everything is in.
+    const progressiveSpots = Boolean(window.advancedConfig?.().performance?.progressiveSpots);
+    if (progressiveSpots) {
+        updateAllLayers();
+        removeCurtain();
+        await streamSpotsIntoScatterCache(state.currentPlane, state.selectedGenes, (loadedRows, totalRows) => {
+            setLoadingText(`Spots ${loadedRows.toLocaleString()} / ${totalRows.toLocaleString()}`);
+            updateAllLayers();
+        });
+        setLoadingText('Indexing genes...');
+    }
 
-    // 9. Load polygon data for current plane
-    await loadPolygonData(state.currentPlane, state.polygonCache, state.allCellClasses, state.cellDataMap);
+    // 9. Per-gene spot objects + indexes (gene drawer, cell info panel, icon layers)
+    await initializeGeneData(progressiveSpots);
+    buildGeneSpotIndexes(state.geneDataMap, state.cellToSpotsIndex, state.spotToParentsIndex);
 
     // 10. Finalize UI + layers
-    initChannelSwitcher(channelInfo, state, updateAllLayers);
     finalizeInitialization(updateAllLayers);
     preloadAdjacentPlanesInitial();
 

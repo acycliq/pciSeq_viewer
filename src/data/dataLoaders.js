@@ -114,90 +114,8 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
             if (window?.advancedConfig?.().performance?.showPerformanceStats) {
                 console.log(`Arrow spots: genes=${geneDataMap.size}, spots=${spotTotal}`);
             }
-            // Prebuild scatter (binary) cache in worker to eliminate main-thread freeze on first render
-            let hasIntensityFlag = false;
-            try {
-                const { buildSpotsScatterCache } = await import('../../arrow-loader/lib/arrow-loaders.js');
-                const cfg = window.config();
-                const settings = glyphSettings();
-                const colorByGene = new Map(settings.map(s => [s.gene, s.color]));
-                const hexToRgb = (hex) => {
-                    const color = d3.rgb(hex);
-                    return [color.r, color.g, color.b];
-                };
-                const geneIdColors = {};
-                for (const [gidStr, name] of Object.entries(idToName)) {
-                    const col = colorByGene.get(name);
-                    if (!col) {
-                        console.warn(`Gene '${name}' missing color config, using white fallback`);
-                        geneIdColors[gidStr] = hexToRgb('#ffffff');
-                    } else {
-                        geneIdColors[gidStr] = hexToRgb(col);
-                    }
-                }
-                const manifestUrl = new URL(ARROW_MANIFESTS.spotsManifest, window.location.href).href;
-                const img = { width: cfg.imageWidth, height: cfg.imageHeight, tileSize: 256 };
-                const { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity } = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
-                window.appState.arrowScatterCache = { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, length: (positions?.length||0)/3 };
-                hasIntensityFlag = Boolean(hasIntensity);
-                // Update score range with dataset min/max (UI min = min(0, scoreMin), max = max(1, scoreMax))
-                try {
-                    const rawMin = Number.isFinite(scoreMin) ? scoreMin : 0;
-                    const rawMax = Number.isFinite(scoreMax) ? scoreMax : 1;
-                    const uiMin = Math.min(0, rawMin);
-                    const uiMax = Math.max(1, rawMax);
-                    window.appState.scoreRange = [uiMin, uiMax];
-                    // Adjust slider bounds and default value to show all by default
-                    const slider = document.getElementById('scoreFilterSlider');
-                    const valueEl = document.getElementById('scoreFilterValue');
-                    if (slider) {
-                        slider.min = String(uiMin);
-                        slider.max = String(uiMax);
-                        if (window.appState.scoreThreshold === 0) {
-                            // If user hasn't changed it yet, set to min to include negatives
-                            slider.value = String(uiMin);
-                            window.appState.scoreThreshold = uiMin;
-                            if (valueEl) valueEl.textContent = Number(uiMin).toFixed(2);
-                        }
-                    }
-                } catch {}
-                // Update intensity range when intensities exist (UI min = min(0, intensityMin), max = intensityMax)
-                if (hasIntensityFlag) {
-                    const rawMinI = Number.isFinite(intensityMin) ? intensityMin : 0;
-                    const rawMaxI = Number.isFinite(intensityMax) ? intensityMax : 1;
-                    const uiMinI = Math.min(0, rawMinI);
-                    const uiMaxI = rawMaxI;
-                    window.appState.intensityRange = [uiMinI, uiMaxI];
-                    const sliderI = document.getElementById('intensityFilterSlider');
-                    const valueI = document.getElementById('intensityFilterValue');
-                    if (sliderI) {
-                        sliderI.min = String(uiMinI);
-                        sliderI.max = String(uiMaxI);
-                        const range = uiMaxI - uiMinI;
-                        let step = 0.01;
-                        if (range > 0 && range < 1) {
-                            step = Math.max(range / 100, 0.0001);
-                        } else if (range >= 1) {
-                            step = range / 100;
-                        }
-                        sliderI.step = String(step);
-                        if (window.appState.intensityThreshold === 0) {
-                            sliderI.value = String(uiMinI);
-                            window.appState.intensityThreshold = uiMinI;
-                            if (valueI) valueI.textContent = Number(uiMinI).toFixed(2);
-                        }
-                    }
-                }
-                if (window?.advancedConfig?.().performance?.showPerformanceStats) {
-                    console.log(` Prebuilt scatter cache in worker: points=${window.appState.arrowScatterCache.length}`);
-                }
-            } catch (e) {
-                console.warn('Failed to prebuild scatter cache in worker:', e);
-            }
-
             // For Arrow data, assume scores are available (can be refined later if needed)
             window.appState.hasScores = true;
-            window.appState.hasIntensity = hasIntensityFlag;
             console.log('Arrow dataset: assuming scores are available');
         }
 
@@ -210,6 +128,104 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
     } catch (err) {
         console.error('Failed to load gene data:', err);
         return { atlas: null, mapping: null };
+    }
+}
+
+/**
+ * Map gene id -> [r, g, b] from the glyph colour settings, keyed the way the
+ * Arrow worker expects. Genes without a configured colour fall back to white.
+ * @param {Object} idToName - gene id -> gene name (from gene_dict.json)
+ */
+export function buildGeneIdColors(idToName) {
+    const settings = glyphSettings();
+    const colorByGene = new Map(settings.map(s => [s.gene, s.color]));
+    const geneIdColors = {};
+    for (const [gidStr, name] of Object.entries(idToName)) {
+        const hex = colorByGene.get(name);
+        if (!hex) {
+            console.warn(`Gene '${name}' missing color config, using white fallback`);
+        }
+        const color = d3.rgb(hex || '#ffffff');
+        geneIdColors[gidStr] = [color.r, color.g, color.b];
+    }
+    return geneIdColors;
+}
+
+/**
+ * Publish the dataset score range and widen the score slider to cover it.
+ * UI min = min(0, scoreMin), max = max(1, scoreMax).
+ */
+export function applyScoreRangeToUI(scoreMin, scoreMax) {
+    const rawMin = Number.isFinite(scoreMin) ? scoreMin : 0;
+    const rawMax = Number.isFinite(scoreMax) ? scoreMax : 1;
+    const uiMin = Math.min(0, rawMin);
+    const uiMax = Math.max(1, rawMax);
+    window.appState.scoreRange = [uiMin, uiMax];
+    const slider = document.getElementById('scoreFilterSlider');
+    const valueEl = document.getElementById('scoreFilterValue');
+    if (!slider) return;
+    slider.min = String(uiMin);
+    slider.max = String(uiMax);
+    // If the user hasn't touched it yet, start at the minimum so negatives show
+    if (window.appState.scoreThreshold === 0) {
+        slider.value = String(uiMin);
+        window.appState.scoreThreshold = uiMin;
+        if (valueEl) valueEl.textContent = Number(uiMin).toFixed(2);
+    }
+}
+
+/**
+ * Publish the dataset intensity range and rescale the intensity slider.
+ * UI min = min(0, intensityMin), max = intensityMax.
+ */
+export function applyIntensityRangeToUI(intensityMin, intensityMax) {
+    const rawMin = Number.isFinite(intensityMin) ? intensityMin : 0;
+    const rawMax = Number.isFinite(intensityMax) ? intensityMax : 1;
+    const uiMin = Math.min(0, rawMin);
+    const uiMax = rawMax;
+    window.appState.intensityRange = [uiMin, uiMax];
+    const slider = document.getElementById('intensityFilterSlider');
+    const valueEl = document.getElementById('intensityFilterValue');
+    if (!slider) return;
+    slider.min = String(uiMin);
+    slider.max = String(uiMax);
+    const range = uiMax - uiMin;
+    let step = 0.01;
+    if (range > 0 && range < 1) {
+        step = Math.max(range / 100, 0.0001);
+    } else if (range >= 1) {
+        step = range / 100;
+    }
+    slider.step = String(step);
+    if (window.appState.intensityThreshold === 0) {
+        slider.value = String(uiMin);
+        window.appState.intensityThreshold = uiMin;
+        if (valueEl) valueEl.textContent = Number(uiMin).toFixed(2);
+    }
+}
+
+/**
+ * Build the whole binary scatter cache in the worker in one go and publish it
+ * on window.appState.arrowScatterCache. This is the non-progressive path; the
+ * progressive one lives in spotStreamLoader.js.
+ * Requires window.appState.arrowGeneDict to be set (loadGeneData does that).
+ */
+export async function prebuildScatterCache() {
+    const { buildSpotsScatterCache } = await import('../../arrow-loader/lib/arrow-loaders.js');
+    const cfg = window.config();
+    const geneIdColors = buildGeneIdColors(window.appState.arrowGeneDict || {});
+    const manifestUrl = new URL(ARROW_MANIFESTS.spotsManifest, window.location.href).href;
+    const img = { width: cfg.imageWidth, height: cfg.imageHeight, tileSize: 256 };
+    const result = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
+    const { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags } = result;
+    window.appState.arrowScatterCache = { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, length: (positions?.length || 0) / 3 };
+    applyScoreRangeToUI(result.scoreMin, result.scoreMax);
+    window.appState.hasIntensity = Boolean(result.hasIntensity);
+    if (window.appState.hasIntensity) {
+        applyIntensityRangeToUI(result.intensityMin, result.intensityMax);
+    }
+    if (window?.advancedConfig?.().performance?.showPerformanceStats) {
+        console.log(`Prebuilt scatter cache in worker: points=${window.appState.arrowScatterCache.length}`);
     }
 }
 

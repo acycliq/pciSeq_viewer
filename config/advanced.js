@@ -14,7 +14,8 @@ function advancedConfig() {
             maxTileCache: 1000,         // Maximum number of tiles to keep in memory
             sliderDebounce: 100,        // Debouncing for slider interactions (ms)
             loadingTimeout: 2000,       // Loading timeout (ms)
-            showPerformanceStats: true  // Show performance timing in console
+            showPerformanceStats: true, // Show performance timing in console
+            progressiveSpots: true      // Draw spots shard by shard as they load, nearest plane first
         },
 
         // Display settings
