@@ -22,6 +22,7 @@
     "productName": "pciSeq_viewer",
     "files": [
       "index.html",
+      "genes_datatable.html",
       "styles.css",
       "config.js",
       "icon.png",
