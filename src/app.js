@@ -24,6 +24,7 @@ import { showLoading, hideLoading, showLoadStatus, hideLoadStatus, showTooltip, 
 import { showMetadataError } from './ui/metadataError.js';
 import { initChannelSwitcher } from './ui/channelSwitcher.js';
 import { initTooltips } from './ui/tooltip.js';
+import { initChatPanel } from './chatPanel.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
 import { init as initCellInfoPanel } from './cellInfoPanel/index.js';
@@ -468,6 +469,24 @@ function showEmptyState() {
 function showImageDimsPrompt() {
     showScreen('imageDimsState');
 
+    // Two different situations end up here: no .mbtiles in the folder, and an
+    // .mbtiles that was there but would not open (a stale native build of
+    // better-sqlite3 after an npm install is the usual reason). Say which.
+    window.electronAPI.getTileChannels().then(info => {
+        const failed = (info && info.failed) || [];
+        if (!failed.length) return;
+        const title = document.getElementById('imageDimsTitle');
+        const text = document.getElementById('imageDimsText');
+        if (title) title.textContent = 'Background tiles could not be opened';
+        if (text) {
+            const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+            text.innerHTML = failed.map(f => `<code>${esc(f.file)}</code> is in the folder but failed to open:<br><code>${esc(f.error)}</code>`).join('<br>') +
+                '<br>If this follows an <code>npm install</code>, the native module needs rebuilding for Electron: ' +
+                '<code>npx electron-rebuild -f -w better-sqlite3</code>.<br>' +
+                'You can still enter the image dimensions manually to continue without tiles.';
+        }
+    }).catch(() => {});
+
     const submitBtn = document.getElementById('imageDimsSubmitBtn');
     const closeBtn = document.getElementById('imageDimsCloseBtn');
     const errorMsg = document.getElementById('imageDimsError');
@@ -621,6 +640,7 @@ async function runInit() {
 document.addEventListener('DOMContentLoaded', () => {
     // Styled tooltip bubble shared across the app (replaces native title boxes)
     initTooltips();
+    initChatPanel();
 
     // Initialize cell info panel (close button + color scheme)
     initCellInfoPanel();
@@ -696,6 +716,13 @@ window.addEventListener('load', async () => {
     loadRegionsFromStorage();
 
     // Initialize cell lookup UI
+    // the chat panel's fly_to_cell tool lands here: same search-and-navigate the
+    // cell lookup box uses, so the outline flashes the same way
+    if (window.electronAPI?.onChatFlyToCell) {
+        window.electronAPI.onChatFlyToCell(({ label }) => {
+            if (window.cellLookup) window.cellLookup.search(label);
+        });
+    }
     if (window.cellLookup) {
         window.cellLookup.setupUI();
     }

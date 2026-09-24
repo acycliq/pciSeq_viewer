@@ -104,6 +104,7 @@ function openChannel(mbtilesPath) {
     return true;
   } catch (e) {
     console.error('Failed to open background channel:', mbtilesPath, e);
+    lastDiscovery.failed.push({ file: path.basename(mbtilesPath), error: String(e.message || e).split('\n')[0] });
     return false;
   }
 }
@@ -111,8 +112,14 @@ function openChannel(mbtilesPath) {
 // Discover all .mbtiles files in a folder and open one channel per file.
 // The first channel (alphabetically) becomes the default selection.
 // Returns the channel registry array.
+// What the last discovery saw: the .mbtiles files in the folder, and the ones
+// that were there but would not open, with why. The renderer uses it to say
+// 'found one, could not open it' rather than 'none found'.
+let lastDiscovery = { found: [], failed: [] };
+
 function discoverChannels(folderPath) {
   closeAllChannels();
+  lastDiscovery = { found: [], failed: [] };
 
   let mbtilesFiles = [];
   try {
@@ -124,6 +131,7 @@ function discoverChannels(folderPath) {
     return channels;
   }
 
+  lastDiscovery.found = mbtilesFiles.slice();
   for (const file of mbtilesFiles) {
     openChannel(path.join(folderPath, file));
   }
@@ -168,7 +176,9 @@ function getDatabase(channelId) {
 function getChannels() {
   return {
     channels: channels.map(c => ({ id: c.id, label: c.label, tint: c.tint })),
-    defaultChannelId
+    defaultChannelId,
+    found: lastDiscovery.found,
+    failed: lastDiscovery.failed
   };
 }
 

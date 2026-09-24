@@ -1,4 +1,4 @@
-const { app, BrowserWindow, protocol, net, dialog, Menu, shell } = require('electron');
+const { app, BrowserWindow, protocol, net, dialog, Menu, shell, ipcMain } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const fs = require('fs');
@@ -8,6 +8,8 @@ const Database = require('better-sqlite3'); // Disk-based SQLite
 const diagnostics = require('./diagnostics');
 const singleCell = require('./single-cell');
 const dataLoader = require('./data-loader');
+const tools = require('./tools');
+const chat = require('./chat');
 
 // GitHub repo for update checks
 const GITHUB_REPO = 'acycliq/pciSeq_viewer';
@@ -33,6 +35,7 @@ if (profileArg) {
 
 // Initialize persistent storage for user paths
 const store = new Store();
+let chatIpcRegistered = false;
 
 function checkForUpdates() {
   const packageJson = require('../package.json');
@@ -139,6 +142,24 @@ function createWindow() {
 
   // Load the index.html using app:// protocol
   mainWindow.loadURL('app://index.html');
+
+  // The chat panel. The tools read the run through diagnostics.js and can move
+  // the map through the window; the model loop lives in chat.js. The IPC handlers
+  // are registered once, createWindow can run again on macOS.
+  tools.init({
+    querySpot: diagnostics.querySpot,
+    queryCell: diagnostics.queryCell,
+    getMeta: diagnostics.getMeta,
+    send: (channel, payload) => { if (mainWindow) mainWindow.webContents.send(channel, payload); },
+  });
+  chat.init({
+    store,
+    send: (ev) => { if (mainWindow) mainWindow.webContents.send('chat-event', ev); },
+  });
+  if (!chatIpcRegistered) {
+    chat.registerIpc(ipcMain);
+    chatIpcRegistered = true;
+  }
 
   // Open DevTools in development (uncomment for debugging)
   // mainWindow.webContents.openDevTools();

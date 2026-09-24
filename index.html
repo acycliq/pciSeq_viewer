@@ -126,8 +126,8 @@
                     <line x1="9" y1="3" x2="9" y2="21"/>
                 </svg>
             </div>
-            <h2>No Background Tiles Found</h2>
-            <p>No <code>.mbtiles</code> file was found in your dataset folder.<br>
+            <h2 id="imageDimsTitle">No Background Tiles Found</h2>
+            <p id="imageDimsText">No <code>.mbtiles</code> file was found in your dataset folder.<br>
                Please enter the image dimensions manually.</p>
 
             <div class="voxel-size-section">
@@ -522,7 +522,32 @@
         </div>
     </div>
 
+    <!-- Chat panel: ask the run a question -->
+    <div id="chatPanel" class="chat-panel collapsed" role="complementary" aria-label="Chat">
+        <div class="chat-header">
+            <span>Ask the run</span>
+            <span>
+                <button id="chatClear" class="chat-small-btn" title="Start a new conversation">clear</button>
+                <button id="chatSettingsToggle" class="chat-small-btn" title="API key and model">settings</button>
+                <button id="chatClose" class="widget-close-btn">&times;</button>
+            </span>
+        </div>
+        <div id="chatSettings" class="chat-settings">
+            <label>API key <input id="chatApiKey" type="password" autocomplete="off" placeholder="paste your Anthropic API key"></label>
+            <label>Model <input id="chatModel" type="text" autocomplete="off" placeholder="claude-sonnet-5"></label>
+            <button id="chatSaveSettings" class="chat-small-btn">save</button>
+            <p class="chat-hint">The key is stored encrypted on this computer and never leaves the main process. Usage is billed to it.</p>
+        </div>
+        <div id="chatMessages" class="chat-messages"></div>
+        <div id="chatStatus" class="chat-status"></div>
+        <div class="chat-input-row">
+            <textarea id="chatInput" rows="2" placeholder="Why did spot 1642419 go to cell 18223?"></textarea>
+            <button id="chatSendBtn" class="chat-send-btn">Send</button>
+        </div>
+    </div>
+
     <!-- About (Info) Button and Modal -->
+    <div id="chatBtn" class="chat-btn" aria-label="Ask the run a question" title="Ask the run">?</div>
     <div id="aboutBtn" class="about-btn" aria-label="About this viewer" title="About">i</div>
     <div id="aboutModal" class="about-modal-bg" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
         <div class="about-modal" role="document">

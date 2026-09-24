@@ -117,6 +117,7 @@
   "author": "Dimitris Nicoloutsopoulos <dimitris.nicoloutsopoulos@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "better-sqlite3": "^12.5.0",
     "electron-store": "^8.1.0"
   },

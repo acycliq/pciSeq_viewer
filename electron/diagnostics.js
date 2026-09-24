@@ -12,6 +12,7 @@ let hasCellInefficiency = false;
 let hasGeneInefficiency = false;
 let hasBonus = false;
 let hasMrf = false;
+let hasAssignedClassIdx = false;
 let hasEffectiveBeta = false;
 // Cells the tie freezing pinned carry their own eta_bar and log_prior, from
 // the iteration they were pinned on. Without those the component chart cannot
@@ -65,6 +66,7 @@ function openDiagnosticsDatabase(dbPath) {
   // Check if mrf column exists in cells table (needed for posterior reconstruction)
   const cellCols = diagnosticsDb.prepare("PRAGMA table_info(cells)").all();
   hasMrf = cellCols.some(col => col.name === 'mrf');
+  hasAssignedClassIdx = cellCols.some(col => col.name === 'assigned_class_idx');
 
   // Check if effective_beta column exists in cells table (per-(cell, class) MRF cap)
   hasEffectiveBeta = cellCols.some(col => col.name === 'effective_beta');
@@ -208,7 +210,9 @@ ipcMain.handle('diagnostics-close-setup', () => {
   if (diagnosticsSetupWindow) diagnosticsSetupWindow.close();
 });
 
-ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
+// The spot query, callable from anywhere in the main process: the IPC handler
+// below and the agent tools both use it.
+async function querySpot(spotId) {
   if (!diagnosticsMeta || !diagnosticsDb) {
     return { success: false, error: 'diagnostics data not loaded' };
   }
@@ -286,12 +290,25 @@ ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
     const probabilities = softmaxJS(scores);
 
     const labels = neighborLabels.map(cid => `Cell ${cid}`).concat(['Misread']);
+
+    // 7. Each candidate's assigned class, by internal id, for the story the agent
+    // tells. Older dbs have no assigned_class_idx column, then this is null.
+    let neighborClasses = null;
+    if (hasAssignedClassIdx && Array.isArray(diagnosticsMeta.class_names)) {
+      const q = diagnosticsDb.prepare('SELECT assigned_class_idx FROM cells WHERE cell_id = ?');
+      neighborClasses = neighIds.map(id => {
+        const r = q.get(id);
+        return r ? diagnosticsMeta.class_names[r.assigned_class_idx] : null;
+      });
+    }
     return {
       success: true,
       spotId,
       geneName,
       x: row.x, y: row.y, z: row.z,
       neighborLabels: labels,
+      neighborIds: neighborLabels,
+      neighborClasses,
       mvn: Array.from(mvn),
       attention: Array.from(attn),
       exprFluct: Array.from(expr),
@@ -306,9 +323,12 @@ ipcMain.handle('check-spot-binary-query', async (event, { spotId }) => {
     console.error('check_spot query failed:', e.message);
     return { success: false, error: e.message };
   }
-});
+}
 
-ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, topN = 10 }) => {
+ipcMain.handle('check-spot-binary-query', (event, { spotId }) => querySpot(spotId));
+
+// The cell query, same idea as querySpot.
+async function queryCell(cellId, userClass, topN = 10) {
   if (!diagnosticsMeta || !diagnosticsDb) {
     return { success: false, error: 'diagnostics data not loaded' };
   }
@@ -471,6 +491,13 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
       cellId,
       assignedClass,
       userClass,
+      // the whole probability vector and the names, so a caller can pick the runner
+      // up itself. classProb is what the run stored; posterior is the rebuild above
+      // and is null when the db carries no mrf. The agent tools default the
+      // comparison class to the runner up, the way the Python explain_cell does.
+      classNames: class_names,
+      classProb: Array.from(classProb),
+      posterior: posterior !== null ? Array.from(posterior) : null,
       topData,
       bottomData,
       allData,
@@ -487,7 +514,9 @@ ipcMain.handle('check-cell-binary-query', async (event, { cellId, userClass, top
   } catch (err) {
     return { success: false, error: 'Query failed: ' + err.message };
   }
-});
+}
+
+ipcMain.handle('check-cell-binary-query', (event, { cellId, userClass, topN = 10 }) => queryCell(cellId, userClass, topN));
 
 // Get current check_cell state (called by renderer on startup)
 ipcMain.handle('check-cell-get-state', () => {
@@ -611,6 +640,8 @@ function getMeta() {
 
 module.exports = {
   init,
+  querySpot,
+  queryCell,
   openDiagnosticsDatabase,
   closeDiagnosticsDatabase,
   broadcastDiagnosticsState,

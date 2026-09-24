@@ -50,6 +50,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onImportClassColors: (handler) => ipcRenderer.on('import-class-colors', (_e, data) => handler(data)),
 
   // Keyboard shortcuts overlay
+  // Chat panel. chatSend runs one turn in the main process (the model call and any
+  // tool calls) and resolves with the assistant's final text; the steps along the
+  // way arrive as chat-event messages so the panel can show what was looked up.
+  chatSend: (messages) => ipcRenderer.invoke('chat-send', messages),
+  chatGetSettings: () => ipcRenderer.invoke('chat-get-settings'),
+  chatSaveSettings: (settings) => ipcRenderer.invoke('chat-save-settings', settings),
+  onChatEvent: (handler) => ipcRenderer.on('chat-event', (_e, ev) => handler(ev)),
+  // the fly_to_cell tool: the main process asks the map to move
+  onChatFlyToCell: (handler) => ipcRenderer.on('chat-fly-to-cell', (_e, p) => handler(p)),
   onShowShortcuts: (handler) => ipcRenderer.on('show-shortcuts', handler)
 });
 
