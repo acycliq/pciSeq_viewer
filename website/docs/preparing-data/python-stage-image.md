@@ -43,7 +43,7 @@ A brief description of the channel, stored in the MBTiles metadata.
 
 ### `tint` (optional)
 **Type:** `str`  
-A hex color code (e.g., `'#00FF00'`). If provided, the grayscale tiles will be tinted with this color in the viewer. Useful for overlaying multiple fluorescent channels.
+A hex color code (e.g., `'#00FF00'`). If provided, the grayscale tiles will be tinted with this color in the viewer. Useful to tell the channels apart when several are staged; the viewer shows one channel at a time and does not overlay them.
 
 ## Requirements
 

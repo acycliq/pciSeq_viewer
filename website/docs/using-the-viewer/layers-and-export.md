@@ -11,13 +11,26 @@ drawn and offers two projection modes plus an image export.
 ## Base layers
 
 - **Background**, show/hide the background microscopy image (the MBTiles tiles).
-  Shortcut: `T`. When a dataset has more than one background channel (e.g. DAPI
-  and GCaMP, one `.mbtiles` each), a channel switcher lets you cross-fade between
-  them. Each channel is labelled by its mbtiles `name` and tinted by its mbtiles
-  `tint` metadata, so e.g. a GCaMP channel can render green while DAPI stays
-  grayscale. Channels with no `tint` are shown grayscale.
+  Shortcut: `T`. A dataset can have more than one background image, see
+  [Background channels](#background-channels) below.
 - **Cells**, show/hide the cell boundary polygons. Shortcut: `P`. An
   **Opacity** slider controls the polygon fill.
+
+### Background channels
+
+Each `.mbtiles` in the data folder is one background channel, for example a DAPI
+and a GCaMP image of the same section. When there is more than one, radio buttons
+in the top right corner of the map switch between them, with a short cross-fade.
+One channel is shown at a time; the channels are never overlaid.
+
+Each channel is labelled by its mbtiles `name` and tinted by its mbtiles `tint`
+metadata, so a GCaMP channel can render green while DAPI stays grayscale.
+Channels with no `tint` are shown grayscale.
+
+The channel shown when the dataset opens is the first `.mbtiles` in order of file
+name. `dapi.mbtiles` opens before `gcamp.mbtiles`. Upper case sorts before lower
+case, so `GCaMP.mbtiles` would open before `dapi.mbtiles`. To open on a different
+channel, rename the files so that it sorts first.
 
 ## All Planes (z-projection)
 
