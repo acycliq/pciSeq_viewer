@@ -18,6 +18,11 @@ let hasEffectiveBeta = false;
 // the iteration they were pinned on. Without those the component chart cannot
 // rebuild the class we are showing for them, see the frozen_* columns.
 let hasFrozen = false;
+// Key column of the cells table. pciSeq renamed it from cell_id to internal_label
+// in September 2026, because cell_id is the segmentation label everywhere else.
+// Either way it holds the internal label; older dbs still say cell_id.
+// old runs: remove the cell_id fallback with the next version bump, see cz1.3
+let cellKey = 'cell_id';
 
 // References from main.js (set via init)
 let mainWindow = null;
@@ -74,6 +79,8 @@ function openDiagnosticsDatabase(dbPath) {
   // Check if the tie freezing columns exist (older DBs will not have them)
   hasFrozen = cellCols.some(col => col.name === 'frozen_eta_bar');
 
+  cellKey = cellCols.some(col => col.name === 'internal_label') ? 'internal_label' : 'cell_id';
+
   console.log('Diagnostics DB loaded. nC=%d, nS=%d, hasCellInefficiency=%s, hasGeneInefficiency=%s, hasBonus=%s, hasMrf=%s, hasEffectiveBeta=%s, hasFrozen=%s', diagnosticsMeta.nC, diagnosticsMeta.nS, hasCellInefficiency, hasGeneInefficiency, hasBonus, hasMrf, hasEffectiveBeta, hasFrozen);
   return diagnosticsMeta;
 }
@@ -90,6 +97,7 @@ function closeDiagnosticsDatabase() {
   hasMrf = false;
   hasEffectiveBeta = false;
   hasFrozen = false;
+  cellKey = 'cell_id';
 }
 
 function broadcastDiagnosticsState(enabled) {
@@ -295,7 +303,7 @@ async function querySpot(spotId) {
     // tells. Older dbs have no assigned_class_idx column, then this is null.
     let neighborClasses = null;
     if (hasAssignedClassIdx && Array.isArray(diagnosticsMeta.class_names)) {
-      const q = diagnosticsDb.prepare('SELECT assigned_class_idx FROM cells WHERE cell_id = ?');
+      const q = diagnosticsDb.prepare('SELECT assigned_class_idx FROM cells WHERE ' + cellKey + ' = ?');
       neighborClasses = neighIds.map(id => {
         const r = q.get(id);
         return r ? diagnosticsMeta.class_names[r.assigned_class_idx] : null;
@@ -360,7 +368,7 @@ async function queryCell(cellId, userClass, topN = 10) {
       ? 'scaled_means, theta_bar, gene_count, class_prob, mrf'
       : 'scaled_means, theta_bar, gene_count, class_prob';
     const frozenCols = hasFrozen ? ', frozen_eta_bar, frozen_log_prior, frozen_iter' : '';
-    const selectCellCols = 'SELECT ' + baseCols + frozenCols + ' FROM cells WHERE cell_id = ?';
+    const selectCellCols = 'SELECT ' + baseCols + frozenCols + ' FROM cells WHERE ' + cellKey + ' = ?';
     const row = diagnosticsDb.prepare(selectCellCols).get(c);
     if (!row) {
       return { success: false, error: 'Cell not found in database: ' + c };
@@ -571,7 +579,7 @@ ipcMain.handle('tooltip-get-cell-info', (event, { cellLabel }) => {
     ? 'theta_bar, class_prob, gamma_assigned, gene_count, mrf, effective_beta'
     : 'theta_bar, class_prob, gamma_assigned, gene_count, mrf';
   const row = diagnosticsDb
-    .prepare('SELECT ' + selectCols + ' FROM cells WHERE cell_id = ?')
+    .prepare('SELECT ' + selectCols + ' FROM cells WHERE ' + cellKey + ' = ?')
     .get(c);
   if (!row) {
     return { success: false, error: 'cell row not found: ' + c };
