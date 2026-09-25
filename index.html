@@ -522,32 +522,47 @@
         </div>
     </div>
 
-    <!-- Chat panel: ask the run a question -->
+    <!-- Chat panel: ask the run a question. Docked along the bottom like Cloud Shell,
+         the map shrinks above it instead of being covered. -->
     <div id="chatPanel" class="chat-panel collapsed" role="complementary" aria-label="Chat">
+        <div id="chatResize" class="chat-resize" title="Drag to resize"></div>
         <div class="chat-header">
-            <span>Ask the run</span>
-            <span>
-                <button id="chatClear" class="chat-small-btn" title="Start a new conversation">clear</button>
-                <button id="chatSettingsToggle" class="chat-small-btn" title="API key and model">settings</button>
-                <button id="chatClose" class="widget-close-btn">&times;</button>
+            <span class="chat-title"><span class="chat-prompt">&gt;_</span>Ask the run</span>
+            <span class="chat-tabs" role="tablist">
+                <button id="chatTabConnection" class="chat-tab" role="tab" data-pane="chatConnection">Connection</button>
+                <button id="chatTabChat" class="chat-tab" role="tab" data-pane="chatSession">Chat</button>
+            </span>
+            <span class="chat-header-btns">
+                <button id="chatClear" class="chat-icon-btn" title="New conversation">&#x21BA;</button>
+                <button id="chatMin" class="chat-icon-btn" title="Minimise">&minus;</button>
+                <button id="chatMax" class="chat-icon-btn" title="Maximise">&#x2922;</button>
+                <button id="chatClose" class="chat-icon-btn" title="Close">&times;</button>
             </span>
         </div>
-        <div id="chatSettings" class="chat-settings">
-            <label>API key <input id="chatApiKey" type="password" autocomplete="off" placeholder="paste your Anthropic API key"></label>
-            <label>Model <input id="chatModel" type="text" autocomplete="off" placeholder="claude-sonnet-5"></label>
-            <button id="chatSaveSettings" class="chat-small-btn">save</button>
-            <p class="chat-hint">The key is stored encrypted on this computer and never leaves the main process. Usage is billed to it.</p>
-        </div>
-        <div id="chatMessages" class="chat-messages"></div>
-        <div id="chatStatus" class="chat-status"></div>
-        <div class="chat-input-row">
-            <textarea id="chatInput" rows="2" placeholder="Why did spot 1642419 go to cell 18223?"></textarea>
-            <button id="chatSendBtn" class="chat-send-btn">Send</button>
+        <div class="chat-body">
+            <!-- Connection: the API key and the model -->
+            <div id="chatConnection" class="chat-pane chat-connection">
+                <p id="chatConnState" class="chat-conn-state"></p>
+                <label>Provider <select id="chatProvider"></select></label>
+                <label id="chatBaseUrlRow">Address <input id="chatBaseUrl" type="text" autocomplete="off" placeholder="https://... (a service that speaks Anthropic's Messages API)"></label>
+                <label>API key <input id="chatApiKey" type="password" autocomplete="off" placeholder="paste your API key"></label>
+                <label>Model <input id="chatModel" type="text" autocomplete="off" placeholder="claude-sonnet-5"></label>
+                <button id="chatSaveSettings" class="chat-small-btn">save</button>
+                <p class="chat-hint">Each provider keeps its own key, stored encrypted on this computer; it never leaves the main process and is sent only to that provider. Usage is billed to it.</p>
+            </div>
+            <!-- Chat: one session like a terminal, the prompt is always the last line -->
+            <div id="chatSession" class="chat-pane chat-session">
+                <div id="chatMessages" class="chat-log"></div>
+                <div id="chatPromptLine" class="chat-prompt-line">
+                    <span class="chat-prompt">&gt;_</span>
+                    <textarea id="chatInput" rows="1" spellcheck="false" aria-label="Your question"></textarea>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- About (Info) Button and Modal -->
-    <div id="chatBtn" class="chat-btn" aria-label="Ask the run a question" title="Ask the run">?</div>
+    <div id="chatBtn" class="chat-btn" aria-label="Ask the run a question" title="Ask the run">&gt;_</div>
     <div id="aboutBtn" class="about-btn" aria-label="About this viewer" title="About">i</div>
     <div id="aboutModal" class="about-modal-bg" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
         <div class="about-modal" role="document">

@@ -54,7 +54,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // tool calls) and resolves with the assistant's final text; the steps along the
   // way arrive as chat-event messages so the panel can show what was looked up.
   chatSend: (messages) => ipcRenderer.invoke('chat-send', messages),
-  chatGetSettings: () => ipcRenderer.invoke('chat-get-settings'),
+  chatGetSettings: (provider) => ipcRenderer.invoke('chat-get-settings', provider),
   chatSaveSettings: (settings) => ipcRenderer.invoke('chat-save-settings', settings),
   onChatEvent: (handler) => ipcRenderer.on('chat-event', (_e, ev) => handler(ev)),
   // the fly_to_cell tool: the main process asks the map to move

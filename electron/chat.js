@@ -8,14 +8,26 @@
 // was looked up, not only the final answer.
 //
 // The API key never reaches the renderer. It is encrypted with Electron's
-// safeStorage and kept in electron-store; ANTHROPIC_API_KEY in the environment is
-// used when no key has been saved.
+// safeStorage and kept in electron-store; ANTHROPIC_API_KEY (or ZAI_API_KEY for
+// Z.ai) in the environment is used when no key has been saved.
+//
+// The model can come from Anthropic or from any service that speaks Anthropic's
+// Messages protocol, such as Z.ai's GLM. Each provider keeps its own key and model,
+// so switching does not lose the other one.
 
 const { safeStorage } = require('electron');
 const Anthropic = require('@anthropic-ai/sdk');
 const tools = require('./tools');
 
 const DEFAULT_MODEL = 'claude-sonnet-5';
+
+// baseURL null means Anthropic itself. Z.ai's address and model name are from its
+// docs (docs.z.ai, Tool Integration), September 2026.
+const PROVIDERS = {
+  anthropic: { label: 'Anthropic', baseURL: null, model: DEFAULT_MODEL, env: 'ANTHROPIC_API_KEY' },
+  zai: { label: 'Z.ai (GLM)', baseURL: 'https://api.z.ai/api/anthropic', model: 'glm-5.2', env: 'ZAI_API_KEY' },
+  other: { label: 'Other (Anthropic-compatible)', baseURL: '', model: '', env: null },
+};
 const MAX_TOKENS = 2048;
 const MAX_TOOL_ROUNDS = 8;
 
@@ -48,11 +60,23 @@ function init(d) {
 
 // ------------------------------------------------------------- settings
 
-const KEY_FIELD = 'chatApiKeyEncrypted';
-const MODEL_FIELD = 'chatModel';
+// Before providers existed there was one key and one model, both Anthropic's. They
+// are still read as the Anthropic ones so an existing setup keeps working.
+const OLD_KEY_FIELD = 'chatApiKeyEncrypted';
+const OLD_MODEL_FIELD = 'chatModel';
+const PROVIDER_FIELD = 'chatProvider';
+const BASE_URL_FIELD = 'chatBaseUrl';   // only for 'other'
 
-function savedKey() {
-  const enc = deps.store.get(KEY_FIELD, '');
+const keyField = p => (p === 'anthropic' ? OLD_KEY_FIELD : 'chatApiKeyEncrypted_' + p);
+const modelField = p => (p === 'anthropic' ? OLD_MODEL_FIELD : 'chatModel_' + p);
+
+function activeProvider() {
+  const p = deps.store.get(PROVIDER_FIELD, 'anthropic');
+  return PROVIDERS[p] ? p : 'anthropic';
+}
+
+function savedKey(p) {
+  const enc = deps.store.get(keyField(p), '');
   if (!enc) return '';
   try {
     return safeStorage.decryptString(Buffer.from(enc, 'base64'));
@@ -61,36 +85,77 @@ function savedKey() {
   }
 }
 
-function apiKey() {
-  return savedKey() || process.env.ANTHROPIC_API_KEY || '';
+function envKey(p) {
+  const name = PROVIDERS[p].env;
+  return (name && process.env[name]) || '';
 }
 
-function getSettings() {
+function apiKey(p) {
+  return savedKey(p) || envKey(p);
+}
+
+function baseURL(p) {
+  return p === 'other' ? deps.store.get(BASE_URL_FIELD, '') : PROVIDERS[p].baseURL;
+}
+
+function model(p) {
+  return deps.store.get(modelField(p), PROVIDERS[p].model);
+}
+
+// provider: which one to describe, the active one if not given. The panel asks for
+// another when you switch the dropdown, before saving.
+function getSettings(provider) {
+  const p = PROVIDERS[provider] ? provider : activeProvider();
   return {
-    hasKey: Boolean(apiKey()),
-    keyFromEnv: !savedKey() && Boolean(process.env.ANTHROPIC_API_KEY),
-    model: deps.store.get(MODEL_FIELD, DEFAULT_MODEL),
+    provider: p,
+    active: activeProvider(),
+    providers: Object.entries(PROVIDERS).map(([id, v]) => ({ id, label: v.label })),
+    hasKey: Boolean(apiKey(p)),
+    keyFromEnv: !savedKey(p) && Boolean(envKey(p)),
+    envName: PROVIDERS[p].env,
+    model: model(p),
+    baseURL: baseURL(p) || '',
   };
 }
 
-function saveSettings({ apiKey: key, model } = {}) {
-  if (typeof key === 'string') {
+function saveSettings({ provider, apiKey: key, model: m, baseURL: url } = {}) {
+  const p = PROVIDERS[provider] ? provider : activeProvider();
+  if (typeof key === 'string' && key.trim() !== '') {
     // on Linux without a keyring, and outside Electron altogether, there is no
     // encryption to be had; say so rather than fall over
     const canEncrypt = Boolean(safeStorage) && typeof safeStorage.isEncryptionAvailable === 'function'
       && safeStorage.isEncryptionAvailable();
-    if (key.trim() === '') {
-      deps.store.delete(KEY_FIELD);
-    } else if (canEncrypt) {
-      deps.store.set(KEY_FIELD, safeStorage.encryptString(key.trim()).toString('base64'));
-    } else {
-      throw new Error('this system cannot encrypt the key for storage; set ANTHROPIC_API_KEY in the environment instead');
+    if (!canEncrypt) {
+      throw new Error('this system cannot encrypt the key for storage; set ' +
+        (PROVIDERS[p].env || 'the key') + ' in the environment instead');
     }
+    deps.store.set(keyField(p), safeStorage.encryptString(key.trim()).toString('base64'));
   }
-  if (typeof model === 'string' && model.trim()) {
-    deps.store.set(MODEL_FIELD, model.trim());
+  if (typeof m === 'string' && m.trim()) {
+    deps.store.set(modelField(p), m.trim());
   }
-  return getSettings();
+  if (p === 'other' && typeof url === 'string') {
+    deps.store.set(BASE_URL_FIELD, url.trim());
+  }
+  if (p === 'other' && !baseURL(p)) {
+    throw new Error('give the address of the service for Other');
+  }
+  deps.store.set(PROVIDER_FIELD, p);
+  return getSettings(p);
+}
+
+// The client for the active provider. For anything but Anthropic the key goes as a
+// Bearer token, which is what Z.ai expects, and apiKey is set to null on purpose:
+// otherwise the SDK would pick up ANTHROPIC_API_KEY from the environment and send
+// your Anthropic key to somebody else's server.
+function makeClient(p) {
+  const key = apiKey(p);
+  if (!key) {
+    throw new Error('no API key for ' + PROVIDERS[p].label + '. Paste one on the Connection tab' +
+      (PROVIDERS[p].env ? ', or set ' + PROVIDERS[p].env : '') + '.');
+  }
+  if (p === 'anthropic') return new Anthropic({ apiKey: key });
+  return new Anthropic({ apiKey: null, authToken: key, baseURL: baseURL(p) });
 }
 
 // ------------------------------------------------------------- one turn
@@ -99,12 +164,9 @@ function saveSettings({ apiKey: key, model } = {}) {
 // new message. Returns the final assistant text and the messages to carry forward
 // (assistant turns and tool results included, so the next turn has the context).
 async function runTurn(messages) {
-  const key = apiKey();
-  if (!key) {
-    throw new Error('no API key. Paste one in the panel settings, or set ANTHROPIC_API_KEY.');
-  }
-  const client = new Anthropic({ apiKey: key });
-  const model = deps.store.get(MODEL_FIELD, DEFAULT_MODEL);
+  const p = activeProvider();
+  const client = makeClient(p);
+  const modelName = model(p);
   const send = deps.send || (() => {});
 
   const history = [...messages];
@@ -112,7 +174,7 @@ async function runTurn(messages) {
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const res = await client.messages.create({
-      model,
+      model: modelName,
       max_tokens: MAX_TOKENS,
       system: SYSTEM,
       tools: tools.TOOLS,
@@ -156,7 +218,7 @@ function registerIpc(ipcMain) {
       return { success: false, error: msg };
     }
   });
-  ipcMain.handle('chat-get-settings', () => getSettings());
+  ipcMain.handle('chat-get-settings', (_event, provider) => getSettings(provider));
   ipcMain.handle('chat-save-settings', (_event, s) => {
     try {
       return { success: true, ...saveSettings(s || {}) };
@@ -166,4 +228,4 @@ function registerIpc(ipcMain) {
   });
 }
 
-module.exports = { init, registerIpc, runTurn, getSettings, saveSettings, SYSTEM, DEFAULT_MODEL };
+module.exports = { init, registerIpc, runTurn, getSettings, saveSettings, makeClient, SYSTEM, DEFAULT_MODEL, PROVIDERS };
