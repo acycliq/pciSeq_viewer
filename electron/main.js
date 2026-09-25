@@ -391,7 +391,11 @@ function buildAboutDetail(provenance) {
       '',
       'Loaded dataset',
       `Produced by pciSeq ${provenance.version || 'unknown'} (branch ${provenance.branch || 'unknown'}, commit ${provenance.commit || 'unknown'})`,
-      `Built ${provenance.build_date || 'unknown'}`,
+      // commit_date replaced build_date in September 2026; older runs only have
+      // the build date, which from a source checkout was not reliable
+      provenance.commit_date
+        ? `Code committed ${provenance.commit_date}`
+        : `Built ${provenance.build_date || 'unknown'}`,
       `Run started ${provenance.created_at || 'unknown'}`,
       `Run saved ${provenance.serialised_at || 'unknown'}`
     );
