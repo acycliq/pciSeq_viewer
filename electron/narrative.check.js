@@ -1,6 +1,9 @@
 // Prints the narratives for fixed inputs, so they can be diffed against the Python
 // ones (pciSeq/src/mcp/tools.py) on the same inputs. Run from the pciSeq_3d repo:
 //   node electron/narrative.check.js > js.txt; python ... > py.txt; diff js.txt py.txt
+//
+// The fixtures below are made up. The cell labels, genes and counts are chosen to
+// reach every branch of the narrators, they do not come from any run.
 const { narrateCell, narrateSpot, strength } = require('./narrative');
 
 const cellGenes = {
@@ -33,9 +36,25 @@ const spotExpression = spot(2, [[2, 'CA2', -11.0, 0.9, 0.5, 0.6, 0.66],
                                 [1, 'CA1', -10.6, -1.2, 0.0, 0.0, 0.32]], 0.01);
 const spotBackground = spot('background', [[6482, 'VLMC', -15.6, -1.3, 0.6, -0.36, 0.02]], 0.95);
 
+const cellAbsence = {
+  cell: 16609, assigned: 'CA3', compared_with: 'CA2', prob_assigned: 1.0, prob_compared: 0.0,
+  score: { gene_loglik: { assigned: -200.0, compared: -220.0 },
+           log_prior: { assigned: -4.3, compared: -4.3 },
+           spatial: { assigned: 3.0, compared: 0.0 } },
+  genes_favouring_assigned: [{ gene: 'Cdh9', counts: 6.1, diff: 9.8 }, { gene: 'Pcp4', counts: 0.00002, diff: 2.55 }, { gene: 'Tnfaip8l3', counts: 3.5, diff: 2.2 }],
+  genes_favouring_compared: [{ gene: 'Amigo2', counts: 1.2, diff: -0.9 }, { gene: 'Kcnq5', counts: 0.01, diff: -0.4 }],
+};
+const cellAbsenceOnly = { ...cellAbsence, genes_favouring_assigned: [{ gene: 'Pcp4', counts: 0.0, diff: 2.55 }] };
+const cellOverruleAbsence = { ...cellOverrule,
+  genes_favouring_compared: [{ gene: 'Car4', counts: 6.0, diff: -7.2 }, { gene: 'Rorb', counts: 0.02, diff: -1.1 }],
+  genes_favouring_assigned: [{ gene: 'Cpne7', counts: 9.0, diff: 8.2 }, { gene: 'Fezf2', counts: 0.0, diff: 1.5 }] };
+
 console.log('strength ' + [0.2, 0.8, 2.0, 4.1, 8.4, 12.5, 33.6].map(strength).join(' | '));
 console.log('cellGenes ' + narrateCell(cellGenes));
 console.log('cellOverrule ' + narrateCell(cellOverrule));
 console.log('spotDistance ' + narrateSpot(spotDistance));
 console.log('spotExpression ' + narrateSpot(spotExpression));
 console.log('spotBackground ' + narrateSpot(spotBackground));
+console.log('cellAbsence ' + narrateCell(cellAbsence));
+console.log('cellAbsenceOnly ' + narrateCell(cellAbsenceOnly));
+console.log('cellOverruleAbsence ' + narrateCell(cellOverruleAbsence));

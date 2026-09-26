@@ -46,6 +46,18 @@ function names(gs, n = 3) {
   return gs.slice(0, -1).join(', ') + ' and ' + gs[gs.length - 1];
 }
 
+// below this many soft counts a gene is taken as absent from the cell. Such a gene
+// can still be strong evidence: a class that expresses it is penalised for the
+// cell not holding any. The story must say so, or a reader (or an agent) sees a
+// gene with zero counts listed as evidence and takes it for a mistake.
+const ABSENT = 0.1;
+
+function presentAbsent(rows, n = 3) {
+  const top = rows.slice(0, n);
+  return [top.filter(g => g.counts >= ABSENT).map(g => g.gene),
+          top.filter(g => g.counts < ABSENT).map(g => g.gene)];
+}
+
 function narrateCell(e) {
   const a = e.assigned, o = e.compared_with;
   const s = e.score;
@@ -58,6 +70,8 @@ function narrateCell(e) {
   const decider = Object.keys(d).reduce((best, k) => Math.abs(d[k]) > Math.abs(d[best]) ? k : best, 'genes');
   const forA = e.genes_favouring_assigned.map(g => g.gene);
   const forO = e.genes_favouring_compared.map(g => g.gene);
+  const [aPresent, aAbsent] = presentAbsent(e.genes_favouring_assigned);
+  const [oPresent, oAbsent] = presentAbsent(e.genes_favouring_compared);
 
   const out = [];
   out.push(`Cell ${e.cell} was called ${a}, with probability ${prob(e.prob_assigned)}. The closest ` +
@@ -70,17 +84,42 @@ function narrateCell(e) {
 
   // the genes, ranked, no numbers
   if (d.genes > 0) {
-    out.push(`The genes point to ${a}, ${strength(d.genes)}. The strongest evidence comes from ${names(forA)}: the ` +
-             `cell holds these in the amounts a ${a} cell typically does and a ${o} cell ` +
-             'does not.');
-    if (forO.length) {
-      out.push(`A few genes, ${names(forO)}, look more like ${o}, but they are outweighed.`);
+    if (aPresent.length) {
+      out.push(`The genes point to ${a}, ${strength(d.genes)}. The strongest evidence comes from ${names(aPresent)}: the ` +
+               `cell holds these in the amounts a ${a} cell typically does and a ${o} cell ` +
+               'does not.');
+      if (aAbsent.length) {
+        out.push(`${names(aAbsent)} counts the same way by its absence: the cell holds almost none, ` +
+                 `and a ${o} cell would.`);
+      }
+    } else {
+      out.push(`The genes point to ${a}, ${strength(d.genes)}. The strongest evidence is absence: the cell ` +
+               `holds almost no ${names(aAbsent)}, and a ${o} cell would.`);
+    }
+    if (oPresent.length) {
+      out.push(`A few genes, ${names(oPresent)}, look more like ${o}, but they are outweighed.`);
+    }
+    if (oAbsent.length) {
+      out.push(`The near absence of ${names(oAbsent)} also leans towards ${o}, since a ${a} cell would ` +
+               'hold some, but not by enough.');
     }
   } else {
-    out.push(`On its genes alone the cell looks more like ${o}, ${strength(-d.genes)}, mostly because of ` +
-             `${names(forO)}.`);
-    if (forA.length) {
-      out.push(`The genes arguing for ${a} are ${names(forA)}.`);
+    if (oPresent.length) {
+      out.push(`On its genes alone the cell looks more like ${o}, ${strength(-d.genes)}, mostly because of ` +
+               `${names(oPresent)}.`);
+      if (oAbsent.length) {
+        out.push(`The near absence of ${names(oAbsent)} says the same: a ${a} cell would hold some.`);
+      }
+    } else {
+      out.push(`On its genes alone the cell looks more like ${o}, ${strength(-d.genes)}, mostly through ` +
+               `absence: it holds almost no ${names(oAbsent)}, and a ${a} cell would.`);
+    }
+    if (aPresent.length) {
+      out.push(`The genes arguing for ${a} are ${names(aPresent)}.`);
+    }
+    if (aAbsent.length) {
+      out.push(`The near absence of ${names(aAbsent)} argues for ${a} too, since a ${o} cell would hold ` +
+               'some.');
     }
   }
 

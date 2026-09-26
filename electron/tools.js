@@ -58,8 +58,9 @@ const TOOLS = [
     name: 'fly_to_cell',
     description:
       'Move the map to a cell and flash its outline, so the user can see the cell ' +
-      'being talked about. Use it when the user asks to see or show a cell, or after ' +
-      'explaining one. label is the cell number shown in the viewer.',
+      'being talked about. Use it when the user asks to see or show a cell; after ' +
+      'explaining one, offer it rather than calling it unasked. label is the cell ' +
+      'number shown in the viewer.',
     input_schema: {
       type: 'object',
       properties: { label: { type: 'integer', description: 'The cell label.' } },
