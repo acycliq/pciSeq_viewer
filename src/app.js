@@ -68,7 +68,7 @@ import { buildGeneSpotIndexes, assignColorsToCellClasses } from './data/cellInde
 
 // === EVENT HANDLING IMPORTS ===
 import { setupEventHandlers, setupAdvancedKeyboardShortcuts } from './events/eventHandlers.js';
-import { setupCheckCellBridge, openCheckCellModal } from './checkCellBridge.js';
+import { setupCheckCellBridge, openCheckCellModal, openCheckCellCompare } from './checkCellBridge.js';
 import { setupCheckSpotBridge, openCheckSpotModal } from './checkSpotBridge.js';
 
 // === MISREADS IMPORTS ===
@@ -721,6 +721,12 @@ window.addEventListener('load', async () => {
     if (window.electronAPI?.onChatFlyToCell) {
         window.electronAPI.onChatFlyToCell(({ label }) => {
             if (window.cellLookup) window.cellLookup.search(label);
+        });
+    }
+    // and open_cell_diagnostics: the same panel Ctrl+Click opens, compare already run
+    if (window.electronAPI?.onChatOpenCellDiagnostics) {
+        window.electronAPI.onChatOpenCellDiagnostics(({ label, vs_class }) => {
+            openCheckCellCompare(label, vs_class);
         });
     }
     if (window.cellLookup) {

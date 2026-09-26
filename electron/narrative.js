@@ -52,10 +52,17 @@ function names(gs, n = 3) {
 // gene with zero counts listed as evidence and takes it for a mistake.
 const ABSENT = 0.1;
 
+// names for the present genes, whole rows for the absent ones, since the story
+// quotes what a cell of the other class typically holds
 function presentAbsent(rows, n = 3) {
   const top = rows.slice(0, n);
   return [top.filter(g => g.counts >= ABSENT).map(g => g.gene),
-          top.filter(g => g.counts < ABSENT).map(g => g.gene)];
+          top.filter(g => g.counts < ABSENT)];
+}
+
+// one decimal, rounded first (half to even) so the digits match Python's
+function about(x) {
+  return (pyRound(x * 10) / 10).toFixed(1);
 }
 
 function narrateCell(e) {
@@ -72,6 +79,9 @@ function narrateCell(e) {
   const forO = e.genes_favouring_compared.map(g => g.gene);
   const [aPresent, aAbsent] = presentAbsent(e.genes_favouring_assigned);
   const [oPresent, oAbsent] = presentAbsent(e.genes_favouring_compared);
+  // the absent genes and, in the same order, what a cell of the class that does
+  // express them typically holds: 'Pcp4' and '3.6', 'Pcp4 and Car2' and '3.6 and 1.2'
+  const absent = (rows, key) => [names(rows.map(g => g.gene)), names(rows.map(g => about(g[key])))];
 
   const out = [];
   out.push(`Cell ${e.cell} was called ${a}, with probability ${prob(e.prob_assigned)}. The closest ` +
@@ -89,37 +99,44 @@ function narrateCell(e) {
                `cell holds these in the amounts a ${a} cell typically does and a ${o} cell ` +
                'does not.');
       if (aAbsent.length) {
-        out.push(`${names(aAbsent)} counts the same way by its absence: the cell holds almost none, ` +
-                 `and a ${o} cell would.`);
+        const [gs, ms] = absent(aAbsent, 'mean_in_compared');
+        const one = aAbsent.length === 1;
+        out.push(`${gs} ${one ? 'counts' : 'count'} the same way by ${one ? 'its' : 'their'} absence: ` +
+                 `the cell holds almost none, where cells this run called ${o} hold about ${ms} on average.`);
       }
     } else {
+      const [gs, ms] = absent(aAbsent, 'mean_in_compared');
       out.push(`The genes point to ${a}, ${strength(d.genes)}. The strongest evidence is absence: the cell ` +
-               `holds almost no ${names(aAbsent)}, and a ${o} cell would.`);
+               `holds almost no ${gs}, where cells this run called ${o} hold about ${ms} on average.`);
     }
     if (oPresent.length) {
       out.push(`A few genes, ${names(oPresent)}, look more like ${o}, but they are outweighed.`);
     }
     if (oAbsent.length) {
-      out.push(`The near absence of ${names(oAbsent)} also leans towards ${o}, since a ${a} cell would ` +
-               'hold some, but not by enough.');
+      const [gs, ms] = absent(oAbsent, 'mean_in_assigned');
+      out.push(`The near absence of ${gs} also leans towards ${o}, since cells this run ` +
+               `called ${a} hold about ${ms} on average, but not by enough.`);
     }
   } else {
     if (oPresent.length) {
       out.push(`On its genes alone the cell looks more like ${o}, ${strength(-d.genes)}, mostly because of ` +
                `${names(oPresent)}.`);
       if (oAbsent.length) {
-        out.push(`The near absence of ${names(oAbsent)} says the same: a ${a} cell would hold some.`);
+        const [gs, ms] = absent(oAbsent, 'mean_in_assigned');
+        out.push(`The near absence of ${gs} says the same: cells this run called ${a} hold about ${ms} on average.`);
       }
     } else {
+      const [gs, ms] = absent(oAbsent, 'mean_in_assigned');
       out.push(`On its genes alone the cell looks more like ${o}, ${strength(-d.genes)}, mostly through ` +
-               `absence: it holds almost no ${names(oAbsent)}, and a ${a} cell would.`);
+               `absence: it holds almost no ${gs}, where cells this run called ${a} hold about ${ms} on average.`);
     }
     if (aPresent.length) {
       out.push(`The genes arguing for ${a} are ${names(aPresent)}.`);
     }
     if (aAbsent.length) {
-      out.push(`The near absence of ${names(aAbsent)} argues for ${a} too, since a ${o} cell would hold ` +
-               'some.');
+      const [gs, ms] = absent(aAbsent, 'mean_in_compared');
+      out.push(`The near absence of ${gs} argues for ${a} too, since cells this run ` +
+               `called ${o} hold about ${ms} on average.`);
     }
   }
 

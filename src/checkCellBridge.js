@@ -191,6 +191,20 @@ export function openCheckCellModal(cellLabel) {
     panel.classList.remove('collapsed');
 }
 
+/**
+ * Open the panel on a cell and run the compare against a class straight away,
+ * landing on the charts. For the chat panel's open_cell_diagnostics tool, which
+ * already knows the class; a person picks it from the dropdown instead.
+ */
+export function openCheckCellCompare(cellLabel, userClass) {
+    openCheckCellModal(cellLabel);
+    const select = document.getElementById('checkCellClassSelect');
+    if (!select) return;
+    select.value = userClass;
+    if (select.value !== userClass) return;   // not a class of this run
+    handleCompare();
+}
+
 function closeModal() {
     const panel = document.getElementById('checkCellPanel');
     if (panel) panel.classList.add('collapsed');

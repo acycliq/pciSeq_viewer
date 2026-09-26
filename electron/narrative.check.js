@@ -41,13 +41,21 @@ const cellAbsence = {
   score: { gene_loglik: { assigned: -200.0, compared: -220.0 },
            log_prior: { assigned: -4.3, compared: -4.3 },
            spatial: { assigned: 3.0, compared: 0.0 } },
-  genes_favouring_assigned: [{ gene: 'Cdh9', counts: 6.1, diff: 9.8 }, { gene: 'Pcp4', counts: 0.00002, diff: 2.55 }, { gene: 'Tnfaip8l3', counts: 3.5, diff: 2.2 }],
-  genes_favouring_compared: [{ gene: 'Amigo2', counts: 1.2, diff: -0.9 }, { gene: 'Kcnq5', counts: 0.01, diff: -0.4 }],
+  genes_favouring_assigned: [{ gene: 'Cdh9', counts: 6.1, diff: 9.8, mean_in_assigned: 5.8, mean_in_compared: 0.3 },
+                             { gene: 'Pcp4', counts: 0.00002, diff: 2.55, mean_in_assigned: 0.66, mean_in_compared: 3.6 },
+                             { gene: 'Tnfaip8l3', counts: 3.5, diff: 2.2, mean_in_assigned: 3.1, mean_in_compared: 0.4 }],
+  genes_favouring_compared: [{ gene: 'Amigo2', counts: 1.2, diff: -0.9, mean_in_assigned: 0.5, mean_in_compared: 2.9 },
+                             { gene: 'Kcnq5', counts: 0.01, diff: -0.4, mean_in_assigned: 1.25, mean_in_compared: 0.2 }],
 };
-const cellAbsenceOnly = { ...cellAbsence, genes_favouring_assigned: [{ gene: 'Pcp4', counts: 0.0, diff: 2.55 }] };
+// two absent genes, and a mean on a rounding tie (1.25 -> 1.2, half to even)
+const cellAbsenceOnly = { ...cellAbsence, genes_favouring_assigned: [
+  { gene: 'Pcp4', counts: 0.0, diff: 2.55, mean_in_assigned: 0.66, mean_in_compared: 3.6 },
+  { gene: 'Car2', counts: 0.05, diff: 1.1, mean_in_assigned: 0.1, mean_in_compared: 1.25 }] };
 const cellOverruleAbsence = { ...cellOverrule,
-  genes_favouring_compared: [{ gene: 'Car4', counts: 6.0, diff: -7.2 }, { gene: 'Rorb', counts: 0.02, diff: -1.1 }],
-  genes_favouring_assigned: [{ gene: 'Cpne7', counts: 9.0, diff: 8.2 }, { gene: 'Fezf2', counts: 0.0, diff: 1.5 }] };
+  genes_favouring_compared: [{ gene: 'Car4', counts: 6.0, diff: -7.2, mean_in_assigned: 0.2, mean_in_compared: 7.0 },
+                             { gene: 'Rorb', counts: 0.02, diff: -1.1, mean_in_assigned: 2.35, mean_in_compared: 0.1 }],
+  genes_favouring_assigned: [{ gene: 'Cpne7', counts: 9.0, diff: 8.2, mean_in_assigned: 8.0, mean_in_compared: 0.4 },
+                             { gene: 'Fezf2', counts: 0.0, diff: 1.5, mean_in_assigned: 0.3, mean_in_compared: 1.95 }] };
 
 console.log('strength ' + [0.2, 0.8, 2.0, 4.1, 8.4, 12.5, 33.6].map(strength).join(' | '));
 console.log('cellGenes ' + narrateCell(cellGenes));

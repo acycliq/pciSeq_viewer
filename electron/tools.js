@@ -5,8 +5,8 @@
 // The numbers come from querySpot and queryCell in diagnostics.js, which the
 // Spot Inspector and Cell Inspector already use; this file reshapes their result
 // into the dict the narrators expect and adds the story. Two tools act on the
-// map instead of answering, which is the one thing the viewer can do that the
-// Python server cannot.
+// screen as well as answering, moving the map and opening the cell diagnostics
+// panel, which is the one thing the viewer can do that the Python server cannot.
 //
 // Dependencies come in through init() rather than require(), so the adapters can
 // be run in plain node with fake query results (tools.check.js).
@@ -43,8 +43,29 @@ const TOOLS = [
       'Why a cell was given its class, gene by gene. Compares the assigned class ' +
       'against another, the runner up unless vs_class is given: the gene ' +
       'log-likelihood, the class prior and the spatial term for each, the genes that ' +
-      'pushed hardest for each side, and a narrative in plain words. Counts are soft, ' +
-      'weighted by assignment probability. label is the cell number shown in the viewer.',
+      'pushed hardest for each side with the cell\'s count and what a cell of either ' +
+      'class typically holds, and a narrative in plain words. A gene the cell lacks can ' +
+      'count against the class that expresses it. Counts are soft, weighted by ' +
+      'assignment probability. label is the cell number shown in the viewer.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        label: { type: 'integer', description: 'The cell label, as in the segmentation.' },
+        vs_class: { type: 'string', description: 'Class to compare against. Defaults to the runner up.' },
+      },
+      required: ['label'],
+    },
+  },
+  {
+    name: 'open_cell_diagnostics',
+    description:
+      'Open the cell diagnostics panel on a cell, compared against the runner up (or ' +
+      'vs_class), so the user sees the charts and tables behind the call. Returns the ' +
+      'same numbers as explain_cell. Use it when the user asks to see the diagnostics; ' +
+      'after explaining a cell, offer it rather than opening it unasked. When the cell ' +
+      'has no runner up (the assigned class holds all the probability) it returns an ' +
+      'error asking for vs_class; ask the user which class to compare against instead ' +
+      'of guessing.',
     input_schema: {
       type: 'object',
       properties: {
@@ -105,6 +126,11 @@ function spotToDict(res) {
   return out;
 }
 
+// one gene of the top or bottom list. The two means are the average count over the
+// cells this run called each class, the Gene Expression table of the diagnostics.
+const geneRow = g => ({ gene: g.gene, counts: g.geneCount, mean_in_assigned: g.meanAssigned,
+                        mean_in_compared: g.meanUser, diff: g.diff });
+
 // queryCell result -> the dict narrateCell expects, the same shape as the Python
 // explain_cell returns.
 function cellToDict(res, label) {
@@ -112,6 +138,8 @@ function cellToDict(res, label) {
   const a = names.indexOf(res.assignedClass);
   const o = names.indexOf(res.userClass);
   const c = res.components;
+  const forA = res.topData.filter(g => g.diff > 0).map(geneRow);
+  const forO = res.bottomData.filter(g => g.diff < 0).map(geneRow);
   const out = {
     cell: label,
     assigned: res.assignedClass,
@@ -123,11 +151,17 @@ function cellToDict(res, label) {
       log_prior: { assigned: c.logPriorAssigned ?? 0, compared: c.logPriorUser ?? 0 },
       spatial: { assigned: c.mrfAssigned ?? 0, compared: c.mrfUser ?? 0 },
     },
-    genes_favouring_assigned: res.topData.filter(g => g.diff > 0)
-      .map(g => ({ gene: g.gene, counts: g.geneCount, diff: g.diff })),
-    genes_favouring_compared: res.bottomData.filter(g => g.diff < 0)
-      .map(g => ({ gene: g.gene, counts: g.geneCount, diff: g.diff })),
+    genes_favouring_assigned: forA,
+    genes_favouring_compared: forO,
+    // the totals of the two lists, the sums in the chart titles of the cell
+    // diagnostics. Given so the model quotes them rather than adds up the diffs
+    // itself, which it does badly.
+    sum_favouring_assigned: forA.reduce((s, g) => s + g.diff, 0),
+    sum_favouring_compared: forO.reduce((s, g) => s + g.diff, 0),
     counts_are: 'soft, weighted by the spot assignment probabilities',
+    means_are: 'the average count over the cells of this run, each weighted by its probability of ' +
+      'being that class. An after the fact summary of the run, not the scRNAseq profile the ' +
+      'likelihood scores against',
   };
   if (c.mrfAssigned == null) {
     out.note = 'this run carries no spatial term in diagnostics.db, so it is taken as zero';
@@ -147,6 +181,39 @@ function runnerUp(res) {
   return res.classNames[best];
 }
 
+// A runner up with no probability at three decimals, the precision of cellData.tsv,
+// is no runner up: the assigned class holds everything and the comparison is
+// arbitrary. The tool then asks the user for a class rather than picking one.
+const NO_RUNNER_UP = 0.0005;
+
+// The query behind explain_cell and open_cell_diagnostics: the cell against the
+// runner up, or against vs_class. queryCell needs a class to compare against, and
+// the runner up is not known until a first query hands back the probabilities. So
+// query once with any class, pick the runner up from the result, and query again
+// if it differs. Resolves to { res } or { error }.
+async function cellQuery(label, vsClass, needRunnerUp) {
+  const meta = deps.getMeta();
+  let res = await deps.queryCell(label, vsClass || meta.class_names[0]);
+  if (!res.success) return { error: res.error };
+  if (vsClass) {
+    if (vsClass === res.assignedClass) {
+      return { error: `cell ${label} is already ${res.assignedClass}, pick another class to compare` };
+    }
+    return { res };
+  }
+  const other = runnerUp(res);
+  if (needRunnerUp && res.classProb[res.classNames.indexOf(other)] < NO_RUNNER_UP) {
+    return { error: `cell ${label} is ${res.assignedClass} with all the probability, there is ` +
+                    'no runner up to compare against. Ask the user which class to compare ' +
+                    'against and call again with vs_class' };
+  }
+  if (other !== res.userClass) {
+    res = await deps.queryCell(label, other);
+    if (!res.success) return { error: res.error };
+  }
+  return { res };
+}
+
 // ---------------------------------------------------------------- dispatch
 
 // Returns the tool's answer as an object. Errors come back as { error } so the
@@ -160,22 +227,19 @@ async function call(name, input) {
     }
     if (name === 'explain_cell') {
       const label = Number(input.label);
-      // queryCell needs a class to compare against, and the runner up is not known
-      // until a first query hands back the probabilities. So query once with any
-      // class, pick the runner up from the result, and query again if it differs.
-      const meta = deps.getMeta();
-      let res = await deps.queryCell(label, input.vs_class || meta.class_names[0]);
-      if (!res.success) return { error: res.error };
-      if (!input.vs_class) {
-        const other = runnerUp(res);
-        if (other !== res.userClass) {
-          res = await deps.queryCell(label, other);
-          if (!res.success) return { error: res.error };
-        }
-      } else if (input.vs_class === res.assignedClass) {
-        return { error: `cell ${label} is already ${res.assignedClass}, pick another class to compare` };
-      }
+      const { res, error } = await cellQuery(label, input.vs_class, false);
+      if (error) return { error };
       return cellToDict(res, label);
+    }
+    if (name === 'open_cell_diagnostics') {
+      const label = Number(input.label);
+      const { res, error } = await cellQuery(label, input.vs_class, true);
+      if (error) return { error };
+      deps.send('chat-open-cell-diagnostics', { label, vs_class: res.userClass });
+      const out = cellToDict(res, label);
+      out.diagnostics = `open on cell ${label}, ${res.assignedClass} against ${res.userClass}, ` +
+                        'Genes tab first';
+      return out;
     }
     if (name === 'fly_to_cell') {
       const label = Number(input.label);

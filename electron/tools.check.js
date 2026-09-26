@@ -47,6 +47,8 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.strictEqual(cell.compared_with, 'C');
   assert.strictEqual(cell.prob_assigned, 0.9);
   assert.deepStrictEqual(cell.genes_favouring_assigned.map(g => g.gene), ['Ndnf', 'Rgs5']);
+  assert.strictEqual(cell.sum_favouring_assigned, 13.0);
+  assert.strictEqual(cell.sum_favouring_compared, -2.0);
   assert.ok(cell.narrative.startsWith('Cell 42 was called B, with probability 0.90'));
   assert.ok(/So the genes settled it/.test(cell.narrative));
 
@@ -56,6 +58,26 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   const fly = await tools.call('fly_to_cell', { label: 18223 });
   assert.deepStrictEqual(sent, [['chat-fly-to-cell', { label: 18223 }]]);
   assert.strictEqual(fly.done, true);
+
+  // open_cell_diagnostics: same numbers as explain_cell, plus the message to the renderer
+  sent = [];
+  const opened = await tools.call('open_cell_diagnostics', { label: 42 });
+  assert.deepStrictEqual(sent, [['chat-open-cell-diagnostics', { label: 42, vs_class: 'C' }]]);
+  assert.strictEqual(opened.compared_with, 'C');
+  assert.ok(/open on cell 42, B against C/.test(opened.diagnostics));
+  assert.strictEqual(opened.narrative, cell.narrative);
+
+  // no runner up: the assigned class holds everything, so ask rather than pick
+  sent = [];
+  const sure = { ...fakeQueryCell(43, 'A'), classProb: [0.0, 1.0, 0.0004] };
+  tools.init({ queryCell: async () => sure });
+  const noRunnerUp = await tools.call('open_cell_diagnostics', { label: 43 });
+  assert.ok(/no runner up/.test(noRunnerUp.error), noRunnerUp.error);
+  assert.deepStrictEqual(sent, [], 'nothing opened');
+  const named = await tools.call('open_cell_diagnostics', { label: 43, vs_class: 'A' });
+  assert.strictEqual(named.compared_with, 'A');
+  assert.deepStrictEqual(sent, [['chat-open-cell-diagnostics', { label: 43, vs_class: 'A' }]]);
+  tools.init({ queryCell: async (l, u) => fakeQueryCell(l, u) });
 
   const viaCall = await tools.call('explain_spot', { spot_id: 1642419 });
   assert.strictEqual(viaCall.assigned_to, 18223);
