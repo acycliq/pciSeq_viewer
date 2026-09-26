@@ -82,6 +82,71 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   const viaCall = await tools.call('explain_spot', { spot_id: 1642419 });
   assert.strictEqual(viaCall.assigned_to, 18223);
 
+  // docs: a tiny corpus in a temp folder, the ranking of docs.py
+  const fs = require('fs'), os = require('os'), path = require('path');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pciseq-docs-'));
+  fs.writeFileSync(path.join(root, 'index.md'), '# pciSeq\n\nAssigns spots to cells.\n');
+  fs.mkdirSync(path.join(root, 'the-model'));
+  fs.writeFileSync(path.join(root, 'the-model', 'settings.md'),
+    '---\ndescription: The settings\n---\n\n## rTheta\n\nrTheta is the shape of the gamma prior on the cell ' +
+    'scale factor theta.\n\n## mrf_beta\n\nmrf_beta is the strength of the spatial term.\n');
+  tools.init({ docsRoot: root });
+  const found = await tools.call('docs', { query: 'rTheta' });
+  assert.strictEqual(found.hits.length, 1);
+  assert.strictEqual(found.hits[0].page, 'the-model/settings.md');
+  assert.strictEqual(found.hits[0].heading, 'rTheta');
+  assert.strictEqual(found.hits[0].title, 'The settings');
+  const nothing = await tools.call('docs', { query: 'zzzz' });
+  assert.deepStrictEqual(nothing.hits, []);
+  assert.deepStrictEqual(nothing.pages, ['index.md', 'the-model/settings.md']);
+  fs.rmSync(root, { recursive: true });
+  tools.init({ docsRoot: null });
+  assert.ok(/no documentation/.test((await tools.call('docs', { query: 'x' })).error));
+
+  // run_info: from the metadata, old runs say so
+  const meta = { nC: 17, nS: 500, nG: 20, nK: 3,
+                 pciSeq_provenance: { version: '0.1', commit: 'abc1234', branch: 'dev_3d', created_at: '2026-09-26T10:00:00Z' },
+                 config: { rTheta: 2, CellCallTolerance: 0.02, is3D: true, voxel_size: [1, 1, 3] },
+                 run: { iterations: 40, converged: true, delta: [0.5, 0.01] } };
+  tools.init({ getMeta: () => meta });
+  const info = await tools.call('run_info', {});
+  assert.strictEqual(info.cells, 16);
+  assert.strictEqual(info.run_date, '2026-09-26T10:00:00Z');
+  assert.strictEqual(info.settings.rTheta, 2);
+  assert.ok(/converged after 40 iterations/.test(info.ended));
+  tools.init({ getMeta: () => ({ nC: 17, nS: 500, nG: 20, nK: 3, pciSeq_provenance: { version: '0.0.9' } }) });
+  const old = await tools.call('run_info', {});
+  assert.strictEqual(old.settings, null);
+  assert.ok(/before pciSeq exported/.test(old.note));
+
+  // the source: fetched at the run's commit, sliced, line numbered
+  const fetched = [];
+  const fakeFetch = async (url) => {
+    fetched.push(url);
+    if (url.includes('/contents/')) {
+      return { ok: true, status: 200, text: async () => JSON.stringify([
+        { name: 'core', type: 'dir', size: 0 }, { name: 'setup.py', type: 'file', size: 10 }]) };
+    }
+    if (url.endsWith('/missing.py')) return { ok: false, status: 404, text: async () => '' };
+    const body = Array.from({ length: 1000 }, (_, i) => 'line ' + (i + 1)).join('\n');
+    return { ok: true, status: 200, text: async () => body };
+  };
+  tools.init({ getMeta: () => meta, fetch: fakeFetch });
+  const listed = await tools.call('list_source', { dir: 'pciSeq/src' });
+  assert.ok(fetched[0].endsWith('/contents/pciSeq/src?ref=abc1234'), fetched[0]);
+  assert.deepStrictEqual(listed.entries.map(e => e.type), ['dir', 'file']);
+  const src = await tools.call('read_source', { path: 'pciSeq/src/core/main.py' });
+  assert.ok(fetched[1].endsWith('/abc1234/pciSeq/src/core/main.py'), fetched[1]);
+  assert.strictEqual(src.lines, 1000);
+  assert.strictEqual(src.end, 400);
+  assert.ok(src.text.startsWith('   1  line 1'));
+  assert.ok(/start_line=401/.test(src.next));
+  const tail = await tools.call('read_source', { path: 'pciSeq/src/core/main.py', start_line: 900 });
+  assert.strictEqual(tail.end, 1000);
+  assert.strictEqual(tail.next, undefined);
+  assert.ok(/not found on GitHub/.test((await tools.call('read_source', { path: 'missing.py' })).error));
+  assert.ok(/not a path inside/.test((await tools.call('read_source', { path: '../etc/passwd' })).error));
+
   const bad = await tools.call('no_such_tool', {});
   assert.ok(/unknown tool/.test(bad.error));
   console.log('tools.check: all assertions pass');

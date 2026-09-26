@@ -12,8 +12,19 @@
 // be run in plain node with fake query results (tools.check.js).
 
 const { narrateCell, narrateSpot } = require('./narrative');
+const docs = require('./docs');
 
-let deps = { querySpot: null, queryCell: null, getMeta: null, send: null };
+// docsRoot: the folder of documentation pages, see docs.js. fetch: for reading the
+// pciSeq source from GitHub, the global one unless a check passes a fake.
+let deps = { querySpot: null, queryCell: null, getMeta: null, send: null, docsRoot: null, fetch: null };
+
+// where the source is read from: the pciSeq_3d repo at the commit that made the
+// run, so the code matches the numbers, falling back to the dev_3d branch when the
+// run does not record one
+const GITHUB_REPO = 'acycliq/pciSeq_3d';
+const RAW = 'https://raw.githubusercontent.com/' + GITHUB_REPO + '/';
+const CONTENTS = 'https://api.github.com/repos/' + GITHUB_REPO + '/contents/';
+const MAX_SOURCE_LINES = 400;
 
 function init(d) {
   deps = { ...deps, ...d };
@@ -73,6 +84,62 @@ const TOOLS = [
         vs_class: { type: 'string', description: 'Class to compare against. Defaults to the runner up.' },
       },
       required: ['label'],
+    },
+  },
+  {
+    name: 'docs',
+    description:
+      'Search the pciSeq documentation. Returns the paragraphs that match the query ' +
+      'words, best first, each with its page and heading. Use it before answering ' +
+      'any question about how pciSeq works, a term, or a setting such as rTheta, ' +
+      'mrf_beta or Inefficiency, and quote the page you took the answer from. Try ' +
+      'the docs before the source.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'A few words, for example "rTheta" or "spatial term".' },
+        n: { type: 'integer', description: 'How many paragraphs, default 5.' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'run_info',
+    description:
+      'What produced this run and how it ended: the pciSeq version, commit and its ' +
+      'date, when the run was made (run_date), python and package versions, the ' +
+      'settings it used (rTheta, mrf_beta, Inefficiency, nNeighbors, voxel_size and ' +
+      'the rest), the number of iterations and whether the loop converged. Use it ' +
+      'for "when was this run made", "what settings did it use" and "did it ' +
+      'converge". Older runs carry only the provenance and the answer says so.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'list_source',
+    description:
+      'List a folder of the pciSeq source code on GitHub, at the commit that made ' +
+      'this run. Use it to find the file a question is about; the model code is ' +
+      'under pciSeq/src/core. Needs internet.',
+    input_schema: {
+      type: 'object',
+      properties: { dir: { type: 'string', description: 'Folder path in the repo, "" for the root.' } },
+    },
+  },
+  {
+    name: 'read_source',
+    description:
+      'Read a file of the pciSeq source code on GitHub, at the commit that made this ' +
+      'run, with line numbers. Reach for it only when a question needs the actual ' +
+      'code, after the docs; never claim to run it. Long files come back in slices ' +
+      'of up to 400 lines, give start_line to read on. When you cite it, give the ' +
+      'file and the line. Needs internet.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'File path in the repo, for example pciSeq/src/core/main.py.' },
+        start_line: { type: 'integer', description: 'First line to return, default 1.' },
+      },
+      required: ['path'],
     },
   },
   {
@@ -214,6 +281,98 @@ async function cellQuery(label, vsClass, needRunnerUp) {
   return { res };
 }
 
+// ---------------------------------------------------------------- the run
+
+// a port of Run.run_info in pciSeq/src/mcp/tools.py, from the metadata table
+function runInfo(meta) {
+  const prov = meta.pciSeq_provenance || {};
+  const out = {
+    pciSeq_version: prov.version ?? null,
+    commit: prov.commit ?? null,
+    commit_date: prov.commit_date ?? null,
+    branch: prov.branch ?? null,
+    run_date: prov.created_at ?? null,
+    python_version: prov.python_version ?? null,
+    os: prov.os ?? null,
+    package_versions: prov.package_versions ?? null,
+    cells: meta.nC - 1, spots: meta.nS, genes: meta.nG, classes: meta.nK,
+  };
+  const cfg = meta.config;
+  if (!cfg || typeof cfg !== 'object') {
+    out.settings = null;
+    out.note = 'this run was written before pciSeq exported its settings and convergence ' +
+               'record to diagnostics.db, so only the provenance above is known. ' +
+               'Rerunning with the current pciSeq records them.';
+    return out;
+  }
+  out.settings = cfg;
+  out.is3D = cfg.is3D;
+  out.voxel_size = cfg.voxel_size;
+  const rec = meta.run;
+  if (rec && typeof rec === 'object') {
+    out.iterations = rec.iterations;
+    out.converged = rec.converged;
+    const delta = rec.delta || [];
+    out.final_delta = delta.length ? delta[delta.length - 1] : null;
+    out.tolerance = cfg.CellCallTolerance;
+    out.ended = rec.converged
+      ? `converged after ${rec.iterations} iterations, the largest change in a spot ` +
+        `assignment fell below ${out.tolerance}`
+      : `stopped at max_iter, ${rec.iterations} iterations, without converging: the ` +
+        `largest change was still ${out.final_delta == null ? 'unknown' : out.final_delta.toFixed(4)} ` +
+        `against a tolerance of ${out.tolerance}`;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- the source
+
+function sourceRef() {
+  const meta = deps.getMeta ? deps.getMeta() : null;
+  const prov = (meta && meta.pciSeq_provenance) || {};
+  return prov.commit || 'dev_3d';
+}
+
+// no leading slash, no .. anywhere: it is a path inside the repo
+function cleanRepoPath(p) {
+  const s = String(p || '').replace(/^\/+/, '');
+  if (s.split('/').includes('..')) throw new Error('not a path inside the repo: ' + p);
+  return s;
+}
+
+async function fetchText(url) {
+  const f = deps.fetch || globalThis.fetch;
+  const r = await f(url, { headers: { 'User-Agent': 'pciSeq_viewer' } });
+  if (r.status === 404) throw new Error('not found on GitHub: ' + url);
+  if (!r.ok) throw new Error(`GitHub answered ${r.status} for ${url}`);
+  return r.text();
+}
+
+async function listSource(dir) {
+  const ref = sourceRef();
+  const d = cleanRepoPath(dir);
+  const items = JSON.parse(await fetchText(CONTENTS + d + '?ref=' + ref));
+  if (!Array.isArray(items)) throw new Error(d + ' is a file, use read_source');
+  return {
+    dir: d || '/', commit: ref,
+    entries: items.map(i => ({ name: i.name, type: i.type === 'dir' ? 'dir' : 'file', size: i.size })),
+  };
+}
+
+async function readSource(p, startLine) {
+  const ref = sourceRef();
+  const file = cleanRepoPath(p);
+  const lines = (await fetchText(RAW + ref + '/' + file)).split('\n');
+  const start = Math.max(1, Number(startLine) || 1);
+  const end = Math.min(lines.length, start + MAX_SOURCE_LINES - 1);
+  const width = String(lines.length).length;
+  const text = lines.slice(start - 1, end)
+    .map((l, i) => String(start + i).padStart(width) + '  ' + l).join('\n');
+  const out = { path: file, commit: ref, lines: lines.length, start, end, text };
+  if (end < lines.length) out.next = `the file goes on, call again with start_line=${end + 1}`;
+  return out;
+}
+
 // ---------------------------------------------------------------- dispatch
 
 // Returns the tool's answer as an object. Errors come back as { error } so the
@@ -246,10 +405,22 @@ async function call(name, input) {
       deps.send('chat-fly-to-cell', { label });
       return { done: true, cell: label, note: 'the map is moving to the cell' };
     }
+    if (name === 'docs') {
+      if (!deps.docsRoot) return { error: 'this build of the viewer carries no documentation pages' };
+      const hits = docs.searchDocs(deps.docsRoot, input.query, input.n || 5);
+      return { query: input.query, hits, pages: hits.length ? undefined : docs.listPages(deps.docsRoot) };
+    }
+    if (name === 'run_info') {
+      const meta = deps.getMeta();
+      if (!meta) return { error: 'no diagnostics.db is open' };
+      return runInfo(meta);
+    }
+    if (name === 'list_source') return await listSource(input.dir || '');
+    if (name === 'read_source') return await readSource(input.path, input.start_line);
     return { error: `unknown tool ${name}` };
   } catch (e) {
     return { error: e.message };
   }
 }
 
-module.exports = { init, TOOLS, call, spotToDict, cellToDict, runnerUp };
+module.exports = { init, TOOLS, call, spotToDict, cellToDict, runnerUp, runInfo };

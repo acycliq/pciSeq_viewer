@@ -151,6 +151,11 @@ function createWindow() {
     queryCell: diagnostics.queryCell,
     getMeta: diagnostics.getMeta,
     send: (channel, payload) => { if (mainWindow) mainWindow.webContents.send(channel, payload); },
+    // the docs pages: next to the code in a checkout, in resources/ when packaged
+    // (extraResources in package.json)
+    docsRoot: app.isPackaged
+      ? path.join(process.resourcesPath, 'pciseq_docs')
+      : path.join(__dirname, 'pciseq_docs'),
   });
   chat.init({
     store,

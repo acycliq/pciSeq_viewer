@@ -1,0 +1,88 @@
+// The pciSeq documentation pages, for the chat panel's docs tool.
+//
+// A port of pciSeq/src/mcp/docs.py: the list of pages and a keyword search over
+// their paragraphs. No index, no embeddings, the corpus is a few dozen pages and
+// is searched on the spot. The pages are a committed copy in electron/pciseq_docs,
+// made by docs.sync.js; main.js says where the folder is, since it moves when the
+// app is packaged.
+
+const fs = require('fs');
+const path = require('path');
+
+const SKIP = new Set(['node_modules', '.vitepress', '_tables']);
+
+function walk(dir, root, out) {
+  for (const name of fs.readdirSync(dir)) {
+    const p = path.join(dir, name);
+    if (fs.statSync(p).isDirectory()) {
+      if (!SKIP.has(name)) walk(p, root, out);
+    } else if (name.endsWith('.md')) {
+      out.push(path.relative(root, p).split(path.sep).join('/'));
+    }
+  }
+  return out;
+}
+
+// every page, as its path relative to the root, sorted
+function listPages(root) {
+  if (!root || !fs.existsSync(path.join(root, 'index.md'))) return [];
+  return walk(root, root, []).sort();
+}
+
+function readPage(root, page) {
+  if (!listPages(root).includes(page)) throw new Error(`no docs page ${page}`);
+  return fs.readFileSync(path.join(root, page), 'utf8');
+}
+
+// the first heading of a page, or its description from the frontmatter
+function pageTitle(text) {
+  let m = text.match(/^# (.+)$/m);
+  if (m) return m[1].trim();
+  m = text.match(/^description:\s*(.+)$/m);
+  return m ? m[1].trim() : '';
+}
+
+// [heading, paragraph] pairs, heading being the nearest one above. Frontmatter is
+// dropped; code blocks are kept, config keys live in them.
+function paragraphs(text) {
+  text = text.replace(/^---[\s\S]*?---\s*/, '');
+  let heading = '';
+  const out = [];
+  for (let block of text.split(/\n\s*\n/)) {
+    block = block.trim();
+    if (!block) continue;
+    const m = block.match(/^#+ (.+)/);
+    if (m) {
+      heading = m[1].trim();
+      const rest = block.slice(m[0].length).trim();
+      if (rest) out.push([heading, rest]);
+      continue;
+    }
+    out.push([heading, block]);
+  }
+  return out;
+}
+
+// Paragraphs matching a query, best first. Words are matched case-insensitively.
+// A paragraph holding every word of the query outranks one holding some of them;
+// ties go to the paragraph with more hits.
+function searchDocs(root, query, n = 5) {
+  const words = (String(query).toLowerCase().match(/[a-z0-9_]+/g) || []).filter(w => w.length > 1);
+  if (!words.length) return [];
+  const hits = [];
+  for (const page of listPages(root)) {
+    const text = readPage(root, page);
+    const title = pageTitle(text);
+    for (const [heading, para] of paragraphs(text)) {
+      const low = para.toLowerCase();
+      const present = words.filter(w => low.includes(w));
+      if (!present.length) continue;
+      const count = present.reduce((s, w) => s + low.split(w).length - 1, 0);
+      hits.push({ present: present.length, count, page, title, heading, text: para });
+    }
+  }
+  hits.sort((a, b) => b.present - a.present || b.count - a.count || (a.page < b.page ? -1 : 1));
+  return hits.slice(0, n).map(({ page, title, heading, text }) => ({ page, title, heading, text }));
+}
+
+module.exports = { listPages, readPage, pageTitle, paragraphs, searchDocs };

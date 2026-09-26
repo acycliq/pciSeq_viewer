@@ -46,6 +46,10 @@
       {
         "from": "build/icons",
         "to": "icons"
+      },
+      {
+        "from": "electron/pciseq_docs",
+        "to": "pciseq_docs"
       }
     ],
     "linux": {
