@@ -43,7 +43,10 @@ function pageTitle(text) {
 }
 
 // [heading, paragraph] pairs, heading being the nearest one above. Frontmatter is
-// dropped; code blocks are kept, config keys live in them.
+// dropped; code blocks are kept, config keys live in them. A table is split into
+// its rows, one paragraph each: a row is the unit a reader wants back (a setting,
+// a function and its line), and a long table would otherwise outrank the prose
+// that explains the term.
 function paragraphs(text) {
   text = text.replace(/^---[\s\S]*?---\s*/, '');
   let heading = '';
@@ -58,6 +61,12 @@ function paragraphs(text) {
       if (rest) out.push([heading, rest]);
       continue;
     }
+    if (block.startsWith('|')) {
+      for (const row of block.split('\n')) {
+        if (!/^\|[\s\-:|]*\|$/.test(row)) out.push([heading, row]);
+      }
+      continue;
+    }
     out.push([heading, block]);
   }
   return out;
@@ -65,7 +74,8 @@ function paragraphs(text) {
 
 // Paragraphs matching a query, best first. Words are matched case-insensitively.
 // A paragraph holding every word of the query outranks one holding some of them;
-// ties go to the paragraph with more hits.
+// among those, prose comes before a table row, since a paragraph explains and a
+// row only points; then the one with more hits.
 function searchDocs(root, query, n = 5) {
   const words = (String(query).toLowerCase().match(/[a-z0-9_]+/g) || []).filter(w => w.length > 1);
   if (!words.length) return [];
@@ -78,10 +88,10 @@ function searchDocs(root, query, n = 5) {
       const present = words.filter(w => low.includes(w));
       if (!present.length) continue;
       const count = present.reduce((s, w) => s + low.split(w).length - 1, 0);
-      hits.push({ present: present.length, count, page, title, heading, text: para });
+      hits.push({ present: present.length, count, row: para.startsWith('|') ? 1 : 0, page, title, heading, text: para });
     }
   }
-  hits.sort((a, b) => b.present - a.present || b.count - a.count || (a.page < b.page ? -1 : 1));
+  hits.sort((a, b) => b.present - a.present || a.row - b.row || b.count - a.count || (a.page < b.page ? -1 : 1));
   return hits.slice(0, n).map(({ page, title, heading, text }) => ({ page, title, heading, text }));
 }
 

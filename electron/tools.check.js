@@ -89,13 +89,22 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   fs.mkdirSync(path.join(root, 'the-model'));
   fs.writeFileSync(path.join(root, 'the-model', 'settings.md'),
     '---\ndescription: The settings\n---\n\n## rTheta\n\nrTheta is the shape of the gamma prior on the cell ' +
-    'scale factor theta.\n\n## mrf_beta\n\nmrf_beta is the strength of the spatial term.\n');
+    'scale factor theta.\n\n## mrf_beta\n\nmrf_beta is the strength of the spatial term.\n\n' +
+    '## Where\n\n| Quantity | Code |\n|---|---|\n| theta | `main.py` `theta_upd` line 831 |\n| rho | `main.py` `rho_upd` line 653 |\n');
   tools.init({ docsRoot: root });
   const found = await tools.call('docs', { query: 'rTheta' });
   assert.strictEqual(found.hits.length, 1);
   assert.strictEqual(found.hits[0].page, 'the-model/settings.md');
   assert.strictEqual(found.hits[0].heading, 'rTheta');
   assert.strictEqual(found.hits[0].title, 'The settings');
+  // a table comes back one row at a time, with its heading
+  const row = await tools.call('docs', { query: 'rho_upd' });
+  assert.strictEqual(row.hits.length, 1);
+  assert.strictEqual(row.hits[0].heading, 'Where');
+  assert.strictEqual(row.hits[0].text, '| rho | `main.py` `rho_upd` line 653 |');
+  // prose before a row on a tie
+  const tie = await tools.call('docs', { query: 'theta' });
+  assert.ok(!tie.hits[0].text.startsWith('|'), tie.hits[0].text);
   const nothing = await tools.call('docs', { query: 'zzzz' });
   assert.deepStrictEqual(nothing.hits, []);
   assert.deepStrictEqual(nothing.pages, ['index.md', 'the-model/settings.md']);
