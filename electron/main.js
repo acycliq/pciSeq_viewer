@@ -11,6 +11,7 @@ const dataLoader = require('./data-loader');
 const tools = require('./tools');
 const chat = require('./chat');
 const mcp = require('./mcp');
+const mcpServer = require('./mcp-server');
 
 // GitHub repo for update checks
 const GITHUB_REPO = 'acycliq/pciSeq_viewer';
@@ -169,6 +170,10 @@ function createWindow() {
     store,
     getRunPath: () => store.get('dataPath') || null,
   });
+  // and the other way round: the viewer as an MCP server, so Claude Code can ask
+  // about the loaded run and fly the map. Localhost only.
+  mcpServer.start(store.get('mcpServerPort', mcpServer.DEFAULT_PORT))
+    .catch(e => console.warn('MCP server not started:', e.message));
   if (!chatIpcRegistered) {
     chat.registerIpc(ipcMain);
     chatIpcRegistered = true;
@@ -729,7 +734,7 @@ app.on('window-all-closed', () => {
 });
 
 // stop the pciSeq server with the viewer, so no python process is left behind
-app.on('will-quit', () => { mcp.close(); });
+app.on('will-quit', () => { mcp.close(); mcpServer.stop(); });
 
 // Log startup info
 console.log('pciSeq Viewer starting...');
