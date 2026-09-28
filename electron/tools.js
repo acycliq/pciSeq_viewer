@@ -74,10 +74,11 @@ const TOOLS = [
       'Open the cell diagnostics panel on a cell, compared against the runner up (or ' +
       'vs_class), so the user sees the charts and tables behind the call. Returns the ' +
       'same numbers as explain_cell. Use it when the user asks to see the diagnostics; ' +
-      'after explaining a cell, offer it rather than opening it unasked. When the cell ' +
-      'has no runner up (the assigned class holds all the probability) it returns an ' +
-      'error asking for vs_class; ask the user which class to compare against instead ' +
-      'of guessing.',
+      'after explaining a cell, offer it rather than opening it unasked. The runner up ' +
+      'is the second most likely class however small its probability, the same one ' +
+      'explain_cell compares against. Only when no other class has any probability ' +
+      'does it return an error asking for vs_class; then ask the user which class to ' +
+      'compare against instead of guessing.',
     input_schema: {
       type: 'object',
       properties: {
@@ -238,7 +239,11 @@ function cellToDict(res, label) {
   return out;
 }
 
-// The runner up: the class with the second largest stored probability.
+// The runner up: the class with the second largest stored probability, however
+// small. null when there is no second class with any probability at all, only then
+// is there nothing to compare against and the user has to pick. (It used to give up
+// below 0.0005, which refused cells like 2413 whose runner up is tiny but real,
+// while explain_cell compared against it happily.)
 function runnerUp(res) {
   const a = res.classNames.indexOf(res.assignedClass);
   let best = -1;
@@ -246,20 +251,16 @@ function runnerUp(res) {
     if (k === a) continue;
     if (best === -1 || res.classProb[k] > res.classProb[best]) best = k;
   }
-  return res.classNames[best];
+  return best === -1 || !(res.classProb[best] > 0) ? null : res.classNames[best];
 }
-
-// A runner up with no probability at three decimals, the precision of cellData.tsv,
-// is no runner up: the assigned class holds everything and the comparison is
-// arbitrary. The tool then asks the user for a class rather than picking one.
-const NO_RUNNER_UP = 0.0005;
 
 // The query behind explain_cell and open_cell_diagnostics: the cell against the
 // runner up, or against vs_class. queryCell needs a class to compare against, and
 // the runner up is not known until a first query hands back the probabilities. So
 // query once with any class, pick the runner up from the result, and query again
-// if it differs. Resolves to { res } or { error }.
-async function cellQuery(label, vsClass, needRunnerUp) {
+// if it differs. Resolves to { res } or { error }. Both tools refuse only when there
+// is no second class at all, see runnerUp.
+async function cellQuery(label, vsClass) {
   const meta = deps.getMeta();
   let res = await deps.queryCell(label, vsClass || meta.class_names[0]);
   if (!res.success) return { error: res.error };
@@ -270,10 +271,10 @@ async function cellQuery(label, vsClass, needRunnerUp) {
     return { res };
   }
   const other = runnerUp(res);
-  if (needRunnerUp && res.classProb[res.classNames.indexOf(other)] < NO_RUNNER_UP) {
-    return { error: `cell ${label} is ${res.assignedClass} with all the probability, there is ` +
-                    'no runner up to compare against. Ask the user which class to compare ' +
-                    'against and call again with vs_class' };
+  if (other === null) {
+    return { error: `cell ${label} is ${res.assignedClass} and no other class has any ` +
+                    'probability, so there is no runner up to compare against. Ask the user ' +
+                    'which class to compare against and call again with vs_class' };
   }
   if (other !== res.userClass) {
     res = await deps.queryCell(label, other);
@@ -387,13 +388,13 @@ async function call(name, input) {
     }
     if (name === 'explain_cell') {
       const label = Number(input.label);
-      const { res, error } = await cellQuery(label, input.vs_class, false);
+      const { res, error } = await cellQuery(label, input.vs_class);
       if (error) return { error };
       return cellToDict(res, label);
     }
     if (name === 'open_cell_diagnostics') {
       const label = Number(input.label);
-      const { res, error } = await cellQuery(label, input.vs_class, true);
+      const { res, error } = await cellQuery(label, input.vs_class);
       if (error) return { error };
       deps.send('chat-open-cell-diagnostics', { label, vs_class: res.userClass });
       const out = cellToDict(res, label);

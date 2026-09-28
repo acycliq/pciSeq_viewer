@@ -67,16 +67,27 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.ok(/open on cell 42, B against C/.test(opened.diagnostics));
   assert.strictEqual(opened.narrative, cell.narrative);
 
-  // no runner up: the assigned class holds everything, so ask rather than pick
+  // a tiny runner up is still a runner up: open against it, do not ask (cell 2413 on
+  // espio, 2026-09-28, where the old 0.0005 cut refused)
   sent = [];
-  const sure = { ...fakeQueryCell(43, 'A'), classProb: [0.0, 1.0, 0.0004] };
-  tools.init({ queryCell: async () => sure });
-  const noRunnerUp = await tools.call('open_cell_diagnostics', { label: 43 });
+  const tiny = u => ({ ...fakeQueryCell(43, u), classProb: [0.0, 1.0, 0.0004] });
+  tools.init({ queryCell: async (l, u) => tiny(u) });
+  const tinyOpened = await tools.call('open_cell_diagnostics', { label: 43 });
+  assert.strictEqual(tinyOpened.compared_with, 'C', tinyOpened.error);
+  assert.deepStrictEqual(sent, [['chat-open-cell-diagnostics', { label: 43, vs_class: 'C' }]]);
+  const tinyExplained = await tools.call('explain_cell', { label: 43 });
+  assert.strictEqual(tinyExplained.compared_with, 'C', 'the same runner up as explain_cell');
+
+  // no runner up at all: no other class has any probability, so ask rather than pick
+  sent = [];
+  const sure = u => ({ ...fakeQueryCell(44, u), classProb: [0.0, 1.0, 0.0] });
+  tools.init({ queryCell: async (l, u) => sure(u) });
+  const noRunnerUp = await tools.call('open_cell_diagnostics', { label: 44 });
   assert.ok(/no runner up/.test(noRunnerUp.error), noRunnerUp.error);
   assert.deepStrictEqual(sent, [], 'nothing opened');
-  const named = await tools.call('open_cell_diagnostics', { label: 43, vs_class: 'A' });
+  const named = await tools.call('open_cell_diagnostics', { label: 44, vs_class: 'A' });
   assert.strictEqual(named.compared_with, 'A');
-  assert.deepStrictEqual(sent, [['chat-open-cell-diagnostics', { label: 43, vs_class: 'A' }]]);
+  assert.deepStrictEqual(sent, [['chat-open-cell-diagnostics', { label: 44, vs_class: 'A' }]]);
   tools.init({ queryCell: async (l, u) => fakeQueryCell(l, u) });
 
   const viaCall = await tools.call('explain_spot', { spot_id: 1642419 });
