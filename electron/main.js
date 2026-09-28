@@ -12,6 +12,7 @@ const tools = require('./tools');
 const chat = require('./chat');
 const mcp = require('./mcp');
 const mcpServer = require('./mcp-server');
+const run = require('./run');
 
 // GitHub repo for update checks
 const GITHUB_REPO = 'acycliq/pciSeq_viewer';
@@ -148,6 +149,13 @@ function createWindow() {
   // The chat panel. The tools read the run through diagnostics.js and can move
   // the map through the window; the model loop lives in chat.js. The IPC handlers
   // are registered once, createWindow can run again on macOS.
+  // the ported read-only tools read diagnostics.db through run.js
+  run.init({
+    getDb: diagnostics.rawDb,
+    getMeta: diagnostics.getMeta,
+    getCellKey: diagnostics.cellKeyName,
+    querySpot: diagnostics.querySpot,
+  });
   tools.init({
     querySpot: diagnostics.querySpot,
     queryCell: diagnostics.queryCell,

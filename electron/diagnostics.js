@@ -646,8 +646,20 @@ function getMeta() {
   return diagnosticsMeta;
 }
 
+// for run.js, the ported read-only tools: the open database itself and the name of
+// the cells table's key column (internal_label, or cell_id on old runs)
+function rawDb() {
+  return diagnosticsDb;
+}
+
+function cellKeyName() {
+  return cellKey;
+}
+
 module.exports = {
   init,
+  rawDb,
+  cellKeyName,
   querySpot,
   queryCell,
   openDiagnosticsDatabase,

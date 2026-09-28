@@ -12,6 +12,7 @@
 // be run in plain node with fake query results (tools.check.js).
 
 const { narrateCell, narrateSpot } = require('./narrative');
+const run = require('./run');
 const docs = require('./docs');
 
 // docsRoot: the folder of documentation pages, see docs.js. fetch: for reading the
@@ -142,6 +143,169 @@ const TOOLS = [
         start_line: { type: 'integer', description: 'First line to return, default 1.' },
       },
       required: ['path'],
+    },
+  },
+  {
+    name: 'cell',
+    description:
+      'The headline facts about one cell: its class probabilities, its top genes, its ' +
+      'total counts, its scale factor theta, and the neighbours its spatial term ' +
+      'listens to. label is the cell number in the segmentation, the one shown in the ' +
+      'viewer. Counts are soft, each spot contributes its probability of belonging to ' +
+      'the cell.',
+    input_schema: {
+      type: 'object',
+      properties: { label: { type: 'integer', description: 'The cell label, as in the segmentation.' } },
+      required: ['label'],
+    },
+  },
+  {
+    name: 'cell_counts',
+    description:
+      'How many reads a cell holds, in total or for one gene. These are SOFT counts: ' +
+      'each spot contributes its probability of belonging to the cell, so they are ' +
+      'estimates and not whole numbers.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        label: { type: 'integer', description: 'The cell label, as in the segmentation.' },
+        gene: { type: 'string', description: 'Only this gene, optional.' },
+      },
+      required: ['label'],
+    },
+  },
+  {
+    name: 'theta',
+    description:
+      'The cell scale factor theta of one cell: the overall value, and theta_bar ' +
+      "under each of the top classes with the class probability. Theta scales a " +
+      "class's expected counts to the cell's total, with a Gamma(rTheta, rTheta) prior " +
+      'of mean 1; rTheta is returned too. label is the segmentation label.',
+    input_schema: {
+      type: 'object',
+      properties: { label: { type: 'integer', description: 'The cell label, as in the segmentation.' } },
+      required: ['label'],
+    },
+  },
+  {
+    name: 'gamma',
+    description:
+      'The cell-gene scale factors gamma_bar of one cell under its assigned class, ' +
+      "for every gene or for one, each with the cell's count of the gene. Gamma is the " +
+      'per cell, per gene factor absorbing overdispersion. Only the assigned class is ' +
+      'kept in diagnostics.db, and the answer says so. label is the segmentation label.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        label: { type: 'integer', description: 'The cell label, as in the segmentation.' },
+        gene: { type: 'string', description: 'Only this gene, optional.' },
+      },
+      required: ['label'],
+    },
+  },
+  {
+    name: 'spot',
+    description:
+      'One spot: its gene, position and plane, the cell it was assigned to with the ' +
+      'probability, and every candidate cell with its class and probability. Lighter ' +
+      'than explain_spot, which gives the terms behind each probability. Use it for ' +
+      '"which cell is spot 1642419 in", "what gene is spot 1642419", "which cells was ' +
+      'spot 1642419 scored against".',
+    input_schema: {
+      type: 'object',
+      properties: { spot_id: { type: 'integer', description: 'The spot id.' } },
+      required: ['spot_id'],
+    },
+  },
+  {
+    name: 'gene',
+    description:
+      'One gene across the run: its efficiency eta and inefficiency, its misread ' +
+      'density, how many spots it has and how many were called misreads, its soft ' +
+      'counts in cells split by class (soft, and summed over the cells called each ' +
+      'class), and the ten cells holding most of it. Use it for "what is the ' +
+      'efficiency of Plp1", "which classes express Plp1 in this run", "which cells ' +
+      'hold most Plp1". Counts are soft.',
+    input_schema: {
+      type: 'object',
+      properties: { name: { type: 'string', description: 'The gene name, as in the panel.' } },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'neighbours',
+    description:
+      'The cells whose classes enter the spatial (mrf) term of one cell, nearest ' +
+      'first, each with its class and probability and, when the run carries the ' +
+      'centroids, the centroid distance in xy pixels and the plane offset. mrf_beta ' +
+      'is returned too. label is the segmentation label.',
+    input_schema: {
+      type: 'object',
+      properties: { label: { type: 'integer', description: 'The cell label, as in the segmentation.' } },
+      required: ['label'],
+    },
+  },
+  {
+    name: 'class_counts',
+    description:
+      'How many cells each class has: hard (the number of cells whose most probable ' +
+      'class it is) and soft (the class probability summed over the cells). Zero is ' +
+      'listed first, the rest by size. min_counts leaves out cells with fewer soft ' +
+      'counts in total. Use it for "how many cells per class", "how many cells are ' +
+      'Zero", "how many CA1 cells with more than 40 reads".',
+    input_schema: {
+      type: 'object',
+      properties: { min_counts: { type: 'number', description: 'Leave out cells below this total, optional.' } },
+    },
+  },
+  {
+    name: 'find_cells',
+    description:
+      'The cells matching the filters given: assigned class, plane of the centroid, ' +
+      'minimum total counts, and top_two_within, the largest gap allowed between the ' +
+      'probabilities of the top two classes (small values pick the uncertain cells). ' +
+      'Returns the number matching and the first n by probability, each with its ' +
+      'class, probability, runner up, margin and total counts. Use it for "which ' +
+      'cells are CA2 on plane 40", "list the uncertain cells", "the L5 ET cells with ' +
+      'over 100 reads". Labels are segmentation labels.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        class_name: { type: 'string', description: 'Only cells assigned this class.' },
+        plane: { type: 'integer', description: 'Only cells whose centroid falls on this plane.' },
+        min_counts: { type: 'number', description: 'Only cells with at least this many soft counts.' },
+        top_two_within: { type: 'number', description: 'Only cells whose top two classes are within this.' },
+        n: { type: 'integer', description: 'How many to return, default 50.' },
+      },
+    },
+  },
+  {
+    name: 'metadata',
+    description:
+      'The metadata table of diagnostics.db. Without a key: every key with the kind ' +
+      'of value it holds. With a key: its value, parsed. Covers what has no tool of ' +
+      'its own: sc_mean_expression (the reference expression, gene by class), ' +
+      'log_prior, rho_bar, hard_misread_counts, gene_total_spots, config, run, ' +
+      'label_map.',
+    input_schema: {
+      type: 'object',
+      properties: { key: { type: 'string', description: 'One key, optional.' } },
+    },
+  },
+  {
+    name: 'calculate',
+    description:
+      'Do arithmetic instead of doing it in your head. Numbers, + - * / ** and ' +
+      'brackets, and exp, log (natural), log10, sqrt, abs and round. Use it for a ' +
+      'number the tools do not give, for example adding up a few gene differences, ' +
+      'or exp(d) to turn a log-likelihood difference d into odds. Quote the result ' +
+      'as calculate returned it. It makes a sum right, not meaningful: never use it ' +
+      'to build a quantity the tools do not define, such as a ratio of two sums of ' +
+      'log-likelihood differences, which is not odds.',
+    input_schema: {
+      type: 'object',
+      properties: { expression: { type: 'string', description: 'Arithmetic, for example "15.29 + 9.8 + 3.1" or "exp(3.2)".' } },
+      required: ['expression'],
     },
   },
   {
@@ -417,6 +581,17 @@ async function call(name, input) {
       if (!meta) return { error: 'no diagnostics.db is open' };
       return runInfo(meta);
     }
+    if (name === 'cell') return run.cell(input.label);
+    if (name === 'cell_counts') return run.cellCounts(input.label, input.gene ?? null);
+    if (name === 'theta') return run.theta(input.label);
+    if (name === 'gamma') return run.gamma(input.label, input.gene ?? null);
+    if (name === 'spot') return await run.spot(input.spot_id);
+    if (name === 'gene') return run.gene(input.name);
+    if (name === 'neighbours') return run.neighbours(input.label);
+    if (name === 'class_counts') return run.classCounts(input.min_counts ?? null);
+    if (name === 'find_cells') return run.findCells(input);
+    if (name === 'metadata') return run.metadataTool(input.key ?? null);
+    if (name === 'calculate') return run.calculate(input.expression);
     if (name === 'list_source') return await listSource(input.dir || '');
     if (name === 'read_source') return await readSource(input.path, input.start_line);
     return { error: `unknown tool ${name}` };
