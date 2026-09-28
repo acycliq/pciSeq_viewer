@@ -10,6 +10,7 @@ const singleCell = require('./single-cell');
 const dataLoader = require('./data-loader');
 const tools = require('./tools');
 const chat = require('./chat');
+const mcp = require('./mcp');
 
 // GitHub repo for update checks
 const GITHUB_REPO = 'acycliq/pciSeq_viewer';
@@ -160,6 +161,13 @@ function createWindow() {
   chat.init({
     store,
     send: (ev) => { if (mainWindow) mainWindow.webContents.send('chat-event', ev); },
+  });
+  // the pciSeq MCP server the chat gets its tools from: found through the registry
+  // `pciseq-mcp --register` writes under appData, opened on the loaded run
+  mcp.init({
+    appData: app.getPath('appData'),
+    store,
+    getRunPath: () => store.get('dataPath') || null,
   });
   if (!chatIpcRegistered) {
     chat.registerIpc(ipcMain);
@@ -719,6 +727,9 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
+// stop the pciSeq server with the viewer, so no python process is left behind
+app.on('will-quit', () => { mcp.close(); });
 
 // Log startup info
 console.log('pciSeq Viewer starting...');

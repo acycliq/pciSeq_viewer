@@ -127,6 +127,13 @@ function onEvent(ev) {
     setThinking('looking up ' + ev.name + '...');
   } else if (ev.type === 'tool_result') {
     setThinking('thinking...');
+  } else if (ev.type === 'image') {
+    // a picture from cell_image or plane_image, straight from the pciSeq server.
+    // Only png and jpeg, and the data is base64, so it cannot carry markup.
+    if (/^image\/(png|jpeg)$/.test(ev.media_type) && /^[A-Za-z0-9+/=]+$/.test(ev.data)) {
+      addLine('chat-image', `<img alt="${esc(ev.name)}" src="data:${ev.media_type};base64,${ev.data}">`);
+      setThinking('thinking...');
+    }
   } else if (ev.type === 'text') {
     clearThinking();
     addLine('chat-a', renderText(ev.text));
@@ -194,13 +201,73 @@ async function saveSettings() {
   if (s.hasKey) showTab('chatSession');
 }
 
+// The pciSeq section of the Connection tab: the environments registered with
+// `pciseq-mcp --register`, one to pick, and whether the server is running.
+function renderMcp(st) {
+  const state = el('chatMcpState');
+  if (st.connected) {
+    state.className = 'chat-conn-state ok';
+    state.textContent = `Connected, pciSeq ${st.pciseq_version} (${st.commit}), ${st.tools} tools` +
+      (st.run_open ? ', with this run open.' : ', no run loaded yet.');
+  } else if (st.error) {
+    state.className = 'chat-conn-state none';
+    state.textContent = 'Could not start the pciSeq server: ' + st.error;
+  } else {
+    state.className = 'chat-conn-state none';
+    state.textContent = st.envs.length > 1 ? 'Pick the environment to use.' : 'No pciSeq found yet.';
+  }
+
+  const box = el('chatMcpEnvs');
+  box.innerHTML = '';
+  // one environment registered: nothing to choose, the viewer starts it by itself,
+  // so just say where the server runs from. The list is only for two or more.
+  if (st.envs.length === 1) {
+    const e = st.envs[0];
+    box.innerHTML = `<span class="chat-env${e.exists ? '' : ' gone'}"><span>From <strong>${esc(e.name)}</strong>, ` +
+      `<code>${esc(e.python)}</code>${e.exists ? '' : ' <em>no longer exists</em>'}</span></span>`;
+  }
+  for (const e of (st.envs.length > 1 ? st.envs : [])) {
+    const row = document.createElement('label');
+    row.className = 'chat-env' + (e.exists ? '' : ' gone');
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'chat-mcp-env';
+    radio.checked = st.connected ? e.python === st.python : e.chosen;
+    radio.disabled = !e.exists;
+    radio.addEventListener('change', async () => {
+      state.className = 'chat-conn-state';
+      state.textContent = 'Starting the pciSeq server...';
+      renderMcp(await window.electronAPI.chatMcpConnect(e.python));
+    });
+    row.appendChild(radio);
+    const text = document.createElement('span');
+    text.innerHTML = `<strong>${esc(e.name)}</strong>, pciSeq ${esc(e.pciseq_version)} (${esc(e.commit)})` +
+      `<br><code>${esc(e.python)}</code>` + (e.exists ? '' : ' <em>no longer exists</em>');
+    row.appendChild(text);
+    box.appendChild(row);
+  }
+
+  el('chatMcpHelp').innerHTML = st.envs.length
+    ? 'Registered with <code>pciseq-mcp --register</code>. Register another environment and press refresh.'
+    : 'The chat needs Python and pciSeq_3d[mcp]. In a terminal, inside the environment you use for ' +
+      'pciSeq, run<br><code>pip install "pciSeq_3d[mcp]"</code><br><code>pciseq-mcp --register</code>' +
+      '<br>then press refresh.';
+}
+
+async function loadMcp() {
+  const st = await window.electronAPI.chatMcpStatus();
+  renderMcp(st);
+  return st;
+}
+
 async function open() {
   el('chatPanel').classList.remove('collapsed');
   if (mode === 'min') mode = 'normal';
   applyDock();
-  // first time, or no key yet: start on Connection
-  const s = await loadSettings();
-  showTab(s.hasKey ? 'chatSession' : 'chatConnection');
+  // first time, no key yet, or no pciSeq to answer with: start on Connection
+  const [s, st] = await Promise.all([loadSettings(), loadMcp()]);
+  const pciseqOk = st.connected;
+  showTab(s.hasKey && pciseqOk ? 'chatSession' : 'chatConnection');
 }
 
 function close() {
@@ -284,6 +351,7 @@ export function initChatPanel() {
     tab.addEventListener('click', () => showTab(tab.dataset.pane));
   }
   el('chatSaveSettings').addEventListener('click', saveSettings);
+  el('chatMcpRefresh').addEventListener('click', loadMcp);
   // switching the dropdown shows that provider's settings; nothing changes until save
   el('chatProvider').addEventListener('change', e => loadSettings(e.target.value));
 

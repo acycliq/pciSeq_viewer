@@ -18,6 +18,7 @@
 const { safeStorage } = require('electron');
 const Anthropic = require('@anthropic-ai/sdk');
 const tools = require('./tools');
+const mcp = require('./mcp');
 
 const DEFAULT_MODEL = 'claude-sonnet-5';
 
@@ -100,6 +101,61 @@ const SYSTEM = [
   'answer the same shape. Use plain hyphens or commas, no em dashes. If a tool',
   'returns an error, tell the user what it said.',
 ].join('\n');
+
+// What is only about the viewer's screen. When the chat is connected to the pciSeq
+// MCP server, the model gets the server's instructions (the mentor voice, the rules
+// on numbers and odds, the background rules) and then this; the two are not written
+// twice. The wording is the one from SYSTEM above, the one tuned against real
+// answers. SYSTEM itself is only used while the chat runs on its own javascript
+// tools, and goes with them (cz1.6.5 step 6).
+const VIEWER_SYSTEM = [
+  'You are inside the pciSeq viewer, a desktop app showing a finished run of pciSeq.',
+  'The user is looking at the run on the screen, and it is already open in the',
+  'tools. fly_to_cell moves the map to a cell so the user can see what you are',
+  'talking about; use it when they ask to see or show a cell; after explaining one,',
+  'offer to fly there rather than doing it unasked. Cell labels are the numbers the',
+  'user sees on screen.',
+  '',
+  'open_cell_diagnostics opens the cell diagnostics panel, the one the user also',
+  'gets by Ctrl+Click on a cell, on the assigned class against the runner up. Call',
+  'it the cell diagnostics, never the inspector. After explaining a cell, close',
+  'with an offer such as "Do you want me to show you the diagnostics for cell',
+  '16609?" and open it only on a yes; then walk the user through what is on the',
+  'screen, the way a mentor would at a colleague\'s desk. The panel has two tabs.',
+  'Genes: two bar charts. Each bar is the difference between two log-likelihoods,',
+  'for one gene: how well the cell\'s count of it fits the assigned class minus how',
+  'well it fits the compared class. The sign is only the direction of the pull:',
+  'positive pulls for the assigned class, negative for the compared class. The',
+  'length is the strength. The top chart shows the ten genes pulling hardest for',
+  'the assigned class, bars going up; the bottom chart the ten pulling hardest for',
+  'the compared class, bars hanging below zero, and the deeper the bar, the harder',
+  'that gene pulls. Introduce them as the genes pulling hardest for each class, not',
+  'as the most negative values, since negative sounds like bad. The sums in the',
+  'titles are the totals of each chart, sum_favouring_assigned and',
+  'sum_favouring_compared. Posterior: a chart with a pair of bars per term, gene',
+  'log-likelihood, log prior and MRF (the spatial term), one bar per class; the',
+  'log-likelihood and prior are negative so the higher bar is the one closer to',
+  'zero, and the gap inside each pair is what matters; then a chart of the',
+  'posterior probability of the two classes in percent. Under the tabs, two',
+  'collapsed tables: Gene Expression, per gene the mean count over cells this run',
+  'called each class and this cell\'s count, which is where "cells called CA2 hold',
+  'about 3.6 on average" comes from; and Contribution, per gene the log-likelihood',
+  'under each class and the difference, the bar heights, for every gene.',
+  '',
+  'When a question needs the actual code, for example to verify a formula, use',
+  'list_source to find the file and read_source to read it, at the commit that made',
+  'this run; cite the file and line, and never say you ran anything. Do not read the',
+  'source for questions the docs answer; try the docs first.',
+  '',
+  'Pictures from cell_image and plane_image appear on the user\'s screen by',
+  'themselves, right under the call. Never write a link or image markdown for',
+  'them; talk about what is in the picture instead.',
+].join('\n');
+
+// the viewer's own tools, the ones that act on the screen or read the source at the
+// run's commit. With the server connected these are all the model gets from here;
+// explain_cell, explain_spot, docs, run_info and the rest come from the server.
+const SCREEN_TOOLS = ['fly_to_cell', 'open_cell_diagnostics', 'list_source', 'read_source'];
 
 let deps = { store: null, send: null };
 
@@ -221,12 +277,20 @@ async function runTurn(messages) {
   const history = [...messages];
   let finalText = '';
 
+  // With the pciSeq MCP server: its instructions and tools, plus what only the
+  // viewer can do. Without it, the javascript tools as before (until step 6).
+  const viaServer = await mcp.ready();
+  const system = viaServer ? mcp.instructions() + '\n\n' + VIEWER_SYSTEM : SYSTEM;
+  const toolList = viaServer
+    ? [...mcp.toolsForModel(), ...tools.TOOLS.filter(t => SCREEN_TOOLS.includes(t.name))]
+    : tools.TOOLS;
+
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const res = await client.messages.create({
       model: modelName,
       max_tokens: MAX_TOKENS,
-      system: SYSTEM,
-      tools: tools.TOOLS,
+      system,
+      tools: toolList,
       messages: history,
     });
 
@@ -244,9 +308,28 @@ async function runTurn(messages) {
     const results = [];
     for (const u of uses) {
       send({ type: 'tool_call', name: u.name, input: u.input });
-      const out = await tools.call(u.name, u.input);
-      send({ type: 'tool_result', name: u.name, result: out });
-      results.push({ type: 'tool_result', tool_use_id: u.id, content: JSON.stringify(out) });
+      if (viaServer && !SCREEN_TOOLS.includes(u.name) && mcp.hasTool(u.name)) {
+        // the server's answer as it comes, text and pictures, so cell_image's png
+        // reaches the model as an image
+        let r;
+        try {
+          r = await mcp.callTool(u.name, u.input);
+        } catch (e) {
+          r = { content: [{ type: 'text', text: 'the pciSeq server failed: ' + e.message }], is_error: true };
+        }
+        send({ type: 'tool_result', name: u.name, result: { is_error: r.is_error } });
+        // the model sees the picture, but the user would not: the panel shows only
+        // the model's text. So the viewer puts the picture on screen itself, straight
+        // from the server, rather than through a link the model might write.
+        for (const c of r.content) {
+          if (c.type === 'image') send({ type: 'image', name: u.name, media_type: c.source.media_type, data: c.source.data });
+        }
+        results.push({ type: 'tool_result', tool_use_id: u.id, content: r.content, is_error: r.is_error });
+      } else {
+        const out = await tools.call(u.name, u.input);
+        send({ type: 'tool_result', name: u.name, result: out });
+        results.push({ type: 'tool_result', tool_use_id: u.id, content: JSON.stringify(out) });
+      }
     }
     history.push({ role: 'user', content: results });
   }
@@ -268,6 +351,11 @@ function registerIpc(ipcMain) {
     }
   });
   ipcMain.handle('chat-get-settings', (_event, provider) => getSettings(provider));
+  // the pciSeq server, for the Connection tab: what is registered and what is running
+  // status after starting the server if it can be started without asking (one
+  // environment registered, or one picked before), so the tab shows it connected
+  ipcMain.handle('chat-mcp-status', async () => { await mcp.ready(); return mcp.status(); });
+  ipcMain.handle('chat-mcp-connect', (_event, python) => mcp.connect(python));
   ipcMain.handle('chat-save-settings', (_event, s) => {
     try {
       return { success: true, ...saveSettings(s || {}) };
@@ -277,4 +365,5 @@ function registerIpc(ipcMain) {
   });
 }
 
-module.exports = { init, registerIpc, runTurn, getSettings, saveSettings, makeClient, SYSTEM, DEFAULT_MODEL, PROVIDERS };
+module.exports = { init, registerIpc, runTurn, getSettings, saveSettings, makeClient, SYSTEM,
+                   VIEWER_SYSTEM, SCREEN_TOOLS, DEFAULT_MODEL, PROVIDERS };

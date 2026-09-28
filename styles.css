@@ -2599,6 +2599,17 @@ body {
 .chat-conn-state.ok::before { content: '\25CF  '; color: #4ade80; }
 .chat-conn-state.none::before { content: '\25CF  '; color: #f87171; }
 .chat-hint { color: #64748b; font-size: 11px; margin: 8px 0 0; }
+.chat-hint code, .chat-env code { background: #0d0d0d; padding: 1px 4px; border-radius: 3px; }
+
+/* the pciSeq section: the registered environments, one to pick */
+.chat-section { margin: 20px 0 8px; font-size: 13px; color: #e2e8f0; border-top: 1px solid #333; padding-top: 14px; }
+#chatMcpState { white-space: pre-wrap; }
+.chat-envs { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+/* .chat-connection label is display:block, which would win and drop the gap */
+.chat-connection .chat-env { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: #cbd5e1; cursor: pointer; }
+.chat-connection .chat-env input { width: auto; margin: 2px 0 0; }
+.chat-env.gone { color: #64748b; cursor: default; }
+.chat-env em { color: #f87171; font-style: normal; }
 
 /* Chat, one session like a terminal: the log, then the prompt as the last line.
    Questions are monospace like a terminal, answers in the normal font because they
@@ -2633,6 +2644,9 @@ body {
     font-size: 12px;
 }
 .chat-tool-name { color: #7dd3fc; }
+/* a picture from cell_image or plane_image, under its tool line */
+.chat-image { padding-left: 26px; margin: 4px 0 10px; }
+.chat-image img { display: block; max-width: min(600px, 100%); border: 1px solid #333; border-radius: 4px; }
 .chat-error { padding-left: 26px; color: #fca5a5; font-size: 13px; }
 .chat-note { padding-left: 26px; color: #64748b; font-size: 13px; font-style: italic; }
 .chat-welcome { color: #94a3b8; font-size: 13px; line-height: 1.55; }

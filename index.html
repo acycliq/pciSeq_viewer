@@ -549,6 +549,13 @@
                 <label>Model <input id="chatModel" type="text" autocomplete="off" placeholder="claude-sonnet-5"></label>
                 <button id="chatSaveSettings" class="chat-small-btn">save</button>
                 <p class="chat-hint">Each provider keeps its own key, stored encrypted on this computer; it never leaves the main process and is sent only to that provider. Usage is billed to it.</p>
+
+                <!-- the pciSeq MCP server the chat gets its tools from -->
+                <h4 class="chat-section">pciSeq</h4>
+                <p id="chatMcpState" class="chat-conn-state"></p>
+                <div id="chatMcpEnvs" class="chat-envs" role="radiogroup" aria-label="Python environments with pciSeq"></div>
+                <p id="chatMcpHelp" class="chat-hint"></p>
+                <button id="chatMcpRefresh" class="chat-small-btn">refresh</button>
             </div>
             <!-- Chat: one session like a terminal, the prompt is always the last line -->
             <div id="chatSession" class="chat-pane chat-session">

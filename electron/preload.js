@@ -56,6 +56,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   chatSend: (messages) => ipcRenderer.invoke('chat-send', messages),
   chatGetSettings: (provider) => ipcRenderer.invoke('chat-get-settings', provider),
   chatSaveSettings: (settings) => ipcRenderer.invoke('chat-save-settings', settings),
+  // the pciSeq MCP server: what is registered, and start one of them
+  chatMcpStatus: () => ipcRenderer.invoke('chat-mcp-status'),
+  chatMcpConnect: (python) => ipcRenderer.invoke('chat-mcp-connect', python),
   onChatEvent: (handler) => ipcRenderer.on('chat-event', (_e, ev) => handler(ev)),
   // the fly_to_cell tool: the main process asks the map to move
   onChatFlyToCell: (handler) => ipcRenderer.on('chat-fly-to-cell', (_e, p) => handler(p)),
