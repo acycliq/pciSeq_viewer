@@ -87,7 +87,8 @@ function narrateCell(e) {
   out.push(`Cell ${e.cell} was called ${a}, with probability ${prob(e.prob_assigned)}. The closest ` +
            `alternative was ${o}, at ${prob(e.prob_compared)}.`);
   out.push("pciSeq decides a cell's class from three things: how well its gene counts " +
-           'match what each class typically expresses (the gene log-likelihood), how ' +
+           'match what each class expresses according to the cell type definitions ' +
+           '(the gene log-likelihood), how ' +
            'common each class is to begin with (the prior), and what the neighbouring ' +
            'cells were called (the spatial term). The class that comes out best ' +
            'overall wins.');
@@ -96,8 +97,8 @@ function narrateCell(e) {
   if (d.genes > 0) {
     if (aPresent.length) {
       out.push(`The genes point to ${a}, ${strength(d.genes)}. The strongest evidence comes from ${names(aPresent)}: the ` +
-               `cell holds these in the amounts a ${a} cell typically does and a ${o} cell ` +
-               'does not.');
+               'cell holds these in amounts that fit what the cell type definitions ' +
+               `give for a ${a} cell, and not for a ${o} cell.`);
       if (aAbsent.length) {
         const [gs, ms] = absent(aAbsent, 'mean_in_compared');
         const one = aAbsent.length === 1;

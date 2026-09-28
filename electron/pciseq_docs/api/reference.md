@@ -755,7 +755,7 @@ still be assigned to one, so this is a different number from `cell_counts`.
 #### `spots_of_cell`
 
 ```python
-spots_of_cell(label, min_prob=None)
+spots_of_cell(label, min_prob=None, gene=None)
 ```
 
 Which spots belong to a cell, under one of two definitions.
@@ -764,7 +764,8 @@ With `min_prob` unset: the spots whose most likely parent is this cell, the
 argmax. With `min_prob` set: every spot with a probability on this cell above
 it, which is what cellData.spot_id holds at 0.0001. The two are different
 lists, and the answer says which one it is. Either way every spot comes with
-its probability, sorted highest first.
+its probability, sorted highest first. `gene` keeps only that gene's spots,
+so the count of them is the tool's number and not the agent's.
 
 #### `cell_row`
 

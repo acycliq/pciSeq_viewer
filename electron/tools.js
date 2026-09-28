@@ -54,8 +54,9 @@ const TOOLS = [
       'Why a cell was given its class, gene by gene. Compares the assigned class ' +
       'against another, the runner up unless vs_class is given: the gene ' +
       'log-likelihood, the class prior and the spatial term for each, the genes that ' +
-      'pushed hardest for each side with the cell\'s count and what a cell of either ' +
-      'class typically holds, and a narrative in plain words. A gene the cell lacks can ' +
+      'pushed hardest for each side with the cell\'s count and the average count of ' +
+      'that gene over the cells this run called each class (mean_in_assigned, ' +
+      'mean_in_compared), and a narrative in plain words. A gene the cell lacks can ' +
       'count against the class that expresses it. Counts are soft, weighted by ' +
       'assignment probability. label is the cell number shown in the viewer.',
     input_schema: {
