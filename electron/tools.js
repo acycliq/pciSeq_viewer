@@ -14,6 +14,7 @@
 const { narrateCell, narrateSpot } = require('./narrative');
 const run = require('./run');
 const docs = require('./docs');
+const docsAtCommit = require('./docsAtCommit');
 
 // docsRoot: the folder of documentation pages, see docs.js. fetch: for reading the
 // pciSeq source from GitHub, the global one unless a check passes a fake.
@@ -704,9 +705,23 @@ async function call(name, input) {
       return { done: true, cell: label, note: 'the map is moving to the cell' };
     }
     if (name === 'docs') {
-      if (!deps.docsRoot) return { error: 'this build of the viewer carries no documentation pages' };
-      const hits = docs.searchDocs(deps.docsRoot, input.query, input.n || 5);
-      return { query: input.query, hits, pages: hits.length ? undefined : docs.listPages(deps.docsRoot) };
+      // the pages of the run's own commit, as the source tools do; the copy shipped
+      // with the viewer only when those cannot be fetched
+      const atCommit = await docsAtCommit.docsAt(sourceRef() === 'dev_3d' ? null : sourceRef(), deps.fetch);
+      const corpus = atCommit || deps.docsRoot;
+      if (!corpus) return { error: 'this build of the viewer carries no documentation pages' };
+      const hits = docs.searchDocs(corpus, input.query, input.n || 5);
+      return {
+        query: input.query,
+        hits,
+        pages: hits.length ? undefined : docs.listPages(corpus),
+        docs_are: atCommit
+          ? `the documentation at the commit that made this run (${sourceRef()}), so it ` +
+            'describes the pciSeq that produced these numbers'
+          : 'the documentation shipped with this viewer, not the run\'s own commit ' +
+            '(it could not be fetched from GitHub), so a page may describe a newer ' +
+            'pciSeq than the run',
+      };
     }
     if (name === 'run_info') {
       const meta = deps.getMeta();

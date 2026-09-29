@@ -2,9 +2,12 @@
 //
 // A port of pciSeq/src/mcp/docs.py: the list of pages and a keyword search over
 // their paragraphs. No index, no embeddings, the corpus is a few dozen pages and
-// is searched on the spot. The pages are a committed copy in electron/pciseq_docs,
-// made by docs.sync.js; main.js says where the folder is, since it moves when the
-// app is packaged.
+// is searched on the spot.
+//
+// A corpus is either a folder path (the committed copy in electron/pciseq_docs,
+// made by docs.sync.js) or a Map of page -> text (the pages of the run's own
+// commit, fetched by docsAtCommit.js). Whatever the run's code says is what the
+// agent should read, so the fetched pages win when they are available.
 
 const fs = require('fs');
 const path = require('path');
@@ -25,11 +28,16 @@ function walk(dir, root, out) {
 
 // every page, as its path relative to the root, sorted
 function listPages(root) {
+  if (root instanceof Map) return [...root.keys()].sort();
   if (!root || !fs.existsSync(path.join(root, 'index.md'))) return [];
   return walk(root, root, []).sort();
 }
 
 function readPage(root, page) {
+  if (root instanceof Map) {
+    if (!root.has(page)) throw new Error(`no docs page ${page}`);
+    return root.get(page);
+  }
   if (!listPages(root).includes(page)) throw new Error(`no docs page ${page}`);
   return fs.readFileSync(path.join(root, page), 'utf8');
 }

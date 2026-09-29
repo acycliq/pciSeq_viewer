@@ -87,7 +87,7 @@ not appear; see [Cell identifiers](./working-with-results.md#cell-identifiers).
 ### Cells
 
 - `cell(label)`: the class probabilities, top genes, total counts and scale factor of one cell, and the neighbours that enter its spatial term.
-- `explain_cell(label, vs_class=None)`: the score of the assigned class against a second class, split into the gene log-likelihood, the class prior and the spatial term, with the genes contributing most to each side. Each gene is reported with the cell's count and the mean count over the cells assigned to either class. `vs_class` defaults to the runner-up.
+- `explain_cell(label, vs_class=None)`: the score of the assigned class against a second class, split into the gene log-likelihood, the class prior and the spatial term, with the genes contributing most to each side. Each gene is reported with the cell's count and the mean count over the cells assigned to either class. The shared genes are the cell's largest counts that the two classes fit about equally, the genes the two classes have in common. `vs_class` defaults to the runner-up.
 - `cell_counts(label, gene=None)`: the counts of a cell, in total or for one gene.
 - `spots_in_cell(label, gene=None)`: the spots whose pixel lies inside the cell's segmentation mask.
 - `spots_of_cell(label, min_prob=None, gene=None)`: the spots whose most probable parent is the cell, each with its probability. With `min_prob`, every spot with probability above it; with `gene`, only that gene's spots.
@@ -112,6 +112,10 @@ not appear; see [Cell identifiers](./working-with-results.md#cell-identifiers).
 
 - `cell_image(label, context=False, plane=None, width=1200, channel=None, neighbours=False, save_as=None, mbtiles=None)`: a rendering of the cell on the tissue image, stitched from the viewer's `.mbtiles`: a close-up with the cell outlined in red and the other cells of the plane in blue, or with `context=True` the whole plane with the cell marked. `neighbours=True` outlines only the cells that enter the spatial term. `save_as` writes the PNG to a file.
 - `plane_image(plane=None, bbox=None, width=1200, channel=None, save_as=None, mbtiles=None)`: the tissue image of one plane, whole or restricted to `bbox` in image pixels. The plane defaults to the middle of the stack. When the run has several background images, `channel` selects one by name; without it the tool lists them.
+
+### Arithmetic
+
+- `calculate(expression)`: evaluates an arithmetic expression: numbers, `+ - * / **`, brackets, and `exp`, `log`, `log10`, `sqrt`, `abs` and `round`. Anything else is refused. The agent is instructed to use it rather than compute in its reply, and not to use it to form quantities the other tools do not define.
 
 ### Documentation
 
