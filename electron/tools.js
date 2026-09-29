@@ -115,9 +115,10 @@ const TOOLS = [
       'What produced this run and how it ended: the pciSeq version, commit and its ' +
       'date, when the run was made (run_date), python and package versions, the ' +
       'settings it used (rTheta, mrf_beta, Inefficiency, nNeighbors, voxel_size and ' +
-      'the rest), the number of iterations and whether the loop converged. Use it ' +
-      'for "when was this run made", "what settings did it use" and "did it ' +
-      'converge". Older runs carry only the provenance and the answer says so.',
+      'the rest), the mean cell radius, the number of iterations and whether the ' +
+      'loop converged. Use it for "when was this run made", "what is the mean cell ' +
+      'radius", "what settings did it use" and "did it converge". Older runs carry ' +
+      'only the provenance and the answer says so.',
     input_schema: { type: 'object', properties: {} },
   },
   {
@@ -588,6 +589,13 @@ function runInfo(meta) {
     os: prov.os ?? null,
     package_versions: prov.package_versions ?? null,
     cells: meta.nC - 1, spots: meta.nS, genes: meta.nG, classes: meta.nK,
+    // written to the metadata since September 2026; null on older runs, where it
+    // survives only as cellData's sphere_scale / 3
+    mean_cell_radius: meta.mcr != null ? Number(meta.mcr) : null,
+    mean_cell_radius_is: 'in pixels of the xy plane, the mean over the segmented ' +
+                         'cells of sqrt(area / pi), halved; the Gaussian of every ' +
+                         'cell has this radius',
+    format_version: meta.format_version != null ? Number(meta.format_version) : 0,
   };
   const cfg = meta.config;
   if (!cfg || typeof cfg !== 'object') {

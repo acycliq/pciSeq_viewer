@@ -167,6 +167,17 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.ok(/not found on GitHub/.test((await tools.call('read_source', { path: 'missing.py' })).error));
   assert.ok(/not a path inside/.test((await tools.call('read_source', { path: '../etc/passwd' })).error));
 
+  // two functions of the same name in one module: the later silently wins, and
+  // every earlier caller gets the wrong one. That happened with cellRow, and node
+  // --check cannot see it. Catch it here for the modules the tools lean on.
+  const fs2 = require('fs'), path2 = require('path');
+  for (const mod of ['run.js', 'tools.js', 'docs.js', 'chat.js']) {
+    const src = fs2.readFileSync(path2.join(__dirname, mod), 'utf8');
+    const names = [...src.matchAll(/^(?:async )?function ([A-Za-z_$][\w$]*)/gm)].map(m => m[1]);
+    const dupes = names.filter((n, i) => names.indexOf(n) !== i);
+    assert.deepStrictEqual(dupes, [], `${mod} defines these twice: ${dupes.join(', ')}`);
+  }
+
   const bad = await tools.call('no_such_tool', {});
   assert.ok(/unknown tool/.test(bad.error));
   console.log('tools.check: all assertions pass');

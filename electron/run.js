@@ -101,8 +101,10 @@ function cellColumns() {
   return cache.cellCols;
 }
 
-// every array of one cell, keyed by column name, taking a segmentation label
-function cellRow(label) {
+// every array of one cell, keyed by column name, taking a segmentation label.
+// NOT cellRow: that name is the cellData.tsv tool further down, and two functions
+// of the same name silently left the later one winning for every caller here.
+function cellArrays(label) {
   const row = toInternal(label);
   if (row === 0) throw new Error('cell 0 is the background pseudocell, not a cell');
   const got = db().prepare(`SELECT * FROM cells WHERE ${deps.getCellKey()} = ?`).get(row);
@@ -176,7 +178,7 @@ function topClasses(c, n) {
 function cell(label) {
   const names = meta().class_names;
   const panel = meta().gene_panel;
-  const c = cellRow(label);
+  const c = cellArrays(label);
   const counts = c.gene_count;
   const top = Array.from(counts, (v, g) => [g, v])
     .sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 10);
@@ -197,7 +199,7 @@ function cell(label) {
 
 function cellCounts(label, gene) {
   const panel = meta().gene_panel;
-  const c = cellRow(label);
+  const c = cellArrays(label);
   const counts = c.gene_count;
   const note = 'these are soft counts: each spot contributes its probability of ' +
                'belonging to this cell, so they are estimates and not whole numbers';
@@ -218,7 +220,7 @@ function cellCounts(label, gene) {
 
 function theta(label) {
   const names = meta().class_names;
-  const c = cellRow(label);
+  const c = cellArrays(label);
   return {
     cell: Number(label),
     theta: c.theta,
@@ -236,7 +238,7 @@ function theta(label) {
 function gamma(label, gene) {
   const names = meta().class_names;
   const panel = meta().gene_panel;
-  const c = cellRow(label);
+  const c = cellArrays(label);
   const out = {
     cell: Number(label),
     class: names[c.assigned_class_idx],
@@ -331,7 +333,7 @@ function gene(name) {
 
 function neighbours(label) {
   const names = meta().class_names;
-  const c = cellRow(Number(label));
+  const c = cellArrays(Number(label));
   if (!c.neighbours) {
     throw new Error('this run was written before diagnostics.db kept the ' +
                     'spatial neighbours; rerun with the current pciSeq');
