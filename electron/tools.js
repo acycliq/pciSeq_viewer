@@ -4,9 +4,10 @@
 // of tools with descriptions, decides which to call, and gets an object back.
 // The numbers come from querySpot and queryCell in diagnostics.js, which the
 // Spot Inspector and Cell Inspector already use; this file reshapes their result
-// into the dict the narrators expect and adds the story. Two tools act on the
-// screen as well as answering, moving the map and opening the cell diagnostics
-// panel, which is the one thing the viewer can do that the Python server cannot.
+// into the dict the narrators expect and adds the story. Three tools act on the
+// screen as well as answering, moving the map and opening the cell or the spot
+// diagnostics panel, which is the one thing the viewer can do that the Python
+// server cannot.
 //
 // Dependencies come in through init() rather than require(), so the adapters can
 // be run in plain node with fake query results (tools.check.js).
@@ -90,6 +91,21 @@ const TOOLS = [
         vs_class: { type: 'string', description: 'Class to compare against. Defaults to the runner up.' },
       },
       required: ['label'],
+    },
+  },
+  {
+    name: 'open_spot_diagnostics',
+    description:
+      'Open the spot diagnostics panel on a spot, so the user sees the charts and the ' +
+      'table behind where it went: the probability of each candidate cell and the ' +
+      'background, and the score of each broken into its terms. Returns the same ' +
+      'numbers as explain_spot. Use it when the user asks to see the diagnostics of a ' +
+      'spot; after explaining a spot, offer it rather than opening it unasked. spot_id ' +
+      'is the id shown in the viewer.',
+    input_schema: {
+      type: 'object',
+      properties: { spot_id: { type: 'integer', description: 'The spot id.' } },
+      required: ['spot_id'],
     },
   },
   {
@@ -705,6 +721,16 @@ async function call(name, input) {
       const out = cellToDict(res, label);
       out.diagnostics = `open on cell ${label}, ${res.assignedClass} against ${res.userClass}, ` +
                         'Genes tab first';
+      return out;
+    }
+    if (name === 'open_spot_diagnostics') {
+      // no class to pick here, the panel shows every candidate cell at once
+      const spotId = Number(input.spot_id);
+      const res = await deps.querySpot(spotId);
+      if (!res.success) return { error: res.error };
+      deps.send('chat-open-spot-diagnostics', { spot_id: spotId });
+      const out = spotToDict(res);
+      out.diagnostics = `open on spot ${spotId}, probabilities chart first`;
       return out;
     }
     if (name === 'fly_to_cell') {

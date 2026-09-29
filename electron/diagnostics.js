@@ -297,7 +297,7 @@ async function querySpot(spotId) {
 
     const probabilities = softmaxJS(scores);
 
-    const labels = neighborLabels.map(cid => `Cell ${cid}`).concat(['Misread']);
+    const labels = neighborLabels.map(cid => `Cell ${cid}`).concat(['Background']);
 
     // 7. Each candidate's assigned class, by internal id, for the story the agent
     // tells. Older dbs have no assigned_class_idx column, then this is null.

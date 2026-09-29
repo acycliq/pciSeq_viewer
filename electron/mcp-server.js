@@ -60,8 +60,9 @@ function makeServer() {
 function instructions() {
   return chat.SYSTEM + '\n\n' + [
     'You are connected to a running pciSeq viewer through its MCP server. The run',
-    'the user has loaded is already open in the tools, and fly_to_cell and',
-    'open_cell_diagnostics act on the viewer window the user is looking at.',
+    'the user has loaded is already open in the tools, and fly_to_cell,',
+    'open_cell_diagnostics and open_spot_diagnostics act on the viewer window the',
+    'user is looking at.',
   ].join('\n');
 }
 

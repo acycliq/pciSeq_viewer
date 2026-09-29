@@ -7,7 +7,7 @@ const tools = require('./tools');
 // ---- a spot, shaped like querySpot's result
 const spotRes = {
   success: true, spotId: 1642419, geneName: 'Synpr', x: 5506, y: 772, z: 152,
-  neighborLabels: ['Cell 18223', 'Cell 21574', 'Cell 17371', 'Misread'],
+  neighborLabels: ['Cell 18223', 'Cell 21574', 'Cell 17371', 'Background'],
   neighborIds: [18223, 21574, 17371],
   neighborClasses: ['037 DG Glut', '037 DG Glut', '037 DG Glut'],
   mvn: [-10.4, -12.8, -12.1], attention: [0.94, 0.94, 0.94], exprFluct: [0.18, 0.07, -0.54],
@@ -92,6 +92,20 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
 
   const viaCall = await tools.call('explain_spot', { spot_id: 1642419 });
   assert.strictEqual(viaCall.assigned_to, 18223);
+
+  // open_spot_diagnostics: same answer as explain_spot, plus the message to the renderer
+  sent = [];
+  const spotOpened = await tools.call('open_spot_diagnostics', { spot_id: 1642419 });
+  assert.deepStrictEqual(sent, [['chat-open-spot-diagnostics', { spot_id: 1642419 }]]);
+  assert.strictEqual(spotOpened.narrative, viaCall.narrative);
+  assert.ok(/open on spot 1642419/.test(spotOpened.diagnostics));
+  // a spot the db does not have: the error comes back and nothing opens
+  sent = [];
+  tools.init({ querySpot: async () => ({ success: false, error: 'no spot 7' }) });
+  const noSpot = await tools.call('open_spot_diagnostics', { spot_id: 7 });
+  assert.strictEqual(noSpot.error, 'no spot 7');
+  assert.deepStrictEqual(sent, [], 'nothing opened');
+  tools.init({ querySpot: async () => spotRes });
 
   // docs: a tiny corpus in a temp folder, the ranking of docs.py
   const fs = require('fs'), os = require('os'), path = require('path');

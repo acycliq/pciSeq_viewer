@@ -731,6 +731,12 @@ window.addEventListener('load', async () => {
             openCheckCellCompare(label, vs_class);
         });
     }
+    // and open_spot_diagnostics: the same panel Ctrl+Click on a spot opens
+    if (window.electronAPI?.onChatOpenSpotDiagnostics) {
+        window.electronAPI.onChatOpenSpotDiagnostics(({ spot_id }) => {
+            openCheckSpotModal(spot_id);
+        });
+    }
     if (window.cellLookup) {
         window.cellLookup.setupUI();
     }

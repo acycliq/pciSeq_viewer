@@ -25,14 +25,16 @@ export function renderTable(container, data) {
     <table style="${tableStyle}">
       <thead>
         <tr>
-          <th style="${thStyle} text-align:left">Name</th>
-          <th style="${thStyle}">mvn_loglik</th>
-          <th style="${thStyle}">attention</th>
-          <th style="${thStyle}">expr_fluct</th>
-          <th style="${thStyle}">cell_inefficiency</th>
-          <th style="${thStyle}">gene_inefficiency</th>
-          <th style="${thStyle}">bonus</th>
+          <th style="${thStyle} text-align:left">cell</th>
+          <th style="${thStyle}">Gaussian fit</th>
+          <th style="${thStyle}">class expression</th>
+          <th style="${thStyle}">cell scale</th>
+          <th style="${thStyle}">cell-gene scale</th>
+          <th style="${thStyle}">gene efficiency</th>
+          <th style="${thStyle}">inside-cell bonus</th>
+          <th style="${thStyle}">misread</th>
           <th style="${thStyle}">sum</th>
+          <th style="${thStyle}">prob</th>
         </tr>
       </thead>
       <tbody>
@@ -45,25 +47,30 @@ export function renderTable(container, data) {
         <td style="${nameTdStyle}">${labels[i]}</td>
         <td style="${tdStyle}">${mvn[i].toFixed(3)}</td>
         <td style="${tdStyle}">${attn[i].toFixed(3)}</td>
-        <td style="${tdStyle}">${expr[i].toFixed(3)}</td>
         <td style="${tdStyle}">${cellIneff ? cellIneff[i].toFixed(3) : 'Null'}</td>
+        <td style="${tdStyle}">${expr[i].toFixed(3)}</td>
         <td style="${tdStyle}">${geneIneff ? geneIneff[i].toFixed(3) : 'Null'}</td>
         <td style="${tdStyle}">${bonus ? bonus[i].toFixed(3) : 'Null'}</td>
+        <td style="${tdStyle}"></td>
         <td style="${tdStyle} font-weight:bold; color:#fff">${sum.toFixed(3)}</td>
+        <td style="${tdStyle}">${data.probabilities[i].toFixed(3)}</td>
       </tr>
     `;
   }
 
+  // the background row, as in the docs: no cell terms, its whole score is the misread
   html += `
       <tr class="check-spot-row-hover">
-        <td style="${nameTdStyle}">misread</td>
-        <td style="${tdStyle} color:#4b5563">Null</td>
-        <td style="${tdStyle} color:#4b5563">Null</td>
-        <td style="${tdStyle} color:#4b5563">Null</td>
-        <td style="${tdStyle} color:#4b5563">Null</td>
-        <td style="${tdStyle} color:#4b5563">Null</td>
-        <td style="${tdStyle} color:#4b5563">Null</td>
+        <td style="${nameTdStyle}">${labels[nCells]}</td>
+        <td style="${tdStyle}"></td>
+        <td style="${tdStyle}"></td>
+        <td style="${tdStyle}"></td>
+        <td style="${tdStyle}"></td>
+        <td style="${tdStyle}"></td>
+        <td style="${tdStyle}"></td>
+        <td style="${tdStyle}">${misread.toFixed(3)}</td>
         <td style="${tdStyle} font-weight:bold; color:#fff">${misread.toFixed(3)}</td>
+        <td style="${tdStyle}">${data.probabilities[nCells].toFixed(3)}</td>
       </tr>
     </tbody>
     </table>
@@ -113,14 +120,14 @@ export function renderScores(container, data) {
       .style('font-size', '14px')
       .style('font-weight', '600')
       .style('fill', '#e5e7eb')
-      .text(`Spot ${data.spotId} ${data.geneName}`);
+      .text(`Spot ${data.spotId} ${data.geneName} - Score Decomposition`);
 
   svg.append('text')
       .attr('x', margin.left)
       .attr('y', 42)
       .style('font-size', '13px')
       .style('fill', '#9ca3af')
-      .text('Score Decomposition (Higher is better)');
+      .text('The higher the better');
 
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
@@ -134,13 +141,13 @@ export function renderScores(container, data) {
   g.append('g').attr('class', 'grid').call(d3.axisLeft(y).tickSize(-w).tickFormat('')).call(g => g.select('.domain').remove()).call(g => g.selectAll('.tick line').attr('stroke', '#374151').attr('stroke-dasharray', '2,2'));
   g.append('g').call(d3.axisLeft(y).ticks(5)).call(g => g.select('.domain').remove()).selectAll('text').style('fill', '#9ca3af').style('font-size', '11px');
 
-  g.append('text').attr('transform', 'rotate(-90)').attr('y', -35).attr('x', -h / 2).attr('text-anchor', 'middle').style('fill', '#9ca3af').style('font-size', '12px').text('Log-Likelihood');
+  g.append('text').attr('transform', 'rotate(-90)').attr('y', -35).attr('x', -h / 2).attr('text-anchor', 'middle').style('fill', '#9ca3af').style('font-size', '12px').text('Log-Likelihood Score');
   g.append('g').attr('transform', `translate(0,${h})`).call(d3.axisBottom(x)).call(g => g.select('.domain').attr('stroke', '#4b5563')).selectAll('text').attr('transform', 'rotate(-45)').style('text-anchor', 'end').attr('dx', '-0.5em').attr('dy', '0.5em').style('fill', '#d1d5db').style('font-size', '12px');
 
-  const colors = { mvn: '#1f77b4', attn: '#ff7f0e', expr: '#2ca02c', cellIneff: '#9467bd', geneIneff: '#8c564b', bonus: '#e377c2', misread: '#db5c5c' };
+  const colors = { mvn: '#1f77b4', attn: '#ff7f0e', expr: '#2ca02c', cellIneff: '#9467bd', geneIneff: '#8c564b', bonus: '#e377c2', misread: '#db5c5c', total: '#ffffff' };
 
   const drawSegment = (dataArray, bottomArray, colorClass, colorHex) => {
-      const labelsMap = { mvn: 'MVN LogLik', attn: 'Attention', expr: 'Expr Fluctuation', cellIneff: 'Cell Inefficiency', geneIneff: 'Gene Inefficiency', bonus: 'Inside-cell Bonus' };
+      const labelsMap = { mvn: 'Gaussian fit', attn: 'class expression', cellIneff: 'cell scale', expr: 'cell-gene scale', geneIneff: 'gene efficiency', bonus: 'inside-cell bonus' };
       g.selectAll(`.bar-${colorClass}`)
           .data(dataArray)
           .enter().append('rect')
@@ -166,8 +173,8 @@ export function renderScores(container, data) {
   };
   stackTerm(mvn, 'mvn', colors.mvn);
   stackTerm(attn, 'attn', colors.attn);
-  stackTerm(expr, 'expr', colors.expr);
   stackTerm(cellIneff, 'cellIneff', colors.cellIneff);
+  stackTerm(expr, 'expr', colors.expr);
   stackTerm(geneIneff, 'geneIneff', colors.geneIneff);
   stackTerm(bonus, 'bonus', colors.bonus);
 
@@ -179,27 +186,42 @@ export function renderScores(container, data) {
           .attr('height', Math.abs(y(misread) - y(0)))
           .attr('fill', colors.misread)
           .attr('stroke', '#fff').attr('stroke-width', 0.5).attr('stroke-opacity', 0.2)
-          .on('mouseover', (e) => showTooltip(e, `<strong>Misread Density</strong><br>${misread.toFixed(3)}`))
+          .on('mouseover', (e) => showTooltip(e, `<strong>Background</strong><br>misread: ${misread.toFixed(3)}`))
           .on('mousemove', moveTooltip)
           .on('mouseout', hideTooltip);
   }
 
+  // the total of each bar as a tick, the Total score of the docs figure. White here,
+  // black in the docs, because this panel is dark
+  const totals = stackedSums.concat([misread]);
+  g.selectAll('.total-tick')
+      .data(totals)
+      .enter().append('line')
+      .attr('x1', (d, i) => x(labels[i])).attr('x2', (d, i) => x(labels[i]) + x.bandwidth())
+      .attr('y1', d => y(d)).attr('y2', d => y(d))
+      .attr('stroke', colors.total).attr('stroke-width', 2)
+      .on('mouseover', (e, d) => showTooltip(e, `<strong>Total score</strong><br>${d.toFixed(3)}`))
+      .on('mousemove', moveTooltip)
+      .on('mouseout', hideTooltip);
+
   const legend = svg.append('g').attr('transform', `translate(${margin.left}, ${h + margin.top + 70})`);
   const legendItems = [
-      { label: 'MVN (Spatial)', color: colors.mvn },
-      { label: 'Attention', color: colors.attn },
-      { label: 'Expr. Fluctuation', color: colors.expr },
-      { label: cellIneff ? 'Cell Inefficiency' : 'Cell Inefficiency (N/A)', color: colors.cellIneff },
-      { label: geneIneff ? 'Gene Inefficiency' : 'Gene Inefficiency (N/A)', color: colors.geneIneff },
-      { label: bonus ? 'Inside-cell Bonus' : 'Inside-cell Bonus (N/A)', color: colors.bonus },
-      { label: 'Misread Density', color: colors.misread }
+      { label: 'Gaussian fit', color: colors.mvn },
+      { label: 'class expression', color: colors.attn },
+      { label: cellIneff ? 'cell scale' : 'cell scale (N/A)', color: colors.cellIneff },
+      { label: 'cell-gene scale', color: colors.expr },
+      { label: geneIneff ? 'gene efficiency' : 'gene efficiency (N/A)', color: colors.geneIneff },
+      { label: bonus ? 'inside-cell bonus' : 'inside-cell bonus (N/A)', color: colors.bonus },
+      { label: 'misread', color: colors.misread },
+      { label: 'Total score', color: colors.total, line: true }
   ];
 
   legendItems.forEach((item, i) => {
       const row = Math.floor(i / 3);
       const col = i % 3;
       const lg = legend.append('g').attr('transform', `translate(${col * 140}, ${row * 20})`);
-      lg.append('rect').attr('width', 10).attr('height', 10).attr('rx', 2).attr('fill', item.color);
+      if (item.line) lg.append('rect').attr('y', 4).attr('width', 12).attr('height', 2).attr('fill', item.color);
+      else lg.append('rect').attr('width', 10).attr('height', 10).attr('rx', 2).attr('fill', item.color);
       lg.append('text').attr('x', 16).attr('y', 9).text(item.label).style('font-size', '12px').style('fill', '#d1d5db');
   });
 }
