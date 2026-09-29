@@ -18,7 +18,6 @@
 const { safeStorage } = require('electron');
 const Anthropic = require('@anthropic-ai/sdk');
 const tools = require('./tools');
-const mcp = require('./mcp');
 
 const DEFAULT_MODEL = 'claude-sonnet-5';
 
@@ -151,11 +150,6 @@ const VIEWER_SYSTEM = [
 
 const SYSTEM = SHARED_SYSTEM + '\n\n' + VIEWER_SYSTEM;
 
-// the viewer's own tools, the ones that act on the screen or read the source at the
-// run's commit. With the server connected these are all the model gets from here;
-// explain_cell, explain_spot, docs, run_info and the rest come from the server.
-const SCREEN_TOOLS = ['fly_to_cell', 'open_cell_diagnostics', 'list_source', 'read_source'];
-
 let deps = { store: null, send: null };
 
 function init(d) {
@@ -276,20 +270,12 @@ async function runTurn(messages) {
   const history = [...messages];
   let finalText = '';
 
-  // With the pciSeq MCP server: its instructions and tools, plus what only the
-  // viewer can do. Without it, the javascript tools as before (until step 6).
-  const viaServer = await mcp.ready();
-  const system = viaServer ? mcp.instructions() + '\n\n' + VIEWER_SYSTEM : SYSTEM;
-  const toolList = viaServer
-    ? [...mcp.toolsForModel(), ...tools.TOOLS.filter(t => SCREEN_TOOLS.includes(t.name))]
-    : tools.TOOLS;
-
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const res = await client.messages.create({
       model: modelName,
       max_tokens: MAX_TOKENS,
-      system,
-      tools: toolList,
+      system: SYSTEM,
+      tools: tools.TOOLS,
       messages: history,
     });
 
@@ -307,24 +293,7 @@ async function runTurn(messages) {
     const results = [];
     for (const u of uses) {
       send({ type: 'tool_call', name: u.name, input: u.input });
-      if (viaServer && !SCREEN_TOOLS.includes(u.name) && mcp.hasTool(u.name)) {
-        // the server's answer as it comes, text and pictures, so cell_image's png
-        // reaches the model as an image
-        let r;
-        try {
-          r = await mcp.callTool(u.name, u.input);
-        } catch (e) {
-          r = { content: [{ type: 'text', text: 'the pciSeq server failed: ' + e.message }], is_error: true };
-        }
-        send({ type: 'tool_result', name: u.name, result: { is_error: r.is_error } });
-        // the model sees the picture, but the user would not: the panel shows only
-        // the model's text. So the viewer puts the picture on screen itself, straight
-        // from the server, rather than through a link the model might write.
-        for (const c of r.content) {
-          if (c.type === 'image') send({ type: 'image', name: u.name, media_type: c.source.media_type, data: c.source.data });
-        }
-        results.push({ type: 'tool_result', tool_use_id: u.id, content: r.content, is_error: r.is_error });
-      } else {
+      {
         const out = await tools.call(u.name, u.input);
         if (out && out.__image) {
           // a picture: the model sees it as an image block, the user sees it in
@@ -362,10 +331,6 @@ function registerIpc(ipcMain) {
   });
   ipcMain.handle('chat-get-settings', (_event, provider) => getSettings(provider));
   // the pciSeq server, for the Connection tab: what is registered and what is running
-  // status after starting the server if it can be started without asking (one
-  // environment registered, or one picked before), so the tab shows it connected
-  ipcMain.handle('chat-mcp-status', async () => { await mcp.ready(); return mcp.status(); });
-  ipcMain.handle('chat-mcp-connect', (_event, python) => mcp.connect(python));
   ipcMain.handle('chat-save-settings', (_event, s) => {
     try {
       return { success: true, ...saveSettings(s || {}) };
@@ -376,4 +341,4 @@ function registerIpc(ipcMain) {
 }
 
 module.exports = { init, registerIpc, runTurn, getSettings, saveSettings, makeClient, SYSTEM,
-                   SHARED_SYSTEM, VIEWER_SYSTEM, SCREEN_TOOLS, DEFAULT_MODEL, PROVIDERS };
+                   SHARED_SYSTEM, VIEWER_SYSTEM, DEFAULT_MODEL, PROVIDERS };

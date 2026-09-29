@@ -381,8 +381,10 @@ const TOOLS = [
       '"show me cell 18223", "show me cell 18223 on the DAPI" or "where is cell ' +
       '18223 in the section". context=false gives a close-up: the cell outlined in ' +
       'red, every other cell on that plane in blue, the nuclei underneath. ' +
-      'context=true gives the whole section with a ring round the cell. Ask for ' +
-      'both when the user wants to see a cell. neighbours=true outlines only the ' +
+      'context=true gives the whole section with a ring round the cell. "Show me ' +
+      'cell X", with nothing more specific, means BOTH pictures: call the tool ' +
+      'twice, the close-up first and then context=true, the pair the docs use. ' +
+      'neighbours=true outlines only the ' +
       'cells the spatial term of the model listened to, which is what "why did its ' +
       'neighbours make it this class" needs; the answer lists them and says which ' +
       'sit on another plane. One plane at a time; the plane is the centroid\'s when ' +

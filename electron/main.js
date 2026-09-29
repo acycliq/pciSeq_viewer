@@ -10,7 +10,6 @@ const singleCell = require('./single-cell');
 const dataLoader = require('./data-loader');
 const tools = require('./tools');
 const chat = require('./chat');
-const mcp = require('./mcp');
 const mcpServer = require('./mcp-server');
 const run = require('./run');
 const compose = require('./compose');
@@ -173,13 +172,6 @@ function createWindow() {
   chat.init({
     store,
     send: (ev) => { if (mainWindow) mainWindow.webContents.send('chat-event', ev); },
-  });
-  // the pciSeq MCP server the chat gets its tools from: found through the registry
-  // `pciseq-mcp --register` writes under appData, opened on the loaded run
-  mcp.init({
-    appData: app.getPath('appData'),
-    store,
-    getRunPath: () => store.get('dataPath') || null,
   });
   // and the other way round: the viewer as an MCP server, so Claude Code can ask
   // about the loaded run and fly the map. Localhost only.
@@ -745,7 +737,7 @@ app.on('window-all-closed', () => {
 });
 
 // stop the pciSeq server with the viewer, so no python process is left behind
-app.on('will-quit', () => { mcp.close(); mcpServer.stop(); });
+app.on('will-quit', () => { mcpServer.stop(); });
 
 // Log startup info
 console.log('pciSeq Viewer starting...');
