@@ -107,6 +107,28 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.deepStrictEqual(sent, [], 'nothing opened');
   tools.init({ querySpot: async () => spotRes });
 
+  // show_classes / show_genes: names checked against the run, then one message out
+  tools.init({ getMeta: () => ({ class_names: names, gene_panel: ['Npy', 'Sst', 'Vip'] }) });
+  sent = [];
+  const only = await tools.call('show_classes', { mode: 'only', names: ['A', 'X', 'C'] });
+  assert.deepStrictEqual(sent, [['chat-show-visibility', { kind: 'classes', mode: 'only', names: ['A', 'C'] }]]);
+  assert.strictEqual(only.shown, 2);
+  assert.deepStrictEqual(only.unknown, ['X'], 'the typo is reported, not applied');
+  sent = [];
+  const hideGene = await tools.call('show_genes', { mode: 'hide', names: ['Sst'] });
+  assert.deepStrictEqual(sent, [['chat-show-visibility', { kind: 'genes', mode: 'hide', names: ['Sst'] }]]);
+  assert.strictEqual(hideGene.shown, undefined, 'the count is not known after a hide');
+  sent = [];
+  const allGenes = await tools.call('show_genes', { mode: 'all' });
+  assert.deepStrictEqual(sent, [['chat-show-visibility', { kind: 'genes', mode: 'all', names: [] }]]);
+  assert.strictEqual(allGenes.shown, 3);
+  sent = [];
+  assert.ok(/nothing changed/.test((await tools.call('show_classes', { mode: 'add', names: ['X'] })).error));
+  assert.ok(/needs the class names/.test((await tools.call('show_classes', { mode: 'only' })).error));
+  assert.ok(/mode must be/.test((await tools.call('show_genes', { mode: 'toggle' })).error));
+  assert.deepStrictEqual(sent, [], 'nothing sent on a refusal');
+  tools.init({ getMeta: () => ({ class_names: names }) });
+
   // docs: a tiny corpus in a temp folder, the ranking of docs.py
   const fs = require('fs'), os = require('os'), path = require('path');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pciseq-docs-'));

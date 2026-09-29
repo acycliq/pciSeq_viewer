@@ -4,10 +4,10 @@
 // of tools with descriptions, decides which to call, and gets an object back.
 // The numbers come from querySpot and queryCell in diagnostics.js, which the
 // Spot Inspector and Cell Inspector already use; this file reshapes their result
-// into the dict the narrators expect and adds the story. Three tools act on the
-// screen as well as answering, moving the map and opening the cell or the spot
-// diagnostics panel, which is the one thing the viewer can do that the Python
-// server cannot.
+// into the dict the narrators expect and adds the story. Some tools act on the
+// screen as well as answering: moving the map, opening the cell or the spot
+// diagnostics panel, and choosing which classes and genes are drawn, which is the
+// one thing the viewer can do that the Python server cannot.
 //
 // Dependencies come in through init() rather than require(), so the adapters can
 // be run in plain node with fake query results (tools.check.js).
@@ -460,6 +460,40 @@ const TOOLS = [
       required: ['label'],
     },
   },
+  {
+    name: 'show_classes',
+    description:
+      'Choose which cell classes are drawn on the map, like the eye icons in the Cell ' +
+      'Classes drawer. Use it when the user asks to show or hide classes. mode only: ' +
+      'show just these and hide the rest; add: show these as well; hide: hide these; ' +
+      'all: show every class; none: hide every class. Names must match the run\'s ' +
+      'classes exactly; names that do not are returned as unknown and left out.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        mode: { type: 'string', enum: ['only', 'add', 'hide', 'all', 'none'], description: 'What to do with the names.' },
+        names: { type: 'array', items: { type: 'string' }, description: 'The class names. Not needed for all and none.' },
+      },
+      required: ['mode'],
+    },
+  },
+  {
+    name: 'show_genes',
+    description:
+      'Choose which genes have their spots drawn on the map, like the eye icons in the ' +
+      'Genes drawer. Use it when the user asks to show or hide genes. mode only: show ' +
+      'just these and hide the rest; add: show these as well; hide: hide these; all: ' +
+      'show every gene; none: hide every gene. Names must match the gene panel exactly; ' +
+      'names that do not are returned as unknown and left out.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        mode: { type: 'string', enum: ['only', 'add', 'hide', 'all', 'none'], description: 'What to do with the names.' },
+        names: { type: 'array', items: { type: 'string' }, description: 'The gene names. Not needed for all and none.' },
+      },
+      required: ['mode'],
+    },
+  },
 ];
 
 // ---------------------------------------------------------------- adapters
@@ -588,6 +622,45 @@ async function cellQuery(label, vsClass) {
     if (!res.success) return { error: res.error };
   }
   return { res };
+}
+
+// ---------------------------------------------------------------- what is drawn
+
+// show_classes and show_genes. The names are checked here against the run's own
+// lists, so the model hears about a typo; the renderer holds which ones are shown
+// and does the rest (the chat-show-visibility handler in app.js).
+const VISIBILITY_MODES = ['only', 'add', 'hide', 'all', 'none'];
+
+function setVisibility(kind, input) {
+  const meta = deps.getMeta();
+  if (!meta) return { error: 'no diagnostics.db is open' };
+  const known = kind === 'classes' ? meta.class_names : meta.gene_panel;
+  const what = kind === 'classes' ? 'class' : 'gene';
+  const mode = input.mode;
+  if (!VISIBILITY_MODES.includes(mode)) {
+    return { error: `mode must be one of ${VISIBILITY_MODES.join(', ')}` };
+  }
+  const needsNames = mode === 'only' || mode === 'add' || mode === 'hide';
+  const names = Array.isArray(input.names) ? input.names.map(String) : [];
+  if (needsNames && !names.length) return { error: `mode ${mode} needs the ${what} names` };
+  const knownSet = new Set(known);
+  const found = names.filter(n => knownSet.has(n));
+  const unknown = names.filter(n => !knownSet.has(n));
+  if (needsNames && !found.length) {
+    return { error: `none of ${names.join(', ')} is a ${what} of this run, nothing changed` };
+  }
+  deps.send('chat-show-visibility', { kind, mode, names: needsNames ? found : [] });
+  const out = { done: true, mode };
+  if (needsNames) out[kind] = found;
+  // the count is only known here when the tool sets the whole list
+  if (mode === 'only') out.shown = found.length;
+  if (mode === 'all') out.shown = known.length;
+  if (mode === 'none') out.shown = 0;
+  if (unknown.length) {
+    out.unknown = unknown;
+    out.unknown_is = `not a ${what} of this run, left out`;
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------- the run
@@ -738,6 +811,8 @@ async function call(name, input) {
       deps.send('chat-fly-to-cell', { label });
       return { done: true, cell: label, note: 'the map is moving to the cell' };
     }
+    if (name === 'show_classes') return setVisibility('classes', input);
+    if (name === 'show_genes') return setVisibility('genes', input);
     if (name === 'docs') {
       // the pages of the run's own commit, as the source tools do; the copy shipped
       // with the viewer only when those cannot be fetched

@@ -86,7 +86,9 @@ import {
     hideCellClassWidget,
     filterCellClasses,
     toggleAllCellClasses,
-    undockCellClassWidget
+    undockCellClassWidget,
+    populateCellClassWidget,
+    updateToggleAllCellClassesButton
 } from './cellClassWidget.js';
 
 import {
@@ -735,6 +737,30 @@ window.addEventListener('load', async () => {
     if (window.electronAPI?.onChatOpenSpotDiagnostics) {
         window.electronAPI.onChatOpenSpotDiagnostics(({ spot_id }) => {
             openCheckSpotModal(spot_id);
+        });
+    }
+    // and show_classes / show_genes: change the set of shown classes or genes, then
+    // rebuild the drawer and the widget from it, the way the colour import does, so
+    // the eyes and checkboxes match the map
+    if (window.electronAPI?.onChatShowVisibility) {
+        window.electronAPI.onChatShowVisibility(({ kind, mode, names }) => {
+            const classes = kind === 'classes';
+            const shown = classes ? state.selectedCellClasses : state.selectedGenes;
+            const all = classes ? Array.from(state.allCellClasses) : Array.from(state.geneDataMap.keys());
+            const have = new Set(all);
+            const these = names.filter(n => have.has(n));
+            if (mode === 'all') all.forEach(n => shown.add(n));
+            if (mode === 'none' || mode === 'only') shown.clear();
+            if (mode === 'only' || mode === 'add') these.forEach(n => shown.add(n));
+            if (mode === 'hide') these.forEach(n => shown.delete(n));
+            if (classes) {
+                populateCellClassDrawer();
+                populateCellClassWidget();
+                updateToggleAllCellClassesButton();
+            } else {
+                populateGeneDrawer();
+            }
+            if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
         });
     }
     if (window.cellLookup) {

@@ -67,6 +67,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onChatOpenCellDiagnostics: (handler) => ipcRenderer.on('chat-open-cell-diagnostics', (_e, p) => handler(p)),
   // and open_spot_diagnostics: open the spot panel on a spot
   onChatOpenSpotDiagnostics: (handler) => ipcRenderer.on('chat-open-spot-diagnostics', (_e, p) => handler(p)),
+  // the show_classes and show_genes tools: change which classes or genes are drawn
+  onChatShowVisibility: (handler) => ipcRenderer.on('chat-show-visibility', (_e, p) => handler(p)),
   onShowShortcuts: (handler) => ipcRenderer.on('show-shortcuts', handler)
 });
 
