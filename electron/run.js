@@ -15,6 +15,8 @@
 // Dependencies come in through init() so run.check.js can drive it in plain node
 // with a database and no Electron.
 
+const { narrateCell } = require('./narrative');
+
 let deps = { getDb: null, getMeta: null, getCellKey: null, querySpot: null };
 
 // caches per open database, dropped when the db handle changes
@@ -35,7 +37,14 @@ function db() {
 }
 
 function meta() {
-  return deps.getMeta() || {};
+  // a new metadata object means another run was loaded: drop what was derived
+  // from the old one, or toExternal would translate with the old label map
+  const m = deps.getMeta() || {};
+  if (cache.metaRef !== m) {
+    cache.metaRef = m;
+    delete cache.reverseMap;
+  }
+  return m;
 }
 
 function cfg() {
@@ -77,8 +86,13 @@ const f32 = b => new Float32Array(b.buffer, b.byteOffset, b.byteLength / 4);
 const i32 = b => new Int32Array(b.buffer, b.byteOffset, b.byteLength / 4);
 
 function cellColumns() {
+  // db() first, on its own line: it replaces `cache` when the database changed,
+  // and in `cache.x = f(db())` the assignment target is resolved BEFORE db() runs,
+  // so the value would land on the discarded cache object (that exact bug made
+  // hasSavedScore false on its first call)
+  const h = db();
   if (!cache.cellCols) {
-    cache.cellCols = new Set(db().prepare('PRAGMA table_info(cells)').all().map(r => r.name));
+    cache.cellCols = new Set(h.prepare('PRAGMA table_info(cells)').all().map(r => r.name));
   }
   return cache.cellCols;
 }
@@ -437,6 +451,125 @@ function metadataTool(key) {
   return { key, value: m[key] };
 }
 
+// Why a cell got its class, read from the run's own numbers.
+//
+// The run saves, per cell, the gene log-likelihood of every class and the per gene
+// contributions for the assigned class and the runner up (diagnostics.db format
+// version 1). So the default comparison is READ, never recomputed: the story told
+// here in five years is the story of the run, whatever the model looks like then.
+// Against any other class only the totals are saved (per gene for every class
+// would be ~800 MB), and the answer says so.
+function explainCell(label, vsClass = null, topN = 10) {
+  const m = meta();
+  if (!cellColumns().has('gene_loglik')) {
+    throw new Error('this run was made before pciSeq saved the class score ' +
+                    '(diagnostics.db format version 1), so the explanation cannot be ' +
+                    'read from it. Regenerate the run with the current pciSeq.');
+  }
+  const row = toInternal(label);
+  if (row === 0) throw new Error('cell 0 is the background pseudocell, not a cell');
+  const got = db().prepare(`SELECT * FROM cells WHERE ${deps.getCellKey()} = ?`).get(row);
+  if (!got) throw new Error(`cell ${label} is not in diagnostics.db`);
+  const classProb = f32(got.class_prob);
+  const geneLoglik = f32(got.gene_loglik);
+  const counts = f32(got.gene_count);
+  const mrf = f32(got.mrf);
+  const logPrior = m.log_prior;
+  const names = m.class_names;
+  const panel = m.gene_panel;
+  const means = m.mean_gene_reads_per_class;    // gene by class
+  const a = got.assigned_class_idx;
+
+  let other;
+  if (vsClass == null) {
+    other = got.runner_up_idx;
+    if (other < 0) {
+      throw new Error(`cell ${label} is ${names[a]} and no other class has any ` +
+                      'probability, so there is no runner up to compare against. Ask the ' +
+                      'user which class to compare against and call again with vs_class');
+    }
+  } else {
+    other = classIndex(vsClass);
+    if (other === a) {
+      throw new Error(`cell ${label} is already ${vsClass}, pick another class to compare`);
+    }
+  }
+
+  const out = {
+    cell: Number(label),
+    assigned: names[a],
+    compared_with: names[other],
+    prob_assigned: classProb[a],
+    prob_compared: classProb[other],
+    score: {
+      gene_loglik: { assigned: geneLoglik[a], compared: geneLoglik[other] },
+      log_prior: { assigned: logPrior[a], compared: logPrior[other] },
+      spatial: { assigned: mrf[a], compared: mrf[other] },
+    },
+    counts_are: 'soft, weighted by the spot assignment probabilities',
+    means_are: 'the average count over the cells of this run, each weighted by ' +
+               'its probability of being that class. An after the fact summary ' +
+               'of the run, not the cell type definitions the likelihood scores ' +
+               'against',
+    score_is: 'saved by the run itself at fit time, read here, not recomputed',
+  };
+
+  if (vsClass != null && other !== got.runner_up_idx) {
+    // per gene detail is only saved for the runner up
+    out.genes_favouring_assigned = [];
+    out.genes_favouring_compared = [];
+    out.detail_note = 'the run saves the per gene contributions only for the assigned ' +
+      'class and the runner up (' + names[got.runner_up_idx >= 0 ? got.runner_up_idx : a] +
+      '), so against ' + vsClass + ' only the three score totals are available. The ' +
+      'gene log-likelihood difference above is still the run\'s own number.';
+    return out;
+  }
+
+  // per gene: the run's own contributions, diff positive pulls for the assigned
+  const ca = f32(got.contr_assigned);
+  const cr = f32(got.contr_runner_up);
+  const geneRow = g => ({
+    gene: panel[g],
+    counts: counts[g],
+    mean_in_assigned: means[g][a],
+    mean_in_compared: means[g][other],
+    diff: ca[g] - cr[g],
+  });
+  const byDiff = Array.from(ca, (v, g) => [g, v - cr[g]])
+    .sort((x, y) => y[1] - x[1] || x[0] - y[0]);
+  const forA = byDiff.slice(0, topN).filter(([, d]) => d > 0).map(([g]) => geneRow(g));
+  const forO = byDiff.slice().reverse()
+    .sort((x, y) => x[1] - y[1] || x[0] - y[0]).slice(0, topN)
+    .filter(([, d]) => d < 0).map(([g]) => geneRow(g));
+  out.genes_favouring_assigned = forA;
+  out.genes_favouring_compared = forO;
+  out.sum_favouring_assigned = forA.reduce((s2, g) => s2 + g.diff, 0);
+  out.sum_favouring_compared = forO.reduce((s2, g) => s2 + g.diff, 0);
+
+  // the cell's biggest counts that barely separate the two classes, why these two
+  // were the finalists. Same rule as the python _shared_genes: of the ten biggest,
+  // within a factor of e, at most five, biggest first.
+  out.shared_genes = Array.from(counts, (v, g) => [g, v])
+    .sort((x, y) => y[1] - x[1] || x[0] - y[0]).slice(0, 10)
+    .filter(([g, v]) => v > COUNT_TOL && Math.abs(ca[g] - cr[g]) < 1.0)
+    .slice(0, 5).map(([g]) => geneRow(g));
+  out.shared_genes_are = 'the genes the cell holds most of that barely separate the two ' +
+    'classes, each fitting both within a factor of e. Both classes ' +
+    'express them, which is why these two were the finalists; the ' +
+    'call rests on the genes in the two lists above';
+  out.narrative = narrateCell(out);
+  return out;
+}
+
+// whether the open run saves its class score (format version 1); false with no db
+function hasSavedScore() {
+  try {
+    return cellColumns().has('gene_loglik');
+  } catch (e) {
+    return false;
+  }
+}
+
 // ------------------------------------------------------------- arithmetic
 
 // calculate() reads the expression itself, as the Python tool does with the ast;
@@ -546,6 +679,6 @@ function calculate(expression) {
   return { expression: text, result };
 }
 
-module.exports = { init, cell, cellCounts, theta, gamma, spot, gene, neighbours,
+module.exports = { init, cell, cellCounts, theta, gamma, spot, gene, neighbours, explainCell, hasSavedScore,
                    classCounts, findCells, metadataTool, calculate,
                    toInternal, toExternal, planeOf };

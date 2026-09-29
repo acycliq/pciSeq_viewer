@@ -57,7 +57,9 @@ const TOOLS = [
       'log-likelihood, the class prior and the spatial term for each, the genes that ' +
       'pushed hardest for each side with the cell\'s count and the average count of ' +
       'that gene over the cells this run called each class (mean_in_assigned, ' +
-      'mean_in_compared), and a narrative in plain words. A gene the cell lacks can ' +
+      'mean_in_compared), the shared genes (the cell\'s biggest counts that both ' +
+      'classes fit about equally, why these two were the finalists), and a narrative ' +
+      'in plain words. A gene the cell lacks can ' +
       'count against the class that expresses it. Counts are soft, weighted by ' +
       'assignment probability. label is the cell number shown in the viewer.',
     input_schema: {
@@ -552,6 +554,13 @@ async function call(name, input) {
     }
     if (name === 'explain_cell') {
       const label = Number(input.label);
+      // format version 1 runs saved their class score at fit time; read it, so the
+      // story is the run's own whatever pciSeq looks like when it is asked. The
+      // queryCell path below recomputes and only stands while pre-1 runs are
+      // tolerated (grace period, bead cz1.9.1).
+      if (run.hasSavedScore()) {
+        return run.explainCell(label, input.vs_class ?? null);
+      }
       const { res, error } = await cellQuery(label, input.vs_class);
       if (error) return { error };
       return cellToDict(res, label);
