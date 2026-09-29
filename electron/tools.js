@@ -311,6 +311,70 @@ const TOOLS = [
     },
   },
   {
+    name: 'spots_in_cell',
+    description:
+      'How many spots physically sit inside a cell\'s segmentation mask. This is a ' +
+      'HARD count with no probabilities: a spot either falls inside the mask or it ' +
+      'does not. It is a different number from cell_counts, because the model can ' +
+      'assign a spot to a cell it is not inside, and vice versa. Needs a run made ' +
+      'after September 2026; older runs raise with a clear message.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        label: { type: 'integer', description: 'The cell label, as in the segmentation.' },
+        gene: { type: 'string', description: 'Only this gene, optional.' },
+      },
+      required: ['label'],
+    },
+  },
+  {
+    name: 'spots_of_cell',
+    description:
+      'Which spots belong to a cell, with their probabilities, sorted highest first. ' +
+      'Two definitions, and the answer says which it used. Without min_prob: the ' +
+      'spots whose MOST LIKELY parent is this cell, the argmax. That is not a hard ' +
+      'assignment, the lowest probability in the list can be well under 0.5. With ' +
+      'min_prob, say 0.0001: EVERY spot with probability above it on this cell, ' +
+      'whose probabilities add up to the cell\'s soft counts. The second list is ' +
+      'usually many times longer than the first. Use this for "which spots are ' +
+      'assigned to cell 18223" or "list the spots of cell 18223 with their ' +
+      'probabilities". With gene, only that gene\'s spots, so "how many Plp1 spots ' +
+      'are assigned to cell 18223" is answered by n_spots.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        label: { type: 'integer', description: 'The cell label, as in the segmentation.' },
+        min_prob: { type: 'number', description: 'Keep every spot above this probability, optional.' },
+        gene: { type: 'string', description: 'Only this gene, optional.' },
+      },
+      required: ['label'],
+    },
+  },
+  {
+    name: 'cell_row',
+    description:
+      'The cellData.tsv row of one cell, value for value: Cell_Num, X, Y, Z, ' +
+      'Genenames, CellGeneCount, spot_id, ClassName, Prob. Use this when the ' +
+      'question is about what the saved file says for a cell. The counts are soft.',
+    input_schema: {
+      type: 'object',
+      properties: { label: { type: 'integer', description: 'The cell label, as in the segmentation.' } },
+      required: ['label'],
+    },
+  },
+  {
+    name: 'spot_row',
+    description:
+      'The geneData.tsv row of one spot, value for value: gene, position, plane, ' +
+      'neighbour, neighbour_array, neighbour_prob, omp_score, omp_intensity, ' +
+      'is_hard_misread and, on runs from September 2026 on, inside_cell.',
+    input_schema: {
+      type: 'object',
+      properties: { spot_id: { type: 'integer', description: 'The spot id.' } },
+      required: ['spot_id'],
+    },
+  },
+  {
     name: 'fly_to_cell',
     description:
       'Move the map to a cell and flash its outline, so the user can see the cell ' +
@@ -352,8 +416,12 @@ function spotToDict(res) {
   const out = {
     spot: res.spotId,
     gene: res.geneName,
-    position: { x: res.x, y: res.y, z: res.z,
-                z_is: 'the anisotropy scaled z the model works in, not the plane index' },
+    position: run.planeOf(res.z) !== null
+      ? { x: res.x, y: res.y, z: res.z, plane: run.planeOf(res.z),
+          z_is: 'the anisotropy scaled z the model works in; plane is the plane index it sits on' }
+      : { x: res.x, y: res.y, z: res.z,
+          z_is: 'the anisotropy scaled z the model works in, not the plane index. This run ' +
+                'carries no voxel_size, so the plane cannot be given' },
     candidates: rows,
     assigned_to: best === n ? 'background' : res.neighborIds[best],
   };
@@ -601,6 +669,10 @@ async function call(name, input) {
     if (name === 'find_cells') return run.findCells(input);
     if (name === 'metadata') return run.metadataTool(input.key ?? null);
     if (name === 'calculate') return run.calculate(input.expression);
+    if (name === 'spots_in_cell') return await run.spotsInCell(input.label, input.gene ?? null);
+    if (name === 'spots_of_cell') return await run.spotsOfCell(input.label, input.min_prob ?? null, input.gene ?? null);
+    if (name === 'cell_row') return await run.cellRow(input.label);
+    if (name === 'spot_row') return await run.spotRow(input.spot_id);
     if (name === 'list_source') return await listSource(input.dir || '');
     if (name === 'read_source') return await readSource(input.path, input.start_line);
     return { error: `unknown tool ${name}` };

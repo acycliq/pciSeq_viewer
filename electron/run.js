@@ -15,6 +15,10 @@
 // Dependencies come in through init() so run.check.js can drive it in plain node
 // with a database and no Electron.
 
+const fs = require('fs');
+const path = require('path');
+const { pathToFileURL } = require('url');
+
 const { narrateCell } = require('./narrative');
 
 let deps = { getDb: null, getMeta: null, getCellKey: null, querySpot: null };
@@ -39,7 +43,7 @@ function db() {
 function meta() {
   // a new metadata object means another run was loaded: drop what was derived
   // from the old one, or toExternal would translate with the old label map
-  const m = deps.getMeta() || {};
+  const m = (deps.getMeta && deps.getMeta()) || {};
   if (cache.metaRef !== m) {
     cache.metaRef = m;
     delete cache.reverseMap;
@@ -570,6 +574,230 @@ function hasSavedScore() {
   }
 }
 
+// ------------------------------------------------------- the viewer files
+//
+// The spot lists live in the run's arrow shards (the same files the map streams),
+// not in diagnostics.db. They are the run's own output, so reading them keeps the
+// read-only rule; the arrow bundle is the one the renderer already ships.
+
+let arrowP = null;
+function arrow() {
+  if (!arrowP) {
+    arrowP = import(pathToFileURL(
+      path.join(__dirname, '..', 'lib', 'vendor', 'apache-arrow-12.0.1.esm.js')).href);
+  }
+  return arrowP;
+}
+
+// db().name is <viewer_data>/diagnostics/diagnostics.db
+function viewerDataDir() {
+  return path.dirname(path.dirname(db().name));
+}
+
+function geneDict() {
+  const h = db();
+  if (!cache.geneDict) {
+    const raw = JSON.parse(fs.readFileSync(
+      path.join(viewerDataDir(), 'arrow_spots', 'gene_dict.json'), 'utf8'));
+    cache.geneDict = new Map(Object.entries(raw).map(([k, v]) => [Number(k), v]));
+  }
+  return cache.geneDict;
+}
+
+// one arrow record batch at a time, across the spot shards in order
+async function* spotBatches() {
+  const dir = path.join(viewerDataDir(), 'arrow_spots');
+  let files;
+  try {
+    files = fs.readdirSync(dir).filter(f => f.endsWith('.feather')).sort();
+  } catch (e) {
+    throw new Error('the viewer files (arrow_spots) are not in this run');
+  }
+  const { tableFromIPC } = await arrow();
+  for (const f of files) {
+    for (const b of tableFromIPC(fs.readFileSync(path.join(dir, f))).batches) yield b;
+  }
+}
+
+// a column's flat typed values, and for list columns the offsets too
+const flat = (b, name) => b.getChild(name).data[0].values;
+// an empty shard (a plane with no spots) has a list column with no child array,
+// so hand back empty typed arrays rather than reach into the missing child
+const flatList = (b, name) => {
+  const d = b.getChild(name).data[0];
+  const child = d.children[0];
+  return { offs: d.valueOffsets, vals: child && child.values ? child.values : new Int32Array(0) };
+};
+
+// a float the way the tsv files print it, three decimals, as the python _tsv
+const tsv3 = v => Math.round(v * 1000) / 1000;
+
+async function spotsInCell(label, gene) {
+  label = Number(label);
+  toInternal(label);                     // raises if it is not a cell
+  const names = geneDict();
+  if (gene != null && ![...names.values()].includes(gene)) {
+    throw new Error(`no gene '${gene}' in the panel`);
+  }
+  const perGene = new Map();
+  let sawInside = false;
+  for await (const b of spotBatches()) {
+    if (!b.getChild('inside_cell')) break;
+    sawInside = true;
+    const ic = flat(b, 'inside_cell');
+    const gid = flat(b, 'gene_id');
+    for (let i = 0; i < ic.length; i++) {
+      if (ic[i] === label) perGene.set(gid[i], (perGene.get(gid[i]) || 0) + 1);
+    }
+  }
+  if (!sawInside) {
+    throw new Error('this run has no containment data. geneData gained the inside_cell ' +
+                    'column after it was produced, so the run has to be repeated to ' +
+                    'answer this. cell_counts works on any run.');
+  }
+  const note = "hard count: spots whose pixel falls inside this cell's segmentation " +
+               'mask, no probabilities involved. The model may have assigned some of ' +
+               'them elsewhere, and cell_counts may include spots from outside the mask';
+  if (gene != null) {
+    let n = 0;
+    for (const [gid, c] of perGene) if (names.get(gid) === gene) n = c;
+    return { cell: label, gene, spots: n, spots_are: note };
+  }
+  const rows = [...perGene.entries()]
+    .map(([gid, n]) => ({ gene: names.get(gid), spots: n }))
+    .sort((a, b) => b.spots - a.spots || (a.gene < b.gene ? -1 : 1));
+  return {
+    cell: label,
+    total_spots: rows.reduce((s2, r) => s2 + r.spots, 0),
+    per_gene: rows,
+    spots_are: note,
+  };
+}
+
+async function spotsOfCell(label, minProb = null, gene = null) {
+  label = Number(label);
+  toInternal(label);
+  const names = geneDict();
+  if (gene != null && ![...names.values()].includes(gene)) {
+    throw new Error(`no gene '${gene}' in this run`);
+  }
+  const rows = [];
+  for await (const b of spotBatches()) {
+    const sid = flat(b, 'spot_id');
+    const gid = flat(b, 'gene_id');
+    const na = flatList(b, 'neighbour_array');
+    const np = flatList(b, 'neighbour_prob');
+    for (let i = 0; i < sid.length; i++) {
+      const lo = na.offs[i], hi = na.offs[i + 1];
+      for (let j = lo; j < hi; j++) {
+        if (na.vals[j] !== label) continue;
+        if (gene != null && names.get(gid[i]) !== gene) break;
+        const p = np.vals[j];
+        const keep = minProb == null ? na.vals[lo] === label : p > minProb;
+        if (keep) rows.push({ spot: Number(sid[i]), gene: names.get(gid[i]), prob: p });
+        break;
+      }
+    }
+  }
+  rows.sort((a, b) => b.prob - a.prob);
+  const note = minProb == null
+    ? 'spots whose most likely parent is this cell. That is the argmax, ' +
+      'not a hard assignment: the lowest probability here can be well ' +
+      'under 0.5, and the cell also draws counts from spots whose most ' +
+      'likely parent is another cell'
+    : `every spot with probability above ${minProb} on this cell. Their ` +
+      "probabilities add up to the cell's soft counts, so this is the " +
+      'decomposition of cell_counts. Probabilities are rounded to 3 ' +
+      'decimals in the viewer files, so anything under 0.0005 is absent';
+  return {
+    cell: label,
+    gene,
+    definition: minProb == null ? 'most likely parent' : `prob > ${minProb}`,
+    n_spots: rows.length,
+    sum_of_probs: rows.reduce((s2, r) => s2 + r.prob, 0),
+    spots: rows,
+    spots_are: note,
+  };
+}
+
+async function spotRow(spotId) {
+  const id = Number(spotId);
+  if (!Number.isInteger(id)) throw new Error(`${spotId} is not a spot id`);
+  for await (const b of spotBatches()) {
+    const sid = flat(b, 'spot_id');
+    const i = sid.indexOf(id);
+    if (i < 0) continue;
+    const g = name => b.getChild(name) && b.getChild(name).get(i);
+    const na = [...g('neighbour_array')].map(Number);
+    const out = {
+      gene_name: geneDict().get(Number(g('gene_id'))),
+      gene_id: Number(g('gene_id')),
+      spot_id: id,
+      x: tsv3(g('x')), y: tsv3(g('y')), z: tsv3(g('z')),
+      plane_id: Number(g('plane_id')),
+      neighbour: na[0],
+      neighbour_array: na,
+      neighbour_prob: [...g('neighbour_prob')].map(tsv3),
+      omp_score: tsv3(g('omp_score')),
+      omp_intensity: tsv3(g('omp_intensity')),
+      is_hard_misread: Number(g('is_hard_misread')),
+      source: 'the viewer files, written from the same frame as geneData.tsv',
+    };
+    if (b.getChild('inside_cell')) out.inside_cell = Number(g('inside_cell'));
+    return out;
+  }
+  throw new Error(`no spot ${id} in this run`);
+}
+
+async function cellRow(label) {
+  label = Number(label);
+  toInternal(label);
+  const { tableFromIPC } = await arrow();
+  const dir = path.join(viewerDataDir(), 'arrow_cells');
+  let hit = null;
+  for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.feather')).sort()) {
+    const t = tableFromIPC(fs.readFileSync(path.join(dir, f)));
+    for (const b of t.batches) {
+      const ids = flat(b, 'cell_id');
+      const i = ids.indexOf(label);
+      if (i >= 0) { hit = { b, i }; break; }
+    }
+    if (hit) break;
+  }
+  if (!hit) throw new Error(`no cell ${label} in this run`);
+  const g = name => hit.b.getChild(name).get(hit.i);
+  const genes = [...g('gene_names')].map(String);
+  // the exact spot lists need the model's probabilities, which the arrow files
+  // round to 3 decimals; querySpot reads the terms from diagnostics.db and gives
+  // them at full precision, the python fallback does the same. Not quite exact at
+  // the 0.0001 cut-off itself, the tsv is the authority there.
+  const cands = (await spotsOfCell(label, -1)).spots;
+  const perGene = new Map(genes.map(x => [x, []]));
+  for (const c of cands) {
+    const res = await deps.querySpot(c.spot);
+    if (!res.success) continue;
+    const k = res.neighborIds.indexOf(label);
+    if (k >= 0 && res.probabilities[k] > 0.0001 && perGene.has(c.gene)) {
+      perGene.get(c.gene).push(c.spot);
+    }
+  }
+  return {
+    Cell_Num: label,
+    X: tsv3(g('X')), Y: tsv3(g('Y')), Z: tsv3(g('Z')),
+    Genenames: genes,
+    CellGeneCount: [...g('gene_counts')].map(tsv3),
+    spot_id: genes.map(x => perGene.get(x)),
+    ClassName: [...g('class_name')].map(String),
+    Prob: [...g('prob')].map(tsv3),
+    source: 'rebuilt from the viewer files. spot_id can miss a few spots sitting ' +
+            'within 0.0005 of the 0.0001 cut-off',
+    counts_are: 'soft, weighted by the spot assignment probabilities. ' +
+                'spot_id lists every spot with probability above 0.0001 on ' +
+                'this cell, lined up with Genenames, and their probabilities ' +
+                'add up to CellGeneCount',
+  };
+}
+
 // ------------------------------------------------------------- arithmetic
 
 // calculate() reads the expression itself, as the Python tool does with the ast;
@@ -680,5 +908,6 @@ function calculate(expression) {
 }
 
 module.exports = { init, cell, cellCounts, theta, gamma, spot, gene, neighbours, explainCell, hasSavedScore,
+                   spotsInCell, spotsOfCell, spotRow, cellRow,
                    classCounts, findCells, metadataTool, calculate,
                    toInternal, toExternal, planeOf };
