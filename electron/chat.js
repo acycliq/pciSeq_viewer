@@ -326,8 +326,19 @@ async function runTurn(messages) {
         results.push({ type: 'tool_result', tool_use_id: u.id, content: r.content, is_error: r.is_error });
       } else {
         const out = await tools.call(u.name, u.input);
-        send({ type: 'tool_result', name: u.name, result: out });
-        results.push({ type: 'tool_result', tool_use_id: u.id, content: JSON.stringify(out) });
+        if (out && out.__image) {
+          // a picture: the model sees it as an image block, the user sees it in
+          // the panel, drawn by the viewer itself
+          send({ type: 'tool_result', name: u.name, result: { is_error: false } });
+          send({ type: 'image', name: u.name, media_type: out.__image.media_type, data: out.__image.data });
+          results.push({ type: 'tool_result', tool_use_id: u.id, content: [
+            { type: 'image', source: { type: 'base64', media_type: out.__image.media_type, data: out.__image.data } },
+            { type: 'text', text: JSON.stringify(out.info, null, 2) },
+          ] });
+        } else {
+          send({ type: 'tool_result', name: u.name, result: out });
+          results.push({ type: 'tool_result', tool_use_id: u.id, content: JSON.stringify(out) });
+        }
       }
     }
     history.push({ role: 'user', content: results });

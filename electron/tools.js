@@ -375,6 +375,59 @@ const TOOLS = [
     },
   },
   {
+    name: 'cell_image',
+    description:
+      'A picture of a cell on the background image (DAPI or another stain), for ' +
+      '"show me cell 18223", "show me cell 18223 on the DAPI" or "where is cell ' +
+      '18223 in the section". context=false gives a close-up: the cell outlined in ' +
+      'red, every other cell on that plane in blue, the nuclei underneath. ' +
+      'context=true gives the whole section with a ring round the cell. Ask for ' +
+      'both when the user wants to see a cell. neighbours=true outlines only the ' +
+      'cells the spatial term of the model listened to, which is what "why did its ' +
+      'neighbours make it this class" needs; the answer lists them and says which ' +
+      'sit on another plane. One plane at a time; the plane is the centroid\'s when ' +
+      'the run knows its voxel size, else the one where the cell is biggest; pass ' +
+      'plane to choose. A run can have more than one background image; channel ' +
+      'picks one by name, and with several and no channel the tool refuses and ' +
+      'lists them, so ask the user. With only one image it is always used and ' +
+      'background_note says so; pass that on to the user.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        label: { type: 'integer', description: 'The cell label, as in the segmentation.' },
+        context: { type: 'boolean', description: 'true for the whole section with a ring.' },
+        plane: { type: 'integer', description: 'Which plane, optional.' },
+        width: { type: 'integer', description: 'Output width in pixels, default 1200.' },
+        channel: { type: 'string', description: 'Which background image, by name.' },
+        neighbours: { type: 'boolean', description: 'Outline only the mrf neighbours.' },
+        save_as: { type: 'string', description: 'Also write the png to this path, so a user in a terminal can open it.' },
+      },
+      required: ['label'],
+    },
+  },
+  {
+    name: 'plane_image',
+    description:
+      'The background image (DAPI or another stain) of one plane with nothing drawn ' +
+      'on it, for "show me the whole image", "show me the DAPI of plane 54" or ' +
+      '"show me the region around x 5000 to 6000, y 500 to 1200". With no bbox it ' +
+      'is the whole plane, untrimmed; bbox is [x0, y0, x1, y1] in image pixels, the ' +
+      'same coordinates as the cells and spots. The plane defaults to the middle of ' +
+      'the stack. For a picture about one cell use cell_image instead. The answer ' +
+      'says the scale, so a point of the image can be placed on the picture. ' +
+      'channel works as in cell_image.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        plane: { type: 'integer', description: 'Which plane, optional.' },
+        bbox: { type: 'array', items: { type: 'number' }, description: '[x0, y0, x1, y1] in image pixels.' },
+        width: { type: 'integer', description: 'Output width in pixels, default 1200.' },
+        channel: { type: 'string', description: 'Which background image, by name.' },
+        save_as: { type: 'string', description: 'Also write the png to this path, so a user in a terminal can open it.' },
+      },
+    },
+  },
+  {
     name: 'fly_to_cell',
     description:
       'Move the map to a cell and flash its outline, so the user can see the cell ' +
@@ -673,6 +726,8 @@ async function call(name, input) {
     if (name === 'spots_of_cell') return await run.spotsOfCell(input.label, input.min_prob ?? null, input.gene ?? null);
     if (name === 'cell_row') return await run.cellRow(input.label);
     if (name === 'spot_row') return await run.spotRow(input.spot_id);
+    if (name === 'cell_image') return await run.cellImage(input.label, input);
+    if (name === 'plane_image') return await run.planeImage(input);
     if (name === 'list_source') return await listSource(input.dir || '');
     if (name === 'read_source') return await readSource(input.path, input.start_line);
     return { error: `unknown tool ${name}` };

@@ -59,6 +59,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // the pciSeq MCP server: what is registered, and start one of them
   chatMcpStatus: () => ipcRenderer.invoke('chat-mcp-status'),
   chatMcpConnect: (python) => ipcRenderer.invoke('chat-mcp-connect', python),
+  // the picture composer: the main process sends a draw list, the renderer draws
+  // it on an invisible canvas and hands the png back
+  onComposeImage: (handler) => ipcRenderer.on('chat-compose-image', (_e, p) => handler(p)),
+  composeImageDone: (payload) => ipcRenderer.send('chat-compose-image-done', payload),
   onChatEvent: (handler) => ipcRenderer.on('chat-event', (_e, ev) => handler(ev)),
   // the fly_to_cell tool: the main process asks the map to move
   onChatFlyToCell: (handler) => ipcRenderer.on('chat-fly-to-cell', (_e, p) => handler(p)),

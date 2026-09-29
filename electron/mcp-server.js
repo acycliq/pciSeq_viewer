@@ -41,6 +41,12 @@ function makeServer() {
   }));
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
     const out = await tools.call(req.params.name, req.params.arguments || {});
+    if (out && out.__image) {
+      return { content: [
+        { type: 'image', data: out.__image.data, mimeType: out.__image.media_type },
+        { type: 'text', text: JSON.stringify(out.info) },
+      ] };
+    }
     return {
       content: [{ type: 'text', text: JSON.stringify(out) }],
       isError: Boolean(out && out.error),

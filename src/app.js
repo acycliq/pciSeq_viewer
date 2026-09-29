@@ -25,6 +25,7 @@ import { showMetadataError } from './ui/metadataError.js';
 import { initChannelSwitcher } from './ui/channelSwitcher.js';
 import { initTooltips } from './ui/tooltip.js';
 import { initChatPanel } from './chatPanel.js';
+import { initChatImageComposer } from './chatImageComposer.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
 import { init as initCellInfoPanel } from './cellInfoPanel/index.js';
@@ -641,6 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Styled tooltip bubble shared across the app (replaces native title boxes)
     initTooltips();
     initChatPanel();
+    initChatImageComposer();
 
     // Initialize cell info panel (close button + color scheme)
     initCellInfoPanel();

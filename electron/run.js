@@ -21,7 +21,7 @@ const { pathToFileURL } = require('url');
 
 const { narrateCell } = require('./narrative');
 
-let deps = { getDb: null, getMeta: null, getCellKey: null, querySpot: null };
+let deps = { getDb: null, getMeta: null, getCellKey: null, querySpot: null, compose: null };
 
 // caches per open database, dropped when the db handle changes
 let cache = { db: null };
@@ -798,6 +798,345 @@ async function cellRow(label) {
   };
 }
 
+// ------------------------------------------------------------- the pictures
+//
+// cell_image and plane_image, ported from the python tools. The logic here works
+// out what to draw: which background image, which plane, which tiles of the
+// pyramid, which polygons at which output pixel. The drawing itself happens on a
+// canvas in the renderer (deps.compose, electron/compose.js), so the pictures are
+// only available while the viewer window is open. Not promised pixel-identical to
+// the python ones (jpeg decoding and resampling differ by a hair), but the same
+// plane, box and outlines.
+
+const Database = require('better-sqlite3');
+const TILE = 256;
+const RED = [255, 96, 80];
+const BLUE = [120, 210, 255];
+const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+function mbtilesName(file) {
+  const con = new Database(file, { readonly: true, fileMustExist: true });
+  try {
+    const row = con.prepare("SELECT value FROM metadata WHERE name = 'name'").get();
+    const name = row && row.value ? String(row.value).trim() : '';
+    return name || path.basename(file, '.mbtiles');
+  } finally {
+    con.close();
+  }
+}
+
+// which background image to draw on, the same rules as the python _background:
+// several images and no channel is a refusal that lists them, one image is always
+// used whatever channel says, since its name cannot tell the stain
+function background(channel) {
+  const dir = viewerDataDir();
+  const found = fs.readdirSync(dir).filter(f => f.endsWith('.mbtiles')).sort()
+    .map(f => path.join(dir, f));
+  if (!found.length) {
+    throw new Error(`no .mbtiles in ${dir}, so there is no image to draw on. The viewer ` +
+                    'tiles are made by pciSeq.stage_image; copy the file into viewer_data');
+  }
+  const names = found.map(mbtilesName);
+  const listing = names.map((n, i) => `${n} (${path.basename(found[i])})`).join(', ');
+  if (found.length === 1) {
+    const note = channel != null
+      ? `asked for '${channel}', but this run has only one background image, called ` +
+        `'${names[0]}', so that is the one drawn. Which stain it is cannot be told ` +
+        'from the file, only whoever made it knows'
+      : null;
+    return { file: found[0], name: names[0], names, note };
+  }
+  if (channel == null) {
+    throw new Error(`this run has ${found.length} background images: ${listing}. Ask the ` +
+                    'user which one they want and pass it as channel');
+  }
+  const want = String(channel).trim().toLowerCase();
+  const keys = names.map((n, i) => [n.toLowerCase(), path.basename(found[i], '.mbtiles').toLowerCase()]);
+  let hits = keys.map((k, i) => [k, i]).filter(([k]) => k.includes(want)).map(([, i]) => i);
+  if (!hits.length) {
+    hits = keys.map((k, i) => [k, i]).filter(([k]) => k.some(x => x.includes(want))).map(([, i]) => i);
+  }
+  if (hits.length !== 1) {
+    throw new Error(`${hits.length ? 'more than one' : 'no'} background image matching ` +
+                    `'${channel}'. This run has: ${listing}`);
+  }
+  return { file: found[hits[0]], name: names[hits[0]], names, note: null };
+}
+
+function mbtilesMeta(con) {
+  const m = {};
+  for (const r of con.prepare('SELECT name, value FROM metadata').all()) m[r.name] = r.value;
+  const planes = m.planes
+    ? m.planes.split(',').map(Number).sort((a, b) => a - b)
+    : Array.from({ length: Number(m.plane_count || 1) }, (_, i) => i);
+  return { imgW: Number(m.width), imgH: Number(m.height), maxzoom: Number(m.maxzoom),
+           format: m.format || 'jpg', planes };
+}
+
+// the tiles covering a box of the image at a level fitting the asked width, plus
+// where to crop, the same arithmetic as pciSeq.read_tiles
+function tilePlan(con, meta, plane, box, width) {
+  const [x0, y0, x1, y1] = box;
+  const boxW = x1 - x0, boxH = y1 - y0;
+  const want = width ? width / boxW : 1.0;
+  const levelScale = z => TILE * 2 ** z / Math.max(meta.imgW, meta.imgH);
+  let zoom = meta.maxzoom;
+  for (let z = 0; z <= meta.maxzoom; z++) {
+    if (levelScale(z) >= want) { zoom = z; break; }
+  }
+  const s2 = levelScale(zoom);
+  const tx0 = Math.floor(x0 * s2 / TILE), ty0 = Math.floor(y0 * s2 / TILE);
+  const tx1 = Math.floor((x1 * s2 - 1e-6) / TILE), ty1 = Math.floor((y1 * s2 - 1e-6) / TILE);
+  const rows = con.prepare(
+    'SELECT tile_column, tile_row, tile_data FROM tiles WHERE plane_id = ? AND ' +
+    'zoom_level = ? AND tile_column BETWEEN ? AND ? AND tile_row BETWEEN ? AND ?')
+    .all(plane, zoom, tx0, tx1, ty0, ty1);
+  if (!rows.length) throw new Error(`no tiles for plane ${plane} at zoom ${zoom}`);
+  const mime = meta.format === 'png' ? 'image/png' : 'image/jpeg';
+  const outW = Math.max(1, Math.round(boxW * want));
+  const outH = Math.max(1, Math.round(boxH * want));
+  return {
+    canvasW: (tx1 - tx0 + 1) * TILE,
+    canvasH: (ty1 - ty0 + 1) * TILE,
+    tiles: rows.map(r => ({ b64: r.tile_data.toString('base64'), mime,
+                            dx: (r.tile_column - tx0) * TILE, dy: (r.tile_row - ty0) * TILE })),
+    crop: { sx: Math.round(x0 * s2 - tx0 * TILE), sy: Math.round(y0 * s2 - ty0 * TILE),
+            sw: Math.round(x1 * s2) - Math.round(x0 * s2), sh: Math.round(y1 * s2) - Math.round(y0 * s2) },
+    outW, outH,
+    scale: outW / boxW,
+  };
+}
+
+// the outlines of one plane of the run, from the viewer's boundary shards
+async function outlinesOnPlane(plane) {
+  const h = db();
+  if (!cache.outlines) cache.outlines = new Map();
+  if (!cache.outlines.has(plane)) {
+    const f = path.join(viewerDataDir(), 'arrow_boundaries',
+                        'boundaries_plane_' + String(plane).padStart(2, '0') + '.feather');
+    if (!fs.existsSync(f)) throw new Error(`no outlines for plane ${plane} in this run`);
+    const { tableFromIPC } = await arrow();
+    const rows = [];
+    for (const b of tableFromIPC(fs.readFileSync(f)).batches) {
+      const lab = flat(b, 'label');
+      const xs = b.getChild('x_list');
+      const ys = b.getChild('y_list');
+      for (let i = 0; i < lab.length; i++) {
+        rows.push({ label: Number(lab[i]),
+                    x: Array.from(xs.get(i), Number), y: Array.from(ys.get(i), Number) });
+      }
+    }
+    cache.outlines.set(plane, rows);
+  }
+  return cache.outlines.get(plane);
+}
+
+const polyArea = (xs, ys) => {
+  let a = 0;
+  for (let i = 0; i < xs.length; i++) {
+    const j = (i + 1) % xs.length;
+    a += xs[i] * ys[j] - xs[j] * ys[i];
+  }
+  return Math.abs(a) / 2;
+};
+
+// every plane this cell has an outline on, with the outline's area
+async function outlineAreas(label) {
+  const dir = path.join(viewerDataDir(), 'arrow_boundaries');
+  const { tableFromIPC } = await arrow();
+  const areas = new Map();
+  for (const f of fs.readdirSync(dir).filter(x => /^boundaries_plane_.*\.feather$/.test(x)).sort()) {
+    for (const b of tableFromIPC(fs.readFileSync(path.join(dir, f))).batches) {
+      const lab = flat(b, 'label');
+      const i = lab.indexOf(label);
+      if (i < 0) continue;
+      const xs = Array.from(b.getChild('x_list').get(i), Number);
+      const ys = Array.from(b.getChild('y_list').get(i), Number);
+      areas.set(Number(flat(b, 'plane_id')[i]), { area: polyArea(xs, ys), x: xs, y: ys });
+    }
+  }
+  return areas;
+}
+
+const toPix = (pts, box, scale) => pts.map(([x, y]) => [(x - box[0]) * scale, (y - box[1]) * scale]);
+
+async function cellImage(label, { context = false, plane = null, width = 1200,
+                                  channel = null, neighbours = false, save_as = null } = {}) {
+  label = Number(label);
+  if (toInternal(label) === 0) throw new Error('cell 0 is the background pseudocell, not a cell');
+  const bg = background(channel);
+  const c = cellRowLite(label);
+  const areas = await outlineAreas(label);
+  if (!areas.size) throw new Error(`cell ${label} has no outline in arrow_boundaries`);
+
+  let why;
+  if (plane != null) {
+    plane = Math.trunc(plane);
+    why = 'asked for';
+  } else {
+    plane = c.z != null ? planeOf(c.z) : null;
+    why = 'the plane of the cell centroid';
+    if (plane == null || !areas.has(plane)) {
+      plane = [...areas.entries()].sort((a, b) => b[1].area - a[1].area)[0][0];
+      why = 'the plane where the cell outline is biggest';
+    }
+  }
+  const mine = areas.get(plane) || null;
+
+  const con = new Database(bg.file, { readonly: true, fileMustExist: true });
+  try {
+    const meta2 = mbtilesMeta(con);
+    const cx = c.x != null ? c.x : (mine ? mine.x.reduce((s2, v) => s2 + v, 0) / mine.x.length : meta2.imgW / 2);
+    const cy = c.y != null ? c.y : (mine ? mine.y.reduce((s2, v) => s2 + v, 0) / mine.y.length : meta2.imgH / 2);
+
+    let box, plan, polygons = [], ring = null, others = 0;
+    if (context) {
+      const ratio = meta2.imgW / meta2.imgH;
+      let bw, bh;
+      if (ratio > 1.5) { bh = meta2.imgH; bw = bh * 1.5; } else { bw = meta2.imgW; bh = bw / 1.5; }
+      box = [(meta2.imgW - bw) / 2, (meta2.imgH - bh) / 2, (meta2.imgW + bw) / 2, (meta2.imgH + bh) / 2];
+      plan = tilePlan(con, meta2, plane, box, width);
+      ring = { x: (cx - box[0]) * plan.scale, y: (cy - box[1]) * plan.scale,
+               r: 0.022 * Math.max(plan.outW, plan.outH), stroke: rgba(RED, 1),
+               width: Math.max(2, Math.floor(width / 200)) };
+    } else {
+      const ref = mine || [...areas.values()].sort((a, b) => b.area - a.area)[0];
+      const ext = Math.max(Math.max(...ref.x) - Math.min(...ref.x),
+                           Math.max(...ref.y) - Math.min(...ref.y), 10);
+      const bh = Math.min(4.5 * ext, meta2.imgH);
+      const bw = Math.min(1.5 * bh, meta2.imgW);
+      const x0 = Math.min(Math.max(cx - bw / 2, 0), meta2.imgW - bw);
+      const y0 = Math.min(Math.max(cy - bh / 2, 0), meta2.imgH - bh);
+      box = [x0, y0, x0 + bw, y0 + bh];
+      plan = tilePlan(con, meta2, plane, box, width);
+      const onPlane = await outlinesOnPlane(plane);
+      const thin = Math.max(2, Math.floor(width / 300));
+      let near;
+      const nbrs = neighbours && c.neighbours
+        ? new Set(Array.from(c.neighbours, r => toExternal(r))) : null;
+      if (nbrs) {
+        near = onPlane.filter(r => nbrs.has(r.label));
+      } else {
+        near = onPlane.filter(r => r.label !== label &&
+          Math.max(...r.x) >= box[0] && Math.min(...r.x) <= box[2] &&
+          Math.max(...r.y) >= box[1] && Math.min(...r.y) <= box[3]);
+      }
+      for (const r of near) {
+        polygons.push({ pts: toPix(r.x.map((x, i) => [x, r.y[i]]), box, plan.scale),
+                        stroke: rgba(BLUE, 1), fill: rgba(BLUE, 0.15), width: thin });
+      }
+      if (mine) {
+        polygons.push({ pts: toPix(mine.x.map((x, i) => [x, mine.y[i]]), box, plan.scale),
+                        stroke: rgba(RED, 1), fill: rgba(RED, 0.3), width: thin + 2 });
+      }
+      others = near.length;
+      var nbrsInfo = nbrs ? { nbrs, drawn: new Set(near.map(r => r.label)) } : null;
+    }
+
+    const dataUrl = await deps.compose({ ...plan, autocontrast: context, polygons, ring });
+    const planeList = [...areas.keys()].sort((a, b) => a - b);
+    const info = {
+      cell: label,
+      picture: context ? 'context, the whole plane with the cell ringed'
+        : (typeof nbrsInfo !== 'undefined' && nbrsInfo)
+          ? 'close-up, the cell in red and its mrf neighbours in blue'
+          : 'close-up, the cell in red and the other cells on the plane in blue',
+      plane,
+      plane_is: why,
+      outline_on_planes: `${planeList[0]} to ${planeList[planeList.length - 1]}`,
+      cell_has_outline_on_this_plane: Boolean(mine),
+      centroid_xy: [cx, cy],
+      bbox: box.map(v => Math.round(v * 10) / 10),
+      scale: Math.round(plan.scale * 1000) / 1000,
+      other_cells_outlined: others,
+      background: bg.name,
+      backgrounds_in_this_run: bg.names,
+      mbtiles: bg.file,
+      image_is: 'stitched from the jpeg tile pyramid by the viewer, a close visual copy of ' +
+                'the image, not the raw pixels. Fine to look at, not to measure',
+    };
+    if (bg.note) info.background_note = bg.note;
+    if (typeof nbrsInfo !== 'undefined' && nbrsInfo) {
+      info.neighbours = [...nbrsInfo.nbrs];
+      info.neighbours_not_on_this_plane = [...nbrsInfo.nbrs].filter(n => !nbrsInfo.drawn.has(n));
+    } else if (neighbours && !c.neighbours) {
+      info.neighbours_note = 'this run was written before diagnostics.db kept the mrf ' +
+        'neighbours, so every cell in the window is outlined instead';
+    }
+    return finishImage(dataUrl, info, save_as);
+  } finally {
+    con.close();
+  }
+}
+
+async function planeImage({ plane = null, bbox = null, width = 1200, channel = null,
+                            save_as = null } = {}) {
+  const bg = background(channel);
+  const con = new Database(bg.file, { readonly: true, fileMustExist: true });
+  try {
+    const meta2 = mbtilesMeta(con);
+    let why;
+    if (plane == null) {
+      plane = meta2.planes[Math.floor(meta2.planes.length / 2)];
+      why = 'the middle plane of the stack';
+    } else {
+      plane = Math.trunc(plane);
+      why = 'asked for';
+      if (!meta2.planes.includes(plane)) {
+        throw new Error(`no plane ${plane} in ${path.basename(bg.file)}, it has planes ` +
+                        `${meta2.planes[0]} to ${meta2.planes[meta2.planes.length - 1]}`);
+      }
+    }
+    let box = [0, 0, meta2.imgW, meta2.imgH];
+    if (bbox != null) {
+      const [x0, y0, x1, y1] = bbox.map(Number);
+      box = [Math.max(x0, 0), Math.max(y0, 0), Math.min(x1, meta2.imgW), Math.min(y1, meta2.imgH)];
+    }
+    const plan = tilePlan(con, meta2, plane, box, width);
+    const dataUrl = await deps.compose({ ...plan, autocontrast: false, polygons: [], ring: null });
+    const info = {
+      plane,
+      plane_is: why,
+      planes_in_the_stack: [meta2.planes[0], meta2.planes[meta2.planes.length - 1]],
+      image_size: [meta2.imgW, meta2.imgH],
+      bbox: box.map(v => Math.round(v * 10) / 10),
+      scale: Math.round(plan.scale * 1000) / 1000,
+      to_place_a_point: 'a point (x, y) of the image is at ((x - bbox[0]) * scale, ' +
+                        '(y - bbox[1]) * scale) in this picture',
+      background: bg.name,
+      backgrounds_in_this_run: bg.names,
+      mbtiles: bg.file,
+      image_is: 'stitched from the jpeg tile pyramid by the viewer, a close visual copy of ' +
+                'the image, not the raw pixels. Fine to look at, not to measure',
+    };
+    if (bg.note) info.background_note = bg.note;
+    return finishImage(dataUrl, info, save_as);
+  } finally {
+    con.close();
+  }
+}
+
+// the picture as the tools hand it back, written to save_as too when asked, which
+// is how a user in a terminal gets to see it
+function finishImage(dataUrl, info, saveAs) {
+  const b64 = dataUrl.split(',')[1];
+  if (saveAs) {
+    const out = path.resolve(String(saveAs).replace(/^~(?=$|\/)/, process.env.HOME || '~'));
+    fs.writeFileSync(out, Buffer.from(b64, 'base64'));
+    info.saved_as = out;
+  }
+  return { __image: { media_type: 'image/png', data: b64 }, info };
+}
+
+// the little of the cells table the pictures need
+function cellRowLite(label) {
+  const row = toInternal(label);
+  const got = db().prepare(`SELECT * FROM cells WHERE ${deps.getCellKey()} = ?`).get(row);
+  if (!got) throw new Error(`cell ${label} is not in diagnostics.db`);
+  return { x: got.x, y: got.y, z: got.z,
+           neighbours: got.neighbours ? i32(got.neighbours) : null };
+}
+
 // ------------------------------------------------------------- arithmetic
 
 // calculate() reads the expression itself, as the Python tool does with the ast;
@@ -908,6 +1247,6 @@ function calculate(expression) {
 }
 
 module.exports = { init, cell, cellCounts, theta, gamma, spot, gene, neighbours, explainCell, hasSavedScore,
-                   spotsInCell, spotsOfCell, spotRow, cellRow,
+                   spotsInCell, spotsOfCell, spotRow, cellRow, cellImage, planeImage,
                    classCounts, findCells, metadataTool, calculate,
                    toInternal, toExternal, planeOf };
