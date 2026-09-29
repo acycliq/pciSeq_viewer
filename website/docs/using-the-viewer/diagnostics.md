@@ -40,10 +40,20 @@ typed as a different, closely related class.
 
 ## Spot Inspector (check_spot)
 
-**Ctrl+Click a spot** to open the Spot Inspector. It shows the spot's candidate
-neighbouring cells and the per-cell scores pciSeq used to assign it (such as the
-multivariate-normal term, attention, and expression fluctuation), as tables and
-charts.
+**Ctrl+Click a spot** to open the Spot Inspector. It shows how pciSeq assigned the
+spot, to one of its nearest cells or to the background. The panel has three parts:
+
+- **Assignment probabilities.** The probability of each candidate cell and of the
+  background.
+- **Score decomposition.** One bar per candidate cell, split into the terms of its
+  score: Gaussian fit, class expression, cell scale, cell-gene scale, gene efficiency
+  and inside-cell bonus. A tick marks the total. The last bar is the background, and
+  its whole score is the misread term. Higher is better.
+- **Score breakdown.** The same numbers as a table, with the sum and the probability
+  of each row.
+
+The terms are described in
+[How a spot's call was made](https://acycliq.github.io/pciSeq_3d/explaining-the-calls/why-a-spot-got-its-cell).
 
 ::: info Requires diagnostics data
 
