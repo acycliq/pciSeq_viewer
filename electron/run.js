@@ -21,7 +21,7 @@ const { pathToFileURL } = require('url');
 
 const { narrateCell } = require('./narrative');
 
-let deps = { getDb: null, getMeta: null, getCellKey: null, querySpot: null, compose: null, colourOf: null };
+let deps = { getDb: null, getMeta: null, getCellKey: null, querySpot: null, compose: null, classColour: null, geneGlyph: null };
 
 // caches per open database, dropped when the db handle changes
 let cache = { db: null };
@@ -172,6 +172,14 @@ function topClasses(c, n) {
     .sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, n);
 }
 
+// how a gene's spots are drawn on the map, { colour, shape, glyph_is }, or null
+// when the window has not said
+function glyphOf(gene) {
+  const g = deps.geneGlyph ? deps.geneGlyph(gene) : null;
+  if (!g) return null;
+  return { ...g, glyph_is: `the colour and marker shape ${gene} spots are drawn with on the map` };
+}
+
 // the assigned class of one cell: the one the run saved, the most probable
 // otherwise (older dbs have no assigned_class_idx)
 function assignedIdx(c) {
@@ -191,7 +199,7 @@ function cell(label) {
   const assigned = names[k];
   return {
     cell: Number(label),
-    colour: deps.colourOf ? deps.colourOf(assigned) : null,
+    colour: deps.classColour ? deps.classColour(assigned) : null,
     colour_is: `the colour ${assigned} is drawn in on the map; null when the viewer ` +
                'window has not said',
     total_counts: counts.reduce((s, v) => s + v, 0),
@@ -288,6 +296,7 @@ async function spot(spotId) {
   return {
     spot: id,
     gene: res.geneName,
+    glyph: glyphOf(res.geneName),
     position: { x: res.x, y: res.y, z: res.z, plane: planeOf(res.z),
                 z_is: 'the anisotropy scaled z the model works in; plane is the ' +
                       'plane index, None when the run carries no voxel_size' },
@@ -320,6 +329,7 @@ function gene(name) {
   const order = Array.from(soft, (v, k) => [k, v]).sort((a, b) => b[1] - a[1] || a[0] - b[0]);
   return {
     gene: name,
+    glyph: glyphOf(name),
     eta: m.eta_bar[g],
     eta_is: 'eta_bar, the posterior mean of the gene efficiency; the reference ' +
             'expression of every class is multiplied by it',

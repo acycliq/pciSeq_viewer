@@ -12,7 +12,7 @@ const tools = require('./tools');
 const chat = require('./chat');
 const mcpServer = require('./mcp-server');
 const run = require('./run');
-const classColours = require('./classColours');
+const legend = require('./legend');
 const compose = require('./compose');
 
 // GitHub repo for update checks
@@ -152,14 +152,15 @@ function createWindow() {
   // are registered once, createWindow can run again on macOS.
   // the ported read-only tools read diagnostics.db through run.js
   compose.init({ getWindow: () => mainWindow }, ipcMain);
-  classColours.init(ipcMain);
+  legend.init(ipcMain);
   run.init({
     getDb: diagnostics.rawDb,
     getMeta: diagnostics.getMeta,
     getCellKey: diagnostics.cellKeyName,
     querySpot: diagnostics.querySpot,
     compose: compose.compose,
-    colourOf: classColours.colourOf,
+    classColour: legend.classColour,
+    geneGlyph: legend.geneGlyph,
   });
   tools.init({
     querySpot: diagnostics.querySpot,

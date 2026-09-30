@@ -231,7 +231,8 @@ const TOOLS = [
   {
     name: 'spot',
     description:
-      'One spot: its gene, position and plane, the cell it was assigned to with the ' +
+      'One spot: its gene and how that gene is drawn on the map (colour and marker ' +
+      'shape), position and plane, the cell it was assigned to with the ' +
       'probability, and every candidate cell with its class and probability. Lighter ' +
       'than explain_spot, which gives the terms behind each probability. Use it for ' +
       '"which cell is spot 1642419 in", "what gene is spot 1642419", "which cells was ' +
@@ -248,7 +249,8 @@ const TOOLS = [
       'One gene across the run: its efficiency eta and inefficiency, its misread ' +
       'density, how many spots it has and how many were called misreads, its soft ' +
       'counts in cells split by class (soft, and summed over the cells called each ' +
-      'class), and the ten cells holding most of it. Use it for "what is the ' +
+      'class), the ten cells holding most of it, and the colour and marker shape ' +
+      'its spots are drawn with on the map. Use it for "what is the ' +
       'efficiency of Plp1", "which classes express Plp1 in this run", "which cells ' +
       'hold most Plp1". Counts are soft.',
     input_schema: {

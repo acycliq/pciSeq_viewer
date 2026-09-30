@@ -61,8 +61,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onComposeImage: (handler) => ipcRenderer.on('chat-compose-image', (_e, p) => handler(p)),
   composeImageDone: (payload) => ipcRenderer.send('chat-compose-image-done', payload),
   onChatEvent: (handler) => ipcRenderer.on('chat-event', (_e, ev) => handler(ev)),
-  // the class colours the map is drawn in, for the cell tool (electron/classColours.js)
-  setClassColours: (table) => ipcRenderer.send('class-colours', table),
+  // what the map legend says, class colours and gene glyphs, for the tools (electron/legend.js)
+  setLegend: (legend) => ipcRenderer.send('legend', legend),
   // the fly_to_cell tool: the main process asks the map to move
   onChatFlyToCell: (handler) => ipcRenderer.on('chat-fly-to-cell', (_e, p) => handler(p)),
   // the open_cell_diagnostics tool: open the panel on a cell and run the compare

@@ -178,14 +178,16 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   tools.init({ docsRoot: null });
   assert.ok(/no documentation/.test((await tools.call('docs', { query: 'x' })).error));
 
-  // class colours: the window sends the table, the cell tool reads one class
-  const classColours = require('./classColours');
-  let onColours = null;
-  classColours.init({ on: (ch, fn) => { assert.strictEqual(ch, 'class-colours'); onColours = fn; } });
-  assert.strictEqual(classColours.colourOf('CA1'), null, 'nothing before the window sends');
-  onColours(null, { CA1: '#1f77b4', Zero: '#000000' });
-  assert.strictEqual(classColours.colourOf('CA1'), '#1f77b4');
-  assert.strictEqual(classColours.colourOf('CA9'), null);
+  // the legend: the window sends it, the tools read one class or one gene
+  const legend = require('./legend');
+  let onLegend = null;
+  legend.init({ on: (ch, fn) => { assert.strictEqual(ch, 'legend'); onLegend = fn; } });
+  assert.strictEqual(legend.classColour('CA1'), null, 'nothing before the window sends');
+  onLegend(null, { classes: { CA1: '#1f77b4' }, genes: { Rgs12: { colour: '#ff0000', shape: 'diamond' } } });
+  assert.strictEqual(legend.classColour('CA1'), '#1f77b4');
+  assert.strictEqual(legend.classColour('CA9'), null);
+  assert.deepStrictEqual(legend.geneGlyph('Rgs12'), { colour: '#ff0000', shape: 'diamond' });
+  assert.strictEqual(legend.geneGlyph('Npy'), null);
 
   // theta_bar: the assigned class by default, any class by name; cell says the same
   // number and the class colour. A one-row fake of diagnostics.db.
@@ -196,7 +198,9 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
     mrf: null, neighbours: null, x: 1, y: 2, z: 3 };
   run2.init({ getDb: () => ({ prepare: () => ({ get: () => cellRowFake }) }),
               getMeta: () => ({ class_names: ['A', 'B', 'C'], gene_panel: ['g1', 'g2'] }),
-              getCellKey: () => 'cell_key', colourOf: n => (n === 'B' ? '#112233' : null) });
+              getCellKey: () => 'cell_key', classColour: n => (n === 'B' ? '#112233' : null),
+              geneGlyph: g => (g === 'Synpr' ? { colour: '#00ff00', shape: 'square' } : null),
+              querySpot: async () => spotRes });
   const th = run2.theta(5);
   assert.strictEqual(th.class, 'B');
   assert.strictEqual(th.is_assigned, true);
@@ -209,7 +213,12 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   const cl = run2.cell(5);
   assert.strictEqual(cl.theta_bar, Math.fround(1.7), 'cell gives the tooltip value');
   assert.strictEqual(cl.colour, '#112233');
-  run2.init({ getDb: null, getMeta: null, getCellKey: null, colourOf: null });
+  const sp = await run2.spot(1642419);
+  assert.strictEqual(sp.glyph.shape, 'square');
+  assert.strictEqual(sp.glyph.colour, '#00ff00');
+  run2.init({ geneGlyph: () => null });
+  assert.strictEqual((await run2.spot(1642419)).glyph, null, 'null when the window has not said');
+  run2.init({ getDb: null, getMeta: null, getCellKey: null, classColour: null, geneGlyph: null, querySpot: null });
 
   // run_info: from the metadata, old runs say so
   const meta = { nC: 17, nS: 500, nG: 20, nK: 3,

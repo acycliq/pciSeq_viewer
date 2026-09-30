@@ -4,6 +4,7 @@
 
 import { state } from './state/stateManager.js';
 import { buildGeneIconAtlas } from './data/dataLoaders.js';
+import { sendLegend } from './legendSync.js';
 
 const VALID_GLYPHS = new Set([
   'star6','star5','diamond','square','triangleUp','triangleDown','triangleRight','triangleLeft','tShapeTop','tShapeBottom','tShapeLeft','tShapeRight','cross','plus','asterisk','circle','point'
@@ -109,6 +110,7 @@ export function handleGeneColorFileUpload(event, statusEl) {
     try {
       const arr = JSON.parse(reader.result);
       const { appliedCount } = await applyGeneScheme(arr, replaceMode);
+      sendLegend();
       const mode = replaceMode ? 'replaced' : 'merged';
       if (appliedCount > 0) {
         if (statusEl) { statusEl.textContent = `Imported ${appliedCount} gene styles (${mode})`; statusEl.className = 'file-status success'; }

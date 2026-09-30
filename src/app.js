@@ -27,7 +27,7 @@ import { initTooltips } from './ui/tooltip.js';
 import { initChatPanel } from './chatPanel.js';
 import { initChatImageComposer } from './chatImageComposer.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
-import { sendClassColours } from './classColourSync.js';
+import { sendLegend } from './legendSync.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
 import { init as initCellInfoPanel } from './cellInfoPanel/index.js';
 import { applyPendingClassColorSchemeIfAny, applyClassColorScheme } from './classColorImport.js';
@@ -688,6 +688,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.electronAPI.onImportGeneColors(async (data) => {
             try {
                 const { appliedCount } = await applyGeneScheme(data, false);
+                sendLegend();
                 console.log('Imported ' + appliedCount + ' gene colour styles via menu');
             } catch (e) {
                 console.error('Failed to import gene colours:', e);
@@ -700,7 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { appliedCount, notFoundClasses } = applyClassColorScheme(data, false);
                 if (appliedCount > 0) {
                     populateCellClassDrawer();
-                    sendClassColours();
+                    sendLegend();
                     if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
                 }
                 console.log('Imported ' + appliedCount + ' cell class colours via menu');
