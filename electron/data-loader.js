@@ -294,18 +294,48 @@ ipcMain.handle('get-tile-channels', () => {
   return getChannels();
 });
 
-ipcMain.handle('set-voxel-size', (event, voxelSize) => {
-  if (Array.isArray(voxelSize) && voxelSize.length === 3) {
-    store.set('voxelSize', voxelSize);
-    console.log('Voxel size saved:', voxelSize);
-    return { success: true };
-  }
-  return { success: false, error: 'Invalid voxel size format. Expected [x, y, z] array.' };
-});
+// ---------------------------------------------------------------- voxel size
+// [x, y, z] in microns per pixel. The run records it: pciSeq writes its settings,
+// voxel_size included, into diagnostics.db. Only a folder without one needs the
+// user to type it, and that value is kept for that folder alone, so the numbers of
+// one dataset never land on another.
 
-ipcMain.handle('get-voxel-size', () => {
-  const voxelSize = store.get('voxelSize', null);
-  return { success: voxelSize !== null, voxelSize };
+const isVoxelSize = v => Array.isArray(v) && v.length === 3 && v.every(x => Number.isFinite(x) && x > 0);
+
+// the voxel size the run recorded, or null when the folder has no diagnostics.db
+function voxelSizeFromRun(dataPath) {
+  const dbPath = path.join(dataPath, 'diagnostics', 'diagnostics.db');
+  if (!fs.existsSync(dbPath)) return null;
+  let db = null;
+  try {
+    db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    const row = db.prepare("SELECT value FROM metadata WHERE key = 'config'").get();
+    const v = row ? JSON.parse(row.value).voxel_size : null;
+    return isVoxelSize(v) ? v : null;
+  } catch (e) {
+    console.warn('Could not read voxel_size from diagnostics.db:', e.message);
+    return null;
+  } finally {
+    if (db) db.close();
+  }
+}
+
+// the voxel size the user typed for this folder, or null
+function voxelSizeTyped(dataPath) {
+  return store.get('voxelSizes', {})[dataPath] || null;
+}
+
+function voxelSizeOf(dataPath) {
+  return voxelSizeFromRun(dataPath) || voxelSizeTyped(dataPath);
+}
+
+ipcMain.handle('set-voxel-size', (event, voxelSize) => {
+  const dataPath = store.get('dataPath', '');
+  if (!dataPath || !isVoxelSize(voxelSize)) {
+    return { success: false, error: 'Invalid voxel size. Expected [x, y, z], all above 0.' };
+  }
+  store.set('voxelSizes', { ...store.get('voxelSizes', {}), [dataPath]: voxelSize });
+  return { success: true };
 });
 
 ipcMain.handle('set-image-dimensions', (event, dims) => {
@@ -434,7 +464,6 @@ ipcMain.handle('get-dataset-metadata', async () => {
         if (row.name === 'width') result.imageWidth = parseInt(row.value);
         if (row.name === 'height') result.imageHeight = parseInt(row.value);
         if (row.name === 'plane_count') result.planeCount = parseInt(row.value);
-        // NOTE: Do NOT read voxel_size from MBTiles; single source is the welcome screen (stored value)
       });
 
       result.source = 'mbtiles';
@@ -460,13 +489,7 @@ ipcMain.handle('get-dataset-metadata', async () => {
     }
   }
 
-  // Single source for voxel size: user-provided value stored in electron-store
-  const storedVoxelSize = store.get('voxelSize', null);
-  if (storedVoxelSize && Array.isArray(storedVoxelSize) && storedVoxelSize.length === 3) {
-    result.voxelSize = storedVoxelSize;
-    if (result.source === 'mbtiles') result.source = 'mbtiles+store';
-    console.log('Using stored voxel size:', storedVoxelSize);
-  }
+  result.voxelSize = voxelSizeOf(store.get('dataPath', ''));
 
   // Flag whether mbtiles is the source (renderer uses this to decide whether to prompt)
   result.hasMbtiles = !!db;

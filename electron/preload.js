@@ -20,7 +20,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Voxel size
   setVoxelSize: (voxelSize) => ipcRenderer.invoke('set-voxel-size', voxelSize),
-  getVoxelSize: () => ipcRenderer.invoke('get-voxel-size'),
 
   // Image dimensions (used when MBTiles is missing)
   setImageDimensions: (dims) => ipcRenderer.invoke('set-image-dimensions', dims),

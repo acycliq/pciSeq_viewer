@@ -456,11 +456,6 @@ function showEmptyState() {
     const emptyStateBtn = document.getElementById('emptyStateBtn');
     if (emptyStateBtn) {
         emptyStateBtn.onclick = async () => {
-            const voxelX = parseFloat(document.getElementById('voxelSizeX')?.value) || 0.28;
-            const voxelY = parseFloat(document.getElementById('voxelSizeY')?.value) || 0.28;
-            const voxelZ = parseFloat(document.getElementById('voxelSizeZ')?.value) || 0.70;
-
-            await window.electronAPI.setVoxelSize([voxelX, voxelY, voxelZ]);
             const result = await window.electronAPI.selectDataFolder();
             if (result.success) {
                 window.location.reload();
@@ -517,6 +512,26 @@ function showImageDimsPrompt() {
     }
 }
 
+/**
+ * Ask for the voxel size, for a folder whose run does not record it (no
+ * diagnostics.db). The value is kept for this folder only.
+ */
+function showVoxelSizePrompt() {
+    showScreen('voxelSizeState');
+    const errorMsg = document.getElementById('voxelSizeError');
+    document.getElementById('voxelSizeSubmitBtn').onclick = async () => {
+        const v = ['voxelSizeX', 'voxelSizeY', 'voxelSizeZ']
+            .map(id => parseFloat(document.getElementById(id)?.value));
+        const res = await window.electronAPI.setVoxelSize(v);
+        if (!res.success) {
+            errorMsg.classList.remove('hidden');
+            return;
+        }
+        window.location.reload();
+    };
+    document.getElementById('voxelSizeCloseBtn').onclick = () => window.location.reload();
+}
+
 // === MAIN INITIALIZATION (Electron-specific) ===
 async function init() {
     showLoading(state, elements.loadingIndicator);
@@ -553,6 +568,12 @@ async function runInit() {
     // If MBTiles is missing and we don't have image dimensions yet, prompt the user
     if (metadataResult && !metadataResult.hasMbtiles && (!metadataResult.imageWidth || !metadataResult.imageHeight || !metadataResult.planeCount)) {
         showImageDimsPrompt();
+        return;
+    }
+
+    // The run records its voxel size; ask only when this folder has none
+    if (metadataResult && !metadataResult.voxelSize) {
+        showVoxelSizePrompt();
         return;
     }
 
