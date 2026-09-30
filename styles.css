@@ -2626,6 +2626,7 @@ body {
     margin-bottom: 14px;
 }
 .chat-a p { margin: 0 0 8px; }
+.chat-a a { color: #7dd3fc; text-decoration: underline; }
 .chat-a p:last-child { margin-bottom: 0; }
 .chat-a code { background: #1a1a1a; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
 .chat-tool {

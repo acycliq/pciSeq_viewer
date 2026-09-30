@@ -39,12 +39,20 @@ function el(id) {
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-// A light rendering of the model's text: paragraphs, `code`, **bold**. Enough for
-// the stories the tools return, no markdown library.
+// Web links in the model's text, [text](url) or a bare url, as real links. They
+// open in the system browser: the main window hands every http(s) link that asks
+// for a new window to shell.openExternal. No quote can be part of a url here, so
+// the href stays well formed.
+const LINK = /\[([^\]]+)\]\((https?:\/\/[^\s)"']+)\)|(https?:\/\/[^\s<"']*[^\s<"'.,;:!?)\]])/g;
+const linkify = s => s.replace(LINK, (m, label, url, bare) =>
+  `<a href="${url || bare}" target="_blank" rel="noopener">${label || bare}</a>`);
+
+// A light rendering of the model's text: paragraphs, `code`, **bold**, links. Enough
+// for the stories the tools return, no markdown library.
 function renderText(text) {
   return esc(text)
     .split(/\n{2,}/)
-    .map(p => '<p>' + p
+    .map(p => '<p>' + linkify(p)
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/\n/g, '<br>') + '</p>')
