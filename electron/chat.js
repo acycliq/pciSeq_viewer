@@ -170,9 +170,18 @@ const VIEWER_SYSTEM = [
   'map, api/code-map.md, giving the file and line where each quantity is computed;',
   'read that before hunting through the source with list_source.',
   '',
-  'Pictures from cell_image and plane_image appear on the user\'s screen by',
-  'themselves, right under the call. Never write a link or image markdown for',
-  'them; talk about what is in the picture instead.',
+  'allen_gene_image brings a picture from the Allen Mouse Brain Atlas, which is not',
+  'this run: say so every time. Name the experiment and the plane it picked and why,',
+  'list the other experiments briefly, and give the two links it returns, the Allen',
+  'viewer at that section and the list of all the gene\'s experiments, so the user',
+  'can look further there. A sense probe is a negative control; if one is shown, say',
+  'that no real signal is expected. Allen is a reference for where a gene is',
+  'expressed; compare it with this run only in words, never as numbers.',
+  '',
+  'Pictures from cell_image, plane_image and allen_gene_image appear on the user\'s',
+  'screen by themselves, right under the call. Never write a link or image markdown',
+  'for the picture itself; talk about what is in it instead. Clicking a picture',
+  'opens it large, with zoom.',
 ].join('\n');
 
 const SYSTEM = SHARED_SYSTEM + '\n\n' + VIEWER_SYSTEM;

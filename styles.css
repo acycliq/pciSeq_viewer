@@ -2637,7 +2637,12 @@ body {
 .chat-tool-name { color: #7dd3fc; }
 /* a picture from cell_image or plane_image, under its tool line */
 .chat-image { padding-left: 26px; margin: 4px 0 10px; }
-.chat-image img { display: block; max-width: min(600px, 100%); border: 1px solid #333; border-radius: 4px; }
+.chat-image img { display: block; max-width: min(600px, 100%); border: 1px solid #333; border-radius: 4px; cursor: zoom-in; }
+/* a chat picture opened large (src/imageZoom.js) */
+.image-zoom { position: fixed; inset: 0; z-index: 10000; background: rgba(0, 0, 0, 0.9);
+              display: flex; align-items: center; justify-content: center; cursor: grab; overflow: hidden; }
+.image-zoom:active { cursor: grabbing; }
+.image-zoom img { max-width: 95vw; max-height: 95vh; transform-origin: center; user-select: none; }
 .chat-error { padding-left: 26px; color: #fca5a5; font-size: 13px; }
 .chat-note { padding-left: 26px; color: #64748b; font-size: 13px; font-style: italic; }
 .chat-welcome { color: #94a3b8; font-size: 13px; line-height: 1.55; }

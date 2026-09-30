@@ -12,6 +12,7 @@
  * The conversation is kept here in the API's shape and handed back whole on every
  * turn, so the model has the context of earlier questions.
  */
+import { openImageZoom } from './imageZoom.js';
 
 let messages = [];        // the conversation, in the API's message shape
 let busy = false;
@@ -128,7 +129,7 @@ function onEvent(ev) {
   } else if (ev.type === 'tool_result') {
     setThinking('thinking...');
   } else if (ev.type === 'image') {
-    // a picture from cell_image or plane_image, straight from the pciSeq server.
+    // a picture from cell_image, plane_image or allen_gene_image; a click opens it large.
     // Only png and jpeg, and the data is base64, so it cannot carry markup.
     if (/^image\/(png|jpeg)$/.test(ev.media_type) && /^[A-Za-z0-9+/=]+$/.test(ev.data)) {
       addLine('chat-image', `<img alt="${esc(ev.name)}" src="data:${ev.media_type};base64,${ev.data}">`);
@@ -302,6 +303,8 @@ export function initChatPanel() {
   // a click anywhere in the session goes to the prompt, as in a terminal, unless you
   // are selecting text to copy
   el('chatSession').addEventListener('click', e => {
+    const pic = e.target.closest('.chat-image img');
+    if (pic) { openImageZoom(pic.src); return; }
     const q = e.target.closest('a[data-q]');
     if (q) { input.value = q.dataset.q; fitInput(); send(); return; }
     if (!window.getSelection().toString()) input.focus();

@@ -16,6 +16,7 @@ const { narrateCell, narrateSpot } = require('./narrative');
 const run = require('./run');
 const docs = require('./docs');
 const docsAtCommit = require('./docsAtCommit');
+const allen = require('./allen');
 
 // docsRoot: the folder of documentation pages, see docs.js. fetch: for reading the
 // pciSeq source from GitHub, the global one unless a check passes a fake.
@@ -455,6 +456,33 @@ const TOOLS = [
     },
   },
   {
+    name: 'allen_gene_image',
+    description:
+      'A picture of where a gene is expressed in the adult mouse brain, from the ' +
+      'Allen Mouse Brain Atlas (in situ hybridisation), NOT from this run: for "show ' +
+      'me Plp1 in the Allen atlas", "is Pcp4 really in CA2", "Plp1, coronal, ' +
+      'hippocampus". The gene can have several experiments; without experiment the ' +
+      'tool picks one (the plane asked for, coronal if none, never a sense probe) ' +
+      'and says which. region picks the section at the centre of an atlas region, ' +
+      'by acronym (CA1, DG, HPF) or name; section picks one by number, which is how ' +
+      'to step forward or back; with neither, when the user does not say, pass the ' +
+      'region their own data comes from if you know it. view "expression" gives ' +
+      'Allen\'s heat map of the signal instead of the stained section. Needs the ' +
+      'internet.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        gene: { type: 'string', description: 'The gene symbol, e.g. Plp1.' },
+        plane: { type: 'string', enum: ['coronal', 'sagittal'], description: 'The plane of section, optional.' },
+        region: { type: 'string', description: 'An atlas region, acronym or name, optional.' },
+        section: { type: 'integer', description: 'A section number, from 1, optional.' },
+        experiment: { type: 'integer', description: 'An Allen experiment id, optional.' },
+        view: { type: 'string', enum: ['ish', 'expression'], description: 'ish (default) or expression.' },
+      },
+      required: ['gene'],
+    },
+  },
+  {
     name: 'fly_to_cell',
     description:
       'Move the map to a cell and flash its outline, so the user can see the cell ' +
@@ -867,6 +895,7 @@ async function call(name, input) {
     if (name === 'cell_row') return await run.cellRow(input.label);
     if (name === 'spot_row') return await run.spotRow(input.spot_id);
     if (name === 'cell_image') return await run.cellImage(input.label, input);
+    if (name === 'allen_gene_image') return await allen.geneImage(input);
     if (name === 'plane_image') return await run.planeImage(input);
     if (name === 'list_source') return await listSource(input.dir || '');
     if (name === 'read_source') return await readSource(input.path, input.start_line);

@@ -220,6 +220,26 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.strictEqual((await run2.spot(1642419)).glyph, null, 'null when the window has not said');
   run2.init({ getDb: null, getMeta: null, getCellKey: null, classColour: null, geneGlyph: null, querySpot: null });
 
+  // allen: which experiment to show, on Plp1's real list (2026-09-30), offline
+  const allen = require('./allen');
+  const plp1 = [
+    { id: 75496529, plane: 'sagittal', control: false, delegate: true },
+    { id: 69117382, plane: 'sagittal', control: false, delegate: false },
+    { id: 79556704, plane: 'coronal', control: false, delegate: false },
+    { id: 813, plane: 'sagittal', control: true, delegate: false },
+  ];
+  assert.strictEqual(allen.pick(plp1, null, null).chosen.id, 79556704, 'coronal when no plane is asked');
+  assert.strictEqual(allen.pick(plp1, 'sagittal', null).chosen.id, 75496529, "Allen's delegate");
+  assert.strictEqual(allen.pick(plp1, 'coronal', null).chosen.id, 79556704);
+  assert.strictEqual(allen.pick(plp1, null, 813).chosen.id, 813, 'a named experiment wins, even a control');
+  assert.throws(() => allen.pick(plp1, null, 1), /not one of this gene's/);
+  const sagOnly = plp1.filter(e => e.plane === 'sagittal');
+  const noCoronal = allen.pick(sagOnly, 'coronal', null);
+  assert.strictEqual(noCoronal.chosen.plane, 'sagittal');
+  assert.ok(/no coronal experiment/.test(noCoronal.note), noCoronal.note);
+  assert.ok(!allen.pick(sagOnly, null, null).chosen.control, 'never a sense probe by default');
+  assert.throws(() => allen.pick([plp1[3]], null, null), /no antisense/);
+
   // run_info: from the metadata, old runs say so
   const meta = { nC: 17, nS: 500, nG: 20, nK: 3,
                  pciSeq_provenance: { version: '0.1', commit: 'abc1234', branch: 'dev_3d', created_at: '2026-09-26T10:00:00Z' },
