@@ -628,6 +628,11 @@ async function runInit() {
     // 7. Initialize interactions (index maps are filled in place later)
     initializePolygonHighlighter();
     initializeRectangularSelector();
+    // Listen for the first cell outlines before anything draws them: step 8 draws
+    // the map while spots stream in, so the outlines, and the event that starts the
+    // spatial index the 3D view needs, can arrive long before step 11. Set up there,
+    // the listener missed it and the 3D view fell back to one plane (since 3606560).
+    try { setupBoundariesReadyListener(updateAllLayers, state); } catch {}
 
     // 8. Spots. Progressive: drop the curtain now and draw shards as they land,
     //    plane 0 upwards, with a corner pill counting them. Otherwise the
@@ -654,7 +659,6 @@ async function runInit() {
 
     // 11. Background tasks
     buildGlobalZProjection(state).catch(err => console.warn('Z-projection failed:', err));
-    try { setupBoundariesReadyListener(updateAllLayers, state); } catch {}
 
     hideLoadStatus();
     hideLoading(state, elements.loadingIndicator);
