@@ -178,6 +178,39 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   tools.init({ docsRoot: null });
   assert.ok(/no documentation/.test((await tools.call('docs', { query: 'x' })).error));
 
+  // class colours: the window sends the table, the cell tool reads one class
+  const classColours = require('./classColours');
+  let onColours = null;
+  classColours.init({ on: (ch, fn) => { assert.strictEqual(ch, 'class-colours'); onColours = fn; } });
+  assert.strictEqual(classColours.colourOf('CA1'), null, 'nothing before the window sends');
+  onColours(null, { CA1: '#1f77b4', Zero: '#000000' });
+  assert.strictEqual(classColours.colourOf('CA1'), '#1f77b4');
+  assert.strictEqual(classColours.colourOf('CA9'), null);
+
+  // theta_bar: the assigned class by default, any class by name; cell says the same
+  // number and the class colour. A one-row fake of diagnostics.db.
+  const run2 = require('./run');
+  const blob = a => Buffer.from(new Float32Array(a).buffer);
+  const cellRowFake = { assigned_class_idx: 1, class_prob: blob([0.1, 0.8, 0.1]),
+    gene_count: blob([2, 3]), theta_bar: blob([0.5, 1.7, 0.9]), gamma_assigned: blob([1, 1]),
+    mrf: null, neighbours: null, x: 1, y: 2, z: 3 };
+  run2.init({ getDb: () => ({ prepare: () => ({ get: () => cellRowFake }) }),
+              getMeta: () => ({ class_names: ['A', 'B', 'C'], gene_panel: ['g1', 'g2'] }),
+              getCellKey: () => 'cell_key', colourOf: n => (n === 'B' ? '#112233' : null) });
+  const th = run2.theta(5);
+  assert.strictEqual(th.class, 'B');
+  assert.strictEqual(th.is_assigned, true);
+  assert.strictEqual(th.theta_bar, Math.fround(1.7));
+  assert.strictEqual(th.theta, undefined, 'the averaged theta is gone');
+  const thC = run2.theta(5, 'C');
+  assert.strictEqual(thC.theta_bar, Math.fround(0.9));
+  assert.strictEqual(thC.is_assigned, false);
+  assert.throws(() => run2.theta(5, 'X'), /no class 'X'/);
+  const cl = run2.cell(5);
+  assert.strictEqual(cl.theta_bar, Math.fround(1.7), 'cell gives the tooltip value');
+  assert.strictEqual(cl.colour, '#112233');
+  run2.init({ getDb: null, getMeta: null, getCellKey: null, colourOf: null });
+
   // run_info: from the metadata, old runs say so
   const meta = { nC: 17, nS: 500, nG: 20, nK: 3,
                  pciSeq_provenance: { version: '0.1', commit: 'abc1234', branch: 'dev_3d', created_at: '2026-09-26T10:00:00Z' },

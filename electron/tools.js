@@ -169,8 +169,9 @@ const TOOLS = [
     name: 'cell',
     description:
       'The headline facts about one cell: its class probabilities, its top genes, its ' +
-      'total counts, its scale factor theta, and the neighbours its spatial term ' +
-      'listens to. label is the cell number in the segmentation, the one shown in the ' +
+      'total counts, the scale factor theta_bar of its assigned class, the ' +
+      'neighbours its spatial term listens to, and the colour its class is drawn ' +
+      'in on the map. label is the cell number in the segmentation, the one shown in the ' +
       'viewer. Counts are soft, each spot contributes its probability of belonging to ' +
       'the cell.',
     input_schema: {
@@ -197,13 +198,17 @@ const TOOLS = [
   {
     name: 'theta',
     description:
-      'The cell scale factor theta of one cell: the overall value, and theta_bar ' +
-      "under each of the top classes with the class probability. Theta scales a " +
-      "class's expected counts to the cell's total, with a Gamma(rTheta, rTheta) prior " +
-      'of mean 1; rTheta is returned too. label is the segmentation label.',
+      'The cell scale factor theta_bar of one cell under one class: the assigned ' +
+      'class unless class_name is given, with that class\'s probability. Theta ' +
+      "scales a class's expected counts to the cell's total, with a Gamma(rTheta, " +
+      'rTheta) prior of mean 1; rTheta is returned too. label is the segmentation ' +
+      'label.',
     input_schema: {
       type: 'object',
-      properties: { label: { type: 'integer', description: 'The cell label, as in the segmentation.' } },
+      properties: {
+        label: { type: 'integer', description: 'The cell label, as in the segmentation.' },
+        class_name: { type: 'string', description: 'The class, the assigned one if left out.' },
+      },
       required: ['label'],
     },
   },
@@ -846,7 +851,7 @@ async function call(name, input) {
     }
     if (name === 'cell') return run.cell(input.label);
     if (name === 'cell_counts') return run.cellCounts(input.label, input.gene ?? null);
-    if (name === 'theta') return run.theta(input.label);
+    if (name === 'theta') return run.theta(input.label, input.class_name ?? null);
     if (name === 'gamma') return run.gamma(input.label, input.gene ?? null);
     if (name === 'spot') return await run.spot(input.spot_id);
     if (name === 'gene') return run.gene(input.name);

@@ -25,6 +25,7 @@ import { PolygonBoundaryHighlighter } from '../ui/polygonInteractions.js';
 import { RectangularSelector } from '../ui/rectangularSelector.js';
 import { applyPendingClassColorSchemeIfAny } from '../classColorImport.js';
 import { populateCellClassDrawer } from '../cellClassDrawer.js';
+import { sendClassColours } from '../classColourSync.js';
 import { populateGeneDrawer } from '../geneDrawer.js';
 import { unfreeze as unfreezeCellInfoPanel } from '../cellInfoPanel/index.js';
 import Perf from '../../utils/runtimePerf.js';
@@ -252,6 +253,7 @@ function initializeCellClassColors() {
         if (res && res.appliedCount > 0) {
             console.log(`Applied pending colour scheme: ${res.appliedCount} classes`);
             try { populateCellClassDrawer(); } catch {}
+            sendClassColours();
             if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
         }
     } catch {}
@@ -291,6 +293,7 @@ export function finalizeInitialization(updateAllLayers) {
 
     // Populate the cell class drawer with ranked list
     populateCellClassDrawer();
+    sendClassColours();
 
     // Populate the gene drawer
     populateGeneDrawer();

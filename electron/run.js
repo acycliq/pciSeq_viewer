@@ -21,7 +21,7 @@ const { pathToFileURL } = require('url');
 
 const { narrateCell } = require('./narrative');
 
-let deps = { getDb: null, getMeta: null, getCellKey: null, querySpot: null, compose: null };
+let deps = { getDb: null, getMeta: null, getCellKey: null, querySpot: null, compose: null, colourOf: null };
 
 // caches per open database, dropped when the db handle changes
 let cache = { db: null };
@@ -111,7 +111,6 @@ function cellArrays(label) {
   if (!got) throw new Error(`cell ${label} is not in diagnostics.db`);
   const out = {
     row,
-    theta: got.theta,
     assigned_class_idx: got.assigned_class_idx,
     class_prob: f32(got.class_prob),
     gene_count: f32(got.gene_count),
@@ -173,6 +172,12 @@ function topClasses(c, n) {
     .sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, n);
 }
 
+// the assigned class of one cell: the one the run saved, the most probable
+// otherwise (older dbs have no assigned_class_idx)
+function assignedIdx(c) {
+  return c.assigned_class_idx ?? topClasses(c, 1)[0][0];
+}
+
 // ------------------------------------------------------------------ tools
 
 function cell(label) {
@@ -182,16 +187,21 @@ function cell(label) {
   const counts = c.gene_count;
   const top = Array.from(counts, (v, g) => [g, v])
     .sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 10);
+  const k = assignedIdx(c);
+  const assigned = names[k];
   return {
     cell: Number(label),
+    colour: deps.colourOf ? deps.colourOf(assigned) : null,
+    colour_is: `the colour ${assigned} is drawn in on the map; null when the viewer ` +
+               'window has not said',
     total_counts: counts.reduce((s, v) => s + v, 0),
     counts_are: 'soft, weighted by the spot assignment probabilities',
     classes: topClasses(c, 5).map(([k, p]) => ({ class: names[k], prob: p })),
     top_genes: top.filter(([, v]) => v > COUNT_TOL)
       .map(([g, v]) => ({ gene: panel[g], counts: v })),
-    theta: c.theta,
-    theta_is: 'the soft scalar, averaged over the class probabilities, ' +
-              'not theta_bar of the assigned class',
+    theta_bar: c.theta_bar[k],
+    theta_bar_is: `theta_bar of the assigned class, ${assigned}, the value the ` +
+                  'cell tooltip shows; the theta tool gives it for any class',
     neighbours: c.neighbours ? Array.from(c.neighbours, r => toExternal(r)) : null,
     neighbours_are: 'the cells the spatial (mrf) term listens to, nearest first',
   };
@@ -218,19 +228,22 @@ function cellCounts(label, gene) {
   };
 }
 
-function theta(label) {
+function theta(label, className) {
   const names = meta().class_names;
   const c = cellArrays(label);
+  const assigned = names[assignedIdx(c)];
+  const cls = className ?? assigned;
+  const k = names.indexOf(cls);
+  if (k < 0) throw new Error(`no class '${cls}' in this run`);
   return {
     cell: Number(label),
-    theta: c.theta,
-    theta_is: 'the scale factor averaged over the class probabilities, the ' +
-              'value the outputs report',
-    theta_bar_per_class: topClasses(c, 5).map(([k, p]) => ({
-      class: names[k], theta_bar: c.theta_bar[k], prob: p })),
-    theta_bar_is: "the posterior mean of theta under each class: the factor " +
-                  "scaling that class's expected counts to the cell's total. " +
+    class: cls,
+    is_assigned: cls === assigned,
+    theta_bar: c.theta_bar[k],
+    theta_bar_is: "the posterior mean of theta under this class: the factor " +
+                  "scaling the class's expected counts to the cell's total. " +
                   'Gamma(rTheta, rTheta) prior, mean 1',
+    class_prob: c.class_prob[k],
     rTheta: (cfg() || {}).rTheta ?? null,
   };
 }
