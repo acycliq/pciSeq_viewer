@@ -240,6 +240,17 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.ok(!allen.pick(sagOnly, null, null).chosen.control, 'never a sense probe by default');
   assert.throws(() => allen.pick([plp1[3]], null, null), /no antisense/);
 
+  // open_3d_view: one message to the window, refused for a cell the run does not have
+  require('./run').init({ getMeta: () => ({ label_map: { 5: 1 } }) });
+  sent = [];
+  const view3d = await tools.call('open_3d_view', { label: 5 });
+  assert.strictEqual(view3d.done, true);
+  assert.deepStrictEqual(sent, [['chat-open-3d-view', { label: 5 }]]);
+  sent = [];
+  assert.ok((await tools.call('open_3d_view', { label: 99 })).error, 'unknown cell refused');
+  assert.deepStrictEqual(sent, [], 'nothing opened');
+  require('./run').init({ getMeta: null });
+
   // run_info: from the metadata, old runs say so
   const meta = { nC: 17, nS: 500, nG: 20, nK: 3,
                  pciSeq_provenance: { version: '0.1', commit: 'abc1234', branch: 'dev_3d', created_at: '2026-09-26T10:00:00Z' },

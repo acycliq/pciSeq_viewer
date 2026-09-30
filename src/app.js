@@ -28,6 +28,8 @@ import { initChatPanel } from './chatPanel.js';
 import { initChatImageComposer } from './chatImageComposer.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
 import { sendLegend } from './legendSync.js';
+import { openChunkAroundCell } from './cellChunk.js';
+import { showNotification } from './ui/notification.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
 import { init as initCellInfoPanel } from './cellInfoPanel/index.js';
 import { applyPendingClassColorSchemeIfAny, applyClassColorScheme } from './classColorImport.js';
@@ -765,6 +767,12 @@ window.addEventListener('load', async () => {
     if (window.electronAPI?.onChatOpenSpotDiagnostics) {
         window.electronAPI.onChatOpenSpotDiagnostics(({ spot_id }) => {
             openCheckSpotModal(spot_id);
+        });
+    }
+    // and open_3d_view: the 3D viewer around a cell, as if the user drew the rectangle
+    if (window.electronAPI?.onChatOpen3dView) {
+        window.electronAPI.onChatOpen3dView(({ label }) => {
+            openChunkAroundCell(label).catch(e => showNotification('3D view: ' + e.message, 'error'));
         });
     }
     // and show_classes / show_genes: change the set of shown classes or genes, then

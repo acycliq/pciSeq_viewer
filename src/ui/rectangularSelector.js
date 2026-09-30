@@ -135,8 +135,16 @@ export class RectangularSelector {
         try { preOpenedWin = window.open('about:blank', 'chunkViewer', windowFeatures); } catch {}
 
         const viewport = this.deck.getViewports()[0];
-        const bounds = this.getSelectionBounds(viewport);
+        await this.openChunk(this.getSelectionBounds(viewport), preOpenedWin);
+    }
 
+    /**
+     * Open the 3D viewer on a box, in tile coordinates ({left, right, top, bottom}),
+     * with the spots and cells inside it, over all planes. Called with the rectangle
+     * the user drew, and with the box round a cell the chat asks for (src/cellChunk.js).
+     * preOpenedWin: a window opened earlier within a click, if the caller has one.
+     */
+    async openChunk(bounds, preOpenedWin = null) {
         const spots = this.getSpotsInBounds(bounds);
         const clippedCells = await this.getClippedCellsInBounds(bounds);
 

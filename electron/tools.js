@@ -483,6 +483,20 @@ const TOOLS = [
     },
   },
   {
+    name: 'open_3d_view',
+    description:
+      'Open the 3D viewer around a cell: the cell and its immediate neighbours, with ' +
+      'their spots, over all planes, in a window the user can turn. The same as ' +
+      'drawing a rectangle with the selection tool round the cell. After explaining ' +
+      'a cell, offer it rather than opening it unasked. label is the cell number ' +
+      'shown in the viewer.',
+    input_schema: {
+      type: 'object',
+      properties: { label: { type: 'integer', description: 'The cell label.' } },
+      required: ['label'],
+    },
+  },
+  {
     name: 'fly_to_cell',
     description:
       'Move the map to a cell and flash its outline, so the user can see the cell ' +
@@ -840,6 +854,12 @@ async function call(name, input) {
       const out = spotToDict(res);
       out.diagnostics = `open on spot ${spotId}, probabilities chart first`;
       return out;
+    }
+    if (name === 'open_3d_view') {
+      const label = Number(input.label);
+      run.toInternal(label);   // throws for a label the run does not have
+      deps.send('chat-open-3d-view', { label });
+      return { done: true, cell: label, note: 'the 3D viewer is opening in its own window, around the cell and its neighbours' };
     }
     if (name === 'fly_to_cell') {
       const label = Number(input.label);
