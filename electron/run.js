@@ -568,6 +568,20 @@ function explainCell(label, vsClass = null, topN = 10) {
 }
 
 // whether the open run saves its class score (format version 1); false with no db
+// The documentation pages saved inside the run at fit time (the docs table, pciSeq
+// export_docs), as a Map of page -> text, the same shape docsAtCommit.js makes.
+// null for runs written before the table existed, or when it came out empty; the
+// docs tool then goes to GitHub as before.
+function docsFromRun() {
+  const h = db();   // first, see cellColumns for why
+  if (cache.docs === undefined) {
+    const has = h.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='docs'").get();
+    const rows = has ? h.prepare('SELECT page, text FROM docs').all() : [];
+    cache.docs = rows.length ? new Map(rows.map(r => [r.page, r.text])) : null;
+  }
+  return cache.docs;
+}
+
 function hasSavedScore() {
   try {
     return cellColumns().has('gene_loglik');
@@ -1248,7 +1262,7 @@ function calculate(expression) {
   return { expression: text, result };
 }
 
-module.exports = { init, cell, cellCounts, theta, gamma, spot, gene, neighbours, explainCell, hasSavedScore,
+module.exports = { init, cell, cellCounts, theta, gamma, spot, gene, neighbours, explainCell, hasSavedScore, docsFromRun,
                    spotsInCell, spotsOfCell, spotRow, cellRow, cellImage, planeImage,
                    classCounts, findCells, metadataTool, calculate,
                    toInternal, toExternal, planeOf };

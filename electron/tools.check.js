@@ -155,6 +155,25 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   const nothing = await tools.call('docs', { query: 'zzzz' });
   assert.deepStrictEqual(nothing.hits, []);
   assert.deepStrictEqual(nothing.pages, ['index.md', 'the-model/settings.md']);
+  // the pages saved inside the run win, and GitHub is not asked at all
+  const run = require('./run');
+  const realDocsFromRun = run.docsFromRun;
+  let githubCalls = 0;
+  run.docsFromRun = () => new Map([['index.md', '# pciSeq\n\nThe mrf_beta of the run.\n']]);
+  tools.init({ fetch: async () => { githubCalls++; throw new Error('offline'); } });
+  const saved = await tools.call('docs', { query: 'mrf_beta' });
+  assert.strictEqual(saved.hits.length, 1);
+  assert.strictEqual(saved.hits[0].page, 'index.md');
+  assert.ok(/saved inside this run/.test(saved.docs_are), saved.docs_are);
+  assert.strictEqual(githubCalls, 0, 'no GitHub fetch when the run has its docs');
+  // a run without the table: back to the old order, here the viewer's copy
+  run.docsFromRun = () => null;
+  const older = await tools.call('docs', { query: 'mrf_beta' });
+  assert.strictEqual(older.hits[0].page, 'the-model/settings.md');
+  assert.ok(/shipped with this viewer/.test(older.docs_are), older.docs_are);
+  run.docsFromRun = realDocsFromRun;
+  tools.init({ fetch: null });
+
   fs.rmSync(root, { recursive: true });
   tools.init({ docsRoot: null });
   assert.ok(/no documentation/.test((await tools.call('docs', { query: 'x' })).error));

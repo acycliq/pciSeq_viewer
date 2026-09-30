@@ -814,17 +814,24 @@ async function call(name, input) {
     if (name === 'show_classes') return setVisibility('classes', input);
     if (name === 'show_genes') return setVisibility('genes', input);
     if (name === 'docs') {
-      // the pages of the run's own commit, as the source tools do; the copy shipped
-      // with the viewer only when those cannot be fetched
-      const atCommit = await docsAtCommit.docsAt(sourceRef() === 'dev_3d' ? null : sourceRef(), deps.fetch);
-      const corpus = atCommit || deps.docsRoot;
+      // the pages saved inside the run at fit time first; runs from before that have
+      // none, then the pages of the run's own commit from GitHub, as the source tools
+      // do; the copy shipped with the viewer only when those cannot be fetched
+      let inRun = null;
+      try { inRun = run.docsFromRun(); } catch { inRun = null; }
+      const atCommit = inRun ? null
+        : await docsAtCommit.docsAt(sourceRef() === 'dev_3d' ? null : sourceRef(), deps.fetch);
+      const corpus = inRun || atCommit || deps.docsRoot;
       if (!corpus) return { error: 'this build of the viewer carries no documentation pages' };
       const hits = docs.searchDocs(corpus, input.query, input.n || 5);
       return {
         query: input.query,
         hits,
         pages: hits.length ? undefined : docs.listPages(corpus),
-        docs_are: atCommit
+        docs_are: inRun
+          ? 'the documentation saved inside this run when it was fitted, so it describes ' +
+            'the pciSeq that produced these numbers'
+          : atCommit
           ? `the documentation at the commit that made this run (${sourceRef()}), so it ` +
             'describes the pciSeq that produced these numbers'
           : 'the documentation shipped with this viewer, not the run\'s own commit ' +
