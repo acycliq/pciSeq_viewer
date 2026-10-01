@@ -202,6 +202,9 @@ const VIEWER_SYSTEM = [
   'shows, image N of 59; I will bring that section here." Links are clickable and',
   'open in the browser.',
   '',
+  'The user can paste screenshots into the chat, of a panel, a chart or the map;',
+  'read them and say what they show before answering from the tools.',
+  '',
   'Pictures from cell_image, plane_image and allen_gene_image appear on the user\'s',
   'screen by themselves, right under the call. Never write a link or image markdown',
   'for the picture itself; talk about what is in it instead. Clicking a picture',
@@ -318,6 +321,24 @@ function makeClient(p) {
 
 // ------------------------------------------------------------- one turn
 
+// The images the user pasted stay in the conversation, and the whole conversation is
+// sent on every call, so each one would cost its tokens again every time. Keep the
+// last few as they are and replace older ones by a line saying one was there.
+const KEEP_PASTED_IMAGES = 2;
+function withRecentImages(history) {
+  let seen = 0;
+  return history.slice().reverse().map(m => {
+    if (m.role !== 'user' || !Array.isArray(m.content)) return m;
+    const content = m.content.map(b => {
+      if (b.type !== 'image') return b;
+      seen += 1;
+      return seen <= KEEP_PASTED_IMAGES ? b
+        : { type: 'text', text: '[an image the user pasted earlier, left out to save space]' };
+    });
+    return { ...m, content };
+  }).reverse();
+}
+
 // messages: the conversation so far, in the API's shape, ending with the user's
 // new message. Returns the final assistant text and the messages to carry forward
 // (assistant turns and tool results included, so the next turn has the context).
@@ -336,7 +357,7 @@ async function runTurn(messages) {
       max_tokens: MAX_TOKENS,
       system: SYSTEM,
       tools: tools.TOOLS,
-      messages: history,
+      messages: withRecentImages(history),
     });
 
     history.push({ role: 'assistant', content: res.content });
@@ -400,5 +421,5 @@ function registerIpc(ipcMain) {
   });
 }
 
-module.exports = { init, registerIpc, runTurn, getSettings, saveSettings, makeClient, SYSTEM,
+module.exports = { init, registerIpc, runTurn, withRecentImages, getSettings, saveSettings, makeClient, SYSTEM,
                    SHARED_SYSTEM, VIEWER_SYSTEM, DEFAULT_MODEL, PROVIDERS };

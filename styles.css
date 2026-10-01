@@ -2618,6 +2618,13 @@ body {
     color: #e2e8f0;
 }
 .chat-q .chat-prompt, .chat-prompt-line .chat-prompt { margin-right: 8px; }
+/* images pasted into the chat, waiting to be sent (src/chatAttachments.js) */
+.chat-attachments { display: flex; gap: 8px; margin: 0 0 6px 26px; }
+.chat-attachments.hidden { display: none; }
+.chat-attachment { position: relative; }
+.chat-attachment img { height: 56px; border: 1px solid #333; border-radius: 4px; display: block; }
+.chat-attachment button { position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; padding: 0;
+                          border-radius: 50%; border: none; background: #374151; color: #e2e8f0; cursor: pointer; line-height: 18px; }
 .chat-a {
     font-size: 13.5px;
     line-height: 1.55;

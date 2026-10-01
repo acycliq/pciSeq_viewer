@@ -13,6 +13,7 @@
  * turn, so the model has the context of earlier questions.
  */
 import { openImageZoom } from './imageZoom.js';
+import { initChatAttachments, takeAttachments, hasAttachments } from './chatAttachments.js';
 
 let messages = [];        // the conversation, in the API's message shape
 let busy = false;
@@ -102,11 +103,21 @@ function setBusy(b) {
 async function send() {
   const input = el('chatInput');
   const text = input.value.trim();
-  if (!text || busy) return;
+  if ((!text && !hasAttachments()) || busy) return;
   input.value = '';
   fitInput();
+  const images = takeAttachments();
   addLine('chat-q', '<span class="chat-prompt">&gt;_</span>' + esc(text));
-  messages.push({ role: 'user', content: text });
+  // pasted images go first, as the API expects, then the question
+  images.forEach(im => addLine('chat-image', `<img alt="pasted image" src="data:${im.media_type};base64,${im.data}">`));
+  messages.push({ role: 'user', content: images.length
+    ? images.map(im => ({ type: 'image', source: { type: 'base64', media_type: im.media_type, data: im.data } }))
+        // some models drop images without saying so (glm-5.2 through Z.ai), so the
+        // model is told an image was attached and to say so if it cannot see it
+        .concat([{ type: 'text', text: `[The user attached ${images.length} image(s). If you cannot ` +
+                   'see them, say so plainly and do not guess what they show.]' },
+                 { type: 'text', text: text || 'What do you see in this picture?' }])
+    : text });
   setBusy(true);
   setThinking('thinking...');
   try {
@@ -308,6 +319,7 @@ export function initChatPanel() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
   input.addEventListener('input', fitInput);
+  initChatAttachments(input, el('chatAttachments'));
   // a click anywhere in the session goes to the prompt, as in a terminal, unless you
   // are selecting text to copy
   el('chatSession').addEventListener('click', e => {
