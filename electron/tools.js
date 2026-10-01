@@ -22,7 +22,7 @@ const { exportTable, EXPORTABLE } = require('./exportTable');
 // docsRoot: the folder of documentation pages, see docs.js. fetch: for reading the
 // pciSeq source from GitHub, the global one unless a check passes a fake.
 let deps = { querySpot: null, queryCell: null, getMeta: null, send: null, docsRoot: null, fetch: null,
-             saveDialog: null, writeFile: null };
+             saveDialog: null, writeFile: null, getTilesInfo: null };
 
 // where the source is read from: the pciSeq_3d repo at the commit that made the
 // run, so the code matches the numbers, falling back to the dev_3d branch when the
@@ -135,9 +135,11 @@ const TOOLS = [
       'date, when the run was made (run_date), python and package versions, the ' +
       'settings it used (rTheta, mrf_beta, Inefficiency, nNeighbors, voxel_size and ' +
       'the rest), the mean cell radius, the number of iterations and whether the ' +
-      'loop converged. Use it for "when was this run made", "what is the mean cell ' +
-      'radius", "what settings did it use" and "did it converge". Older runs carry ' +
-      'only the provenance and the answer says so.',
+      'loop converged, and what the background images say about themselves (name, ' +
+      'description, size, planes). Use it for "when was this run made", "what is the ' +
+      'mean cell radius", "what settings did it use", "did it converge" and, with ' +
+      'class_counts, "what am I looking at". Older runs carry only the provenance and ' +
+      'the answer says so.',
     input_schema: { type: 'object', properties: {} },
   },
   {
@@ -958,7 +960,12 @@ async function call(name, input) {
     if (name === 'run_info') {
       const meta = deps.getMeta();
       if (!meta) return { error: 'no diagnostics.db is open' };
-      return runInfo(meta);
+      const out = runInfo(meta);
+      out.background = deps.getTilesInfo ? deps.getTilesInfo() : [];
+      out.background_is = 'what each background image (.mbtiles) says about itself, as ' +
+                          'written by whoever made it: name, description, width and ' +
+                          'height in pixels, number of planes. May be empty or vague';
+      return out;
     }
     if (name === 'cell') return run.cell(input.label);
     if (name === 'cell_counts') return run.cellCounts(input.label, input.gene ?? null);

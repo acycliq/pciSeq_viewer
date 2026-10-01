@@ -172,6 +172,8 @@ function createWindow() {
     docsRoot: app.isPackaged
       ? path.join(process.resourcesPath, 'pciseq_docs')
       : path.join(__dirname, 'pciseq_docs'),
+    // run_info quotes what the background tiles say about themselves
+    getTilesInfo: dataLoader.getTilesInfo,
     // export_table: the user picks where the CSV goes, starting in Documents
     saveDialog: async (name) => {
       const r = await dialog.showSaveDialog(mainWindow, {

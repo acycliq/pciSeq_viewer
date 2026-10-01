@@ -172,6 +172,24 @@ function getDatabase(channelId) {
   return channelDbs.get(id) || null;
 }
 
+// What each background image says about itself, from its .mbtiles metadata: the
+// name and description whoever made the tiles wrote, and the image size. For the
+// chat's run_info, so "what am I looking at" can quote it rather than guess.
+function getTilesInfo() {
+  return channels.map(c => {
+    const out = { channel: c.label };
+    try {
+      for (const r of channelDbs.get(c.id).prepare('SELECT name, value FROM metadata').all()) {
+        if (r.name === 'name' || r.name === 'description') out[r.name] = r.value;
+        if (['width', 'height', 'plane_count'].includes(r.name)) out[r.name] = parseInt(r.value);
+      }
+    } catch (e) {
+      out.error = e.message;
+    }
+    return out;
+  });
+}
+
 // Return the channel registry for the renderer (no file paths exposed).
 function getChannels() {
   return {
@@ -510,5 +528,6 @@ module.exports = {
   discoverChannels,
   closeDatabase,
   getDatabase,
-  getChannels
+  getChannels,
+  getTilesInfo
 };
