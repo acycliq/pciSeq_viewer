@@ -172,6 +172,16 @@ function createWindow() {
     docsRoot: app.isPackaged
       ? path.join(process.resourcesPath, 'pciseq_docs')
       : path.join(__dirname, 'pciseq_docs'),
+    // export_table: the user picks where the CSV goes, starting in Documents
+    saveDialog: async (name) => {
+      const r = await dialog.showSaveDialog(mainWindow, {
+        title: 'Save table',
+        defaultPath: path.join(app.getPath('documents'), name),
+        filters: [{ name: 'CSV', extensions: ['csv'] }],
+      });
+      return r.canceled ? null : r.filePath;
+    },
+    writeFile: (file, text) => fs.writeFileSync(file, text, 'utf8'),
   });
   chat.init({
     store,

@@ -251,6 +251,52 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.deepStrictEqual(sent, [], 'nothing opened');
   require('./run').init({ getMeta: null });
 
+  // spots_of_class: the counting, on a hand-made case. Class 0 is Pvalb, 1 Oligo.
+  // Spot 1: 0.8 on cell 10 (Oligo, 0.9 Oligo / 0.1 Pvalb), 0.2 on cell 20 (Pvalb, 0.7 / 0.3).
+  // Spot 2: 0.6 on cell 20, 0.4 on the background.
+  const runC = require('./run');
+  const fakeCells = new Map([[10, { class_prob: [0.1, 0.9], assigned: 1 }],
+                             [20, { class_prob: [0.7, 0.3], assigned: 0 }]]);
+  const fakeSpots = [{ spot: 1, labels: [10, 20], probs: [0.8, 0.2] },
+                     { spot: 2, labels: [20, 0], probs: [0.6, 0.4] }];
+  const rule = (o) => ({ spot_rule: 'soft', class_rule: 'soft', min_spot_prob: null, min_class_prob: null, ...o });
+  const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-12, a + ' vs ' + b);
+  const soft = runC.countSpotsOfClass(fakeSpots, fakeCells, 0, rule({}));
+  near(soft.soft, 0.8 * 0.1 + 0.2 * 0.7 + 0.6 * 0.7);   // 0.64
+  near(soft.total, soft.soft);
+  assert.strictEqual(soft.strict, 1, 'only spot 2: most likely parent 20, assigned Pvalb');
+  const strict = runC.countSpotsOfClass(fakeSpots, fakeCells, 0, rule({ spot_rule: 'most_likely', class_rule: 'assigned' }));
+  assert.strictEqual(strict.total, 1);
+  assert.deepStrictEqual(strict.kept.map(x => x.spot), [2]);
+  const loose = runC.countSpotsOfClass(fakeSpots, fakeCells, 0, rule({ spot_rule: 'above', min_spot_prob: 0.1, class_rule: 'assigned' }));
+  assert.strictEqual(loose.total, 2, 'spot 1 counts via its 0.2 on cell 20, spot 2 via 0.6');
+  near(runC.countSpotsOfClass(fakeSpots, fakeCells, 1, rule({})).soft, 0.8 * 0.9 + 0.2 * 0.3 + 0.6 * 0.3);
+
+  // export_table: runs the tool again, asks for every row, writes the CSV itself
+  const { toCsv } = require('./exportTable');
+  const csv = toCsv([{ spot: 1, gene: 'Plp1', prob: 0.5 }, { spot: 2, gene: 'a,"b"', note: 'x' }]);
+  assert.deepStrictEqual(csv.columns, ['spot', 'gene', 'prob', 'note']);
+  assert.strictEqual(csv.csv, 'spot,gene,prob,note\n1,Plp1,0.5,\n2,"a,""b""",,x\n');
+  const written = [];
+  let asked = null;
+  const runE = require('./run');
+  const realFind = runE.findCells;
+  runE.findCells = (a) => { asked = a; return { cells: [{ cell: 7, class: 'A' }, { cell: 9, class: 'B' }], cells_are: 'test cells' }; };
+  tools.init({ saveDialog: async (n) => '/tmp/' + n, writeFile: (f, t) => written.push([f, t]) });
+  const ex = await tools.call('export_table', { tool: 'find_cells', args: { class_name: 'A', n: 5 }, suggested_name: 'my cells!' });
+  assert.strictEqual(asked.n, Infinity, 'the export asks for every row, not the 5 the chat saw');
+  assert.strictEqual(ex.rows, 2);
+  assert.strictEqual(ex.file, '/tmp/my_cells_.csv');
+  assert.deepStrictEqual(written, [['/tmp/my_cells_.csv', 'cell,class\n7,A\n9,B\n']]);
+  tools.init({ saveDialog: async () => null });
+  written.length = 0;
+  const cancelled = await tools.call('export_table', { tool: 'find_cells', args: {} });
+  assert.strictEqual(cancelled.done, false);
+  assert.deepStrictEqual(written, [], 'nothing written on cancel');
+  assert.ok(/cannot be exported/.test((await tools.call('export_table', { tool: 'cell' })).error));
+  runE.findCells = realFind;
+  tools.init({ saveDialog: null, writeFile: null });
+
   // run_info: from the metadata, old runs say so
   const meta = { nC: 17, nS: 500, nG: 20, nK: 3,
                  pciSeq_provenance: { version: '0.1', commit: 'abc1234', branch: 'dev_3d', created_at: '2026-09-26T10:00:00Z' },

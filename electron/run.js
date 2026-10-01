@@ -412,49 +412,91 @@ function classCounts(minCounts) {
   };
 }
 
-function findCells({ class_name = null, plane = null, min_counts = null,
-                     top_two_within = null, n = 50 } = {}) {
-  const names = meta().class_names;
-  const wantClass = class_name != null ? classIndex(class_name) : null;
-  if (plane != null) {
-    if (!cellColumns().has('x')) {
-      throw new Error('this run does not carry the cell centroids in diagnostics.db, ' +
-                      'so the cells cannot be filtered by plane; rerun with the ' +
-                      'current pciSeq');
-    }
-    if (planeOf(0) === null) {
-      throw new Error('this run does not record its voxel size, so a centroid ' +
-                      'cannot be put on a plane; rerun with the current pciSeq to record it');
-    }
+// the centroids in diagnostics.db (x, y in image pixels, z anisotropy scaled), which
+// any filter on position needs; planes need the voxel size on top
+function needCentroids(what) {
+  if (!cellColumns().has('x')) {
+    throw new Error('this run does not carry the cell centroids in diagnostics.db, ' +
+                    `so the cells cannot be filtered by ${what}; rerun with the current pciSeq`);
   }
+}
+function needPlanes() {
+  if (planeOf(0) === null) {
+    throw new Error('this run does not record its voxel size, so a centroid ' +
+                    'cannot be put on a plane; rerun with the current pciSeq to record it');
+  }
+}
+
+// a range test where a missing end means no limit
+const within = (v, from, to) => (from == null || v >= from) && (to == null || v <= to);
+
+// The cells matching the filters. Position is the centroid: inside the box when it
+// falls in x_from..x_to, y_from..y_to (image pixels) and on a plane in
+// plane_from..plane_to. The class is a probability, so as with spots_of_class:
+// the list needs a yes or no per cell, the assigned class by default or any class
+// probability above min_class_prob (class_rule above), and expected_count is the
+// soft number, the sum of the class probability over every cell the other filters
+// keep, so cells that are only partly that class count partly.
+function findCells({ class_name = null, class_rule = 'assigned', min_class_prob = null,
+                     plane = null, plane_from = null, plane_to = null,
+                     x_from = null, x_to = null, y_from = null, y_to = null,
+                     min_counts = null, top_two_within = null, n = 50 } = {}) {
+  const names = meta().class_names;
+  const k = class_name != null ? classIndex(class_name) : null;
+  if (!['assigned', 'above'].includes(class_rule)) throw new Error('class_rule must be assigned or above');
+  if (class_rule === 'above' && min_class_prob == null) throw new Error('class_rule above needs min_class_prob');
+  if (plane != null) { plane_from = plane; plane_to = plane; }   // one plane is a range of one
+  const byPlane = plane_from != null || plane_to != null;
+  const byXY = [x_from, x_to, y_from, y_to].some(v => v != null);
+  if (byPlane || byXY) needCentroids(byPlane ? 'plane' : 'position');
+  if (byPlane) needPlanes();
+
   const hits = [];
+  let expected = 0;
   for (const r of allCells()) {
-    if (wantClass != null && r.assigned !== wantClass) continue;
     if (min_counts != null && r.total < min_counts) continue;
     const top = topClasses(r, 2);
     const margin = top[0][1] - (top[1] ? top[1][1] : 0);
     if (top_two_within != null && margin > top_two_within) continue;
-    if (plane != null && planeOf(r.z) !== Math.trunc(plane)) continue;
-    hits.push({ r, top, margin });
+    if (byXY && !(within(r.x, x_from, x_to) && within(r.y, y_from, y_to))) continue;
+    const pl = byPlane ? planeOf(r.z) : null;
+    if (byPlane && !within(pl, plane_from, plane_to)) continue;
+    if (k != null) {
+      expected += r.class_prob[k];
+      const isClass = class_rule === 'assigned' ? r.assigned === k : r.class_prob[k] > min_class_prob;
+      if (!isClass) continue;
+    }
+    hits.push({ r, top, margin, pl });
   }
   hits.sort((a, b) => b.top[0][1] - a.top[0][1] || a.r.internal - b.r.internal);
-  return {
+  const out = {
     n_matching: hits.length,
     shown: Math.min(hits.length, n),
-    filters: { class_name, plane, min_counts, top_two_within },
-    cells: hits.slice(0, n).map(({ r, top, margin }) => ({
+    filters: { class_name, class_rule, min_class_prob, plane_from, plane_to,
+               x_from, x_to, y_from, y_to, min_counts, top_two_within },
+    cells: hits.slice(0, n).map(({ r, top, margin, pl }) => ({
       cell: toExternal(r.internal),
       class: names[r.assigned],
       prob: top[0][1],
-      runner_up: names[top[1][0]],
+      ...(k != null ? { prob_of_class: r.class_prob[k] } : {}),
+      runner_up: top[1] ? names[top[1][0]] : null,
       margin,
       total_counts: r.total,
+      ...(byXY || byPlane ? { x: r.x, y: r.y, plane: pl ?? planeOf(r.z) } : {}),
     })),
-    cells_are: 'matched on the most probable class; margin is the probability of ' +
-               'the assigned class minus the runner up; plane is the plane the ' +
-               'centroid falls on, rounded down as for the spots; sorted by prob, ' +
-               'the first n shown',
+    cells_are: (k == null ? 'every cell the filters keep'
+                : class_rule === 'assigned' ? `cells assigned ${class_name}`
+                : `cells with a probability above ${min_class_prob} of being ${class_name}`) +
+               '; position is the centroid (x, y in image pixels, plane rounded down as ' +
+               'for the spots); margin is the probability of the assigned class minus ' +
+               'the runner up; sorted by prob, the first n shown',
   };
+  if (k != null) {
+    out.expected_count = expected;
+    out.expected_count_is = `the sum of every kept cell's probability of being ${class_name}, ` +
+                            'so cells that are only partly that class count partly';
+  }
+  return out;
 }
 
 function metadataTool(key) {
@@ -756,6 +798,102 @@ async function spotsOfCell(label, minProb = null, gene = null) {
     sum_of_probs: rows.reduce((s2, r) => s2 + r.prob, 0),
     spots: rows,
     spots_are: note,
+  };
+}
+
+// ------------------------------------------------------------ spots of a class
+
+// "The Plp1 spots in Pvalb cells" has more than one reading, because both links are
+// probabilities: spot -> cell (the most likely parent, or any parent above a cut)
+// and cell -> class (the assigned class, or any class above a cut). 'soft' weights
+// by the probability instead of cutting, and soft on both is pciSeq's own count,
+// the default. Whatever the rules, the answer also carries the soft count and the
+// strict one (most likely parent, assigned that class), so the two can be compared.
+const SPOT_RULES = ['soft', 'most_likely', 'above'];
+const CLASS_RULES = ['soft', 'assigned', 'above'];
+const SPOTS_LISTED = 50;
+
+// every cell by its segmentation label
+function cellsByLabel() {
+  const h = db();   // first, see cellColumns for why
+  if (!cache.byLabel) cache.byLabel = new Map(allCells().map(c => [toExternal(c.internal), c]));
+  return cache.byLabel;
+}
+
+// the spots of one gene: [{ spot, labels, probs }], candidate cells most likely first
+async function geneSpots(gene) {
+  const names = geneDict();
+  if (![...names.values()].includes(gene)) throw new Error(`no gene '${gene}' in this run`);
+  const out = [];
+  for await (const b of spotBatches()) {
+    const sid = flat(b, 'spot_id');
+    const gid = flat(b, 'gene_id');
+    const na = flatList(b, 'neighbour_array');
+    const np = flatList(b, 'neighbour_prob');
+    for (let i = 0; i < sid.length; i++) {
+      if (names.get(gid[i]) !== gene) continue;
+      const lo = na.offs[i], hi = na.offs[i + 1];
+      out.push({ spot: Number(sid[i]), labels: Array.from(na.vals.subarray(lo, hi)),
+                 probs: Array.from(np.vals.subarray(lo, hi)) });
+    }
+  }
+  return out;
+}
+
+// the counting, on plain arrays so it can be checked without the run's files.
+// spots: from geneSpots; cells: label -> { class_prob, assigned }; k: the class.
+function countSpotsOfClass(spots, cells, k, r) {
+  let soft = 0, strict = 0, total = 0;
+  const kept = [];
+  for (const s of spots) {
+    s.labels.forEach((label, j) => {
+      const c = label === 0 ? null : cells.get(label);
+      if (!c) return;   // the background, or a cell the run does not have
+      const pSpot = s.probs[j], pClass = c.class_prob[k];
+      const top = j === 0;
+      soft += pSpot * pClass;
+      if (top && c.assigned === k) strict += 1;
+      const spotOk = r.spot_rule === 'soft' || (r.spot_rule === 'most_likely' ? top : pSpot > r.min_spot_prob);
+      const classOk = r.class_rule === 'soft' || (r.class_rule === 'assigned' ? c.assigned === k : pClass > r.min_class_prob);
+      const w = (r.spot_rule === 'soft' ? pSpot : 1) * (r.class_rule === 'soft' ? pClass : 1);
+      if (!spotOk || !classOk || !(w > 0)) return;
+      total += w;
+      kept.push({ spot: s.spot, cell: label, prob_spot: pSpot, prob_class: pClass, weight: w });
+    });
+  }
+  kept.sort((a, b) => b.weight - a.weight || a.spot - b.spot);
+  return { soft, strict, total, kept };
+}
+
+async function spotsOfClass({ gene, class_name, spot_rule = 'soft', class_rule = 'soft',
+                              min_spot_prob = null, min_class_prob = null, limit = SPOTS_LISTED }) {
+  const k = classIndex(class_name);
+  if (!SPOT_RULES.includes(spot_rule)) throw new Error(`spot_rule must be one of ${SPOT_RULES.join(', ')}`);
+  if (!CLASS_RULES.includes(class_rule)) throw new Error(`class_rule must be one of ${CLASS_RULES.join(', ')}`);
+  if (spot_rule === 'above' && min_spot_prob == null) throw new Error('spot_rule above needs min_spot_prob');
+  if (class_rule === 'above' && min_class_prob == null) throw new Error('class_rule above needs min_class_prob');
+  const r = { spot_rule, class_rule, min_spot_prob, min_class_prob };
+  const { soft, strict, total, kept } = countSpotsOfClass(await geneSpots(gene), cellsByLabel(), k, r);
+  const spotIs = { soft: 'each spot weighted by its probability of belonging to the cell',
+                   most_likely: 'only spots whose most likely parent is the cell',
+                   above: `only spots with probability above ${min_spot_prob} on the cell` }[spot_rule];
+  const classIs = { soft: `each cell weighted by its probability of being ${class_name}`,
+                    assigned: `only cells assigned ${class_name}`,
+                    above: `only cells with a probability above ${min_class_prob} of being ${class_name}` }[class_rule];
+  return {
+    gene, class: class_name, rules: r,
+    count: total,
+    count_is: `${spotIs}; ${classIs}`,
+    n_spots: new Set(kept.map(x => x.spot)).size,
+    soft_count: soft,
+    strict_count: strict,
+    counts_are: `soft_count is pciSeq's own number, every ${gene} spot weighted by ` +
+                `P(spot -> cell) x P(cell is ${class_name}) and summed; strict_count is ` +
+                `the ${gene} spots whose most likely parent is a cell assigned ${class_name}. ` +
+                'A spot can count towards several cells under the soft rules',
+    spots: kept.slice(0, limit),
+    spots_are: `the ${Math.min(limit, kept.length)} highest weighted of ${kept.length} ` +
+               'spot to cell pairs; probabilities are rounded to 3 decimals in the viewer files',
   };
 }
 
@@ -1286,6 +1424,7 @@ function calculate(expression) {
 }
 
 module.exports = { init, cell, cellCounts, theta, gamma, spot, gene, neighbours, explainCell, hasSavedScore, docsFromRun,
+                   spotsOfClass, countSpotsOfClass,
                    spotsInCell, spotsOfCell, spotRow, cellRow, cellImage, planeImage,
                    classCounts, findCells, metadataTool, calculate,
                    toInternal, toExternal, planeOf };

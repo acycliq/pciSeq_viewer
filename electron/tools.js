@@ -17,10 +17,12 @@ const run = require('./run');
 const docs = require('./docs');
 const docsAtCommit = require('./docsAtCommit');
 const allen = require('./allen');
+const { exportTable, EXPORTABLE } = require('./exportTable');
 
 // docsRoot: the folder of documentation pages, see docs.js. fetch: for reading the
 // pciSeq source from GitHub, the global one unless a check passes a fake.
-let deps = { querySpot: null, queryCell: null, getMeta: null, send: null, docsRoot: null, fetch: null };
+let deps = { querySpot: null, queryCell: null, getMeta: null, send: null, docsRoot: null, fetch: null,
+             saveDialog: null, writeFile: null };
 
 // where the source is read from: the pciSeq_3d repo at the commit that made the
 // run, so the code matches the numbers, falling back to the dev_3d branch when the
@@ -289,18 +291,29 @@ const TOOLS = [
   {
     name: 'find_cells',
     description:
-      'The cells matching the filters given: assigned class, plane of the centroid, ' +
-      'minimum total counts, and top_two_within, the largest gap allowed between the ' +
-      'probabilities of the top two classes (small values pick the uncertain cells). ' +
-      'Returns the number matching and the first n by probability, each with its ' +
-      'class, probability, runner up, margin and total counts. Use it for "which ' +
-      'cells are CA2 on plane 40", "list the uncertain cells", "the L5 ET cells with ' +
-      'over 100 reads". Labels are segmentation labels.',
+      'The cells matching the filters given: class, position, plane, minimum total ' +
+      'counts, and top_two_within, the largest gap allowed between the probabilities ' +
+      'of the top two classes (small values pick the uncertain cells). Position is ' +
+      'the centroid: x and y in image pixels, depth as a plane range, for "the Pvalb ' +
+      'Gaba cells in x 2000 to 3000, y 1500 to 2500, planes 20 to 40". The class is ' +
+      'a probability: the list keeps cells assigned the class (class_rule assigned, ' +
+      'the default) or with a probability above min_class_prob (class_rule above), ' +
+      'and expected_count is the soft number, the class probability summed over ' +
+      'every cell in the area; give both and say which rule the list used. Returns ' +
+      'the number matching and the first n by probability. Labels are segmentation labels.',
     input_schema: {
       type: 'object',
       properties: {
-        class_name: { type: 'string', description: 'Only cells assigned this class.' },
-        plane: { type: 'integer', description: 'Only cells whose centroid falls on this plane.' },
+        class_name: { type: 'string', description: 'The class.' },
+        class_rule: { type: 'string', enum: ['assigned', 'above'], description: 'How the list decides the class, assigned by default.' },
+        min_class_prob: { type: 'number', description: 'For class_rule above.' },
+        x_from: { type: 'number', description: 'Image pixels.' },
+        x_to: { type: 'number', description: 'Image pixels.' },
+        y_from: { type: 'number', description: 'Image pixels.' },
+        y_to: { type: 'number', description: 'Image pixels.' },
+        plane_from: { type: 'integer', description: 'First plane of the range.' },
+        plane_to: { type: 'integer', description: 'Last plane of the range.' },
+        plane: { type: 'integer', description: 'One plane only.' },
         min_counts: { type: 'number', description: 'Only cells with at least this many soft counts.' },
         top_two_within: { type: 'number', description: 'Only cells whose top two classes are within this.' },
         n: { type: 'integer', description: 'How many to return, default 50.' },
@@ -403,12 +416,14 @@ const TOOLS = [
   {
     name: 'cell_image',
     description:
-      'A picture of a cell on the background image (DAPI or another stain), for ' +
-      '"show me cell 18223", "show me cell 18223 on the DAPI" or "where is cell ' +
-      '18223 in the section". context=false gives a close-up: the cell outlined in ' +
+      'A picture of a cell on the background image (DAPI or another stain), drawn ' +
+      'here in the chat, for "a picture of cell 18223", "what does cell 18223 look ' +
+      'like on the DAPI" or "where is cell 18223 in the section". Not for "show me ' +
+      'cell X" or "take me to it": that is fly_to_cell, which moves the map. ' +
+      'context=false gives a close-up: the cell outlined in ' +
       'red, every other cell on that plane in blue, the nuclei underneath. ' +
-      'context=true gives the whole section with a ring round the cell. "Show me ' +
-      'cell X", with nothing more specific, means BOTH pictures: call the tool ' +
+      'context=true gives the whole section with a ring round the cell. A picture ' +
+      'of cell X, with nothing more specific, means BOTH pictures: call the tool ' +
       'twice, the close-up first and then context=true, the pair the docs use. ' +
       'neighbours=true outlines only the ' +
       'cells the spatial term of the model listened to, which is what "why did its ' +
@@ -483,6 +498,51 @@ const TOOLS = [
     },
   },
   {
+    name: 'spots_of_class',
+    description:
+      'The spots of one gene in cells of one class, for "the Plp1 spots assigned to ' +
+      'Pvalb Gaba cells". Both links are probabilities, so the question has several ' +
+      'readings. Default, soft on both: every spot weighted by P(spot -> cell) x P(cell ' +
+      'is the class), pciSeq\'s own count. spot_rule most_likely keeps only spots ' +
+      'whose most likely parent is the cell, above keeps those over min_spot_prob; ' +
+      'class_rule assigned keeps only cells assigned the class, above those over ' +
+      'min_class_prob. Every answer also gives soft_count and strict_count (most ' +
+      'likely parent, assigned that class); quote the rules used, and when the ' +
+      'question is ambiguous give both numbers and offer the other reading.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        gene: { type: 'string', description: 'The gene, e.g. Plp1.' },
+        class_name: { type: 'string', description: 'The class, as named in the run.' },
+        spot_rule: { type: 'string', enum: ['soft', 'most_likely', 'above'], description: 'Spot to cell, soft by default.' },
+        class_rule: { type: 'string', enum: ['soft', 'assigned', 'above'], description: 'Cell to class, soft by default.' },
+        min_spot_prob: { type: 'number', description: 'For spot_rule above.' },
+        min_class_prob: { type: 'number', description: 'For class_rule above.' },
+      },
+      required: ['gene', 'class_name'],
+    },
+  },
+  {
+    name: 'export_table',
+    description:
+      'Save the rows of a data tool to a CSV file, when the user wants a file ("export ' +
+      'the spots of cell 16609", "save that list"). Give the tool and the same ' +
+      'arguments that produced the rows; the tool is run again and every row is ' +
+      'written by the viewer, nothing is copied by you, and lists the chat shows cut ' +
+      'short are written whole. The user picks where in a Save dialog. Tools: ' +
+      'spots_of_cell, spots_in_cell, cell_counts, class_counts, find_cells, ' +
+      'spots_of_class.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        tool: { type: 'string', enum: ['spots_of_cell', 'spots_in_cell', 'cell_counts', 'class_counts', 'find_cells', 'spots_of_class'], description: 'The data tool whose rows to save.' },
+        args: { type: 'object', description: 'Its arguments, as for calling it.' },
+        suggested_name: { type: 'string', description: 'A file name to suggest, e.g. cell_16609_spots.' },
+      },
+      required: ['tool'],
+    },
+  },
+  {
     name: 'open_3d_view',
     description:
       'Open the 3D viewer around a cell: the cell and its immediate neighbours, with ' +
@@ -500,7 +560,8 @@ const TOOLS = [
     name: 'fly_to_cell',
     description:
       'Move the map to a cell and flash its outline, so the user can see the cell ' +
-      'being talked about. Use it when the user asks to see or show a cell; after ' +
+      'being talked about. Use it for "show me cell X", "take me to it", "go to ' +
+      'cell X"; a picture in the chat is cell_image. After ' +
       'explaining one, offer it rather than calling it unasked. label is the cell ' +
       'number shown in the viewer.',
     input_schema: {
@@ -914,6 +975,10 @@ async function call(name, input) {
     if (name === 'spots_of_cell') return await run.spotsOfCell(input.label, input.min_prob ?? null, input.gene ?? null);
     if (name === 'cell_row') return await run.cellRow(input.label);
     if (name === 'spot_row') return await run.spotRow(input.spot_id);
+    if (name === 'spots_of_class') return await run.spotsOfClass(input);
+    if (name === 'export_table') {
+      return await exportTable(input, { call, saveDialog: deps.saveDialog, writeFile: deps.writeFile });
+    }
     if (name === 'cell_image') return await run.cellImage(input.label, input);
     if (name === 'allen_gene_image') return await allen.geneImage(input);
     if (name === 'plane_image') return await run.planeImage(input);
