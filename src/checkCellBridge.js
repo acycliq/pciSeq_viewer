@@ -254,6 +254,15 @@ async function handleCompare() {
 
 // --- Results Rendering ---
 
+// a line above a chart saying where its numbers come from, when they are not the
+// run's own (see queryCell in electron/diagnostics.js)
+function addNote(container, text) {
+    if (!text) return;
+    container.insertAdjacentHTML('afterbegin',
+        '<div style="padding:6px 10px;margin-bottom:6px;font-size:12px;color:#fbbf24;' +
+        'border-left:3px solid #fbbf24;background:rgba(251,191,36,0.08);">' + escapeHtml(text) + '</div>');
+}
+
 function renderResults(data) {
     const colorAssigned = getClassColor(data.assignedClass);
     const colorUser = getClassColor(data.userClass);
@@ -277,6 +286,7 @@ function renderResults(data) {
     const plotContainer = document.getElementById('checkCellPlot');
     if (plotContainer) {
         renderDivergingChart(plotContainer, data);
+        addNote(plotContainer, data.genesNote);
     }
 
     // Tab 2 (Posterior): log-posterior components + posterior probabilities.
@@ -287,6 +297,7 @@ function renderResults(data) {
     const posteriorContainer = document.getElementById('checkCellPosteriorChart');
     if (posteriorContainer) {
         renderPosteriorChart(posteriorContainer, data);
+        addNote(posteriorContainer, data.posteriorNote);
     }
 
     // Gene expression table

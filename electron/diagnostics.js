@@ -18,6 +18,9 @@ let hasEffectiveBeta = false;
 // the iteration they were pinned on. Without those the component chart cannot
 // rebuild the class we are showing for them, see the frozen_* columns.
 let hasFrozen = false;
+// format version 1 runs save the class score the run used (gene_loglik, and the
+// per-gene contributions against the runner up); the panel then shows those
+let hasSavedScore = false;
 // Key column of the cells table. pciSeq renamed it from cell_id to internal_label
 // in September 2026, because cell_id is the segmentation label everywhere else.
 // Either way it holds the internal label; older dbs still say cell_id.
@@ -78,6 +81,7 @@ function openDiagnosticsDatabase(dbPath) {
 
   // Check if the tie freezing columns exist (older DBs will not have them)
   hasFrozen = cellCols.some(col => col.name === 'frozen_eta_bar');
+  hasSavedScore = cellCols.some(col => col.name === 'gene_loglik');
 
   cellKey = cellCols.some(col => col.name === 'internal_label') ? 'internal_label' : 'cell_id';
 
@@ -97,6 +101,7 @@ function closeDiagnosticsDatabase() {
   hasMrf = false;
   hasEffectiveBeta = false;
   hasFrozen = false;
+  hasSavedScore = false;
   cellKey = 'cell_id';
 }
 
@@ -368,7 +373,8 @@ async function queryCell(cellId, userClass, topN = 10) {
       ? 'scaled_means, theta_bar, gene_count, class_prob, mrf'
       : 'scaled_means, theta_bar, gene_count, class_prob';
     const frozenCols = hasFrozen ? ', frozen_eta_bar, frozen_log_prior, frozen_iter' : '';
-    const selectCellCols = 'SELECT ' + baseCols + frozenCols + ' FROM cells WHERE ' + cellKey + ' = ?';
+    const savedCols = hasSavedScore ? ', gene_loglik, runner_up_idx, contr_assigned, contr_runner_up' : '';
+    const selectCellCols = 'SELECT ' + baseCols + frozenCols + savedCols + ' FROM cells WHERE ' + cellKey + ' = ?';
     const row = diagnosticsDb.prepare(selectCellCols).get(c);
     if (!row) {
       return { success: false, error: 'Cell not found in database: ' + c };
@@ -438,6 +444,34 @@ async function queryCell(cellId, userClass, topN = 10) {
       const logPost = new Array(nK);
       for (let k = 0; k < nK; k++) logPost[k] = geneLoglikAll[k] + logPriorCell[k] + mrf[k];
       posterior = softmaxJS(logPost);
+    }
+
+    // The rebuild above uses an older formula and can disagree with the run (cell 4356
+    // on espio_v1: 100% / 0% against the run's 64.9% / 35.1%). Where the run saved its
+    // score, show that instead: the gene log-likelihood per class, the stored class
+    // probabilities, and the per-gene contributions when the comparison is against the
+    // runner up, the only class they were saved for. Old runs keep the rebuild, labelled.
+    const f32 = b => new Float32Array(b.buffer, b.byteOffset, b.byteLength / 4);
+    let genesNote = null;
+    let posteriorNote = null;
+    if (hasSavedScore && row.gene_loglik) {
+      geneLoglikAll.set(f32(row.gene_loglik));
+      posterior = Array.from(classProb);
+      if (userIdx === row.runner_up_idx && row.contr_assigned && row.contr_runner_up) {
+        const ca = f32(row.contr_assigned), cr = f32(row.contr_runner_up);
+        for (let g = 0; g < nG; g++) {
+          contr[g * nK + assignedIdx] = ca[g];
+          contr[g * nK + userIdx] = cr[g];
+          diff[g] = ca[g] - cr[g];
+        }
+      } else {
+        genesNote = 'Per-gene bars rebuilt by the viewer: the run saved per-gene numbers ' +
+                    'only against the runner up (' + class_names[row.runner_up_idx] + '), so these may ' +
+                    'not match the run exactly. The Posterior tab shows the run\'s own numbers.';
+      }
+    } else if (posterior !== null) {
+      posteriorNote = 'Rebuilt by the viewer for this older run, which did not save its score; ' +
+                      'it may differ from the run\'s own probabilities, which the cell tooltip shows.';
     }
 
     // Find top N and bottom N genes by difference
@@ -515,6 +549,8 @@ async function queryCell(cellId, userClass, topN = 10) {
       components,
       posteriorAssigned,
       posteriorUser,
+      genesNote,
+      posteriorNote,
       // null unless this cell was pinned by the tie freezing, in which case it
       // is the iteration the numbers above come from rather than the last one
       frozenIter
