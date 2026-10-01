@@ -13,7 +13,7 @@
  * turn, so the model has the context of earlier questions.
  */
 import { openImageZoom } from './imageZoom.js';
-import { initChatAttachments, takeAttachments, hasAttachments } from './chatAttachments.js';
+import { initChatAttachments, takeAttachments, hasAttachments, chipText, dataUrl } from './chatAttachments.js';
 
 let messages = [];        // the conversation, in the API's message shape
 let busy = false;
@@ -107,15 +107,17 @@ async function send() {
   input.value = '';
   fitInput();
   const images = takeAttachments();
-  addLine('chat-q', '<span class="chat-prompt">&gt;_</span>' + esc(text));
+  // the question line shows each pasted image as a chip; a click opens it full size.
+  // Only the user's images: pictures the tools return stay drawn inline.
+  const chips = images.map(im => `<span class="chat-image-chip" data-src="${dataUrl(im)}">${chipText(im)}</span>`).join(' ');
+  addLine('chat-q', '<span class="chat-prompt">&gt;_</span>' + esc(text) + (chips ? ' ' + chips : ''));
   // pasted images go first, as the API expects, then the question
-  images.forEach(im => addLine('chat-image', `<img alt="pasted image" src="data:${im.media_type};base64,${im.data}">`));
   messages.push({ role: 'user', content: images.length
     ? images.map(im => ({ type: 'image', source: { type: 'base64', media_type: im.media_type, data: im.data } }))
         // some models drop images without saying so (glm-5.2 through Z.ai), so the
         // model is told an image was attached and to say so if it cannot see it
-        .concat([{ type: 'text', text: `[The user attached ${images.length} image(s). If you cannot ` +
-                   'see them, say so plainly and do not guess what they show.]' },
+        .concat([{ type: 'text', text: `[The user attached ${images.map(chipText).join(', ')}, in that ` +
+                   'order. If you cannot see them, say so plainly and do not guess what they show.]' },
                  { type: 'text', text: text || 'What do you see in this picture?' }])
     : text });
   setBusy(true);
@@ -325,6 +327,8 @@ export function initChatPanel() {
   el('chatSession').addEventListener('click', e => {
     const pic = e.target.closest('.chat-image img');
     if (pic) { openImageZoom(pic.src); return; }
+    const chip = e.target.closest('.chat-q .chat-image-chip');
+    if (chip) { openImageZoom(chip.dataset.src); return; }
     const q = e.target.closest('a[data-q]');
     if (q) { input.value = q.dataset.q; fitInput(); send(); return; }
     if (!window.getSelection().toString()) input.focus();

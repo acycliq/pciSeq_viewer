@@ -1,16 +1,19 @@
 /**
  * Images the user pastes (Ctrl+V) or drops into the chat, for example a screenshot
- * of a panel. They wait as thumbnails above the prompt until the question is sent,
- * and each can be removed with its x. Big ones are shrunk first: the longest side
- * to 1568 px, the size Anthropic recommends, so a screenshot costs fewer tokens.
+ * of a panel. They wait above the prompt as small chips, [Image #1], numbered
+ * through the session, until the question is sent; each can be removed with its x
+ * and opened full size with a click. Big ones are shrunk first: the longest side to
+ * 1568 px, the size Anthropic recommends, so a screenshot costs fewer tokens.
  */
+import { openImageZoom } from './imageZoom.js';
 
 const MAX_SIDE = 1568;
 const MAX_IMAGES = 3;
 const KEEP_AS_IS = ['image/png', 'image/jpeg'];
 
-let pending = [];      // [{ media_type, data }], data is base64 without the prefix
-let strip = null;      // the element the thumbnails go in
+let pending = [];      // [{ n, media_type, data }], data is base64 without the prefix
+let strip = null;      // the element the chips go in
+let counter = 0;       // Image #n, through the session
 
 const readAsDataUrl = file => new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -37,10 +40,11 @@ function render() {
     strip.innerHTML = '';
     strip.classList.toggle('hidden', pending.length === 0);
     pending.forEach((p, i) => {
-        const item = document.createElement('div');
+        const item = document.createElement('span');
         item.className = 'chat-attachment';
-        item.innerHTML = `<img alt="pasted image" src="data:${p.media_type};base64,${p.data}">` +
+        item.innerHTML = `<span class="chat-image-chip" title="Open">${chipText(p)}</span>` +
                          '<button type="button" title="Remove">&times;</button>';
+        item.querySelector('.chat-image-chip').addEventListener('click', () => openImageZoom(dataUrl(p)));
         item.querySelector('button').addEventListener('click', () => { pending.splice(i, 1); render(); });
         strip.appendChild(item);
     });
@@ -51,10 +55,14 @@ async function add(files) {
         if (!file.type.startsWith('image/') || pending.length >= MAX_IMAGES) continue;
         const url = await prepare(file);
         const [head, data] = url.split(',');
-        pending.push({ media_type: head.slice(5, head.indexOf(';')), data });
+        counter += 1;
+        pending.push({ n: counter, media_type: head.slice(5, head.indexOf(';')), data });
     }
     render();
 }
+
+export const chipText = p => `[Image #${p.n}]`;
+export const dataUrl = p => `data:${p.media_type};base64,${p.data}`;
 
 const imagesIn = list => Array.from(list || []).filter(f => f.type && f.type.startsWith('image/'));
 
