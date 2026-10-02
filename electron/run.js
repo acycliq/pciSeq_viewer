@@ -566,6 +566,8 @@ function explainCell(label, vsClass = null, topN = 10) {
     }
   }
 
+  // the class score is the sum of the three parts; added here so the chat never has to
+  const total = k => geneLoglik[k] + logPrior[k] + mrf[k];
   const out = {
     cell: Number(label),
     assigned: names[a],
@@ -576,6 +578,11 @@ function explainCell(label, vsClass = null, topN = 10) {
       gene_loglik: { assigned: geneLoglik[a], compared: geneLoglik[other] },
       log_prior: { assigned: logPrior[a], compared: logPrior[other] },
       spatial: { assigned: mrf[a], compared: mrf[other] },
+      total: { assigned: total(a), compared: total(other) },
+      difference: total(a) - total(other),
+      difference_is: 'total assigned minus total compared, the three parts already added ' +
+                     'up; it equals log(prob_assigned / prob_compared). Quote it, never add ' +
+                     'the parts yourself',
     },
     counts_are: 'soft, weighted by the spot assignment probabilities',
     means_are: 'the average count over the cells of this run, each weighted by ' +
