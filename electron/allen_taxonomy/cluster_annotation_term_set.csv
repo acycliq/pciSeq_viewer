@@ -1,0 +1,6 @@
+label,name,description,order
+CCN20230722_NEUR,neurotransmitter,Clusters are assigned based on the average expression of both neurotransmitter transporter genes and key neurotransmitter synthesizing enzyme genes.,0
+CCN20230722_CLAS,class,The top level of cell type definition in the mouse whole brain taxonomy. It is primarily determined by broad brain region and neurotransmitter type. All cells within a subclass belong to the same class. Class provides a broader categorization of cell types.,1
+CCN20230722_SUBC,subclass,The coarse level of cell type definition in the mouse whole brain taxonomy. All cells within a supertype belong to the same subclass. Subclass groups together related supertypes.,2
+CCN20230722_SUPT,supertype,The second finest level of cell type definition in the mouse whole brain taxonomy. All cells within a cluster belong to the same supertype. Supertype groups together similar clusters.,3
+CCN20230722_CLUS,cluster,The finest level of cell type definition in the mouse whole brain taxonomy. Cells within a cluster share similar characteristics and belong to the same supertype.,4

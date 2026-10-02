@@ -18,6 +18,7 @@ const docs = require('./docs');
 const docsAtCommit = require('./docsAtCommit');
 const allen = require('./allen');
 const { exportTable, EXPORTABLE } = require('./exportTable');
+const allenTaxonomy = require('./allenTaxonomy');
 
 // docsRoot: the folder of documentation pages, see docs.js. fetch: for reading the
 // pciSeq source from GitHub, the global one unless a check passes a fake.
@@ -525,6 +526,23 @@ const TOOLS = [
     },
   },
   {
+    name: 'allen_cell_type',
+    description:
+      'Allen\'s record for a cell type, from the Allen whole mouse brain taxonomy: ' +
+      'its place in the hierarchy (class, subclass, supertype, cluster), ' +
+      'neurotransmitter, how many clusters and cells Allen found, Allen\'s colour, ' +
+      'its subdivisions, and types elsewhere whose names share a gene with it. For ' +
+      '"tell me about Vip Gaba", "what is 037 DG Glut". A name with the same words as ' +
+      'an Allen term (Vip-Gaba) is matched to it and the answer says so; a name not ' +
+      'in the taxonomy (Vip-Reln) gets suggestions of what Allen would call such a ' +
+      'cell. When the class is also in this run, its cells here are added.',
+    input_schema: {
+      type: 'object',
+      properties: { name: { type: 'string', description: 'The cell type name, e.g. 046 Vip Gaba.' } },
+      required: ['name'],
+    },
+  },
+  {
     name: 'export_table',
     description:
       'Save the rows of a data tool to a CSV file, when the user wants a file ("export ' +
@@ -962,6 +980,9 @@ async function call(name, input) {
       if (!meta) return { error: 'no diagnostics.db is open' };
       const out = runInfo(meta);
       out.background = deps.getTilesInfo ? deps.getTilesInfo() : [];
+      // whether the class names are Allen's, evidence for 'what am I looking at'
+      try { out.allen_taxonomy = await allenTaxonomy.matchRun(meta.class_names || []); }
+      catch (e) { out.allen_taxonomy = { error: e.message }; }
       out.background_is = 'what each background image (.mbtiles) says about itself, as ' +
                           'written by whoever made it: name, description, width and ' +
                           'height in pixels, number of planes. May be empty or vague';
@@ -983,6 +1004,16 @@ async function call(name, input) {
     if (name === 'cell_row') return await run.cellRow(input.label);
     if (name === 'spot_row') return await run.spotRow(input.spot_id);
     if (name === 'spots_of_class') return await run.spotsOfClass(input);
+    if (name === 'allen_cell_type') {
+      const out = await allenTaxonomy.cellType(input.name);
+      const meta = deps.getMeta ? deps.getMeta() : null;
+      if (out.found && meta && (meta.class_names || []).includes(out.name)) {
+        const row = run.classCounts(null).classes.find(c => c.class === out.name);
+        out.in_this_run = { cells: row.cells, expected: row.soft,
+                            are: 'cells of this run assigned the class, and the expected number counting partial probabilities' };
+      }
+      return out;
+    }
     if (name === 'export_table') {
       return await exportTable(input, { call, saveDialog: deps.saveDialog, writeFile: deps.writeFile });
     }

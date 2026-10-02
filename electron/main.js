@@ -421,7 +421,11 @@ function registerCustomProtocol() {
 // run that produced the data. Falls back to the viewer-only blurb otherwise.
 function buildAboutDetail(provenance) {
   const lines = [
-    'Desktop transcriptomics viewer for visualizing spatial gene expression data.'
+    'Desktop transcriptomics viewer for visualizing spatial gene expression data.',
+    '',
+    'The AI chat\'s cell type records come from the Allen Brain Cell Atlas, whole ' +
+    'mouse brain taxonomy (Yao et al. 2023, Nature), used under the Allen Institute ' +
+    'Terms of Use for research and noncommercial purposes.'
   ];
   if (provenance) {
     lines.push(

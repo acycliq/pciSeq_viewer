@@ -297,6 +297,52 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   runE.findCells = realFind;
   tools.init({ saveDialog: null, writeFile: null });
 
+  // allen_cell_type: on a tiny fake of Allen's taxonomy files, served offline
+  const allenTx = require('./allenTaxonomy');
+  const fakeAllen = {
+    'views/cluster_annotation_term_with_counts.csv':
+      'label,name,cluster_annotation_term_set_label,parent_term_label,parent_term_set_label,term_set_order,term_order,cluster_annotation_term_set_name,color_hex_triplet,number_of_clusters,number_of_cells\n' +
+      'C06,06 CTX-CGE GABA,X,,,1,1,class,#111111,50,70000\n' +
+      'S046,046 Vip Gaba,X,C06,X,2,1,subclass,#663D47,41,62447\n' +
+      'T0173,0173 Vip Gaba_1,X,S046,X,3,1,supertype,#2E6C99,4,6998\n' +
+      'C24,24 MY Glut,X,,,1,2,class,#222222,9,900\n' +
+      'S236,236 IRN Vip Glut,X,C24,X,2,2,subclass,#66593D,4,149\n',
+    'views/cluster_to_cluster_annotation_membership_pivoted.csv':
+      'cluster_alias,neurotransmitter,class,subclass,supertype,cluster\n' +
+      '1,GABA,06 CTX-CGE GABA,046 Vip Gaba,0173 Vip Gaba_1,c1\n',
+    'cluster_annotation_term_set.csv':
+      'label,name,description,order\nL2,subclass,"The coarse level, groups supertypes.",2\n',
+  };
+  const allenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pciseq-allen-'));
+  for (const [k, text] of Object.entries(fakeAllen)) fs.writeFileSync(path.join(allenDir, path.basename(k)), text);
+  allenTx.init({ dir: allenDir });
+  const vip = await allenTx.cellType('Vip-Gaba');
+  assert.strictEqual(vip.name, '046 Vip Gaba', 'the same words find the subclass, not its supertype');
+  assert.ok(/not an exact Allen name/.test(vip.note));
+  assert.deepStrictEqual(vip.ancestors, ['06 CTX-CGE GABA']);
+  assert.deepStrictEqual(vip.neurotransmitter, ['GABA']);
+  assert.strictEqual(vip.cells_in_allen_data, 62447);
+  assert.strictEqual(vip.children.count, 1);
+  assert.deepStrictEqual(vip.look_alikes.map(x => x.name), ['236 IRN Vip Glut']);
+  assert.strictEqual(vip.level_is, 'The coarse level, groups supertypes.', 'a quoted field with a comma');
+  const reln = await allenTx.cellType('Vip-Reln');
+  assert.strictEqual(reln.found, false);
+  assert.strictEqual(reln.suggestions[0].name, '046 Vip Gaba');
+  assert.deepStrictEqual((await allenTx.matchRun(['046 Vip Gaba', 'Zero'])).not_matched, ['Zero']);
+  // in this run: the tool adds the run's own numbers when the class is one of its classes
+  const runA = require('./run');
+  const realCC = runA.classCounts;
+  runA.classCounts = () => ({ classes: [{ class: '046 Vip Gaba', cells: 236, soft: 236.1 }] });
+  tools.init({ getMeta: () => ({ class_names: ['046 Vip Gaba', 'Zero'] }) });
+  const viaTool = await tools.call('allen_cell_type', { name: '046 Vip Gaba' });
+  assert.strictEqual(viaTool.in_this_run.cells, 236);
+  runA.classCounts = realCC;
+  fs.rmSync(allenDir, { recursive: true });
+  allenTx.init({ dir: path.join(__dirname, 'allen_taxonomy') });
+  // and the files that ship with the viewer: espio's class names are Allen subclasses
+  assert.strictEqual((await allenTx.cellType('037 DG Glut')).allen_colour, '#CC2400');
+  tools.init({ getMeta: () => ({ class_names: names }) });
+
   // run_info: from the metadata, old runs say so
   const meta = { nC: 17, nS: 500, nG: 20, nK: 3,
                  pciSeq_provenance: { version: '0.1', commit: 'abc1234', branch: 'dev_3d', created_at: '2026-09-26T10:00:00Z' },
