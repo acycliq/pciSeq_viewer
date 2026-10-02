@@ -531,7 +531,9 @@ const TOOLS = [
       'Allen\'s record for a cell type, from the Allen whole mouse brain taxonomy: ' +
       'its place in the hierarchy (class, subclass, supertype, cluster), ' +
       'neurotransmitter, how many clusters and cells Allen found, Allen\'s colour, ' +
-      'its subdivisions, and types elsewhere whose names share a gene with it. For ' +
+      'its subdivisions, its markers in Allen\'s single-cell data and those among ' +
+      'this run\'s genes, where Allen\'s MERFISH map puts it, and types elsewhere ' +
+      'whose names share a gene with it. For ' +
       '"tell me about Vip Gaba", "what is 037 DG Glut". A name with the same words as ' +
       'an Allen term (Vip-Gaba) is matched to it and the answer says so; a name not ' +
       'in the taxonomy (Vip-Reln) gets suggestions of what Allen would call such a ' +
@@ -1005,8 +1007,8 @@ async function call(name, input) {
     if (name === 'spot_row') return await run.spotRow(input.spot_id);
     if (name === 'spots_of_class') return await run.spotsOfClass(input);
     if (name === 'allen_cell_type') {
-      const out = await allenTaxonomy.cellType(input.name);
       const meta = deps.getMeta ? deps.getMeta() : null;
+      const out = await allenTaxonomy.cellType(input.name, meta && meta.gene_panel);
       if (out.found && meta && (meta.class_names || []).includes(out.name)) {
         const row = run.classCounts(null).classes.find(c => c.class === out.name);
         out.in_this_run = { cells: row.cells, expected: row.soft,

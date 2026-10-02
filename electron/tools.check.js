@@ -312,6 +312,14 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
       '1,GABA,06 CTX-CGE GABA,046 Vip Gaba,0173 Vip Gaba_1,c1\n',
     'cluster_annotation_term_set.csv':
       'label,name,description,order\nL2,subclass,"The coarse level, groups supertypes.",2\n',
+    'markers.csv':
+      'name,level,gene,log2_fold,mean_in,mean_out\n' +
+      '046 Vip Gaba,subclass,Vip,7.1,7.2,0.1\n046 Vip Gaba,subclass,Crh,3.2,3.5,0.3\n' +
+      '046 Vip Gaba,subclass,Cck,2.5,4.0,1.5\n',
+    'regions.csv':
+      'name,level,region_level,region,cells,share\n' +
+      '046 Vip Gaba,subclass,division,Isocortex,900,0.9\n046 Vip Gaba,subclass,division,HPF,80,0.08\n' +
+      '046 Vip Gaba,subclass,structure,MOp,200,0.2\n',
   };
   const allenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pciseq-allen-'));
   for (const [k, text] of Object.entries(fakeAllen)) fs.writeFileSync(path.join(allenDir, path.basename(k)), text);
@@ -325,6 +333,12 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.strictEqual(vip.children.count, 1);
   assert.deepStrictEqual(vip.look_alikes.map(x => x.name), ['236 IRN Vip Glut']);
   assert.strictEqual(vip.level_is, 'The coarse level, groups supertypes.', 'a quoted field with a comma');
+  assert.deepStrictEqual(vip.markers.top.map(m => m.gene), ['Vip', 'Crh', 'Cck']);
+  assert.strictEqual(vip.markers.in_your_panel, null, 'no panel given');
+  const withPanel = await allenTx.cellType('046 Vip Gaba', ['Cck', 'Vip', 'Plp1']);
+  assert.deepStrictEqual(withPanel.markers.in_your_panel.map(m => m.gene), ['Vip', 'Cck'], 'kept in Allen\'s order');
+  assert.deepStrictEqual(withPanel.allen_regions.division.map(r => r.region), ['Isocortex', 'HPF']);
+  assert.strictEqual(withPanel.allen_regions.structure[0].share, 0.2);
   const reln = await allenTx.cellType('Vip-Reln');
   assert.strictEqual(reln.found, false);
   assert.strictEqual(reln.suggestions[0].name, '046 Vip Gaba');

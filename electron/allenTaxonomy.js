@@ -13,7 +13,12 @@ const FILES = {
   terms: 'cluster_annotation_term_with_counts.csv',
   clusters: 'cluster_to_cluster_annotation_membership_pivoted.csv',
   levels: 'cluster_annotation_term_set.csv',
+  // our summaries of two big Allen files, made by build_summaries.py
+  markers: 'markers.csv',
+  regions: 'regions.csv',
 };
+const MARKERS_SHOWN = 10;
+const REGIONS_SHOWN = 5;
 const SOURCE = 'Allen Brain Cell Atlas, whole mouse brain taxonomy CCN20230722 ' +
                '(Yao et al. 2023, Nature), used under the Allen Institute Terms of Use';
 const LEVEL_RANK = { class: 1, subclass: 2, supertype: 3, cluster: 4 };
@@ -87,7 +92,11 @@ async function load() {
     }
   }
   const levels = new Map(levelRows.map(l => [l.name, l.description]));
-  taxonomy = { terms, levels };
+  // markers and regions by type name, best first as the summaries list them
+  const group = rows => rows.reduce((m, r) => m.set(r.name, (m.get(r.name) || []).concat([r])), new Map());
+  const markers = group(parseCsv(readFile(FILES.markers)));
+  const regions = group(parseCsv(readFile(FILES.regions)));
+  taxonomy = { terms, levels, markers, regions };
   return taxonomy;
 }
 
@@ -108,7 +117,37 @@ function suggest(terms, name, n = 5) {
     .map(x => ({ name: x.t.name, level: x.t.level, parent: x.t.parent }));
 }
 
-function describe(tx, t) {
+// the type's markers in Allen's single-cell data, and those among the run's genes
+function markersOf(tx, t, panel) {
+  const all = (tx.markers.get(t.name) || []).map(r => ({
+    gene: r.gene, log2_fold: Number(r.log2_fold), mean_in: Number(r.mean_in), mean_out: Number(r.mean_out),
+  }));
+  if (!all.length) return null;
+  const inPanel = panel ? all.filter(m => panel.has(m.gene)) : null;
+  return {
+    top: all.slice(0, MARKERS_SHOWN),
+    in_your_panel: inPanel ? inPanel.slice(0, MARKERS_SHOWN) : null,
+    are: 'from Allen\'s single-cell data: mean_in is the mean log2(CPM+1) over this type\'s ' +
+         'cells, mean_out over all other cells, log2_fold the difference; only genes with ' +
+         'mean_in of at least 1 are kept. in_your_panel keeps those among this run\'s genes',
+  };
+}
+
+// where Allen's MERFISH map puts the type, by CCF division and structure
+function regionsOf(tx, t) {
+  const rows = tx.regions.get(t.name) || [];
+  if (!rows.length) return null;
+  const at = lv => rows.filter(r => r.region_level === lv).slice(0, REGIONS_SHOWN)
+    .map(r => ({ region: r.region, share: Number(r.share), cells: Number(r.cells) }));
+  return {
+    division: at('division'),
+    structure: at('structure'),
+    are: 'the share of this type\'s cells in each region of Allen\'s MERFISH map of one whole ' +
+         'mouse brain (C57BL6J-638850), registered to the CCF; regions under 1% are left out',
+  };
+}
+
+function describe(tx, t, panel) {
   const ancestors = [];
   for (let p = t.parent; p && tx.terms.has(p); p = tx.terms.get(p).parent) ancestors.push(p);
   // other terms at the same level carrying one of its cell-type words, elsewhere in the tree
@@ -126,7 +165,11 @@ function describe(tx, t) {
     clusters: t.clusters,
     cells_in_allen_data: t.cells,
     allen_colour: t.colour,
-    children: t.children.length ? { count: t.children.length, names: t.children.slice(0, 20) } : null,
+    children: t.children.length ? {
+      level: tx.terms.get(t.children[0]).level, count: t.children.length, names: t.children.slice(0, 20),
+    } : null,
+    markers: markersOf(tx, t, panel),
+    allen_regions: regionsOf(tx, t),
     look_alikes: lookAlikes.slice(0, 5),
     look_alikes_are: 'types elsewhere in the taxonomy whose names share a gene with this one; a shared name is not a shared identity',
   };
@@ -134,17 +177,18 @@ function describe(tx, t) {
 
 // Allen's record for a name. Exact match first; then a name with the same words
 // ('Vip-Gaba' for '046 Vip Gaba'); otherwise not found, with suggestions.
-async function cellType(name) {
+async function cellType(name, panelGenes = null) {
   const tx = await load();
+  const panel = panelGenes ? new Set(panelGenes) : null;
   const exact = tx.terms.get(String(name).trim());
-  if (exact) return { found: true, ...describe(tx, exact), source: SOURCE };
+  if (exact) return { found: true, ...describe(tx, exact, panel), source: SOURCE };
   // the same words often match a type and its own subdivisions ('0173 Vip Gaba_1'
   // loses its number), so keep the highest level among the matches
   const same = [...tx.terms.values()].filter(t => sameWords(t.name, name));
   const top = Math.min(...same.map(t => LEVEL_RANK[t.level] ?? 9));
   const close = same.filter(t => (LEVEL_RANK[t.level] ?? 9) === top);
   if (close.length === 1) {
-    return { found: true, ...describe(tx, close[0]),
+    return { found: true, ...describe(tx, close[0], panel),
              note: `'${name}' is not an exact Allen name; the exact term with the same words is '${close[0].name}'`,
              source: SOURCE };
   }
