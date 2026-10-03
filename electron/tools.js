@@ -424,6 +424,9 @@ const TOOLS = [
   {
     name: 'fit_allen_regions',
     description:
+      'EXPERIMENTAL, say so when offering it and when reporting the result: a rough ' +
+      'map of what is where, not accurate enough for thin layers (outlines can be ' +
+      'about 50 um off away from the landmarks). ' +
       'Map the regions of the Allen mouse brain atlas (CCFv3) onto this section, from ' +
       'one or two regions the user drew by hand that Allen also has (the landmarks), ' +
       'for example the dentate gyrus granule layer. Coronal mouse sections only. Offer ' +
