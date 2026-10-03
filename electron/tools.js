@@ -2,12 +2,13 @@
 //
 // Same idea as pciSeq/src/mcp/tools.py on the Python side: the model gets a list
 // of tools with descriptions, decides which to call, and gets an object back.
-// The numbers come from querySpot and queryCell in diagnostics.js, which the
-// Spot Inspector and Cell Inspector already use; this file reshapes their result
-// into the dict the narrators expect and adds the story. Some tools act on the
-// screen as well as answering: moving the map, opening the cell or the spot
-// diagnostics panel, and choosing which classes and genes are drawn, which is the
-// one thing the viewer can do that the Python server cannot.
+// Most numbers come from run.js, which reads diagnostics.db. The spot tools, and
+// explain_cell on old runs, go through querySpot and queryCell in diagnostics.js,
+// the same ones the diagnostics panels use; this file reshapes their result into
+// the dict the narrators expect and adds the story. Some tools only exist here:
+// the ones that act on the screen (moving the map, opening the diagnostics panels,
+// choosing which classes and genes are drawn), the Allen lookups and pictures, and
+// export_table.
 //
 // Dependencies come in through init() rather than require(), so the adapters can
 // be run in plain node with fake query results (tools.check.js).

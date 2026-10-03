@@ -31,15 +31,12 @@ const PROVIDERS = {
 const MAX_TOKENS = 2048;
 const MAX_TOOL_ROUNDS = 8;
 
-// Same standing instructions as the Python MCP server, plus what is different here:
-// the model is inside the viewer and can move the map.
 // What the agent is told, in two parts. SHARED_SYSTEM is the persona: how to
-// explain a pciSeq result, lifted word for word from the python MCP server's
-// INSTRUCTIONS (pciSeq/src/mcp/server.py) so nothing Dimitris tuned is lost when
-// the python side retires; persona.check.js diffs the two while both exist. The
-// only line left out is the server's own 'call open_run first', because the viewer
-// opens the run itself. VIEWER_SYSTEM below is what is only true inside the
-// viewer, and SYSTEM, what the built-in chat runs on, is the two together.
+// explain a pciSeq result. It is word for word the same as the INSTRUCTIONS of the
+// python MCP server (pciSeq/src/mcp/server.py), which I keep for asking about a run
+// on a machine with no screen, so I tune the persona in one place and copy it over;
+// persona.check.js makes sure the two stay the same. I leave out only the server's
+// 'call open_run first', because the viewer opens the run itself.
 const SHARED_SYSTEM = [
   'These tools answer questions about a finished run of pciSeq, a cell typing',
   'method for spatial transcriptomics: why a cell got its class, why a spot went',
@@ -116,10 +113,9 @@ const SHARED_SYSTEM = [
   'the class name as given.',
 ].join('\n');
 
-// What is only true inside the viewer: the screen tools and the walkthrough of
-// the cell diagnostics panel. Connected to the python server, the model gets the
-// server's instructions plus this; on the viewer's own tools it gets SYSTEM below,
-// which is the same two pieces.
+// What is only true inside the viewer: the screen tools, the walkthroughs of the
+// diagnostics panels and so on. SYSTEM below, the two parts together, is what the
+// built-in chat runs on and what the viewer's MCP server sends to Claude Code.
 const VIEWER_SYSTEM = [
   'You are inside the pciSeq viewer, a desktop app showing a finished run of pciSeq.',
   'The user is looking at the run on the screen, and it is already open in the',

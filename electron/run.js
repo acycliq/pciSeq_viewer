@@ -2,9 +2,8 @@
 //
 // Everything comes out of diagnostics.db and its metadata; nothing is recomputed
 // with today's formulas, so a run answered here in a year is answered with its own
-// numbers (bead cz1.9). The Python side is the reference until it is retired: a
-// field here means what the same field means there, and the check script compares
-// the two on a real run.
+// numbers (bead cz1.9). The python MCP server stays for machines with no screen,
+// so a field here should mean what the same field means there.
 //
 // Three rules, the same as the Python file:
 //   1. cell labels in and out are the labels of the segmentation, never internal.

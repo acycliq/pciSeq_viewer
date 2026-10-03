@@ -1,7 +1,6 @@
 // Proves the persona was lifted whole: SHARED_SYSTEM in chat.js against the python
-// MCP server's INSTRUCTIONS, sentence by sentence. While both sides exist, a change
-// on one must be made on the other and this is the check that catches a miss; when
-// the python side retires, this script goes with it.
+// MCP server's INSTRUCTIONS, sentence by sentence. A change on one side must be
+// made on the other too, and this is the check that catches a miss.
 //
 // Run from the viewer repo, with the pciSeq env's python on the path or given:
 //   node electron/persona.check.js [path/to/pciSeq_3d] [python]
