@@ -187,7 +187,8 @@ export function initializeRegionDrawer() {
         onDone: addDrawnRegion,
         onActiveChange: (active) => {
             if (!btn) return;
-            btn.textContent = active ? 'Stop drawing' : 'Draw';
+            btn.querySelector('.btn-label').textContent = active ? 'Stop' : 'Draw';
+            btn.classList.toggle('active', active);
             btn.title = active
                 ? 'Click to drop points; click the first point or press Enter to close; Backspace undoes a point; Esc stops'
                 : 'Draw a region on the map';

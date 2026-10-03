@@ -31,11 +31,11 @@ brain structures) drawn as outlines on the map.
   the map. Click the first point again, or press `Enter`, to close the outline.
   `Backspace` removes the last point and `Escape` stops. A new region is named
   Region 1, Region 2, and so on, with the name open for editing.
-- **Import**, load one or more boundary **CSV** files. Each becomes a named
-  region in the list.
 - **Save**, write the current regions to a GeoJSON file at a location you choose.
 - **Open**, read a saved GeoJSON file back, replacing the current regions. Plain
-  GeoJSON polygons from other software open as well.
+  GeoJSON polygons from other software open as well. Open also takes one or
+  more boundary **CSV** files with columns `x` and `y` in image pixels; each is
+  added to the list as a region named after its file.
 - **Region list**, every region has a visibility toggle and a delete control.
   Double-click a name to rename it.
 - **Cell annotations**, added by the AI chat on request ("outline the Sncg cells

@@ -1804,13 +1804,14 @@ body {
 }
 
 #regionsList:empty::after {
-    content: "No annotations";
+    content: "No annotations yet\A Draw a region, or open a file";
+    white-space: pre-line;
     display: block;
     text-align: center;
     color: var(--drawer-muted);
     font-size: 11px;
-    font-style: italic;
-    padding: 10px;
+    line-height: 1.6;
+    padding: 14px 10px;
 }
 
 /* File input and accent button styles (match pciSeq_3d Import Color Scheme) */
@@ -1825,6 +1826,19 @@ body {
 /* Ensure these override generic drawer button styles */
 .controls-panel .file-input-label,
 .controls-panel .accent-btn { background: var(--drawer-accent) !important; color: #0b0b0b !important; border: none !important; text-align: center; }
+
+/* The Annotations buttons: the drawer's outlined buttons (as Show All / Hide All),
+   three in a row, each with a small icon */
+.controls-panel .annotation-buttons .show-all-btn { min-width: 0; padding: 8px 6px; gap: 6px; white-space: nowrap; }
+.annotation-buttons .show-all-btn svg { width: 13px; height: 13px; flex: none; }
+/* Save is dimmed while there is nothing to save */
+.controls-panel .annotation-buttons .show-all-btn:disabled,
+.controls-panel .annotation-buttons .show-all-btn:disabled:hover { opacity: 0.4; cursor: default; background: transparent; color: var(--drawer-accent); }
+/* an empty list has nothing to resize: no fixed height, no resize bar */
+#regionsList:empty { height: auto !important; }
+#regionsList:empty + .legend-resize-handle { display: none; }
+/* Draw stays filled while drawing, so the mode is visible */
+.controls-panel .annotation-buttons .show-all-btn.active { background: var(--drawer-accent); color: #0b0b0b; }
 
 /* Active/pressed state for accent buttons (e.g., Selection tool) */
 .controls-panel .accent-btn.active {

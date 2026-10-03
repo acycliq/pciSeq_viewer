@@ -203,19 +203,19 @@ function annotationColourHex(region) {
 }
 
 /**
- * Import regions from CSV files
+ * Region CSVs picked with Open, as { name, text }: an x,y outline per file, the
+ * region named after the file. They are added to the list.
  */
-async function importRegions(files) {
+function addCsvRegions(files) {
     const imported = [];
     const errors = [];
 
     for (const file of files) {
         try {
-            const text = await file.text();
-            const boundaries = parseCSV(text);
+            const boundaries = parseCSV(file.text);
 
             if (boundaries.length < 3) {
-                errors.push(`${file.name}: Need at least 3 points to form a region`);
+                errors.push(`${file.name}: needs columns x and y and at least 3 points`);
                 continue;
             }
 
@@ -402,15 +402,17 @@ async function saveAnnotations() {
 }
 
 /**
- * Open button: replaces the annotations with the ones in a file
+ * Open button: an annotations file replaces the list, region CSVs are added to it
  */
 async function openAnnotations() {
-    if (hasUnsaved() && !window.confirm('Your annotations are not saved. Replace them anyway?')) return null;
     const res = await window.electronAPI.openAnnotations();
     if (!res) return null;
+    if (res.csv) return addCsvRegions(res.csv);     // region CSVs are added to the list
+    if (hasUnsaved() && !window.confirm('Your annotations are not saved. Replace them anyway?')) return null;
     state.regions.clear();
     for (const r of res.regions) state.regions.set(r.name, r);
     dirty = false;
+    syncAnnotationsToMain();
     updateUIAfterRegionChange();
     for (const r of state.regions.values()) if (!isRegion(r)) loadOutlines(r);
     return res;
@@ -458,8 +460,12 @@ function renderRegionsList() {
 
     container.innerHTML = '';
 
+    // nothing to save from an empty list
+    const saveBtn = document.getElementById('saveAnnotationsBtn');
+    if (saveBtn) saveBtn.disabled = state.regions.size === 0;
+
     if (state.regions.size === 0) {
-        // CSS will show "No annotations" message
+        // CSS shows the "No annotations yet" message
         return;
     }
 
@@ -621,7 +627,6 @@ function getVisibleRegions() {
 }
 
 export {
-    importRegions,
     deleteRegion,
     toggleRegionVisibility,
     saveAnnotations,

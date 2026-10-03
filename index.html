@@ -333,16 +333,14 @@
                     <span class="collapse-icon">▼</span> Annotations
                 </h3>
                 <div class="section-content" id="regionsContent">
-                    <input type="file" id="regionFileInput" accept=".csv" multiple style="display:none;">
-                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                        <button id="drawRegionBtn" class="file-input-label" title="Draw a region on the map">Draw</button>
-                        <button id="importRegionsBtn" class="file-input-label" title="Import region boundary CSV files">Import</button>
-                        <button id="saveAnnotationsBtn" class="file-input-label" title="Save the annotations to a file">Save</button>
-                        <button id="openAnnotationsBtn" class="file-input-label" title="Open an annotations file, replacing the current ones">Open</button>
+                    <!-- the same outlined buttons as Show All / Hide All, three in a row -->
+                    <div class="cell-class-controls annotation-buttons">
+                        <button id="drawRegionBtn" class="show-all-btn" title="Draw a region on the map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span class="btn-label">Draw</span></button>
+                        <button id="saveAnnotationsBtn" class="show-all-btn" title="Save the annotations to a file" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span class="btn-label">Save</span></button>
+                        <button id="openAnnotationsBtn" class="show-all-btn" title="Open an annotations file (replaces the list), or region outline CSVs with columns x and y (added to the list)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span class="btn-label">Open</span></button>
                     </div>
-                    <div id="regionsList" style="margin-top: 10px;">
-                        <!-- Region items will be added here dynamically -->
-                    </div>
+                    <!-- kept empty so the 'No annotations yet' message shows; rows are added by regionsManager.js -->
+                    <div id="regionsList"></div>
                     <div class="legend-resize-handle" id="regionsResizeHandle" title="Drag to resize"></div>
                 </div>
             </div>

@@ -122,7 +122,6 @@ import {
     updateScaleBarOffset
 } from './controlsPanel.js';
 import {
-    importRegions,
     deleteRegion,
     toggleRegionVisibility,
     takeOldStoredRegions,
@@ -172,7 +171,6 @@ window.hideControlsPanel = hideControlsPanel;
 window.toggleControlsPanel = toggleControlsPanel;
 
 // Region management functions
-window.importRegions = importRegions;
 window.saveAnnotations = saveAnnotations;
 window.openAnnotations = openAnnotations;
 window.deleteRegion = deleteRegion;

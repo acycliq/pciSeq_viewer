@@ -14,6 +14,8 @@ const fs = require('fs');
 const path = require('path');
 
 const FILTERS = [{ name: 'Annotations (GeoJSON)', extensions: ['geojson', 'json'] }];
+// Open also takes region CSVs, an x,y outline per file, the name from the file name
+const OPEN_FILTERS = [{ name: 'Annotations (GeoJSON) or region outlines (CSV)', extensions: ['geojson', 'json', 'csv'] }];
 
 // what the renderer last sent, and whether it has been saved since
 let current = { regions: [], dirty: false };
@@ -97,14 +99,25 @@ function registerIpc(ipcMain, { dialog, getWindow, documentsDir }) {
     return r.canceled ? null : writeTo(r.filePath);
   });
 
+  // the renderer applies what comes back and then says what the list is
+  // (annotations-changed), so nothing is set here
   ipcMain.handle('annotations-open', async () => {
-    const r = await dialog.showOpenDialog(getWindow(), { title: 'Open annotations', filters: FILTERS, properties: ['openFile'] });
-    if (r.canceled) return null;
-    const file = r.filePaths[0];
-    const { regions, skipped } = fromGeoJSON(JSON.parse(fs.readFileSync(file, 'utf8')));
-    current = { regions, dirty: false };
-    return { file, regions, skipped };
+    const r = await dialog.showOpenDialog(getWindow(), { title: 'Open annotations', filters: OPEN_FILTERS,
+                                                         properties: ['openFile', 'multiSelections'] });
+    return r.canceled ? null : readFiles(r.filePaths);
   });
+}
+
+// What Open picked: one annotations file, { file, regions, skipped }, which replaces
+// the list; or region CSVs, { csv: [{ name, text }] }, which the renderer parses
+// (it has the CSV reader) and adds to the list
+function readFiles(files) {
+  const isCsv = f => path.extname(f).toLowerCase() === '.csv';
+  if (files.every(isCsv)) {
+    return { csv: files.map(f => ({ name: path.basename(f), text: fs.readFileSync(f, 'utf8') })) };
+  }
+  if (files.length > 1) throw new Error('open one annotations file, or one or more region CSV files');
+  return { file: files[0], ...fromGeoJSON(JSON.parse(fs.readFileSync(files[0], 'utf8'))) };
 }
 
 // The renderer blocks the unload while there are unsaved changes (beforeunload in
@@ -134,4 +147,4 @@ function guardUnload(win, { dialog, documentsDir }) {
 // what the chat tools see: the annotations as the viewer has them now
 const list = () => current.regions;
 
-module.exports = { registerIpc, guardUnload, toGeoJSON, fromGeoJSON, list };
+module.exports = { registerIpc, guardUnload, toGeoJSON, fromGeoJSON, readFiles, list };

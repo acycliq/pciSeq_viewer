@@ -44,7 +44,7 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
     setupGeneControls(elements, state, updateLayersCallback);
     setupWidgetControls(elements);
     setupControlsDrawer(elements);
-    setupRegionImport(elements);
+    setupAnnotationButtons(elements);
     setupZProjectionToggle(state, updateLayersCallback);
     setupCellProjectionToggle(state, updateLayersCallback);
     setupEscapeKeyHandler(elements);
@@ -280,36 +280,8 @@ function setupControlsDrawer(elements) {
 /**
  * Setup region import functionality
  */
-function setupRegionImport(elements) {
-    // Import button opens file dialog
-    elements.importRegionsBtn.addEventListener('click', () => {
-        elements.regionFileInput.click();
-    });
-
-    // Handle file selection
-    elements.regionFileInput.addEventListener('change', async (e) => {
-        const files = Array.from(e.target.files);
-        if (files.length === 0) return;
-
-        try {
-            const result = await window.importRegions(files);
-
-            if (result.imported.length > 0) {
-                console.log(`Imported ${result.imported.length} regions:`, result.imported);
-            }
-
-            if (result.errors.length > 0) {
-                console.error('Import errors:', result.errors);
-            }
-        } catch (error) {
-            console.error('Failed to import regions:', error);
-        }
-
-        // Clear the file input so the same files can be re-imported
-        e.target.value = '';
-    });
-
-    // Save and Open the annotations file (src/regionsManager.js)
+function setupAnnotationButtons(elements) {
+    // Save and Open the annotations file; Open also takes region CSVs (src/regionsManager.js)
     elements.saveAnnotationsBtn.addEventListener('click', () => {
         window.saveAnnotations().catch(error => console.error('Failed to save annotations:', error));
     });
@@ -318,6 +290,9 @@ function setupRegionImport(elements) {
             const res = await window.openAnnotations();
             if (res && res.skipped) {
                 window.alert(`${res.skipped} shape(s) in the file were not simple polygons and were left out.`);
+            }
+            if (res && res.errors && res.errors.length) {
+                window.alert(`Could not read:\n${res.errors.join('\n')}`);
             }
         } catch (error) {
             console.error('Failed to open annotations:', error);

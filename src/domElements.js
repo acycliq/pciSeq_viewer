@@ -57,8 +57,6 @@ const elements = {
     controlsRail: document.getElementById('controlsRail'),
 
     // Regions
-    importRegionsBtn: document.getElementById('importRegionsBtn'),
-    regionFileInput: document.getElementById('regionFileInput'),
     saveAnnotationsBtn: document.getElementById('saveAnnotationsBtn'),
     openAnnotationsBtn: document.getElementById('openAnnotationsBtn'),
     regionsList: document.getElementById('regionsList')
