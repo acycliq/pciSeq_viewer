@@ -1851,6 +1851,32 @@ body {
 .chart-launcher-arrow svg { width: 14px; height: 14px; }
 .chart-launcher:hover .chart-launcher-arrow { color: var(--drawer-accent); transform: translate(1px, -1px); }
 
+/* ---- Sliders: the part up to the thumb is filled (native track, accent colour) ---- */
+.controls-panel { color-scheme: dark; }
+.controls-panel .control-item input[type="range"] {
+    -webkit-appearance: auto; appearance: auto; accent-color: var(--drawer-accent);
+    background: transparent; height: 16px; min-width: 0;
+}
+.controls-panel .control-item span { font-variant-numeric: tabular-nums; }
+
+/* ---- Sub-controls: the settings of the switch above them, set in from it along
+   a guide line ---- */
+.controls-panel .sub-controls { margin: 2px 0 8px 3px; padding: 4px 0 4px 12px; border-left: 2px solid var(--drawer-border); transition: opacity 0.2s ease; }
+.controls-panel .sub-controls .control-item { margin-bottom: 4px; }
+.controls-panel .sub-controls .control-item label { flex: none; width: 58px; font-size: 11px; color: var(--drawer-muted); }
+/* the switch above is off: its settings are dimmed and cannot be touched */
+.toggle-switch:has(input:not(:checked)) + .sub-controls.follows-toggle { opacity: 0.35; pointer-events: none; }
+.controls-panel button.sub-action {
+    display: inline-flex; align-items: center; gap: 6px; width: auto; margin: 6px 0 0 0; padding: 6px 10px;
+    font-size: 11px; font-weight: 600; color: var(--drawer-accent);
+    background: transparent; border: 1px solid rgba(34, 197, 94, 0.45); border-radius: 6px;
+}
+.controls-panel button.sub-action:hover { background: var(--drawer-accent); color: #0b0b0b; border-color: var(--drawer-accent); }
+.controls-panel button.sub-action:disabled { opacity: 0.4; cursor: default; }
+.sub-action svg { width: 12px; height: 12px; flex: none; }
+.sub-status { font-size: 10.5px; color: var(--drawer-muted); margin-top: 5px; min-height: 0; }
+.sub-status:empty { display: none; }
+
 /* a chart that is open: its card stays lit */
 .controls-panel button.chart-launcher.is-open { border-color: rgba(34, 197, 94, 0.6); }
 .chart-launcher.is-open .chart-launcher-icon { background: var(--drawer-accent); color: #0b0b0b; }

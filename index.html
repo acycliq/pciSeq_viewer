@@ -361,22 +361,23 @@
                         <input type="checkbox" id="showPolygons" checked>
                         <span class="switch-slider"></span>
                     </label>
-                    <div class="control-item polygon-opacity-item">
-                        <label for="polygonOpacitySlider">Opacity</label>
-                        <input type="range" id="polygonOpacitySlider" min="0.0" max="1.0" step="0.1">
-                        <span id="polygonOpacityValue">0.4</span>
+                    <div class="sub-controls follows-toggle">
+                        <div class="control-item polygon-opacity-item">
+                            <label for="polygonOpacitySlider">Opacity</label>
+                            <input type="range" id="polygonOpacitySlider" min="0.0" max="1.0" step="0.1">
+                            <span id="polygonOpacityValue">0.4</span>
+                        </div>
                     </div>
                     <label class="toggle-switch">
                         <span class="label-text">All Planes</span>
                         <input type="checkbox" id="zProjectionToggle">
                         <span class="switch-slider"></span>
                     </label>
-                    <div id="zProjectionControls" style="display: none; margin-left: 15px;">
-                        <div class="control-item" style="margin-top: 5px;">
-                            <label for="zProjectionOpacity" style="font-size: 11px;">Overlay:</label>
-                            <input type="range" id="zProjectionOpacity" min="0.1" max="0.8" step="0.1" value="0.3"
-                                   style="width: 60px; margin: 0 5px;">
-                            <span id="zProjectionOpacityValue" style="font-size: 10px;">30%</span>
+                    <div id="zProjectionControls" class="sub-controls" style="display: none;">
+                        <div class="control-item">
+                            <label for="zProjectionOpacity">Overlay</label>
+                            <input type="range" id="zProjectionOpacity" min="0.1" max="0.8" step="0.1" value="0.3">
+                            <span id="zProjectionOpacityValue">30%</span>
                         </div>
                     </div>
                     <label class="toggle-switch">
@@ -384,25 +385,19 @@
                         <input type="checkbox" id="cellProjectionToggle">
                         <span class="switch-slider"></span>
                     </label>
-                    <div id="cellProjectionControls" style="display: none; margin-left: 15px;">
-                        <div class="control-item" style="margin-top: 5px;">
-                            <label for="geneCountSlider" style="font-size: 11px;">Min Genes:</label>
-                            <input type="range" id="geneCountSlider" min="0" max="100" step="1" value="0"
-                                   style="width: 80px; margin: 0 5px;">
-                            <span id="geneCountValue" style="font-size: 10px;">0</span>
+                    <div id="cellProjectionControls" class="sub-controls" style="display: none;">
+                        <div class="control-item">
+                            <label for="geneCountSlider">Min genes</label>
+                            <input type="range" id="geneCountSlider" min="0" max="100" step="1" value="0">
+                            <span id="geneCountValue">0</span>
                         </div>
-                        <div class="control-item" style="margin-top: 5px;">
-                            <label for="geneCountMaxSlider" style="font-size: 11px;">Max Genes:</label>
-                            <input type="range" id="geneCountMaxSlider" min="0" max="100" step="1" value="100"
-                                   style="width: 80px; margin: 0 5px;">
-                            <span id="geneCountMaxValue" style="font-size: 10px;">100</span>
+                        <div class="control-item">
+                            <label for="geneCountMaxSlider">Max genes</label>
+                            <input type="range" id="geneCountMaxSlider" min="0" max="100" step="1" value="100">
+                            <span id="geneCountMaxValue">100</span>
                         </div>
-                        <div class="control-item" style="margin-top: 8px;">
-                            <button id="exportPerClassBtn" style="font-size: 11px; padding: 3px 8px;">
-                                Export per-class PNGs
-                            </button>
-                            <span id="exportPerClassStatus" style="font-size: 10px; margin-left: 6px;"></span>
-                        </div>
+                        <button id="exportPerClassBtn" class="sub-action" title="Save one PNG per cell class for an area you drag on the map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export per-class PNGs</button>
+                        <div id="exportPerClassStatus" class="sub-status"></div>
                     </div>
                 </div>
             </div>
