@@ -14,8 +14,8 @@ import { escapeHtml } from '../utils/domSafe.js';
 class CellClassPercentageWidget extends WidgetBase {
     constructor() {
         super('cellClassPercentageWidget', 'Class Distribution', {
-            width: 800,
-            height: 500,
+            width: 720,
+            height: 440,
             minWidth: 400,
             minHeight: 300
         });

@@ -6,7 +6,7 @@ import { renderRhoBar } from './rhoBarRenderer.js';
 class RhoBarWidget extends WidgetBase {
     constructor() {
         super('rhoBarWidget', 'rho per Gene', {
-            width: 600, height: 500, minWidth: 400, minHeight: 300,
+            width: 600, height: 440, minWidth: 400, minHeight: 300,
         });
         this.resizeRaf  = null;
         this.data       = null;

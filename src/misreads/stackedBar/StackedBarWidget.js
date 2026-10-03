@@ -5,7 +5,7 @@ import { renderStackedBar } from './stackedBarRenderer.js';
 class StackedBarWidget extends WidgetBase {
     constructor() {
         super('stackedBarWidget', 'Assigned vs Misread Spots per Gene', {
-            width: 600, height: 500, minWidth: 400, minHeight: 300,
+            width: 600, height: 440, minWidth: 400, minHeight: 300,
         });
         this.resizeRaf  = null;
         this._rawData   = null;

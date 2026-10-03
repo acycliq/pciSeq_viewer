@@ -21,8 +21,8 @@ import { escapeHtml } from '../utils/domSafe.js';
 class ExpressionHistogramWidget extends WidgetBase {
     constructor() {
         super('expressionHistogramWidget', 'Gene Counts per Class', {
-            width: 700,
-            height: 450,
+            width: 640,
+            height: 420,
             minWidth: 400,
             minHeight: 300
         });
