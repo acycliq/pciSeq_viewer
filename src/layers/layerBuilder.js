@@ -221,6 +221,12 @@ export function buildRegionLayers(state, elements) {
             console.warn('[Regions] Failed to transform region coordinates, drawing raw pixels may not align:', e);
             transformedPath = region.boundaries || [];
         }
+        // PathLayer draws an open line, so go back to the first point to close the
+        // outline, unless the file already did
+        const [first, last] = [transformedPath[0], transformedPath[transformedPath.length - 1]];
+        if (first && (first[0] !== last[0] || first[1] !== last[1])) {
+            transformedPath = [...transformedPath, first];
+        }
 
         // Color: derived from curated d3.schemeSet2 subset via deterministic mapping
         let color = [34, 197, 94];

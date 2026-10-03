@@ -123,7 +123,9 @@ import {
     importRegions,
     deleteRegion,
     toggleRegionVisibility,
-    loadRegionsFromStorage,
+    takeOldStoredRegions,
+    saveAnnotations,
+    openAnnotations,
     getRegionBoundaries,
     getVisibleRegions
 } from './regionsManager.js';
@@ -165,6 +167,8 @@ window.toggleControlsPanel = toggleControlsPanel;
 
 // Region management functions
 window.importRegions = importRegions;
+window.saveAnnotations = saveAnnotations;
+window.openAnnotations = openAnnotations;
 window.deleteRegion = deleteRegion;
 window.toggleRegionVisibility = toggleRegionVisibility;
 window.getRegionBoundaries = getRegionBoundaries;
@@ -746,8 +750,8 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('load', async () => {
     try { Perf.start('viewer'); } catch {}
 
-    // Load saved regions from localStorage
-    loadRegionsFromStorage();
+    // regions an older version kept by itself, offered once for saving to a file
+    takeOldStoredRegions();
 
     // Initialize cell lookup UI
     // the chat panel's fly_to_cell tool lands here: same search-and-navigate the

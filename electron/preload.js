@@ -60,6 +60,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onComposeImage: (handler) => ipcRenderer.on('chat-compose-image', (_e, p) => handler(p)),
   composeImageDone: (payload) => ipcRenderer.send('chat-compose-image-done', payload),
   onChatEvent: (handler) => ipcRenderer.on('chat-event', (_e, ev) => handler(ev)),
+  // annotations (electron/annotations.js): tell the main process what changed, and
+  // Save / Open through its dialogs
+  annotationsChanged: (regions) => ipcRenderer.invoke('annotations-changed', regions),
+  saveAnnotations: () => ipcRenderer.invoke('annotations-save'),
+  openAnnotations: () => ipcRenderer.invoke('annotations-open'),
   // what the map legend says, class colours and gene glyphs, for the tools (electron/legend.js)
   setLegend: (legend) => ipcRenderer.send('legend', legend),
   // the fly_to_cell tool: the main process asks the map to move

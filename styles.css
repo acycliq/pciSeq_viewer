@@ -1804,7 +1804,7 @@ body {
 }
 
 #regionsList:empty::after {
-    content: "No regions imported";
+    content: "No annotations";
     display: block;
     text-align: center;
     color: var(--drawer-muted);

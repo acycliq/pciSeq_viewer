@@ -14,6 +14,7 @@ const mcpServer = require('./mcp-server');
 const run = require('./run');
 const legend = require('./legend');
 const compose = require('./compose');
+const annotations = require('./annotations');
 
 // GitHub repo for update checks
 const GITHUB_REPO = 'acycliq/pciSeq_viewer';
@@ -193,8 +194,13 @@ function createWindow() {
   // about the loaded run and fly the map. Localhost only.
   mcpServer.start(store.get('mcpServerPort', mcpServer.DEFAULT_PORT))
     .catch(e => console.warn('MCP server not started:', e.message));
+  // the annotations: Save and Open, and the 'save your annotations?' question
+  // when the window closes or another dataset loads (electron/annotations.js)
+  const annotationDeps = { dialog, getWindow: () => mainWindow, documentsDir: () => app.getPath('documents') };
+  annotations.guardUnload(mainWindow, annotationDeps);
   if (!chatIpcRegistered) {
     chat.registerIpc(ipcMain);
+    annotations.registerIpc(ipcMain, annotationDeps);
     chatIpcRegistered = true;
   }
 

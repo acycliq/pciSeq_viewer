@@ -327,14 +327,18 @@
                 </div>
             </div>
 
-            <!-- Regions Section (Collapsible) -->
+            <!-- Annotations Section (Collapsible): regions for now -->
             <div class="control-section">
                 <h3 class="section-label collapsible-header" id="regionsHeader">
-                    <span class="collapse-icon">▼</span> Regions
+                    <span class="collapse-icon">▼</span> Annotations
                 </h3>
                 <div class="section-content" id="regionsContent">
                     <input type="file" id="regionFileInput" accept=".csv" multiple style="display:none;">
-                    <button id="importRegionsBtn" class="file-input-label" title="Import region boundary CSV files">Import Regions</button>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <button id="importRegionsBtn" class="file-input-label" title="Import region boundary CSV files">Import</button>
+                        <button id="saveAnnotationsBtn" class="file-input-label" title="Save the annotations to a file">Save</button>
+                        <button id="openAnnotationsBtn" class="file-input-label" title="Open an annotations file, replacing the current ones">Open</button>
+                    </div>
                     <div id="regionsList" style="margin-top: 10px;">
                         <!-- Region items will be added here dynamically -->
                     </div>

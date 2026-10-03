@@ -309,6 +309,22 @@ function setupRegionImport(elements) {
         e.target.value = '';
     });
 
+    // Save and Open the annotations file (src/regionsManager.js)
+    elements.saveAnnotationsBtn.addEventListener('click', () => {
+        window.saveAnnotations().catch(error => console.error('Failed to save annotations:', error));
+    });
+    elements.openAnnotationsBtn.addEventListener('click', async () => {
+        try {
+            const res = await window.openAnnotations();
+            if (res && res.skipped) {
+                window.alert(`${res.skipped} shape(s) in the file were not simple polygons and were left out.`);
+            }
+        } catch (error) {
+            console.error('Failed to open annotations:', error);
+            window.alert(`Could not open the annotations: ${error.message}`);
+        }
+    });
+
     // Setup resizable regions list
     setupResizableList({
         listId: 'regionsList',

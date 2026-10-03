@@ -1,13 +1,23 @@
 /**
  * Regions Manager Module
  *
- * Handles importing, storing, and managing anatomical region boundaries
+ * Handles importing, storing, and managing anatomical region boundaries, the
+ * first kind of annotation. They live in memory like layers in Photoshop: Save
+ * writes them to a file, Open reads one back, and closing or loading another
+ * dataset with changes not saved asks first (electron/annotations.js).
  */
 
 import { state } from './state/stateManager.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG, TRASH_SVG } from './icons.js';
 
-const STORAGE_KEY = 'pciSeq_regions';
+// where older versions kept the regions by themselves, one list for every run
+const OLD_STORAGE_KEY = 'pciSeq_regions';
+
+// changes since the last Save or Open
+let dirty = false;
+
+// worth asking about: changes, and something left to save
+const hasUnsaved = () => dirty && state.regions.size > 0;
 
 // Initialize regions in state
 if (!state.regions) {
@@ -189,7 +199,8 @@ async function importRegions(files) {
             state.regions.set(regionName, {
                 name: regionName,
                 boundaries: boundaries,
-                visible: true // Default to visible so imported regions are immediately outlined
+                visible: true, // Default to visible so imported regions are immediately outlined
+                by: 'you'
             });
 
             imported.push(regionName);
@@ -198,8 +209,7 @@ async function importRegions(files) {
         }
     }
 
-    // Save to localStorage
-    saveRegionsToStorage();
+    if (imported.length) markChanged();
 
     // Update all relevant UI components
     updateUIAfterRegionChange();
@@ -212,7 +222,7 @@ async function importRegions(files) {
  */
 function deleteRegion(regionName) {
     state.regions.delete(regionName);
-    saveRegionsToStorage();
+    markChanged();
     updateUIAfterRegionChange();
 }
 
@@ -229,7 +239,7 @@ function toggleRegionVisibility(regionName, visible) {
     const region = state.regions.get(regionName);
     if (region) {
         region.visible = visible;
-        saveRegionsToStorage();
+        markChanged();
 
         // DO NOT call renderRegionsList() here - it causes the checkbox to re-render
         // and trigger another change event. Only update the map layers.
@@ -240,46 +250,66 @@ function toggleRegionVisibility(regionName, visible) {
 }
 
 /**
- * Save regions to localStorage
+ * Something changed: remember it is not saved, and give the main process the
+ * current regions so it can write them if asked on close
  */
-function saveRegionsToStorage() {
-    try {
-        const regionsArray = Array.from(state.regions.entries()).map(([name, data]) => ({
-            name: data.name,
-            boundaries: data.boundaries,
-            visible: data.visible
-        }));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(regionsArray));
-    } catch (error) {
-        console.error('Failed to save regions to localStorage:', error);
-    }
+function markChanged() {
+    dirty = true;
+    const regions = Array.from(state.regions.values()).map(({ name, boundaries, visible, by }) => ({ name, boundaries, visible, by }));
+    window.electronAPI?.annotationsChanged?.(regions);
 }
 
 /**
- * Load regions from localStorage
+ * Save button: the main process asks where and writes the file
  */
-function loadRegionsFromStorage() {
+async function saveAnnotations() {
+    const file = await window.electronAPI.saveAnnotations();
+    if (file) dirty = false;
+    return file;
+}
+
+/**
+ * Open button: replaces the annotations with the ones in a file
+ */
+async function openAnnotations() {
+    if (hasUnsaved() && !window.confirm('Your annotations are not saved. Replace them anyway?')) return null;
+    const res = await window.electronAPI.openAnnotations();
+    if (!res) return null;
+    state.regions.clear();
+    for (const r of res.regions) state.regions.set(r.name, r);
+    dirty = false;
+    updateUIAfterRegionChange();
+    return res;
+}
+
+/**
+ * Older versions kept the regions in localStorage by themselves. Take them once,
+ * as changes not saved, so the user is asked to save them to a file.
+ */
+function takeOldStoredRegions() {
     try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            const regionsArray = JSON.parse(stored);
-            state.regions.clear();
-
-            regionsArray.forEach(region => {
-                state.regions.set(region.name, {
-                    name: region.name,
-                    boundaries: region.boundaries,
-                    visible: region.visible
-                });
-            });
-
-            // On initial load, a full UI update is correct.
+        const stored = localStorage.getItem(OLD_STORAGE_KEY);
+        if (!stored) return;
+        localStorage.removeItem(OLD_STORAGE_KEY);
+        for (const r of JSON.parse(stored)) {
+            state.regions.set(r.name, { name: r.name, boundaries: r.boundaries, visible: r.visible, by: 'you' });
+        }
+        if (state.regions.size) {
+            markChanged();
             updateUIAfterRegionChange();
         }
     } catch (error) {
-        console.error('Failed to load regions from localStorage:', error);
+        console.error('Failed to read the old stored regions:', error);
     }
 }
+
+// changes not saved: hold the close or reload, the main process asks the user
+window.addEventListener('beforeunload', (e) => {
+    if (hasUnsaved()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
 
 /**
  * Render regions list in the drawer
@@ -295,7 +325,7 @@ function renderRegionsList() {
     container.innerHTML = '';
 
     if (state.regions.size === 0) {
-        // CSS will show "No regions imported" message
+        // CSS will show "No annotations" message
         return;
     }
 
@@ -455,8 +485,9 @@ export {
     importRegions,
     deleteRegion,
     toggleRegionVisibility,
-    loadRegionsFromStorage,
-    saveRegionsToStorage,
+    saveAnnotations,
+    openAnnotations,
+    takeOldStoredRegions,
     renderRegionsList,
     updateChartDropdowns,
     getRegionColorHex,

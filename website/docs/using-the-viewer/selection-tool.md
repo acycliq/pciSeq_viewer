@@ -24,10 +24,16 @@ selection is how you drill into a region in 3D.
 
 ## Regions
 
-The **Regions** section imports anatomical region boundaries so you can overlay
-named areas (for example brain structures) on the map.
+The **Annotations** section holds region boundaries, named areas (for example
+brain structures) drawn as outlines on the map.
 
-- **Import Regions**, load one or more boundary **CSV** files. Each becomes a
-  named region in the list.
-- **Region list**, every imported region has a visibility toggle and a delete
-  control. Imported regions are remembered between sessions.
+- **Import**, load one or more boundary **CSV** files. Each becomes a named
+  region in the list.
+- **Save**, write the current regions to a GeoJSON file at a location you choose.
+- **Open**, read a saved GeoJSON file back, replacing the current regions. Plain
+  GeoJSON polygons from other software open as well.
+- **Region list**, every region has a visibility toggle and a delete control.
+
+Regions are kept in memory only, as layers are in an image editor. Closing the
+window or opening another dataset with unsaved changes asks whether to save
+them first. Nothing is written to the data folder.
