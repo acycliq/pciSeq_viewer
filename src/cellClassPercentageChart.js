@@ -255,6 +255,7 @@ let instance = null;
 export function showCellClassPercentageWidget() {
     if (!instance) instance = new CellClassPercentageWidget();
     instance.show();
+    return instance;   // so the chat's open_chart can pick a region or gene (src/chatCharts.js)
 }
 
 export function hideCellClassPercentageWidget() {

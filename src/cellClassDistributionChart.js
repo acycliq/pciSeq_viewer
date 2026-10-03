@@ -360,6 +360,7 @@ let instance = null;
 export function showCellClassDistributionWidget() {
     if (!instance) instance = new CellClassDistributionWidget();
     instance.show();
+    return instance;   // so the chat's open_chart can pick a region or gene (src/chatCharts.js)
 }
 
 export function hideCellClassDistributionWidget() {

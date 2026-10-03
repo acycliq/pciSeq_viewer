@@ -67,6 +67,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openAnnotations: () => ipcRenderer.invoke('annotations-open'),
   // the outline_cells tool: add a cell annotation
   onChatAddCellAnnotation: (handler) => ipcRenderer.on('chat-add-cell-annotation', (_e, p) => handler(p)),
+  // the open_chart tool: open one of the drawer's charts (src/chatCharts.js)
+  onChatOpenChart: (handler) => ipcRenderer.on('chat-open-chart', (_e, p) => handler(p)),
   // what the map legend says, class colours and gene glyphs, for the tools (electron/legend.js)
   setLegend: (legend) => ipcRenderer.send('legend', legend),
   // the fly_to_cell tool: the main process asks the map to move

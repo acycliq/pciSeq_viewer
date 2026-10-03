@@ -78,6 +78,7 @@ import { setupCheckSpotBridge, openCheckSpotModal } from './checkSpotBridge.js';
 
 // === MISREADS IMPORTS ===
 import { showRhoBarWidget }     from './misreads/rhoBar/RhoBarWidget.js';
+import { openChart } from './chatCharts.js';
 import { showStackedBarWidget } from './misreads/stackedBar/StackedBarWidget.js';
 import { showPerPlaneWidget }   from './misreads/perPlane/PerPlaneWidget.js';
 
@@ -762,6 +763,8 @@ window.addEventListener('load', async () => {
     syncAnnotationsToMain();
     // the outline_cells tool adds a cell annotation
     window.electronAPI?.onChatAddCellAnnotation?.((p) => addCellAnnotation(p));
+    // and open_chart opens one of the drawer's charts
+    window.electronAPI?.onChatOpenChart?.((p) => openChart(p));
 
     // Initialize cell lookup UI
     // the chat panel's fly_to_cell tool lands here: same search-and-navigate the

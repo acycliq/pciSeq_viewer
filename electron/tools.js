@@ -42,6 +42,26 @@ function init(d) {
 
 const MAX_OUTLINED = 5000;
 
+const CHART_NAMES = ['class_distribution', 'classes_by_z', 'class_gene_counts', 'gene_distribution',
+                     'misread_rho', 'assigned_vs_misread', 'misread_per_plane'];
+const REGION_CHARTS = ['class_distribution', 'classes_by_z'];
+
+// open_chart: check the names here, where the errors can go back to the model,
+// then the viewer opens the chart (src/chatCharts.js)
+function openChart({ chart, region = null, gene = null }) {
+  if (!CHART_NAMES.includes(chart)) return { error: `chart must be one of ${CHART_NAMES.join(', ')}` };
+  if (region != null) {
+    if (!REGION_CHARTS.includes(chart)) return { error: `${chart} has no region choice; ${REGION_CHARTS.join(' and ')} do` };
+    withRegion({ region });   // throws, naming the regions there are, for an unknown one
+  }
+  if (gene != null) {
+    if (chart !== 'gene_distribution') return { error: 'only gene_distribution takes a gene' };
+    if (!(deps.getMeta()?.gene_panel || []).includes(gene)) return { error: `${gene} is not a gene of this run` };
+  }
+  deps.send('chat-open-chart', { chart, region, gene });
+  return { done: true, chart, region, gene, note: 'the chart is open on the user\'s screen' };
+}
+
 // find_cells and outline_cells take a region by name; run.findCells wants its points
 function withRegion(input) {
   if (input.region == null) return input;
@@ -382,6 +402,32 @@ const TOOLS = [
       'find_cells with region for the cells inside it; a cell is inside when its ' +
       'centroid is.',
     input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'open_chart',
+    description:
+      'Open one of the viewer\'s own charts, the same ones the drawer buttons open, ' +
+      'for a picture of the numbers: "bar chart of the classes in my CA1", "how is ' +
+      'Plp1 spread over the planes". The charts: class_distribution, a bar per class ' +
+      'with its number and share of cells, for the whole section or one region; ' +
+      'classes_by_z, the classes plane by plane, whole section or one region; ' +
+      'class_gene_counts, the spread of total gene counts per cell in each class; ' +
+      'gene_distribution, one gene\'s spots plane by plane; misread_rho, the misread ' +
+      'level learned for each gene; assigned_vs_misread, each gene\'s spots split ' +
+      'into assigned to cells and misread; misread_per_plane, misreads plane by ' +
+      'plane. The class charts count each cell once, by its most likely class, and ' +
+      'a cell is in a region when its centroid is. region is a name from annotations, ' +
+      'for class_distribution and classes_by_z; gene for gene_distribution. The chart ' +
+      'opens on the user\'s screen; say what it shows, you do not see it.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        chart: { type: 'string', enum: CHART_NAMES },
+        region: { type: 'string', description: 'A region, for class_distribution and classes_by_z.' },
+        gene: { type: 'string', description: 'A gene, for gene_distribution.' },
+      },
+      required: ['chart'],
+    },
   },
   {
     name: 'outline_cells',
@@ -1089,6 +1135,7 @@ async function call(name, input) {
     if (name === 'find_cells') return run.findCells(withRegion(input));
     if (name === 'annotations') return listAnnotations();
     if (name === 'outline_cells') return outlineCells(input);
+    if (name === 'open_chart') return openChart(input);
     if (name === 'metadata') return run.metadataTool(input.key ?? null);
     if (name === 'calculate') return run.calculate(input.expression);
     if (name === 'spots_in_cell') return await run.spotsInCell(input.label, input.gene ?? null);
