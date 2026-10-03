@@ -1827,6 +1827,30 @@ body {
 .controls-panel .file-input-label,
 .controls-panel .accent-btn { background: var(--drawer-accent) !important; color: #0b0b0b !important; border: none !important; text-align: center; }
 
+/* ---- Chart launchers: a card per chart, with an icon, a line saying what it
+   shows, and an arrow because it opens in its own panel ---- */
+.controls-panel button.chart-launcher {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 10px; margin-bottom: 6px; text-align: left;
+    background: var(--drawer-surface); border: 1px solid var(--drawer-border); border-radius: 8px;
+    color: var(--drawer-text); cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.08s ease;
+}
+.controls-panel button.chart-launcher:hover { background: #202020; border-color: rgba(34, 197, 94, 0.55); }
+.controls-panel button.chart-launcher:active { transform: scale(0.985); background: #202020; color: var(--drawer-text); }
+.chart-launcher-icon {
+    flex: none; width: 28px; height: 28px; border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(34, 197, 94, 0.12); color: var(--drawer-accent);
+}
+.chart-launcher-icon svg { width: 15px; height: 15px; }
+.chart-launcher-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.chart-launcher-title { font-size: 12px; font-weight: 600; line-height: 1.25; }
+.chart-launcher-sub { font-size: 10.5px; color: var(--drawer-muted); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chart-launcher-arrow { flex: none; display: inline-flex; color: #5f6368; transition: color 0.15s ease, transform 0.15s ease; }
+.chart-launcher-arrow svg { width: 14px; height: 14px; }
+.chart-launcher:hover .chart-launcher-arrow { color: var(--drawer-accent); transform: translate(1px, -1px); }
+
 /* The Annotations buttons: the drawer's outlined buttons (as Show All / Hide All),
    three in a row, each with a small icon */
 .controls-panel .annotation-buttons .show-all-btn { min-width: 0; padding: 8px 6px; gap: 6px; white-space: nowrap; }
