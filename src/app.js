@@ -42,6 +42,7 @@ import {
     initializeGeneData,
     initializePolygonHighlighter,
     initializeRectangularSelector,
+    initializeRegionDrawer,
     initializeCellData,
     selectAllCellClasses,
     finalizeInitialization,
@@ -634,6 +635,7 @@ async function runInit() {
     // 7. Initialize interactions (index maps are filled in place later)
     initializePolygonHighlighter();
     initializeRectangularSelector();
+    initializeRegionDrawer();
     // Listen for the first cell outlines before anything draws them: step 8 draws
     // the map while spots stream in, so the outlines, and the event that starts the
     // spatial index the 3D view needs, can arrive long before step 11. Set up there,

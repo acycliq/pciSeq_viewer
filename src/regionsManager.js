@@ -218,6 +218,65 @@ async function importRegions(files) {
 }
 
 /**
+ * A region drawn by hand (src/ui/regionDrawer.js): named Region 1, 2, ... and the
+ * name opened for editing straight away
+ */
+function addDrawnRegion(boundaries) {
+    let n = 1;
+    while (state.regions.has(`Region ${n}`)) n++;
+    const name = `Region ${n}`;
+    state.regions.set(name, { name, boundaries, visible: true, by: 'you' });
+    markChanged();
+    updateUIAfterRegionChange();
+    startRename(name);
+}
+
+/**
+ * Rename a region, keeping its place in the list. An empty name or one already
+ * taken leaves it as it was.
+ */
+function renameRegion(oldName, newName) {
+    newName = String(newName || '').trim();
+    if (!newName || newName === oldName || state.regions.has(newName)) return false;
+    const entries = Array.from(state.regions.entries()).map(([name, r]) =>
+        name === oldName ? [newName, { ...r, name: newName }] : [name, r]);
+    state.regions.clear();
+    for (const [name, r] of entries) state.regions.set(name, r);
+    markChanged();
+    return true;
+}
+
+/**
+ * Turn a row's name into a text box; Enter or clicking away keeps it, Esc does not
+ */
+function startRename(name) {
+    const label = document.querySelector(`#regionsList [data-region="${CSS.escape(name)}"] .cell-class-name`);
+    if (!label) return;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = name;
+    input.className = 'region-rename-input';
+    input.style.cssText = 'flex:1; min-width:0; font:inherit; color:inherit; background:transparent; border:1px solid currentColor; padding:0 2px;';
+    let done = false;
+    const finish = (keep) => {
+        if (done) return;
+        done = true;
+        if (keep) renameRegion(name, input.value);
+        updateUIAfterRegionChange();
+    };
+    input.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') finish(true);
+        if (e.key === 'Escape') finish(false);
+    });
+    input.addEventListener('blur', () => finish(true));
+    input.addEventListener('click', (e) => e.stopPropagation());
+    label.replaceWith(input);
+    input.focus();
+    input.select();
+}
+
+/**
  * Delete a region
  */
 function deleteRegion(regionName) {
@@ -349,7 +408,8 @@ function renderRegionsList() {
         const label = document.createElement('span');
         label.className = 'cell-class-name';
         label.textContent = (name && String(name).trim()) ? String(name) : '(unnamed region)';
-        label.title = name;
+        label.title = `${name} (double-click to rename)`;
+        label.addEventListener('dblclick', (e) => { e.stopPropagation(); startRename(name); });
 
         // Count (boundary points) to match layout
         const count = Array.isArray(region.boundaries) ? region.boundaries.length : 0;
@@ -488,6 +548,7 @@ export {
     saveAnnotations,
     openAnnotations,
     takeOldStoredRegions,
+    addDrawnRegion,
     renderRegionsList,
     updateChartDropdowns,
     getRegionColorHex,

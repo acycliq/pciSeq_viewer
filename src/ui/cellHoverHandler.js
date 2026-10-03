@@ -101,6 +101,7 @@ function buildCellInfoData(fullCellData, cellLabel) {
  */
 export function handleCellClick(info) {
     if (!info || !info.object || !info.object.properties) return;
+    if (window.appState?.regionDrawer?.isActive) return;   // clicks drop points while drawing
     const evt = info.srcEvent || info.sourceEvent;
     // Robust modifier detection (fallback when event lacks flags)
     let modifierDown = false;

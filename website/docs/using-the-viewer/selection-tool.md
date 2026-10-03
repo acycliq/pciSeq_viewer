@@ -27,12 +27,17 @@ selection is how you drill into a region in 3D.
 The **Annotations** section holds region boundaries, named areas (for example
 brain structures) drawn as outlines on the map.
 
+- **Draw**, draw a region on the map. Click to place points; a drag still pans
+  the map. Click the first point again, or press `Enter`, to close the outline.
+  `Backspace` removes the last point and `Escape` stops. A new region is named
+  Region 1, Region 2, and so on, with the name open for editing.
 - **Import**, load one or more boundary **CSV** files. Each becomes a named
   region in the list.
 - **Save**, write the current regions to a GeoJSON file at a location you choose.
 - **Open**, read a saved GeoJSON file back, replacing the current regions. Plain
   GeoJSON polygons from other software open as well.
 - **Region list**, every region has a visibility toggle and a delete control.
+  Double-click a name to rename it.
 
 Regions are kept in memory only, as layers are in an image editor. Closing the
 window or opening another dataset with unsaved changes asks whether to save

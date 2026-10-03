@@ -23,6 +23,8 @@ import {
 } from '../data/cellIndexes.js';
 import { PolygonBoundaryHighlighter } from '../ui/polygonInteractions.js';
 import { RectangularSelector } from '../ui/rectangularSelector.js';
+import { RegionDrawer } from '../ui/regionDrawer.js';
+import { addDrawnRegion } from '../regionsManager.js';
 import { applyPendingClassColorSchemeIfAny } from '../classColorImport.js';
 import { populateCellClassDrawer } from '../cellClassDrawer.js';
 import { sendLegend } from '../legendSync.js';
@@ -60,12 +62,12 @@ export function initializeDeckGL(onViewStateChange, onHover) {
             // selector is active, where empty-map clicks drive selection instead.
             if (info && info.object) return; // cell clicks handled by the layer
             const selecting = window.appState?.rectangularSelector?.isActive;
-            if (selecting) return;
+            if (selecting || window.appState?.regionDrawer?.isActive) return;
             unfreezeCellInfoPanel();
         },
         getCursor: ({ isHovering }) => {
             try {
-                const active = window.appState?.rectangularSelector?.isActive;
+                const active = window.appState?.rectangularSelector?.isActive || window.appState?.regionDrawer?.isActive;
                 if (active) return 'crosshair';
             } catch {}
             return isHovering ? 'pointer' : 'default';
@@ -174,6 +176,25 @@ export function initializeRectangularSelector() {
     }
 
     console.log('Rectangular selector ready - Toggle selection tool switch to activate');
+}
+
+/**
+ * The Draw button in the Annotations section: draw a region by hand on the map
+ */
+export function initializeRegionDrawer() {
+    const btn = document.getElementById('drawRegionBtn');
+    state.regionDrawer = new RegionDrawer(state.deckglInstance, {
+        onDone: addDrawnRegion,
+        onActiveChange: (active) => {
+            if (!btn) return;
+            btn.textContent = active ? 'Stop drawing' : 'Draw';
+            btn.title = active
+                ? 'Click to drop points; click the first point or press Enter to close; Backspace undoes a point; Esc stops'
+                : 'Draw a region on the map';
+        },
+    });
+    window.appState.regionDrawer = state.regionDrawer;
+    if (btn) btn.addEventListener('click', () => state.regionDrawer.toggle());
 }
 
 /**
