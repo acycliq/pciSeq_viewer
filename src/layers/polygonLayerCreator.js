@@ -20,11 +20,14 @@ const CELL_FILTER_EXTENSION = new DataFilterExtension({ filterSize: 1 });
 export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null, zProjectionCellMode = false, geneCountThreshold = 0, geneCountMaxThreshold = Infinity) {
     const layers = [];
 
-    if (!showPolygons) return layers;
-
+    // Cell Projection: the Cells switch only hides the layer. It holds the outlines of
+    // every plane, and building it again from nothing took seconds each time the
+    // switch went back on
     if (zProjectionCellMode) {
-        return createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold);
+        return createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold, showPolygons);
     }
+
+    if (!showPolygons) return layers;
 
     // Arrow fast-path: use binary buffers from worker
     (async () => {
@@ -192,13 +195,14 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
     });
 }
 
-function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold) {
+function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold, shown = true) {
     const features = (window.appState && window.appState.cellProjectionFeatures) || [];
     const selectedKey = selectedCellClasses ? Array.from(selectedCellClasses).sort().join('|') : '';
 
     return [new GeoJsonLayer({
         id: 'polygons-z-projection',
         data: features,
+        visible: shown,
         pickable: true,
         stroked: false,
         filled: true,
