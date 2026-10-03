@@ -34,9 +34,9 @@ channel, rename the files so that it sorts first.
 
 ## All Planes (z-projection)
 
-- **All Planes** toggle, overlays information from other z-planes onto the
-  current view, with an **Overlay** opacity slider (`10%` to `80%`). Use it to see
-  structure that spans several planes without leaving the current one.
+- **All Planes** overlays information from other z-planes onto the current
+  view. Use it to see structure that spans several planes without leaving the
+  current one. It has no switch in the drawer; press `A` to turn it on and off.
 
 ## Cell Projection
 

@@ -15,6 +15,7 @@ Shortcuts** (or press `Ctrl+/`).
 | `PageUp` / `PageDown` | Back / forward 10 planes |
 | `T` | Toggle background tiles |
 | `P` | Toggle cell polygons |
+| `A` | Toggle All Planes (z-projection overlay) |
 | `Ctrl+L` | Toggle lines (current-plane cells, all-plane spots) |
 | `Ctrl+F` | Cell search |
 | `Ctrl`+Click | Open the Cell / Spot Inspector (needs diagnostics) |

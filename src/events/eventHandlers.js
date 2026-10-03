@@ -335,6 +335,8 @@ function setupZProjectionToggle(state, updateLayersCallback) {
             // Keep opacity controls hidden for now
             zProjectionControls.style.display = 'none';
             updateLayersCallback();
+            // the switch is not shown (the A key flips it), so say what happened
+            showNotification(`All Planes ${zProjectionToggle.checked ? 'on' : 'off'}`, 'info');
         });
     }
 
@@ -684,6 +686,18 @@ export function setupAdvancedKeyboardShortcuts(state, updatePlaneCallback, updat
                 document.getElementById('showPolygons').checked = state.showPolygons;
                 updateLayersCallback();
                 break;
+
+            // All Planes has no switch in the drawer any more, this key is the way in.
+            // Flipping its hidden switch runs the same code the switch always ran.
+            case 'a':
+            case 'A': {
+                if (e.ctrlKey || e.metaKey) break;      // leave Ctrl+A alone
+                const allPlanes = document.getElementById('zProjectionToggle');
+                if (!allPlanes) break;
+                allPlanes.checked = !allPlanes.checked;
+                allPlanes.dispatchEvent(new Event('change'));
+                break;
+            }
         }
     });
 }

@@ -368,7 +368,10 @@
                             <span id="polygonOpacityValue">0.4</span>
                         </div>
                     </div>
-                    <label class="toggle-switch">
+                    <!-- All Planes is rarely used, so its switch is not shown: the A key flips it
+                         (setupAdvancedKeyboardShortcuts in eventHandlers.js). The switch stays in
+                         the page because the code behind it reads and sets it. -->
+                    <label class="toggle-switch" style="display: none;">
                         <span class="label-text">All Planes</span>
                         <input type="checkbox" id="zProjectionToggle">
                         <span class="switch-slider"></span>
@@ -615,6 +618,7 @@
                     <tr><td><kbd>PageUp</kbd> / <kbd>PageDown</kbd></td><td>Back / Forward 10 planes</td></tr>
                     <tr><td><kbd>T</kbd></td><td>Toggle background tiles</td></tr>
                     <tr><td><kbd>P</kbd></td><td>Toggle cell polygons</td></tr>
+                    <tr><td><kbd>A</kbd></td><td>Toggle All Planes (z-projection overlay)</td></tr>
                     <tr><td><kbd>Ctrl+L</kbd></td><td>Toggle lines (current-plane cells, all-plane spots)</td></tr>
                     <tr><td><kbd>Ctrl+F</kbd></td><td>Cell search</td></tr>
                     <tr><td><kbd>Click</kbd> a cell</td><td>Freeze cell info panel (move onto it to inspect)</td></tr>
