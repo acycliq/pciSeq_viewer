@@ -28,7 +28,10 @@ const PROVIDERS = {
   zai: { label: 'Z.ai (GLM)', baseURL: 'https://api.z.ai/api/anthropic', model: 'glm-5.2', env: 'ZAI_API_KEY' },
   other: { label: 'Other (Anthropic-compatible)', baseURL: '', model: '', env: null },
 };
-const MAX_TOKENS = 2048;
+// the most one reply may use, thinking included. Models that think first (GLM)
+// used all of 2048 on the thinking now and then and gave no answer; a reply only
+// costs what it uses, so a high cap is free on short answers
+const MAX_TOKENS = 16000;
 const MAX_TOOL_ROUNDS = 8;
 
 // What the agent is told, in two parts. SHARED_SYSTEM is the persona: how to
@@ -136,6 +139,11 @@ const VIEWER_SYSTEM = [
   'asks to show or hide something, and say what is on the map afterwards. When a',
   'name comes back as unknown, tell the user and offer the closest names of the run',
   'instead of guessing.',
+  '',
+  'Never say something was done on the screen, shown, hidden, outlined, moved or',
+  'opened, unless a tool call in this same answer did it and came back without an',
+  'error. If the user asks what is on the map, call annotations and check rather',
+  'than going by what you remember.',
   '',
   'open_cell_diagnostics opens the cell diagnostics panel, the one the user also',
   'gets by Ctrl+Click on a cell, on the assigned class against the runner up. Call',
@@ -374,6 +382,8 @@ async function runTurn(messages) {
 
   const history = [...messages];
   let finalText = '';
+  let toolsRan = 0;
+  let last = null;     // the last reply, to say why an empty one stopped
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const res = await client.messages.create({
@@ -385,6 +395,7 @@ async function runTurn(messages) {
     });
 
     history.push({ role: 'assistant', content: res.content });
+    last = res;
 
     const texts = res.content.filter(b => b.type === 'text').map(b => b.text);
     if (texts.length) {
@@ -396,6 +407,7 @@ async function runTurn(messages) {
     if (res.stop_reason !== 'tool_use' || uses.length === 0) break;
 
     const results = [];
+    toolsRan += uses.length;
     for (const u of uses) {
       send({ type: 'tool_call', name: u.name, input: u.input });
       {
@@ -416,6 +428,24 @@ async function runTurn(messages) {
       }
     }
     history.push({ role: 'user', content: results });
+  }
+
+  // some models now and then send back nothing at all; say so rather than stay
+  // silent. With no tools run nothing happened, so the turn is dropped (the error
+  // path in registerIpc); after tools, what they did is kept
+  if (!finalText) {
+    if (!toolsRan) {
+      // max_tokens here is the cap on one reply (MAX_TOKENS), not the account's balance
+      const why = last.stop_reason === 'max_tokens'
+        ? `the reply reached the viewer's size limit for one answer, ${MAX_TOKENS} tokens, before it got past thinking`
+        : `it stopped with ${last.stop_reason} and sent ${last.content.map(b => b.type).join(', ') || 'nothing'}`;
+      throw new Error(`The model gave no answer: ${why}. Please ask again.`);
+    }
+    finalText = '(The model ran the steps above but gave no answer. Ask again for the explanation.)';
+    send({ type: 'text', text: finalText });
+    // an empty assistant turn can make the next call fail, so it carries the note
+    const turn = history[history.length - 1];
+    if (turn.role === 'assistant' && !turn.content.length) turn.content = [{ type: 'text', text: finalText }];
   }
 
   send({ type: 'done' });

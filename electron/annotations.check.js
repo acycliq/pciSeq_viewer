@@ -27,6 +27,12 @@ const other = fromGeoJSON({ type: 'FeatureCollection', features: [
 assert.deepStrictEqual(other.regions.map(r => [r.name, r.by, r.visible]), [['Region 1', 'you', true], ['Tumor', 'you', true]]);
 assert.strictEqual(other.skipped, 1);
 
+// a cell annotation keeps its labels, no geometry
+const cells = { name: 'Sncg near CA1', kind: 'cells', labels: [12, 40], visible: true, by: 'chat' };
+const cg = toGeoJSON([cells]);
+assert.strictEqual(cg.features[0].geometry, null);
+assert.deepStrictEqual(fromGeoJSON(JSON.parse(JSON.stringify(cg))).regions, [cells]);
+
 assert.throws(() => fromGeoJSON({ type: 'Feature' }), /not a GeoJSON FeatureCollection/);
 
 console.log('annotations.check: all assertions pass');

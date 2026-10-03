@@ -7,7 +7,8 @@
 
 import { WidgetBase } from './ui/widgetBase.js';
 import { state } from './state/stateManager.js';
-import { getRegionBoundaries, getVisibleRegions } from './regionsManager.js';
+import { pointInPolygon } from '../utils/pointInPolygon.js';
+import { isRegion, getRegionBoundaries, getVisibleRegions } from './regionsManager.js';
 import { escapeHtml } from '../utils/domSafe.js';
 
 class CellClassDistributionWidget extends WidgetBase {
@@ -67,7 +68,8 @@ class CellClassDistributionWidget extends WidgetBase {
         
         // Get regions from global state (via regionsManager helper or direct access)
         if (state.regions) {
-            for (const [name] of state.regions) {
+            for (const [name, r] of state.regions) {
+                if (!isRegion(r)) continue;
                 const opt = document.createElement('option');
                 opt.value = name;
                 opt.textContent = name;
@@ -114,19 +116,6 @@ class CellClassDistributionWidget extends WidgetBase {
         const all_classes = new Set();
         const userConfig = window.config();
         const [xVoxel, , zVoxel] = userConfig.voxelSize;
-
-        // Point-in-polygon helper
-        const pointInPolygon = (x, y, poly) => {
-            let inside = false;
-            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-                const xi = poly[i][0], yi = poly[i][1];
-                const xj = poly[j][0], yj = poly[j][1];
-                const intersect = ((yi > y) !== (yj > y)) &&
-                    (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-12) + xi);
-                if (intersect) inside = !inside;
-            }
-            return inside;
-        };
 
         const isInsideRegions = (x, y) => {
             if (!regionPolygons || regionPolygons.length === 0) return true;

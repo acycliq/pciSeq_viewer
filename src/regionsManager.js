@@ -9,6 +9,7 @@
 
 import { state } from './state/stateManager.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG, TRASH_SVG } from './icons.js';
+import { cellOutlines } from './cellOutlines.js';
 
 // where older versions kept the regions by themselves, one list for every run
 const OLD_STORAGE_KEY = 'pciSeq_regions';
@@ -18,6 +19,11 @@ let dirty = false;
 
 // worth asking about: changes, and something left to save
 const hasUnsaved = () => dirty && state.regions.size > 0;
+
+// two kinds of annotation share the list: a region is an outline (boundaries, in
+// image pixels); a cell annotation is a set of cells (labels) drawn with their own
+// outlines from every plane
+const isRegion = r => (r.kind || 'region') === 'region';
 
 // Initialize regions in state
 if (!state.regions) {
@@ -177,6 +183,19 @@ function getRegionColorRgb(name) {
 }
 
 /**
+ * The swatch in the list: a cell annotation whose cells are all one class takes
+ * that class's colour, like its outlines on the map; anything else its own colour
+ */
+function annotationColourHex(region) {
+    if (!isRegion(region) && region.features?.length) {
+        const classes = new Set(region.features.map(f => f.properties.cellClass));
+        const rgb = classes.size === 1 && state.cellClassColors?.get([...classes][0]);
+        if (rgb) return '#' + rgb.slice(0, 3).map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+    }
+    return getRegionColorHex(region.name);
+}
+
+/**
  * Import regions from CSV files
  */
 async function importRegions(files) {
@@ -314,8 +333,40 @@ function toggleRegionVisibility(regionName, visible) {
  */
 function markChanged() {
     dirty = true;
-    const regions = Array.from(state.regions.values()).map(({ name, boundaries, visible, by }) => ({ name, boundaries, visible, by }));
-    window.electronAPI?.annotationsChanged?.(regions);
+    syncAnnotationsToMain();
+}
+
+/**
+ * Give the main process the current list, for the save on close and for the chat
+ * tools. The cell outlines are left out, they are rebuilt from the labels.
+ */
+function syncAnnotationsToMain() {
+    const list = Array.from(state.regions.values()).map(({ features, ...plain }) => plain);
+    window.electronAPI?.annotationsChanged?.(list);
+}
+
+/**
+ * The chat's outline_cells tool: a cell annotation, drawn once the outlines are in
+ */
+async function addCellAnnotation({ name, labels }) {
+    let unique = String(name || 'Cells').trim() || 'Cells';
+    for (let n = 2; state.regions.has(unique); n++) unique = `${name} ${n}`;
+    const entry = { name: unique, kind: 'cells', labels: labels.map(Number), visible: true, by: 'chat', features: [] };
+    state.regions.set(unique, entry);
+    markChanged();
+    updateUIAfterRegionChange();
+    await loadOutlines(entry);
+}
+
+// fetch a cell annotation's outlines and redraw
+async function loadOutlines(entry) {
+    try {
+        entry.features = await cellOutlines(entry.labels);
+    } catch (error) {
+        console.error(`Could not get the outlines for ${entry.name}:`, error);
+    }
+    renderRegionsList();
+    if (window.updateAllLayers) window.updateAllLayers();
 }
 
 /**
@@ -338,6 +389,7 @@ async function openAnnotations() {
     for (const r of res.regions) state.regions.set(r.name, r);
     dirty = false;
     updateUIAfterRegionChange();
+    for (const r of state.regions.values()) if (!isRegion(r)) loadOutlines(r);
     return res;
 }
 
@@ -402,7 +454,7 @@ function renderRegionsList() {
         // Color swatch (use region color from curated d3.schemeSet2 subset)
         const swatch = document.createElement('div');
         swatch.className = 'cell-class-color';
-        swatch.style.background = getRegionColorHex(name);
+        swatch.style.background = annotationColourHex(region);
 
         // Name
         const label = document.createElement('span');
@@ -412,11 +464,13 @@ function renderRegionsList() {
         label.addEventListener('dblclick', (e) => { e.stopPropagation(); startRename(name); });
 
         // Count (boundary points) to match layout
-        const count = Array.isArray(region.boundaries) ? region.boundaries.length : 0;
+        const cells = !isRegion(region);
+        const count = cells ? region.labels.length : (Array.isArray(region.boundaries) ? region.boundaries.length : 0);
+        const unit = cells ? 'cells' : 'points';
         const countEl = document.createElement('span');
         countEl.className = 'cell-class-count';
-        countEl.textContent = count.toLocaleString();
-        countEl.title = `${count} points`;
+        countEl.textContent = (region.by === 'chat' ? 'chat \u00b7 ' : '') + count.toLocaleString();
+        countEl.title = `${count} ${unit}` + (region.by === 'chat' ? ', added by the chat' : '');
 
         // Eye icon toggle
         const eye = document.createElement('div');
@@ -459,7 +513,7 @@ function renderRegionsList() {
         item.appendChild(eye);
         item.appendChild(deleteBtn);
 
-        item.title = `${name}: ${count.toLocaleString()} points`;
+        item.title = `${name}: ${count.toLocaleString()} ${unit}`;
 
         container.appendChild(item);
     }
@@ -502,7 +556,8 @@ function updateChartDropdowns() {
         // Rebuild options
         dropdown.innerHTML = '<option value="">All cells</option>';
 
-        for (const [name] of state.regions) {
+        for (const [name, r] of state.regions) {
+            if (!isRegion(r)) continue;
             const option = document.createElement('option');
             option.value = name;
             option.textContent = name;
@@ -522,7 +577,7 @@ function updateChartDropdowns() {
 function getRegionBoundaries(regionName) {
     if (!regionName) return null;
     const region = state.regions.get(regionName);
-    return region ? region.boundaries : null;
+    return region && isRegion(region) ? region.boundaries : null;
 }
 
 /**
@@ -549,6 +604,9 @@ export {
     openAnnotations,
     takeOldStoredRegions,
     addDrawnRegion,
+    addCellAnnotation,
+    syncAnnotationsToMain,
+    isRegion,
     renderRegionsList,
     updateChartDropdowns,
     getRegionColorHex,

@@ -125,6 +125,9 @@ import {
     deleteRegion,
     toggleRegionVisibility,
     takeOldStoredRegions,
+    renderRegionsList,
+    syncAnnotationsToMain,
+    addCellAnnotation,
     saveAnnotations,
     openAnnotations,
     getRegionBoundaries,
@@ -734,6 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { appliedCount, notFoundClasses } = applyClassColorScheme(data, false);
                 if (appliedCount > 0) {
                     populateCellClassDrawer();
+                    renderRegionsList();   // cell annotation swatches follow their class colour
                     sendLegend();
                     if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
                 }
@@ -752,8 +756,12 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('load', async () => {
     try { Perf.start('viewer'); } catch {}
 
-    // regions an older version kept by itself, offered once for saving to a file
+    // regions an older version kept by itself, offered once for saving to a file;
+    // and the main process starts from what this page has, after a reload too
     takeOldStoredRegions();
+    syncAnnotationsToMain();
+    // the outline_cells tool adds a cell annotation
+    window.electronAPI?.onChatAddCellAnnotation?.((p) => addCellAnnotation(p));
 
     // Initialize cell lookup UI
     // the chat panel's fly_to_cell tool lands here: same search-and-navigate the

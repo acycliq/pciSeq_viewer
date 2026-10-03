@@ -38,6 +38,11 @@ brain structures) drawn as outlines on the map.
   GeoJSON polygons from other software open as well.
 - **Region list**, every region has a visibility toggle and a delete control.
   Double-click a name to rename it.
+- **Cell annotations**, added by the AI chat on request ("outline the Sncg cells
+  in my CA1"): a set of cells drawn with their own outlines from every plane
+  together, so they show whichever plane is on screen. They are listed, saved
+  and opened like regions, and marked *chat*. A cell counts as inside a region
+  when its centroid does.
 
 Regions are kept in memory only, as layers are in an image editor. Closing the
 window or opening another dataset with unsaved changes asks whether to save

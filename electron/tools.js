@@ -24,7 +24,7 @@ const allenTaxonomy = require('./allenTaxonomy');
 // docsRoot: the folder of documentation pages, see docs.js. fetch: for reading the
 // pciSeq source from GitHub, the global one unless a check passes a fake.
 let deps = { querySpot: null, queryCell: null, getMeta: null, send: null, docsRoot: null, fetch: null,
-             saveDialog: null, writeFile: null, getTilesInfo: null };
+             saveDialog: null, writeFile: null, getTilesInfo: null, getAnnotations: () => [] };
 
 // where the source is read from: the pciSeq_3d repo at the commit that made the
 // run, so the code matches the numbers, falling back to the dev_3d branch when the
@@ -36,6 +36,53 @@ const MAX_SOURCE_LINES = 400;
 
 function init(d) {
   deps = { ...deps, ...d };
+}
+
+// ------------------------------------------------------------------ annotations
+
+const MAX_OUTLINED = 5000;
+
+// find_cells and outline_cells take a region by name; run.findCells wants its points
+function withRegion(input) {
+  if (input.region == null) return input;
+  const r = deps.getAnnotations().find(a => a.name === input.region);
+  if (!r || r.kind === 'cells') {
+    const names = deps.getAnnotations().filter(a => a.kind !== 'cells').map(a => a.name);
+    throw new Error(`no region called ${input.region}; the regions are: ${names.join(', ') || 'none'}`);
+  }
+  const { region, ...rest } = input;
+  return { ...rest, polygon: r.boundaries };
+}
+
+function listAnnotations() {
+  return {
+    annotations: deps.getAnnotations().map(a => a.kind === 'cells'
+      ? { name: a.name, kind: 'cells', cells: a.labels.length, by: a.by, visible: a.visible }
+      : { name: a.name, kind: 'region', points: a.boundaries.length,
+          x_range: [Math.min(...a.boundaries.map(p => p[0])), Math.max(...a.boundaries.map(p => p[0]))],
+          y_range: [Math.min(...a.boundaries.map(p => p[1])), Math.max(...a.boundaries.map(p => p[1]))],
+          by: a.by, visible: a.visible }),
+    are: 'by is who made it, the user (you) or the chat; ranges in image pixels',
+  };
+}
+
+function outlineCells(input) {
+  const { name, labels, ...filters } = input;
+  const cells = labels && labels.length
+    ? labels.map(Number)
+    : run.findCells({ ...withRegion(filters), n: Infinity }).cells.map(c => c.cell);
+  if (!cells.length) return { done: false, note: 'no cells match, nothing outlined' };
+  if (cells.length > MAX_OUTLINED) {
+    throw new Error(`${cells.length} cells match, more than the ${MAX_OUTLINED} the map outlines at once; narrow it down`);
+  }
+  deps.send('chat-add-cell-annotation', { name, labels: cells });
+  return {
+    done: true, name, cells: cells.length,
+    shown: 'the outlines from every plane drawn together, so all the cells show whichever ' +
+           'plane the user is on',
+    note: 'added to the Annotations list in the drawer, marked as made by the chat; the ' +
+          'user can hide, rename, delete or save it there',
+  };
 }
 
 // What the model reads. Anthropic tool schema shape.
@@ -318,10 +365,50 @@ const TOOLS = [
         plane_from: { type: 'integer', description: 'First plane of the range.' },
         plane_to: { type: 'integer', description: 'Last plane of the range.' },
         plane: { type: 'integer', description: 'One plane only.' },
+        region: { type: 'string', description: 'Only cells whose centroid is inside this region, a name from annotations.' },
         min_counts: { type: 'number', description: 'Only cells with at least this many soft counts.' },
         top_two_within: { type: 'number', description: 'Only cells whose top two classes are within this.' },
         n: { type: 'integer', description: 'How many to return, default 50.' },
       },
+    },
+  },
+  {
+    name: 'annotations',
+    description:
+      'The annotations on the map now: regions (outlines the user drew, imported or ' +
+      'opened from a file, in image pixels) and cell annotations (a set of cells ' +
+      'drawn with their own outlines), with who made each, the user or the chat. Use ' +
+      'it when the user names a region, "my CA1", "the region I drew", then ' +
+      'find_cells with region for the cells inside it; a cell is inside when its ' +
+      'centroid is.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'outline_cells',
+    description:
+      'Outline some cells on the map, with their own outlines, as an annotation the ' +
+      'user can hide, rename, delete or save. For "outline the Sncg cells near the top ' +
+      'of CA1", "mark these cells". Give the cells either as labels, or as the same ' +
+      'filters find_cells takes (class_name, region, x and y ranges, ...), which then ' +
+      'picks every matching cell, not just the first n. The outlines from every plane ' +
+      'are drawn together, so the cells show whichever plane the user is on; one ' +
+      'plane only is not possible, say so if asked. name: a short name for the list. ' +
+      'Says how many cells it outlined.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Name for the annotation, e.g. "Sncg near CA1".' },
+        labels: { type: 'array', items: { type: 'integer' }, description: 'The cells, by label.' },
+        class_name: { type: 'string', description: 'As in find_cells.' },
+        class_rule: { type: 'string', enum: ['assigned', 'above'], description: 'As in find_cells.' },
+        min_class_prob: { type: 'number', description: 'As in find_cells.' },
+        region: { type: 'string', description: 'As in find_cells.' },
+        x_from: { type: 'number' }, x_to: { type: 'number' },
+        y_from: { type: 'number' }, y_to: { type: 'number' },
+        plane_from: { type: 'integer' }, plane_to: { type: 'integer' },
+        min_counts: { type: 'number' },
+      },
+      required: ['name'],
     },
   },
   {
@@ -999,7 +1086,9 @@ async function call(name, input) {
     if (name === 'gene') return run.gene(input.name);
     if (name === 'neighbours') return run.neighbours(input.label);
     if (name === 'class_counts') return run.classCounts(input.min_counts ?? null);
-    if (name === 'find_cells') return run.findCells(input);
+    if (name === 'find_cells') return run.findCells(withRegion(input));
+    if (name === 'annotations') return listAnnotations();
+    if (name === 'outline_cells') return outlineCells(input);
     if (name === 'metadata') return run.metadataTool(input.key ?? null);
     if (name === 'calculate') return run.calculate(input.expression);
     if (name === 'spots_in_cell') return await run.spotsInCell(input.label, input.gene ?? null);

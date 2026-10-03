@@ -185,6 +185,8 @@ function createWindow() {
       return r.canceled ? null : r.filePath;
     },
     writeFile: (file, text) => fs.writeFileSync(file, text, 'utf8'),
+    // the annotations on the map, for annotations, find_cells region and outline_cells
+    getAnnotations: annotations.list,
   });
   chat.init({
     store,

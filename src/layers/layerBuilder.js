@@ -16,7 +16,7 @@ import {
 } from './spotLayerCreator.js';
 import { createZProjectionLayer, isZProjectionReady } from './zProjectionOverlay.js';
 import { createCellSpotLineOverlayLayer } from './cellSpotLineOverlayLayer.js';
-import { getVisibleRegions, getRegionColorRgb } from '../regionsManager.js';
+import { getVisibleRegions, getRegionColorRgb, isRegion } from '../regionsManager.js';
 
 /**
  * Build tile layers for the current plane and preloaded adjacent planes
@@ -201,6 +201,30 @@ export function buildCellSpotLineLayer(state, getCurrentViewportTileBounds) {
  * @param {Object} elements - DOM elements
  * @returns {Array} Array of region layers
  */
+// a cell annotation: the cells' own outlines (already in tile space), each in its
+// class colour, read live so an imported colour scheme shows here too; a class
+// with no colour falls back to the annotation's own
+function cellAnnotationLayer(annotation, classColors) {
+    let fallback = [34, 197, 94];
+    try { fallback = getRegionColorRgb(annotation.name); } catch {}
+    const colour = d => (classColors && classColors.get(d.properties.cellClass)) || fallback;
+    let colourToken = '';
+    for (const [cls, rgb] of (classColors || [])) colourToken += cls + ':' + rgb + ';';
+    return new deck.GeoJsonLayer({
+        id: `cell-annotation-${annotation.name}`,
+        data: annotation.features || [],
+        stroked: true,
+        filled: true,
+        getFillColor: d => [...colour(d), 70],
+        getLineColor: d => [...colour(d), 255],
+        lineWidthUnits: 'pixels',
+        getLineWidth: 1.5,
+        coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN,
+        pickable: false,
+        updateTriggers: { getFillColor: [colourToken], getLineColor: [colourToken] },
+    });
+}
+
 export function buildRegionLayers(state, elements) {
     const layers = [];
     const visibleRegions = getVisibleRegions();
@@ -210,6 +234,10 @@ export function buildRegionLayers(state, elements) {
     if (visibleRegions.length === 0) return layers;
 
     visibleRegions.forEach(region => {
+        if (!isRegion(region)) {
+            layers.push(cellAnnotationLayer(region, state.cellClassColors));
+            return;
+        }
         console.log('[Regions] Creating layer for:', region.name, 'boundaries:', region.boundaries.length, 'points');
 
         // Transform region boundary from image pixels to deck tile space

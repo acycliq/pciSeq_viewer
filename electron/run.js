@@ -436,17 +436,29 @@ const within = (v, from, to) => (from == null || v >= from) && (to == null || v 
 // probability above min_class_prob (class_rule above), and expected_count is the
 // soft number, the sum of the class probability over every cell the other filters
 // keep, so cells that are only partly that class count partly.
+// Is (x, y) inside the polygon [[x, y], ...]? Ray casting, the same test the
+// charts use (utils/pointInPolygon.js); here for the region filter of find_cells.
+function pointInPolygon(x, y, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-12) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+// polygon: keep only the cells whose centroid is inside it, image pixels
 function findCells({ class_name = null, class_rule = 'assigned', min_class_prob = null,
                      plane = null, plane_from = null, plane_to = null,
                      x_from = null, x_to = null, y_from = null, y_to = null,
-                     min_counts = null, top_two_within = null, n = 50 } = {}) {
+                     polygon = null, min_counts = null, top_two_within = null, n = 50 } = {}) {
   const names = meta().class_names;
   const k = class_name != null ? classIndex(class_name) : null;
   if (!['assigned', 'above'].includes(class_rule)) throw new Error('class_rule must be assigned or above');
   if (class_rule === 'above' && min_class_prob == null) throw new Error('class_rule above needs min_class_prob');
   if (plane != null) { plane_from = plane; plane_to = plane; }   // one plane is a range of one
   const byPlane = plane_from != null || plane_to != null;
-  const byXY = [x_from, x_to, y_from, y_to].some(v => v != null);
+  const byXY = [x_from, x_to, y_from, y_to].some(v => v != null) || polygon != null;
   if (byPlane || byXY) needCentroids(byPlane ? 'plane' : 'position');
   if (byPlane) needPlanes();
 
@@ -458,6 +470,7 @@ function findCells({ class_name = null, class_rule = 'assigned', min_class_prob 
     const margin = top[0][1] - (top[1] ? top[1][1] : 0);
     if (top_two_within != null && margin > top_two_within) continue;
     if (byXY && !(within(r.x, x_from, x_to) && within(r.y, y_from, y_to))) continue;
+    if (polygon && !pointInPolygon(r.x, r.y, polygon)) continue;
     const pl = byPlane ? planeOf(r.z) : null;
     if (byPlane && !within(pl, plane_from, plane_to)) continue;
     if (k != null) {
