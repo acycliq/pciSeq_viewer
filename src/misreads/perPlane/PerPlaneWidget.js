@@ -6,7 +6,7 @@ import { renderPerPlane } from './perPlaneRenderer.js';
 class PerPlaneWidget extends WidgetBase {
     constructor() {
         super('perPlaneWidget', 'Misreads per Plane', {
-            width: 600, height: 400, minWidth: 400, minHeight: 280, side: 'right',
+            width: 600, height: 400, minWidth: 400, minHeight: 280,
         });
         this.resizeRaf    = null;
         this.selectedGene = null;

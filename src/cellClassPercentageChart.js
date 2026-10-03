@@ -17,8 +17,7 @@ class CellClassPercentageWidget extends WidgetBase {
             width: 800,
             height: 500,
             minWidth: 400,
-            minHeight: 300,
-            side: 'right'
+            minHeight: 300
         });
 
         this.lastData = null;

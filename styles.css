@@ -1851,6 +1851,20 @@ body {
 .chart-launcher-arrow svg { width: 14px; height: 14px; }
 .chart-launcher:hover .chart-launcher-arrow { color: var(--drawer-accent); transform: translate(1px, -1px); }
 
+/* a chart that is open: its card stays lit */
+.controls-panel button.chart-launcher.is-open { border-color: rgba(34, 197, 94, 0.6); }
+.chart-launcher.is-open .chart-launcher-icon { background: var(--drawer-accent); color: #0b0b0b; }
+.chart-launcher.is-open .chart-launcher-arrow { color: var(--drawer-accent); }
+/* a panel's width and height count its border, so the size it is given, the size
+   read back when it is saved, and the size while resizing are all the same number */
+.glass-widget { box-sizing: border-box; }
+/* the card of an open chart was clicked: the panel glows for a moment */
+.glass-widget.attention { animation: widget-attention 0.6s ease; }
+@keyframes widget-attention {
+    0%, 100% { box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); }
+    35% { box-shadow: 0 0 0 2px #22c55e, 0 20px 40px rgba(0, 0, 0, 0.4); }
+}
+
 /* The Annotations buttons: the drawer's outlined buttons (as Show All / Hide All),
    three in a row, each with a small icon */
 .controls-panel .annotation-buttons .show-all-btn { min-width: 0; padding: 8px 6px; gap: 6px; white-space: nowrap; }

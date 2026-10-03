@@ -8,9 +8,37 @@
  * - Resizing
  * - Show/Hide animations
  * - State management
+ * - Where it opens: a free spot in the map area the first time (widgetManager),
+ *   and after that wherever the user left it, at the size they left it
+ * - Stacking: the panel last clicked is on top
  */
 
 import { widgetManager } from '../widgetManager.js';
+
+const BASE_Z = 2000;      // the z-index of .glass-widget in styles.css
+const stack = [];         // the panels, back to front
+
+// where the user left a panel, kept in this browser between sessions
+const layoutKey = id => `widgetLayout:${id}`;
+
+function savedLayout(id) {
+    try {
+        const at = JSON.parse(localStorage.getItem(layoutKey(id)));
+        const ok = at && ['x', 'y', 'width', 'height'].every(k => Number.isFinite(at[k]));
+        return ok ? at : null;
+    } catch {
+        return null;
+    }
+}
+
+// offsetLeft and friends, not getBoundingClientRect: that one is a little off while
+// the opening animation is still scaling the panel
+function saveLayout(id, element) {
+    const at = { x: element.offsetLeft, y: element.offsetTop, width: element.offsetWidth, height: element.offsetHeight };
+    try {
+        localStorage.setItem(layoutKey(id), JSON.stringify(at));
+    } catch {}
+}
 
 export class WidgetBase {
     constructor(id, title, options = {}) {
@@ -74,29 +102,41 @@ export class WidgetBase {
         this.closeBtn.addEventListener('click', this.close);
         this.header.addEventListener('mousedown', this.onMouseDown);
         this.resizeHandle.addEventListener('mousedown', this.onResizeStart);
+        // a click anywhere on the panel brings it to the front
+        this.element.addEventListener('mousedown', () => this.bringToFront(), true);
         
         // Hide toolbar if empty (can be populated by subclasses)
         if (this.toolbar.children.length === 0) {
             this.toolbar.style.display = 'none';
         }
 
-        // Register with manager (it will handle initial positioning)
-        // We pass the newly created element implicitly because widgetManager looks up by ID
-        widgetManager.register(this.id, {
-            preferredWidth: this.options.width,
-            preferredHeight: this.options.height,
-            side: this.options.side || 'left'
-        });
     }
 
     /**
-     * Show the widget with animation
+     * Show the widget with animation. Already open: bring it to the front and flash
+     * it, so the eye finds it.
      */
     show() {
         if (!this.element) this.create();
-        
+
+        if (this.isVisible) {
+            this.bringToFront();
+            this.flash();
+            if (this.onShow) this.onShow();
+            return;
+        }
+
+        // the manager finds it a place, or puts it back where the user left it
+        widgetManager.register(this.id, {
+            preferredWidth: this.options.width,
+            preferredHeight: this.options.height,
+            at: savedLayout(this.id)
+        });
+        this.bringToFront();
+
         this.element.classList.remove('hidden');
         this.isVisible = true;
+        this.announce();
 
         // Trigger reflow for animation
         requestAnimationFrame(() => {
@@ -115,7 +155,8 @@ export class WidgetBase {
         
         this.element.classList.remove('visible');
         this.isVisible = false;
-        
+        this.announce();
+
         // Wait for transition to finish before display: none
         setTimeout(() => {
             if (!this.isVisible) {
@@ -130,6 +171,27 @@ export class WidgetBase {
         this.hide();
         // Notify manager
         widgetManager.unregister(this.id);
+    }
+
+    // put this panel on top of the others
+    bringToFront() {
+        const i = stack.indexOf(this);
+        if (i === stack.length - 1 && i >= 0) return;
+        if (i >= 0) stack.splice(i, 1);
+        stack.push(this);
+        stack.forEach((w, z) => { if (w.element) w.element.style.zIndex = BASE_Z + z; });
+    }
+
+    // a short glow round the panel
+    flash() {
+        this.element.classList.remove('attention');
+        void this.element.offsetWidth;      // restart the animation
+        this.element.classList.add('attention');
+    }
+
+    // tell whoever cares (the chart cards in the drawer) that it opened or closed
+    announce() {
+        window.dispatchEvent(new CustomEvent('widget-visibility', { detail: { id: this.id, visible: this.isVisible } }));
     }
 
     /**
@@ -183,6 +245,7 @@ export class WidgetBase {
         const onMouseUp = () => {
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
+            saveLayout(this.id, this.element);
         };
 
         document.addEventListener('mousemove', onMouseMove);
@@ -218,6 +281,7 @@ export class WidgetBase {
         const onMouseUp = () => {
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
+            saveLayout(this.id, this.element);
         };
 
         document.addEventListener('mousemove', onMouseMove);

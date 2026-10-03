@@ -24,8 +24,7 @@ class ExpressionHistogramWidget extends WidgetBase {
             width: 700,
             height: 450,
             minWidth: 400,
-            minHeight: 300,
-            side: 'right'
+            minHeight: 300
         });
 
         this.lastData = null;

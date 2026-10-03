@@ -1,26 +1,33 @@
 /**
- * WidgetManager - Smart positioning system for floating widgets
+ * WidgetManager: where the floating panels (the charts, the gene and class panels) open.
  *
- * Features:
- * - Cascade layout (diagonal stacking)
- * - Viewport bounds checking
- * - Collision detection
- * - Responsive sizing
+ * A panel opens in the map area, clear of the drawer and of the bar at the bottom,
+ * in the first free spot next to the panels already open, looking left to right and
+ * top to bottom. When no free spot is left it overlaps the others, stepped down and
+ * right so every title bar stays in view.
+ *
+ * Where the open panels are is read from the page itself, so dragging and resizing a
+ * panel needs no bookkeeping here.
  */
+
+const RAIL = 32;        // the strip with the drawer's toggle, there when the drawer is shut
+const TOP_CLEAR = 56;   // room for the readout and the buttons along the top of the map
 
 class WidgetManager {
     constructor() {
-        this.widgets = new Map(); // widgetId -> { element, width, height, x, y }
-        this.cascade = { x: 60, y: 60 }; // Starting position
-        this.offset = 40; // Cascade offset for each new widget
-        this.spacing = 20; // Minimum spacing between widgets
-        this.margin = 20; // Margin from viewport edges
+        this.widgets = new Map();   // widgetId -> element
+        this.margin = 16;           // from the edges of the free area
+        this.spacing = 12;          // between panels
+        this.step = 24;             // how finely the free area is searched
+        this.cascade = 32;          // offset per open panel when they have to overlap
     }
 
     /**
-     * Register a widget with smart positioning
+     * Place a panel and start keeping track of it
      * @param {string} id - Widget element ID
-     * @param {Object} options - { preferredWidth, preferredHeight, side }
+     * @param {Object} options - { preferredWidth, preferredHeight, side, at }
+     *   side: 'left' (default) or 'right', the side the search for a free spot starts from
+     *   at: { x, y, width, height } to put it back where the user left it
      */
     register(id, options = {}) {
         const element = document.getElementById(id);
@@ -28,228 +35,112 @@ class WidgetManager {
             console.warn(`WidgetManager: Element ${id} not found`);
             return;
         }
+        const { preferredWidth = 400, preferredHeight = 500, side = 'left', at = null } = options;
 
-        const {
-            preferredWidth = 400,
-            preferredHeight = 500,
-            side = 'left' // 'left' or 'right'
-        } = options;
+        const width = Math.min(at?.width ?? preferredWidth, window.innerWidth - this.margin * 2);
+        const height = Math.min(at?.height ?? preferredHeight, window.innerHeight - this.margin * 2);
+        const spot = at ? this.clamp(at.x, at.y, width, height)
+                        : this.findBestPosition(width, height, side, id);
 
-        // Calculate responsive dimensions
-        const viewport = this.getViewportSize();
-        const maxWidth = viewport.width - (this.margin * 2);
-        const maxHeight = viewport.height - (this.margin * 2);
-
-        const width = Math.min(preferredWidth, maxWidth * 0.9); // Max 90% of viewport
-        const height = Math.min(preferredHeight, maxHeight * 0.9);
-
-        // Find non-overlapping position
-        const position = this.findBestPosition(width, height, side);
-
-        // Store widget info
-        this.widgets.set(id, {
-            element,
-            width,
-            height,
-            x: position.x,
-            y: position.y,
-            side
-        });
-
-        // Apply positioning
-        this.applyPosition(id);
-
-        return { width, height, x: position.x, y: position.y };
+        this.widgets.set(id, element);
+        element.style.position = 'fixed';
+        element.style.right = 'auto';
+        element.style.width = `${width}px`;
+        element.style.height = `${height}px`;
+        this.moveTo(element, spot.x, spot.y);
+        return { width, height, ...spot };
     }
 
     /**
-     * Find best position for a widget
+     * The part of the window panels may open in: right of the drawer, below the
+     * readout at the top, above the bar at the bottom
      */
-    findBestPosition(width, height, side) {
-        const viewport = this.getViewportSize();
-
-        // Try cascade position first
-        let x, y;
-
-        if (side === 'right') {
-            // Right-aligned widgets cascade from top-right
-            x = viewport.width - width - this.cascade.x;
-            y = this.cascade.y;
-        } else {
-            // Left-aligned widgets cascade from top-left
-            x = this.cascade.x;
-            y = this.cascade.y;
-        }
-
-        // Check if position is valid (not overlapping, within viewport)
-        const iterations = 20; // Max attempts to find position
-        for (let i = 0; i < iterations; i++) {
-            if (this.isPositionValid(x, y, width, height)) {
-                // Update cascade for next widget
-                this.cascade.x += this.offset;
-                this.cascade.y += this.offset;
-
-                // Reset cascade if too far down/right
-                if (this.cascade.y + height > viewport.height - this.margin) {
-                    this.cascade.x = 60;
-                    this.cascade.y = 60;
-                }
-
-                return { x, y };
-            }
-
-            // Try next cascade position
-            x += this.offset;
-            y += this.offset;
-
-            // Wrap around if we hit the edge
-            if (side === 'right') {
-                if (x < this.margin) {
-                    x = viewport.width - width - 60;
-                    y += this.offset * 2;
-                }
-            } else {
-                if (x + width > viewport.width - this.margin) {
-                    x = 60;
-                    y += this.offset * 2;
-                }
-            }
-        }
-
-        // Fallback: center of screen
+    freeArea() {
+        const drawer = document.getElementById('controlsPanel');
+        const drawerOpen = drawer && !drawer.classList.contains('collapsed');
+        const bar = document.querySelector('.main-controls');
         return {
-            x: (viewport.width - width) / 2,
-            y: (viewport.height - height) / 2
+            left: (drawerOpen ? drawer.getBoundingClientRect().right : RAIL) + this.margin,
+            top: TOP_CLEAR,
+            right: window.innerWidth - this.margin,
+            bottom: (bar ? bar.getBoundingClientRect().top : window.innerHeight) - this.margin,
         };
     }
 
-    /**
-     * Check if position is valid (within bounds, no overlap)
-     */
-    isPositionValid(x, y, width, height) {
-        const viewport = this.getViewportSize();
-
-        // Check viewport bounds
-        if (x < this.margin ||
-            y < this.margin ||
-            x + width > viewport.width - this.margin ||
-            y + height > viewport.height - this.margin) {
-            return false;
+    // where the other open panels are right now. From offsetLeft and friends, not
+    // getBoundingClientRect, which is a little off while a panel's opening animation
+    // is still scaling it
+    openRects(exceptId) {
+        const rects = [];
+        for (const [id, el] of this.widgets) {
+            if (id === exceptId || el.classList.contains('hidden')) continue;
+            rects.push({ left: el.offsetLeft, top: el.offsetTop,
+                         right: el.offsetLeft + el.offsetWidth, bottom: el.offsetTop + el.offsetHeight });
         }
-
-        // Check overlap with existing visible widgets
-        for (const [id, widget] of this.widgets) {
-            if (widget.element.classList.contains('hidden')) continue;
-
-            const overlap = !(
-                x + width + this.spacing < widget.x ||
-                x > widget.x + widget.width + this.spacing ||
-                y + height + this.spacing < widget.y ||
-                y > widget.y + widget.height + this.spacing
-            );
-
-            if (overlap) return false;
-        }
-
-        return true;
+        return rects;
     }
 
     /**
-     * Apply position to widget element
+     * The first free spot for a panel of this size, or a stepped overlap when there is none
      */
-    applyPosition(id) {
-        const widget = this.widgets.get(id);
-        if (!widget) return;
+    findBestPosition(width, height, side, id) {
+        const area = this.freeArea();
+        const others = this.openRects(id);
+        const gap = this.spacing;
+        const isFree = (x, y) => others.every(r =>
+            x + width + gap <= r.left || x >= r.right + gap ||
+            y + height + gap <= r.top || y >= r.bottom + gap);
 
-        const { element, width, height, x, y } = widget;
+        const xs = [];
+        for (let x = area.left; x + width <= area.right; x += this.step) xs.push(x);
+        if (side === 'right') xs.reverse();
+        for (let y = area.top; y + height <= area.bottom; y += this.step) {
+            for (const x of xs) {
+                if (isFree(x, y)) return { x, y };
+            }
+        }
+        const shift = others.length * this.cascade;
+        return this.clamp(area.left + shift, area.top + shift, width, height);
+    }
 
-        // Apply styles
-        element.style.position = 'fixed';
+    // keep a panel of this size inside the window
+    clamp(x, y, width, height) {
+        return {
+            x: Math.max(this.margin, Math.min(x, window.innerWidth - width - this.margin)),
+            y: Math.max(this.margin, Math.min(y, window.innerHeight - height - this.margin)),
+        };
+    }
+
+    moveTo(element, x, y) {
         element.style.left = `${x}px`;
         element.style.top = `${y}px`;
-        element.style.width = `${width}px`;
-        element.style.height = `${height}px`;
-        element.style.right = 'auto'; // Clear any right positioning
     }
 
     /**
-     * Reposition widget (e.g., after drag or window resize)
+     * Move a panel (a drag), kept inside the window
      */
     reposition(id, x, y) {
-        const widget = this.widgets.get(id);
-        if (!widget) return;
-
-        // Constrain to viewport
-        const viewport = this.getViewportSize();
-        x = Math.max(this.margin, Math.min(x, viewport.width - widget.width - this.margin));
-        y = Math.max(this.margin, Math.min(y, viewport.height - widget.height - this.margin));
-
-        widget.x = x;
-        widget.y = y;
-
-        this.applyPosition(id);
+        const element = this.widgets.get(id);
+        if (!element) return;
+        const spot = this.clamp(x, y, element.offsetWidth, element.offsetHeight);
+        this.moveTo(element, spot.x, spot.y);
     }
 
     /**
-     * Reset cascade position (call when closing widgets)
-     */
-    resetCascade() {
-        this.cascade = { x: 60, y: 60 };
-    }
-
-    /**
-     * Unregister widget when closed
+     * Stop keeping track of a panel (it was closed)
      */
     unregister(id) {
         this.widgets.delete(id);
-
-        // If no widgets open, reset cascade
-        const visibleWidgets = Array.from(this.widgets.values())
-            .filter(w => !w.element.classList.contains('hidden'));
-
-        if (visibleWidgets.length === 0) {
-            this.resetCascade();
-        }
     }
 
     /**
-     * Get viewport size
-     */
-    getViewportSize() {
-        return {
-            width: window.innerWidth,
-            height: window.innerHeight
-        };
-    }
-
-    /**
-     * Handle window resize - reposition all widgets to fit
+     * The window changed size: pull the open panels back inside it
      */
     handleResize() {
-        const viewport = this.getViewportSize();
-
-        for (const [id, widget] of this.widgets) {
-            // Constrain to new viewport size
-            const maxWidth = viewport.width - (this.margin * 2);
-            const maxHeight = viewport.height - (this.margin * 2);
-
-            // Resize if needed
-            if (widget.width > maxWidth) {
-                widget.width = maxWidth * 0.9;
-            }
-            if (widget.height > maxHeight) {
-                widget.height = maxHeight * 0.9;
-            }
-
-            // Reposition if outside bounds
-            if (widget.x + widget.width > viewport.width - this.margin) {
-                widget.x = viewport.width - widget.width - this.margin;
-            }
-            if (widget.y + widget.height > viewport.height - this.margin) {
-                widget.y = viewport.height - widget.height - this.margin;
-            }
-
-            this.applyPosition(id);
+        for (const element of this.widgets.values()) {
+            if (element.classList.contains('hidden')) continue;
+            const spot = this.clamp(element.offsetLeft, element.offsetTop, element.offsetWidth, element.offsetHeight);
+            this.moveTo(element, spot.x, spot.y);
         }
     }
 }

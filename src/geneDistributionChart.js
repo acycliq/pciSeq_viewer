@@ -14,8 +14,7 @@ class GeneDistributionWidget extends WidgetBase {
             width: 600,
             height: 400,
             minWidth: 400,
-            minHeight: 300,
-            side: 'left'
+            minHeight: 300
         });
 
         this.lastData = null;

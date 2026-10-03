@@ -79,6 +79,7 @@ import { setupCheckSpotBridge, openCheckSpotModal } from './checkSpotBridge.js';
 // === MISREADS IMPORTS ===
 import { showRhoBarWidget }     from './misreads/rhoBar/RhoBarWidget.js';
 import { openChart } from './chatCharts.js';
+import './ui/chartLaunchers.js';
 import { showStackedBarWidget } from './misreads/stackedBar/StackedBarWidget.js';
 import { showPerPlaneWidget }   from './misreads/perPlane/PerPlaneWidget.js';
 
