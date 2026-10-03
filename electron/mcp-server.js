@@ -62,7 +62,8 @@ function instructions() {
     'You are connected to a running pciSeq viewer through its MCP server. The run',
     'the user has loaded is already open in the tools, and fly_to_cell,',
     'open_cell_diagnostics, open_spot_diagnostics, open_3d_view, show_classes,',
-    'show_genes, outline_cells and open_chart act on the viewer window the user is looking at.',
+    'show_genes, outline_cells, open_chart and fit_allen_regions act on the viewer window',
+    'the user is looking at.',
   ].join('\n');
 }
 

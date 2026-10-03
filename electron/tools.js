@@ -24,7 +24,8 @@ const allenTaxonomy = require('./allenTaxonomy');
 // docsRoot: the folder of documentation pages, see docs.js. fetch: for reading the
 // pciSeq source from GitHub, the global one unless a check passes a fake.
 let deps = { querySpot: null, queryCell: null, getMeta: null, send: null, docsRoot: null, fetch: null,
-             saveDialog: null, writeFile: null, getTilesInfo: null, getAnnotations: () => [] };
+             saveDialog: null, writeFile: null, getTilesInfo: null, getAnnotations: () => [],
+             fitAllenRegions: null };
 
 // where the source is read from: the pciSeq_3d repo at the commit that made the
 // run, so the code matches the numbers, falling back to the dev_3d branch when the
@@ -45,6 +46,21 @@ const MAX_OUTLINED = 5000;
 const CHART_NAMES = ['class_distribution', 'classes_by_z', 'class_gene_counts', 'gene_distribution',
                      'misread_rho', 'assigned_vs_misread', 'misread_per_plane'];
 const REGION_CHARTS = ['class_distribution', 'classes_by_z'];
+
+// fit_allen_regions: check the landmarks are drawn regions, run the fit
+// (electron/allenFit.js), then the viewer adds the regions to Annotations
+async function fitAllen({ landmarks, python_path = null }) {
+  if (!Array.isArray(landmarks) || !landmarks.length) return { error: 'give at least one landmark' };
+  const drawn = new Set(deps.getAnnotations().filter(a => a.kind !== 'cells').map(a => a.name));
+  const missing = landmarks.filter(l => !drawn.has(l.region)).map(l => l.region);
+  if (missing.length) {
+    return { error: `no drawn region called ${missing.join(', ')}; the regions are: ${[...drawn].join(', ') || 'none'}` };
+  }
+  const { regions, summary } = await deps.fitAllenRegions({ landmarks, python_path });
+  deps.send('chat-add-allen-regions', { regions });
+  return { done: true, ...summary,
+           note: 'added to the Annotations list as allen, replacing any earlier allen regions' };
+}
 
 // open_chart: check the names here, where the errors can go back to the model,
 // then the viewer opens the chart (src/chatCharts.js)
@@ -82,7 +98,9 @@ function listAnnotations() {
           x_range: [Math.min(...a.boundaries.map(p => p[0])), Math.max(...a.boundaries.map(p => p[0]))],
           y_range: [Math.min(...a.boundaries.map(p => p[1])), Math.max(...a.boundaries.map(p => p[1]))],
           by: a.by, visible: a.visible }),
-    are: 'by is who made it, the user (you) or the chat; ranges in image pixels',
+    are: 'by is who made it: the user (you), the chat, or allen, a region of the Allen mouse ' +
+         'brain atlas (CCFv3) fitted to this section from the user\'s outlines, an estimate ' +
+         'that is best near those outlines; ranges in image pixels',
   };
 }
 
@@ -402,6 +420,47 @@ const TOOLS = [
       'find_cells with region for the cells inside it; a cell is inside when its ' +
       'centroid is.',
     input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'fit_allen_regions',
+    description:
+      'Map the regions of the Allen mouse brain atlas (CCFv3) onto this section, from ' +
+      'one or two regions the user drew by hand that Allen also has (the landmarks), ' +
+      'for example the dentate gyrus granule layer. Coronal mouse sections only. Offer ' +
+      'it when the data is mouse brain, coronal, and the user has drawn such a region, ' +
+      'or asks which regions are where. Before calling, agree each landmark with the ' +
+      'user: which drawn region (its name in annotations), which Allen structure by ' +
+      'acronym (DG-sg the dentate granule layer, DG-mo and DG-po its molecular and ' +
+      'polymorph layers, CA1, CA2, CA3, SUB, fi, alv, ccb), and the relation: same when ' +
+      'the drawing is that structure\'s outline, inside when it only lies inside it. ' +
+      'The Allen 3D atlas has CA1, CA2 and CA3 as whole fields with no layers, so a ' +
+      'drawn pyramidal band is inside CA1, not same. Takes about half a minute. The ' +
+      'regions are added to the Annotations list as allen, replacing earlier allen ' +
+      'ones, the user\'s own kept. Then say which atlas slice was matched, the fit per ' +
+      'landmark in um, and that the fit is straight (rotation, scale, shift), so best ' +
+      'near the landmarks and rougher far from them; suggest a check, for example ' +
+      'open_chart class_distribution on a white matter region such as Allen ccb, ' +
+      'which should be mostly oligodendrocytes. If no python with pciSeq is found, ' +
+      'the error says what to ask the user.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        landmarks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              region: { type: 'string', description: 'The drawn region, its name in annotations.' },
+              allen: { type: 'string', description: 'The Allen structure acronym, e.g. DG-sg.' },
+              relation: { type: 'string', enum: ['same', 'inside'] },
+            },
+            required: ['region', 'allen', 'relation'],
+          },
+        },
+        python_path: { type: 'string', description: 'Only when the user has given it after an error.' },
+      },
+      required: ['landmarks'],
+    },
   },
   {
     name: 'open_chart',
@@ -1136,6 +1195,7 @@ async function call(name, input) {
     if (name === 'annotations') return listAnnotations();
     if (name === 'outline_cells') return outlineCells(input);
     if (name === 'open_chart') return openChart(input);
+    if (name === 'fit_allen_regions') return await fitAllen(input);
     if (name === 'metadata') return run.metadataTool(input.key ?? null);
     if (name === 'calculate') return run.calculate(input.expression);
     if (name === 'spots_in_cell') return await run.spotsInCell(input.label, input.gene ?? null);

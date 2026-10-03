@@ -52,7 +52,8 @@ function fromGeoJSON(obj) {
   let skipped = 0;
   obj.features.forEach((f, i) => {
     const p = f?.properties || {};
-    const by = p.by === 'chat' ? 'chat' : 'you';
+    // who made it: the user, the chat, or the Allen atlas fitted to the section (bead 7wp)
+    const by = ['chat', 'allen'].includes(p.by) ? p.by : 'you';
     if (p.kind === 'cells' && Array.isArray(p.labels)) {
       regions.push({ name: String(p.name || `Cells ${i + 1}`), kind: 'cells', labels: p.labels.map(Number),
                      visible: p.visible !== false, by });

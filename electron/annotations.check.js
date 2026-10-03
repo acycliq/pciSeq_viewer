@@ -33,6 +33,11 @@ const cg = toGeoJSON([cells]);
 assert.strictEqual(cg.features[0].geometry, null);
 assert.deepStrictEqual(fromGeoJSON(JSON.parse(JSON.stringify(cg))).regions, [cells]);
 
+// regions fitted from the Allen atlas keep their maker
+const allen = fromGeoJSON({ type: 'FeatureCollection', features: [
+  { type: 'Feature', properties: { name: 'Allen CA3', by: 'allen' }, geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1]]] } }] });
+assert.strictEqual(allen.regions[0].by, 'allen');
+
 assert.throws(() => fromGeoJSON({ type: 'Feature' }), /not a GeoJSON FeatureCollection/);
 
 console.log('annotations.check: all assertions pass');

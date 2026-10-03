@@ -122,6 +122,11 @@ function updateUIAfterRegionChange() {
  */
 const REGION_COLOR_SET2 = ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854', '#ffd92f'];
 
+// the Allen atlas regions (fit_allen_regions) all share one quiet colour and stay
+// out of the palette, so dozens of them neither take the user's colours nor shuffle them
+const ALLEN_COLOR = '#9ca3af';
+const isAllen = r => r?.by === 'allen';
+
 function djb2Hash(str) {
     let h = 5381;
     for (let i = 0; i < str.length; i++) {
@@ -150,7 +155,8 @@ function hexToRgb(hex) {
  * colors of later items alphabetically, but earlier ones remain stable.
  */
 function buildRegionColorIndexMap() {
-    const names = Array.from(state.regions.keys()).sort((a, b) => String(a).localeCompare(String(b)));
+    const names = Array.from(state.regions.values()).filter(r => !isAllen(r)).map(r => r.name)
+        .sort((a, b) => String(a).localeCompare(String(b)));
     const used = new Set();
     const mapping = new Map();
     const N = REGION_COLOR_SET2.length;
@@ -169,6 +175,7 @@ function buildRegionColorIndexMap() {
 }
 
 function getRegionColorHex(name) {
+    if (isAllen(state.regions.get(name))) return ALLEN_COLOR;
     const mapping = buildRegionColorIndexMap();
     const idx = mapping.get(name);
     if (typeof idx === 'number') return REGION_COLOR_SET2[idx];
@@ -248,6 +255,22 @@ function addDrawnRegion(boundaries) {
     markChanged();
     updateUIAfterRegionChange();
     startRename(name);
+}
+
+/**
+ * The chat's fit_allen_regions tool: the Allen atlas regions fitted to the section.
+ * Earlier allen regions go, the user's and the chat's stay; a name already taken
+ * gets a number.
+ */
+function addAllenRegions({ regions }) {
+    for (const [name, r] of [...state.regions]) if (r.by === 'allen') state.regions.delete(name);
+    for (const r of regions) {
+        let name = r.name;
+        for (let n = 2; state.regions.has(name); n++) name = `${r.name} (${n})`;
+        state.regions.set(name, { ...r, name, by: 'allen' });
+    }
+    markChanged();
+    updateUIAfterRegionChange();
 }
 
 /**
@@ -469,8 +492,9 @@ function renderRegionsList() {
         const unit = cells ? 'cells' : 'points';
         const countEl = document.createElement('span');
         countEl.className = 'cell-class-count';
-        countEl.textContent = (region.by === 'chat' ? 'chat \u00b7 ' : '') + count.toLocaleString();
-        countEl.title = `${count} ${unit}` + (region.by === 'chat' ? ', added by the chat' : '');
+        const maker = region.by && region.by !== 'you' ? region.by : null;   // chat or allen
+        countEl.textContent = (maker ? `${maker} \u00b7 ` : '') + count.toLocaleString();
+        countEl.title = `${count} ${unit}` + (maker ? `, from ${maker === 'chat' ? 'the chat' : 'the Allen atlas'}` : '');
 
         // Eye icon toggle
         const eye = document.createElement('div');
@@ -605,6 +629,8 @@ export {
     takeOldStoredRegions,
     addDrawnRegion,
     addCellAnnotation,
+    addAllenRegions,
+    isAllen,
     syncAnnotationsToMain,
     isRegion,
     renderRegionsList,

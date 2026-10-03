@@ -15,6 +15,7 @@ const run = require('./run');
 const legend = require('./legend');
 const compose = require('./compose');
 const annotations = require('./annotations');
+const allenFit = require('./allenFit');
 
 // GitHub repo for update checks
 const GITHUB_REPO = 'acycliq/pciSeq_viewer';
@@ -187,7 +188,10 @@ function createWindow() {
     writeFile: (file, text) => fs.writeFileSync(file, text, 'utf8'),
     // the annotations on the map, for annotations, find_cells region and outline_cells
     getAnnotations: annotations.list,
+    // fit_allen_regions runs pciSeq.allen_regions in the user's python
+    fitAllenRegions: allenFit.fitAllenRegions,
   });
+  allenFit.init({ store, getMeta: diagnostics.getMeta });
   chat.init({
     store,
     send: (ev) => { if (mainWindow) mainWindow.webContents.send('chat-event', ev); },

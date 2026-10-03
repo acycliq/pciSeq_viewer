@@ -129,6 +129,7 @@ import {
     renderRegionsList,
     syncAnnotationsToMain,
     addCellAnnotation,
+    addAllenRegions,
     saveAnnotations,
     openAnnotations,
     getRegionBoundaries,
@@ -765,6 +766,8 @@ window.addEventListener('load', async () => {
     window.electronAPI?.onChatAddCellAnnotation?.((p) => addCellAnnotation(p));
     // and open_chart opens one of the drawer's charts
     window.electronAPI?.onChatOpenChart?.((p) => openChart(p));
+    // and fit_allen_regions brings the Allen atlas regions
+    window.electronAPI?.onChatAddAllenRegions?.((p) => addAllenRegions(p));
 
     // Initialize cell lookup UI
     // the chat panel's fly_to_cell tool lands here: same search-and-navigate the

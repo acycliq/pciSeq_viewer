@@ -16,7 +16,7 @@ import {
 } from './spotLayerCreator.js';
 import { createZProjectionLayer, isZProjectionReady } from './zProjectionOverlay.js';
 import { createCellSpotLineOverlayLayer } from './cellSpotLineOverlayLayer.js';
-import { getVisibleRegions, getRegionColorRgb, isRegion } from '../regionsManager.js';
+import { getVisibleRegions, getRegionColorRgb, isRegion, isAllen } from '../regionsManager.js';
 
 /**
  * Build tile layers for the current plane and preloaded adjacent planes
@@ -264,9 +264,10 @@ export function buildRegionLayers(state, elements) {
             id: `region-${region.name}`,
             data: [{ path: transformedPath, name: region.name }],
             getPath: d => d.path,
-            getColor: [...color, 230],
-            getWidth: 3,
-            widthMinPixels: 2,
+            // Allen atlas regions thin and see-through, so the user's own stand out
+            getColor: [...color, isAllen(region) ? 150 : 230],
+            getWidth: isAllen(region) ? 1 : 3,
+            widthMinPixels: isAllen(region) ? 1 : 2,
             widthScale: 1,
             widthUnits: 'pixels',
             coordinateSystem: deck.COORDINATE_SYSTEM.CARTESIAN,
