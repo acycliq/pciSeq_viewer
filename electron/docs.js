@@ -50,6 +50,32 @@ function pageTitle(text) {
   return m ? m[1].trim() : '';
 }
 
+// What a page is about, in one line. The description in the frontmatter is written
+// for exactly this, so it wins; only a third of the pages carry one, and the copy
+// saved inside a run drops the frontmatter, so the fallback is the page's first real
+// paragraph, cut short. Tables, code, containers, html and a lone bold lead-in such
+// as "**Simplifications.**" are passed over: they say nothing about the page.
+function pageSummary(text, maxLength = 160) {
+  const described = text.match(/^description:\s*(.+)$/m);
+  if (described) return described[1].trim();
+  for (const [, para] of paragraphs(text)) {
+    if (/^[|`:<]/.test(para)) continue;
+    const line = para.replace(/\s+/g, ' ').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').trim();
+    if (!line || /^\*\*[^*]+\*\*[.:]?$/.test(line)) continue;
+    return line.length > maxLength ? line.slice(0, maxLength - 1).replace(/\s+\S*$/, '') + '...' : line;
+  }
+  return '';
+}
+
+// Every page with its title and what it is about: the table of contents the agent
+// needs to pick a page by subject when its words do not match the text.
+function contents(root) {
+  return listPages(root).map(page => {
+    const text = readPage(root, page);
+    return { page, title: pageTitle(text), about: pageSummary(text) };
+  });
+}
+
 // [heading, paragraph] pairs, heading being the nearest one above. Frontmatter is
 // dropped; code blocks are kept, config keys live in them. A table is split into
 // its rows, one paragraph each: a row is the unit a reader wants back (a setting,
@@ -103,4 +129,4 @@ function searchDocs(root, query, n = 5) {
   return hits.slice(0, n).map(({ page, title, heading, text }) => ({ page, title, heading, text }));
 }
 
-module.exports = { listPages, readPage, pageTitle, paragraphs, searchDocs };
+module.exports = { listPages, readPage, pageTitle, pageSummary, contents, paragraphs, searchDocs };

@@ -152,9 +152,21 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   // prose before a row on a tie
   const tie = await tools.call('docs', { query: 'theta' });
   assert.ok(!tie.hits[0].text.startsWith('|'), tie.hits[0].text);
+  // nothing matched the words: the list of pages comes back, so one can be picked by subject
   const nothing = await tools.call('docs', { query: 'zzzz' });
   assert.deepStrictEqual(nothing.hits, []);
-  assert.deepStrictEqual(nothing.pages, ['index.md', 'the-model/settings.md']);
+  assert.deepStrictEqual(nothing.contents.map(c => c.page), ['index.md', 'the-model/settings.md']);
+  // no query at all: the same list
+  const toc = await tools.call('docs', {});
+  assert.deepStrictEqual(toc.contents.map(c => c.page), ['index.md', 'the-model/settings.md']);
+  assert.ok(toc.contents[0].about.length > 10, 'each page says what it is about');
+  assert.ok(toc.contents[0].about.indexOf('#') < 0, 'the heading is not the about');
+  // one whole page by name, and a name that is not there
+  const whole = await tools.call('docs', { page: 'the-model/settings.md' });
+  assert.strictEqual(whole.text, fs.readFileSync(path.join(root, 'the-model/settings.md'), 'utf8'));
+  const missing = await tools.call('docs', { page: 'nope.md' });
+  assert.ok(/no page nope\.md/.test(missing.error));
+  assert.ok(missing.contents.length === 2, 'a wrong page name gives the list back');
   // the pages saved inside the run win, and GitHub is not asked at all
   const run = require('./run');
   const realDocsFromRun = run.docsFromRun;

@@ -201,18 +201,23 @@ const TOOLS = [
   {
     name: 'docs',
     description:
-      'Search the pciSeq documentation. Returns the paragraphs that match the query ' +
-      'words, best first, each with its page and heading. Use it before answering ' +
-      'any question about how pciSeq works, a term, or a setting such as rTheta, ' +
-      'mrf_beta or Inefficiency, and quote the page you took the answer from. Try ' +
-      'the docs before the source.',
+      'The pciSeq documentation, three ways. query searches it and returns the ' +
+      'paragraphs holding those words, best first, each with its page and heading. ' +
+      'page returns one whole page, a few thousand words at most. Neither returns ' +
+      'the list of all the pages, each with a line on what it is about. The search ' +
+      'matches words literally, so when your words may not be the ones the docs use ' +
+      '(an idea you can describe but cannot name, or a term from another method), ' +
+      'ask for the list and pick the page by its subject, then read that page. Use ' +
+      'this before answering any question about how pciSeq works, a term, or a ' +
+      'setting such as rTheta, mrf_beta or Inefficiency, and quote the page you took ' +
+      'the answer from. Try the docs before the source.',
     input_schema: {
       type: 'object',
       properties: {
         query: { type: 'string', description: 'A few words, for example "rTheta" or "spatial term".' },
-        n: { type: 'integer', description: 'How many paragraphs, default 5.' },
+        page: { type: 'string', description: 'A page name from the list, for example "the-model/scale-factors.md".' },
+        n: { type: 'integer', description: 'How many paragraphs, for a query; default 5.' },
       },
-      required: ['query'],
     },
   },
   {
@@ -1157,20 +1162,35 @@ async function call(name, input) {
         : await docsAtCommit.docsAt(sourceRef() === 'dev_3d' ? null : sourceRef(), deps.fetch);
       const corpus = inRun || atCommit || deps.docsRoot;
       if (!corpus) return { error: 'this build of the viewer carries no documentation pages' };
+      const docsAre = inRun
+        ? 'the documentation saved inside this run when it was fitted, so it describes ' +
+          'the pciSeq that produced these numbers'
+        : atCommit
+        ? `the documentation at the commit that made this run (${sourceRef()}), so it ` +
+          'describes the pciSeq that produced these numbers'
+        : 'the documentation shipped with this viewer, not the run\'s own commit ' +
+          '(it could not be fetched from GitHub), so a page may describe a newer ' +
+          'pciSeq than the run';
+      // a page, the whole of it
+      if (input.page) {
+        try {
+          return { page: input.page, title: docs.pageTitle(docs.readPage(corpus, input.page)),
+                   text: docs.readPage(corpus, input.page), docs_are: docsAre };
+        } catch {
+          return { error: `no page ${input.page}; call docs with no query and no page for the list`,
+                   contents: docs.contents(corpus) };
+        }
+      }
+      // no query: the list of pages, to pick one by subject
+      if (!input.query) return { contents: docs.contents(corpus), docs_are: docsAre,
+                                 contents_are: 'every page with what it is about; read one with docs(page)' };
       const hits = docs.searchDocs(corpus, input.query, input.n || 5);
       return {
         query: input.query,
         hits,
-        pages: hits.length ? undefined : docs.listPages(corpus),
-        docs_are: inRun
-          ? 'the documentation saved inside this run when it was fitted, so it describes ' +
-            'the pciSeq that produced these numbers'
-          : atCommit
-          ? `the documentation at the commit that made this run (${sourceRef()}), so it ` +
-            'describes the pciSeq that produced these numbers'
-          : 'the documentation shipped with this viewer, not the run\'s own commit ' +
-            '(it could not be fetched from GitHub), so a page may describe a newer ' +
-            'pciSeq than the run',
+        // nothing matched the words: the list, so the page can be picked by subject
+        contents: hits.length ? undefined : docs.contents(corpus),
+        docs_are: docsAre,
       };
     }
     if (name === 'run_info') {
