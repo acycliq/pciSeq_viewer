@@ -209,11 +209,14 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
     gene_count: blob([2, 3]), theta_bar: blob([0.5, 1.7, 0.9]), gamma_assigned: blob([1, 1]),
     mrf: null, neighbours: null, x: 1, y: 2, z: 3 };
   run2.init({ getDb: () => ({ prepare: () => ({ get: () => cellRowFake }) }),
-              getMeta: () => ({ class_names: ['A', 'B', 'C'], gene_panel: ['g1', 'g2'] }),
+              getMeta: () => ({ class_names: ['A', 'B', 'C'], gene_panel: ['g1', 'g2'], rSpot: 2 }),
               getCellKey: () => 'cell_key', classColour: n => (n === 'B' ? '#112233' : null),
               geneGlyph: g => (g === 'Synpr' ? { colour: '#00ff00', shape: 'square' } : null),
               querySpot: async () => spotRes });
   const th = run2.theta(5);
+  // gamma: a gamma of 1 means the class expected just what the cell holds
+  assert.deepStrictEqual(run2.gamma(5).gamma.map(r => r.expected), [2, 3]);
+  assert.strictEqual(run2.gamma(5, 'g2').expected, 3);
   assert.strictEqual(th.class, 'B');
   assert.strictEqual(th.is_assigned, true);
   assert.strictEqual(th.theta_bar, Math.fround(1.7));

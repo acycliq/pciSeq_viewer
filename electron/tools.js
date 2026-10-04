@@ -209,7 +209,7 @@ const TOOLS = [
       '(an idea you can describe but cannot name, or a term from another method), ' +
       'ask for the list and pick the page by its subject, then read that page. Use ' +
       'this before answering any question about how pciSeq works, a term, or a ' +
-      'setting such as rTheta, mrf_beta or Inefficiency, and quote the page you took ' +
+      'setting such as rTheta, mrf_beta or Inefficiency, and name the page you took ' +
       'the answer from. Try the docs before the source.',
     input_schema: {
       type: 'object',
@@ -313,9 +313,11 @@ const TOOLS = [
     name: 'gamma',
     description:
       'The cell-gene scale factors gamma_bar of one cell under its assigned class, ' +
-      "for every gene or for one, each with the cell's count of the gene. Gamma is the " +
-      'per cell, per gene factor absorbing overdispersion. Only the assigned class is ' +
-      'kept in diagnostics.db, and the answer says so. label is the segmentation label.',
+      "for every gene or for one, each with the cell's count of the gene and the count " +
+      'the class predicts for it (expected). Gamma is the per cell, per gene factor ' +
+      'absorbing overdispersion; it is pulled toward 1, so compare counts with expected ' +
+      'to say how far off a gene is. Only the assigned class is kept in diagnostics.db, ' +
+      'and the answer says so. label is the segmentation label.',
     input_schema: {
       type: 'object',
       properties: {

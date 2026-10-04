@@ -266,15 +266,25 @@ function gamma(label, gene) {
               'absorbs overdispersion, under the assigned class only. ' +
               'diagnostics.db does not keep the (cell, gene, class) array, so ' +
               'gamma under another class is not available',
+    expected_is: 'the count the assigned class predicts for the gene in this cell, ' +
+                 'after Inefficiency, eta and theta. gamma is not counts over ' +
+                 'expected: it is (rSpot + counts) over (rSpot + expected), which ' +
+                 'pulls it toward 1, so say how far off a gene is from counts ' +
+                 'against expected, not from gamma',
   };
+  // gamma_bar = (rSpot + counts) / (rSpot + expected), see VarBayes.gamma_upd in
+  // pciSeq. Turned round it gives back the expected count the fit used
+  const rSpot = Number(meta().rSpot);
+  const expected = g => Math.max((rSpot + c.gene_count[g]) / c.gamma_assigned[g] - rSpot, 0);
   if (gene != null) {
     const g = geneIndex(gene);
     out.gene = gene;
     out.gamma = c.gamma_assigned[g];
     out.counts = c.gene_count[g];
+    out.expected = expected(g);
   } else {
     out.gamma = Array.from(panel, (name, g) => ({
-      gene: name, gamma: c.gamma_assigned[g], counts: c.gene_count[g] }));
+      gene: name, gamma: c.gamma_assigned[g], counts: c.gene_count[g], expected: expected(g) }));
   }
   return out;
 }
