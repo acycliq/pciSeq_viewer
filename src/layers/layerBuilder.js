@@ -10,6 +10,7 @@ import { IMG_DIMENSIONS, MAX_PRELOAD, INITIAL_VIEW_STATE, SPOT_PICKABLE_MIN_ZOOM
 import { showTooltip } from '../ui/uiHelpers.js';
 import { createTileLayer } from './tileLayerCreator.js';
 import { createPolygonLayers } from './polygonLayerCreator.js';
+import { nearestLoadedPlane } from '../data/planeCells.js';
 import {
     createGeneLayers,
     createArrowPointCloudLayer
@@ -84,8 +85,11 @@ export function buildTileLayers(state, elements) {
  * @returns {Array} Array of polygon layers
  */
 export function buildPolygonLayers(state) {
+    // the cells of the current plane, or while those still load, of the loaded plane
+    // nearest to it: stepping and dragging never leave the map without cells
+    const plane = nearestLoadedPlane(state.currentPlane) ?? state.currentPlane;
     return createPolygonLayers(
-        state.currentPlane,
+        plane,
         state.polygonCache,
         state.showPolygons,
         state.cellClassColors,
@@ -94,7 +98,8 @@ export function buildPolygonLayers(state) {
         state.cellDataMap,
         state.zProjectionCellMode,
         state.geneCountThreshold,
-        state.geneCountMaxThreshold
+        state.geneCountMaxThreshold,
+        plane === state.currentPlane
     );
 }
 

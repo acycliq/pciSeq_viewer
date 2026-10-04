@@ -46,7 +46,6 @@ import {
     initializeCellData,
     selectAllCellClasses,
     finalizeInitialization,
-    preloadAdjacentPlanesInitial,
     removeCurtain
 } from './init/appInitializer.js';
 
@@ -65,7 +64,6 @@ import { buildGlobalZProjection } from './layers/zProjectionOverlay.js';
 // === DATA IMPORTS ===
 import {
     loadGeneData,
-    loadPolygonData,
     loadCellData,
 } from './data/dataLoaders.js';
 import { streamSpotsIntoScatterCache } from './data/spotStreamLoader.js';
@@ -84,7 +82,8 @@ import { showStackedBarWidget } from './misreads/stackedBar/StackedBarWidget.js'
 import { showPerPlaneWidget }   from './misreads/perPlane/PerPlaneWidget.js';
 
 // === UI INTERACTION IMPORTS ===
-import { setupBoundariesReadyListener } from './ui/spatialIndexing.js';
+import { startSpatialIndexing } from './ui/spatialIndexing.js';
+import { loadPlane, preloadAround, nearestLoadedPlane } from './data/planeCells.js';
 
 // === WIDGET IMPORTS ===
 import {
@@ -325,8 +324,6 @@ window.updateAllLayers = updateAllLayers;
  * @param {number} newPlane - Target plane number
  */
 function updatePlane(newPlane) {
-    const { showLoading: showLoadingFn, hideLoading: hideLoadingFn } = { showLoading, hideLoading };
-
     newPlane = clamp(newPlane, 0, window.appState.totalPlanes - 1);
     if (newPlane === state.currentPlane) return;
 
@@ -334,21 +331,17 @@ function updatePlane(newPlane) {
     elements.slider.value = newPlane;
     elements.label.textContent = `Plane: ${newPlane}`;
 
-    // Load polygon data if not cached
+    // The background and the spots change at once. The cells are those of the loaded
+    // plane nearest to this one (layerBuilder), so the map is never without cells; when
+    // this plane's own cells arrive they take over, unless the user has moved on to a
+    // plane that something nearer is loaded for.
+    updateAllLayers();
     if (!state.polygonCache.has(newPlane)) {
-        showLoadingFn(state, elements.loadingIndicator);
-        loadPolygonData(newPlane, state.polygonCache, state.allCellClasses, state.cellDataMap)
-            .then(() => {
-                hideLoadingFn(state, elements.loadingIndicator);
-                updateAllLayers();
-            })
-            .catch(err => {
-                console.error('Failed to load polygon data:', err);
-                hideLoadingFn(state, elements.loadingIndicator);
-            });
-    } else {
-        updateAllLayers();
+        loadPlane(newPlane).then(() => {
+            if (nearestLoadedPlane(state.currentPlane) === newPlane) updateAllLayers();
+        });
     }
+    preloadAround(newPlane);
 }
 
 // Expose updatePlane globally for cell lookup module
@@ -633,18 +626,17 @@ async function runInit() {
     //    one small file, so tiles and coloured polygons can show before spots.
     await initializeCellData();
     selectAllCellClasses();
-    await loadPolygonData(state.currentPlane, state.polygonCache, state.allCellClasses, state.cellDataMap);
+    await loadPlane(state.currentPlane);
     initChannelSwitcher(channelInfo, state, updateAllLayers);
 
     // 7. Initialize interactions (index maps are filled in place later)
     initializePolygonHighlighter();
     initializeRectangularSelector();
     initializeRegionDrawer();
-    // Listen for the first cell outlines before anything draws them: step 8 draws
-    // the map while spots stream in, so the outlines, and the event that starts the
-    // spatial index the 3D view needs, can arrive long before step 11. Set up there,
-    // the listener missed it and the 3D view fell back to one plane (since 3606560).
-    try { setupBoundariesReadyListener(updateAllLayers, state); } catch {}
+    // The spatial index the 3D view and the selection tool need. It used to be started
+    // by an event the cell drawing sent as a side effect, and when that listener was set
+    // up too late the 3D view fell back to one plane (since 3606560). Started outright.
+    startSpatialIndexing(updateAllLayers, state);
 
     // 8. Spots. Progressive: drop the curtain now and draw shards as they land,
     //    plane 0 upwards, with a corner pill counting them. Otherwise the
@@ -667,7 +659,7 @@ async function runInit() {
 
     // 10. Finalize UI + layers
     finalizeInitialization(updateAllLayers);
-    preloadAdjacentPlanesInitial();
+    preloadAround(state.currentPlane);
 
     // 11. Background tasks
     buildGlobalZProjection(state).catch(err => console.warn('Z-projection failed:', err));

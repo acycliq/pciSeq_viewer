@@ -194,36 +194,26 @@ export function startSpatialIndexWorker(updateAllLayers) {
 }
 
 /**
- * Setup the arrow-boundaries-ready event listener
+ * Mark the viewer ready and start the spatial index worker. Called once at startup,
+ * when the first plane's cell outlines are in.
  * @param {Function} updateAllLayers - Callback to update layers
  * @param {Object} state - Application state
  */
-export function setupBoundariesReadyListener(updateAllLayers, state) {
-    let markedReady = false;
+export function startSpatialIndexing(updateAllLayers, state) {
+    // End-to-end ready mark (Arrow path)
+    try {
+        const Perf = window.Perf || { markInteractive: () => {} };
+        Perf.markInteractive('arrow', { plane: state.currentPlane });
+    } catch {}
 
-    window.addEventListener('arrow-boundaries-ready', () => {
-        updateAllLayers();
-
-        if (!markedReady) {
-            markedReady = true;
-
-            // End-to-end ready mark (Arrow path)
-            try {
-                const Perf = window.Perf || { markInteractive: () => {} };
-                Perf.markInteractive('arrow', { plane: state.currentPlane });
-            } catch {}
-
-            // Start spatial index worker (Arrow only) after READY
-            try {
-                startSpatialIndexWorker(updateAllLayers);
-            } catch (e) {
-                console.error('Failed to start spatial index worker:', e);
-                const btn = document.getElementById('selectionToolBtn');
-                if (btn) {
-                    btn.disabled = false;
-                    btn.textContent = 'Selection Tool';
-                }
-            }
+    try {
+        startSpatialIndexWorker(updateAllLayers);
+    } catch (e) {
+        console.error('Failed to start spatial index worker:', e);
+        const btn = document.getElementById('selectionToolBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Selection Tool';
         }
-    });
+    }
 }

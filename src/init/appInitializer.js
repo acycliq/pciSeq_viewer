@@ -14,7 +14,6 @@ import { showLoading, hideLoading, showTooltip } from '../ui/uiHelpers.js';
 import {
     loadGeneData,
     loadCellData,
-    loadPolygonData,
     prebuildScatterCache
 } from '../data/dataLoaders.js';
 import {
@@ -284,26 +283,6 @@ function initializeCellClassColors() {
     if (state.selectedCellClasses.size === 0) {
         state.allCellClasses.forEach(c => state.selectedCellClasses.add(c));
     }
-}
-
-/**
- * Preload adjacent planes in background
- */
-export function preloadAdjacentPlanesInitial() {
-    const totalPlanes = window.appState.totalPlanes;
-    const adjacentPlanes = [
-        Math.max(0, state.currentPlane - 1),
-        Math.min(totalPlanes - 1, state.currentPlane + 1)
-    ];
-
-    adjacentPlanes.forEach(async (plane) => {
-        if (plane !== state.currentPlane && !state.polygonCache.has(plane)) {
-            console.log(`Init: Preloading polygon data for adjacent plane ${plane}`);
-            loadPolygonData(plane, state.polygonCache, state.allCellClasses, state.cellDataMap).catch(() => {
-                console.log(`Init: Failed to preload plane ${plane} (non-critical)`);
-            });
-        }
-    });
 }
 
 /**

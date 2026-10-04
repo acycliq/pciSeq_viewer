@@ -3,11 +3,7 @@
  * Handles cell boundary visualization and Z-projection cell mode
  */
 
-import { IMG_DIMENSIONS } from '../../config/constants.js';
-import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
 import { handleCellHover, handleCellClick } from '../ui/cellHoverHandler.js';
-import { ensureArrowInitialized } from './arrowInit.js';
-import { arrowBoundaryCache, arrowGeojsonCache } from './boundaryCache.js';
 
 const { COORDINATE_SYSTEM, GeoJsonLayer, DataFilterExtension } = deck;
 
@@ -15,11 +11,12 @@ const { COORDINATE_SYSTEM, GeoJsonLayer, DataFilterExtension } = deck;
 const CELL_FILTER_EXTENSION = new DataFilterExtension({ filterSize: 1 });
 
 /**
- * Create polygon layers for cell boundary visualization
+ * Create polygon layers for cell boundary visualization.
+ * planeNum is the plane whose cells are drawn: the current plane, or while that one is
+ * still loading, the loaded plane nearest to it (layerBuilder decides). isCurrent says
+ * which, and cells of another plane do not react to the pointer.
  */
-export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null, zProjectionCellMode = false, geneCountThreshold = 0, geneCountMaxThreshold = Infinity) {
-    const layers = [];
-
+export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null, zProjectionCellMode = false, geneCountThreshold = 0, geneCountMaxThreshold = Infinity, isCurrent = true) {
     // Cell Projection: the Cells switch only hides the layer. It holds the outlines of
     // every plane, and building it again from nothing took seconds each time the
     // switch went back on
@@ -27,127 +24,32 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
         return createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold, showPolygons);
     }
 
-    if (!showPolygons) return layers;
+    if (!showPolygons) return [];
 
-    // Arrow fast-path: use binary buffers from worker
-    (async () => {
-        try {
-            await ensureArrowInitialized();
-            if (!arrowBoundaryCache.has(planeNum)) {
-                const { loadBoundariesPlane } = await import('../../arrow-loader/lib/arrow-loaders.js');
-                const { buffers, timings } = await loadBoundariesPlane(planeNum);
-                arrowBoundaryCache.set(planeNum, buffers);
-                
-                if (typeof window !== 'undefined' && window.dispatchEvent) {
-                    window.dispatchEvent(new CustomEvent('arrow-boundaries-ready', { detail: { plane: planeNum } }));
-                }
-            }
-        } catch (e) {
-            console.error('Arrow boundary load error:', e);
-        }
-    })();
+    // the outlines are loaded by data/planeCells.js; nothing loaded yet, nothing to draw
+    const geojson = polygonCache.get(planeNum);
+    if (!geojson) return [];
 
-    const buffers = arrowBoundaryCache.get(planeNum);
-    if (!buffers) return layers;
-
-    if (!buffers._tileTransformed) {
-        const src = buffers.positions;
-        const dst = new Float32Array(src.length);
-        for (let i = 0; i < src.length; i += 2) {
-            const x = src[i];
-            const y = src[i + 1];
-            const [tx, ty] = transformToTileCoordinates(x, y, IMG_DIMENSIONS);
-            dst[i] = tx;
-            dst[i + 1] = ty;
-        }
-        buffers.positions = dst;
-        buffers._tileTransformed = true;
-    }
-
-    // The per-cell class is baked into the cached features. If cellDataMap has
-    // not populated yet (async cell load still in flight), computeMostProbableClass
-    // returns 'Generic'/'Unknown'; caching that would freeze the wrong classes for
-    // the plane's whole lifetime. Record whether cell data was ready at build time
-    // and rebuild once it becomes available.
-    const cellDataReady = !!(cellDataMap && cellDataMap.size > 0);
-    const cached = arrowGeojsonCache.get(planeNum);
-    const needsBuild = !cached || (cached._builtWithCellData === false && cellDataReady);
-    if (needsBuild) {
-        const { positions, startIndices, length, labels } = buffers;
-        const features = [];
-        for (let pi = 0; pi < length; pi++) {
-            const start = startIndices[pi];
-            const end = startIndices[pi + 1];
-            if (end - start < 3) continue;
-            const ring = [];
-            for (let i = start; i < end; i++) {
-                const x = positions[2 * i];
-                const y = positions[2 * i + 1];
-                ring.push([x, y]);
-            }
-            const label = labels ? labels[pi] : -1;
-            const cellClass = computeMostProbableClass(label, cellDataMap);
-            features.push({
-                type: 'Feature',
-                geometry: { type: 'Polygon', coordinates: [ring] },
-                properties: { plane_id: planeNum, label, cellClass }
-            });
-        }
-        const featureCollection = { type: 'FeatureCollection', features };
-        featureCollection._builtWithCellData = cellDataReady;
-        arrowGeojsonCache.set(planeNum, featureCollection);
-    }
-
-    const geojsonFromArrow = arrowGeojsonCache.get(planeNum);
-    return [createFilledGeoJsonLayer(planeNum, geojsonFromArrow, cellClassColors, polygonOpacity, selectedCellClasses)];
+    return [createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpacity, selectedCellClasses, isCurrent)];
 }
 
-function computeMostProbableClass(label, cellDataMap) {
-    if (!cellDataMap) return 'Generic';
-    const cell = cellDataMap.get(Number(label));
-    if (!cell || !cell.classification) return 'Generic';
-    let names = cell.classification.className;
-    let probs = cell.classification.probability;
-    
-    if (!Array.isArray(names) && typeof names === 'string') {
-        try {
-            const parsed = JSON.parse(names.replace(/'/g, '"'));
-            if (Array.isArray(parsed)) names = parsed;
-        } catch {}
-    }
-    
-    if (!Array.isArray(names) || !Array.isArray(probs) || probs.length !== names.length) {
-        return 'Unknown';
-    }
-    
-    let best = -Infinity, idx = -1;
-    for (let i = 0; i < probs.length; i++) {
-        if (typeof probs[i] === 'number' && probs[i] > best) {
-            best = probs[i];
-            idx = i;
-        }
-    }
-    
-    if (idx < 0 || idx >= names.length) return 'Unknown';
-    const raw = names[idx];
-    return (typeof raw === 'string') ? raw.trim() : String(raw || 'Unknown');
+// A plane's cells narrowed to the classes switched on. Filtering makes a new list, and
+// a new list makes deck.gl build the whole plane again, so the list is remembered per
+// plane and reused for as long as the same classes are on.
+const visibleCellsOf = new WeakMap();    // a plane's GeoJSON -> { key, data }
+
+function visibleCells(geojson, selectedCellClasses) {
+    if (!selectedCellClasses) return geojson;
+    const key = [...selectedCellClasses].sort().join('|');
+    const kept = visibleCellsOf.get(geojson);
+    if (kept && kept.key === key) return kept.data;
+    const data = { ...geojson, features: geojson.features.filter(f => selectedCellClasses.has(f.properties.cellClass)) };
+    visibleCellsOf.set(geojson, { key, data });
+    return data;
 }
 
-function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpacity, selectedCellClasses) {
-    let filteredData = geojson;
-    if (selectedCellClasses) {
-        if (selectedCellClasses.size === 0) {
-            filteredData = { ...geojson, features: [] };
-        } else {
-            filteredData = {
-                ...geojson,
-                features: geojson.features.filter(feature => {
-                    const cellClass = feature.properties.cellClass;
-                    return cellClass && selectedCellClasses.has(cellClass);
-                })
-            };
-        }
-    }
+function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpacity, selectedCellClasses, isCurrent) {
+    const filteredData = visibleCells(geojson, selectedCellClasses);
 
     // Ensure colors exist for all classes present
     try {
@@ -176,7 +78,7 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
     return new GeoJsonLayer({
         id: `polygons-${planeNum}`,
         data: filteredData,
-        pickable: true,
+        pickable: isCurrent,
         stroked: false,
         filled: true,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
@@ -191,7 +93,7 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
             }
             return [192, 192, 192, alpha];
         },
-        updateTriggers: { getFillColor: [colorToken, polygonOpacity], data: [selectedCellClasses] }
+        updateTriggers: { getFillColor: [colorToken, polygonOpacity] }
     });
 }
 
