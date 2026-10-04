@@ -13,7 +13,6 @@ let hasGeneInefficiency = false;
 let hasBonus = false;
 let hasMrf = false;
 let hasAssignedClassIdx = false;
-let hasEffectiveBeta = false;
 // Cells the tie freezing pinned carry their own eta_bar and log_prior, from
 // the iteration they were pinned on. Without those the component chart cannot
 // rebuild the class we are showing for them, see the frozen_* columns.
@@ -76,16 +75,13 @@ function openDiagnosticsDatabase(dbPath) {
   hasMrf = cellCols.some(col => col.name === 'mrf');
   hasAssignedClassIdx = cellCols.some(col => col.name === 'assigned_class_idx');
 
-  // Check if effective_beta column exists in cells table (per-(cell, class) MRF cap)
-  hasEffectiveBeta = cellCols.some(col => col.name === 'effective_beta');
-
   // Check if the tie freezing columns exist (older DBs will not have them)
   hasFrozen = cellCols.some(col => col.name === 'frozen_eta_bar');
   hasSavedScore = cellCols.some(col => col.name === 'gene_loglik');
 
   cellKey = cellCols.some(col => col.name === 'internal_label') ? 'internal_label' : 'cell_id';
 
-  console.log('Diagnostics DB loaded. nC=%d, nS=%d, hasCellInefficiency=%s, hasGeneInefficiency=%s, hasBonus=%s, hasMrf=%s, hasEffectiveBeta=%s, hasFrozen=%s', diagnosticsMeta.nC, diagnosticsMeta.nS, hasCellInefficiency, hasGeneInefficiency, hasBonus, hasMrf, hasEffectiveBeta, hasFrozen);
+  console.log('Diagnostics DB loaded. nC=%d, nS=%d, hasCellInefficiency=%s, hasGeneInefficiency=%s, hasBonus=%s, hasMrf=%s, hasFrozen=%s', diagnosticsMeta.nC, diagnosticsMeta.nS, hasCellInefficiency, hasGeneInefficiency, hasBonus, hasMrf, hasFrozen);
   return diagnosticsMeta;
 }
 
@@ -99,7 +95,6 @@ function closeDiagnosticsDatabase() {
   hasGeneInefficiency = false;
   hasBonus = false;
   hasMrf = false;
-  hasEffectiveBeta = false;
   hasFrozen = false;
   hasSavedScore = false;
   cellKey = 'cell_id';
@@ -609,13 +604,9 @@ ipcMain.handle('tooltip-get-cell-info', (event, { cellLabel }) => {
     return { success: false, error: 'internal index out of range: ' + c };
   }
 
-  // mrf is always pulled so we can locate the would-be-flipper class for the
-  // mrf_cap row. effective_beta is optional (older dbs predate the column).
-  const selectCols = hasEffectiveBeta
-    ? 'theta_bar, class_prob, gamma_assigned, gene_count, mrf, effective_beta'
-    : 'theta_bar, class_prob, gamma_assigned, gene_count, mrf';
   const row = diagnosticsDb
-    .prepare('SELECT ' + selectCols + ' FROM cells WHERE ' + cellKey + ' = ?')
+    .prepare('SELECT theta_bar, class_prob, gamma_assigned, gene_count FROM cells WHERE '
+             + cellKey + ' = ?')
     .get(c);
   if (!row) {
     return { success: false, error: 'cell row not found: ' + c };
@@ -625,26 +616,11 @@ ipcMain.handle('tooltip-get-cell-info', (event, { cellLabel }) => {
   const classProb     = new Float32Array(row.class_prob.buffer,     row.class_prob.byteOffset,     nK);
   const gammaAssigned = new Float32Array(row.gamma_assigned.buffer, row.gamma_assigned.byteOffset, nG);
   const geneCount     = new Float32Array(row.gene_count.buffer,     row.gene_count.byteOffset,     nG);
-  const mrf           = new Float32Array(row.mrf.buffer,            row.mrf.byteOffset,            nK);
 
   let kStar = 0;
   for (let k = 1; k < nK; k++) {
     if (classProb[k] > classProb[kStar]) kStar = k;
   }
-
-  // kBest = the REAL class (Zero excluded at index nK-1) with the largest MRF
-  // pressure. This is the would-be-flipper: the class the MRF was pushing the
-  // cell toward. Its cap is what actually protected (or could protect) the
-  // cell. The Zero column of effective_beta is a placeholder (never computed),
-  // so we must not pick it. See pciSeq_model/mrf_inflection_point.tex.
-  let kBest = 0;
-  for (let k = 1; k < nK - 1; k++) {
-    if (mrf[k] > mrf[kBest]) kBest = k;
-  }
-
-  const effectiveBetaHard = hasEffectiveBeta
-    ? new Float32Array(row.effective_beta.buffer, row.effective_beta.byteOffset, nK)[kBest]
-    : null;
 
   return {
     success: true,
@@ -652,8 +628,7 @@ ipcMain.handle('tooltip-get-cell-info', (event, { cellLabel }) => {
     gammaAssignedVec: Array.from(gammaAssigned),
     assignedClassIdx: kStar,
     classProbHard:    classProb[kStar],
-    geneCountVec:     Array.from(geneCount),
-    effectiveBetaHard
+    geneCountVec:     Array.from(geneCount)
   };
 });
 

@@ -11,8 +11,6 @@
  *   assignedClassIdx   - k*, argmax of class_prob[c, :]
  *   classProbHard      - class_prob[c, k*]
  *   geneCountVec       - observed gene counts N_{c, g} of length nG
- *   effectiveBetaHard  - effective_beta[c, k*], or null if the diagnostics db
- *                        predates the column (old runs)
  *
  * The last three feed the spot-hover gamma chain log alongside the existing
  * tooltip rows. See notes/spot_hover_chain_spec.md.
@@ -39,8 +37,7 @@ const cache = new Map();
  *   gammaAssignedVec: number[],
  *   assignedClassIdx: number,
  *   classProbHard: number,
- *   geneCountVec: number[],
- *   effectiveBetaHard: number | null
+ *   geneCountVec: number[]
  * }>}
  */
 export async function getCellInfo(cellLabel) {
@@ -57,8 +54,7 @@ export async function getCellInfo(cellLabel) {
         gammaAssignedVec:  resp.gammaAssignedVec,
         assignedClassIdx:  resp.assignedClassIdx,
         classProbHard:     resp.classProbHard,
-        geneCountVec:      resp.geneCountVec,
-        effectiveBetaHard: resp.effectiveBetaHard
+        geneCountVec:      resp.geneCountVec
     };
 
     if (cache.size >= CACHE_CAP) {
