@@ -330,7 +330,7 @@ function gene(name) {
     gene: name,
     glyph: glyphOf(name),
     eta: m.eta_bar[g],
-    eta_is: 'eta_bar, the posterior mean of the gene efficiency; the reference ' +
+    eta_is: 'eta_bar, the posterior mean of the gene inefficiency; the reference ' +
             'expression of every class is multiplied by it',
     inefficiency: c.Inefficiency != null ? m.eta_bar[g] * c.Inefficiency : null,
     inefficiency_is: 'eta_bar times the Inefficiency setting, as Genes.inefficiency ' +
