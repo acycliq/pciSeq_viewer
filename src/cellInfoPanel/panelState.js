@@ -76,7 +76,8 @@ export function unfreeze() {
 function syncToggleButton() {
     const btn = document.getElementById('cellInfoToggle');
     if (!btn) return;
-    btn.textContent = _minimized ? '□' : '–'; // □ vs – (en dash)
+    // the same two symbols as the chat panel's bar: the diagonal arrows open it, the minus folds it
+    btn.textContent = _minimized ? '\u2922' : '\u2212';
     btn.title = _minimized ? 'Maximize' : 'Minimize';
     btn.setAttribute('aria-label', _minimized ? 'Maximize panel' : 'Minimize panel');
 }

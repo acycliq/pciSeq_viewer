@@ -2524,23 +2524,22 @@ body {
 
 /* the button, next to the about button */
 .chat-btn {
-    font-weight: 700;
-    font-family: 'Courier New', monospace;
-    letter-spacing: -1px;
     position: absolute;
     top: 18px;
     right: 56px;
     width: 30px;
     height: 30px;
     border-radius: 40px;
-    line-height: 30px;
-    text-align: center;
-    font-size: 14px;
+    /* the chat bubble sits in the middle of the round button */
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     background: var(--drawer-bg);
     border: 1px solid var(--drawer-border);
     color: var(--drawer-muted);
 }
+.chat-btn svg { width: 16px; height: 16px; display: block; }
 
 /* the panel, docked along the bottom of the window like Cloud Shell */
 .chat-panel {
