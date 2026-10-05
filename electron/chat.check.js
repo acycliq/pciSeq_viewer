@@ -7,7 +7,7 @@ const orig = Module._load;
 Module._load = function (r, ...a) {
   return r === 'electron' ? { safeStorage: {}, ipcMain: { handle() {} } } : orig.call(this, r, ...a);
 };
-const { withRecentImages } = require('./chat');
+const { withRecentImages, reply } = require('./chat');
 
 const img = n => ({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'x' + n } });
 const history = [
@@ -26,4 +26,38 @@ assert.deepStrictEqual(out[3], history[3], 'tool results untouched');
 assert.strictEqual(history[0].content[0].type, 'image', 'the stored history is not changed');
 assert.deepStrictEqual(withRecentImages([{ role: 'user', content: 'plain text' }]), [{ role: 'user', content: 'plain text' }]);
 
-console.log('chat.check: all assertions pass');
+// reply: the text goes out piece by piece, and the whole reply comes back at the end
+(async () => {
+  const whole = { content: [{ type: 'text', text: 'one two' }], stop_reason: 'end_turn' };
+  const streaming = { messages: {
+    stream: () => {
+      const on = {};
+      return { on: (name, fn) => { on[name] = fn; },
+               finalMessage: async () => { on.text('one ', 'one '); on.text('two', 'one two'); return whole; } };
+    },
+    create: async () => { throw new Error('create must not be called when the stream works'); },
+  } };
+  const pieces = [];
+  assert.strictEqual(await reply(streaming, {}, p => pieces.push(p)), whole);
+  assert.deepStrictEqual(pieces, ['one ', 'two']);
+
+  // a service that cannot stream: asked again in one piece
+  const noStream = { messages: {
+    stream: () => ({ on: () => {}, finalMessage: async () => { throw new Error('no streaming here'); } }),
+    create: async () => whole,
+  } };
+  assert.strictEqual(await reply(noStream, {}, () => {}), whole);
+
+  // it broke after text was shown: do not ask again, the user would see it twice
+  const halfWay = { messages: {
+    stream: () => {
+      const on = {};
+      return { on: (name, fn) => { on[name] = fn; },
+               finalMessage: async () => { on.text('one ', 'one '); throw new Error('the line dropped'); } };
+    },
+    create: async () => { throw new Error('create must not be called after text was shown'); },
+  } };
+  await assert.rejects(reply(halfWay, {}, () => {}), /the line dropped/);
+
+  console.log('chat.check: all assertions pass');
+})().catch((e) => { console.error(e); process.exit(1); });

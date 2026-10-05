@@ -125,7 +125,17 @@ const SHARED_SYSTEM = [
   'of them bundled into one. No equation: a formula puts off the people this is',
   'written for, and the words carry it.',
   '',
-  'Introduce gamma by its difference from theta. Theta never looks inside the cell:',
+  'Open every answer about a quantity or a setting with the need for it: the question',
+  'it answers and what would go wrong without it, in one or two sentences, before',
+  'anything else. Nobody cares how a thing works until they know why they need it,',
+  'so where it sits among the others and how it works come after. For gamma: cells of the',
+  'same class never hold exactly what the class predicts for each gene, a gene runs',
+  'high in one cell and low in the next, and without an allowance for that one odd',
+  'gene could throw a cell out of its right class; gamma is that allowance.',
+  'When an answer about theta calls a cell bigger or smaller, say in the same breath',
+  'that it is in terms of total gene counts, never leave it as size.',
+  '',
+  'After saying why gamma is needed, describe it by its difference from theta. Theta never looks inside the cell:',
   'it sees one number, the cell\'s total count over all genes, and asks whether that',
   'is more or less than its class predicts. Gamma opens the cell and looks at the',
   'genes: for a given gene in a given cell, is the count more or less than its',
@@ -138,6 +148,14 @@ const SHARED_SYSTEM = [
   'count. The gamma tool gives the expected count next to the observed one: say how',
   'far off a gene is from those two numbers, and give gamma as the correction the',
   'model settled on.',
+  '',
+  'Explain rTheta, rGene and rSpot as pseudo-counts: each is the weight of the prior,',
+  'in the same units as the counts it competes with. rTheta competes with a cell\'s',
+  'total count, rGene with a gene\'s total count, rSpot with a gene\'s count in one',
+  'cell. Say what that means for the cell or gene in hand: a cell of 93 counts under',
+  'rTheta 2 is decided by its data, a cell of 3 counts mostly by the prior. Never call',
+  'a value loose, tight, high or low by comparing it with the default; give the',
+  'default only as a fact, when asked.',
   '',
   'All four are called inefficiencies in pciSeq, and each is the same statistic at',
   'its own level: the observed count over the expected count. Keep that word apart',
@@ -429,6 +447,22 @@ function withRecentImages(history) {
   }).reverse();
 }
 
+// One reply from the model. The text is passed on piece by piece as it is written
+// (onText), so the panel is not blank while a long answer comes in; the whole reply
+// is returned at the end, the same object a plain create() gives. If the service
+// cannot stream, and nothing has been shown yet, the reply is asked for in one piece.
+async function reply(client, params, onText) {
+  let shown = false;
+  try {
+    const stream = client.messages.stream(params);
+    stream.on('text', (piece) => { shown = true; onText(piece); });
+    return await stream.finalMessage();
+  } catch (e) {
+    if (shown) throw e;
+    return client.messages.create(params);
+  }
+}
+
 // messages: the conversation so far, in the API's shape, ending with the user's
 // new message. Returns the final assistant text and the messages to carry forward
 // (assistant turns and tool results included, so the next turn has the context).
@@ -444,13 +478,13 @@ async function runTurn(messages) {
   let last = null;     // the last reply, to say why an empty one stopped
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-    const res = await client.messages.create({
+    const res = await reply(client, {
       model: modelName,
       max_tokens: MAX_TOKENS,
       system: SYSTEM,
       tools: tools.TOOLS,
       messages: withRecentImages(history),
-    });
+    }, (piece) => send({ type: 'text_piece', text: piece }));
 
     history.push({ role: 'assistant', content: res.content });
     last = res;
@@ -458,6 +492,7 @@ async function runTurn(messages) {
     const texts = res.content.filter(b => b.type === 'text').map(b => b.text);
     if (texts.length) {
       finalText = texts.join('\n');
+      // the whole text, which closes what the pieces were building up
       send({ type: 'text', text: finalText });
     }
 
@@ -533,5 +568,5 @@ function registerIpc(ipcMain) {
   });
 }
 
-module.exports = { init, registerIpc, runTurn, withRecentImages, getSettings, saveSettings, makeClient, SYSTEM,
+module.exports = { init, registerIpc, runTurn, reply, withRecentImages, getSettings, saveSettings, makeClient, SYSTEM,
                    SHARED_SYSTEM, VIEWER_SYSTEM, DEFAULT_MODEL, PROVIDERS };

@@ -88,6 +88,35 @@ function clearThinking() {
   thinking = null;
 }
 
+// The answer being written. The model's text comes in pieces; they are added to one
+// line, drawn again at most once per frame, and the full text closes it at the end.
+let writing = null;      // { div, text, drawn } while an answer is coming in
+
+function addPiece(piece) {
+  if (!writing) {
+    clearThinking();
+    writing = { div: addLine('chat-a', ''), text: '', drawn: true };
+  }
+  writing.text += piece;
+  if (!writing.drawn) return;
+  writing.drawn = false;
+  requestAnimationFrame(() => {
+    if (!writing) return;
+    writing.div.innerHTML = renderText(writing.text);
+    writing.drawn = true;
+    scrollToEnd();
+  });
+}
+
+// the complete text: into the line the pieces built, or a new line if none came
+function finishText(text) {
+  clearThinking();
+  if (writing) writing.div.innerHTML = renderText(text);
+  else addLine('chat-a', renderText(text));
+  writing = null;
+  scrollToEnd();
+}
+
 function welcome() {
   const links = EXAMPLES.map(q => `<a data-q="${esc(q)}">${esc(q)}</a>`).join('<br>');
   addLine('chat-welcome',
@@ -138,6 +167,7 @@ async function send() {
     messages.pop();
   } finally {
     clearThinking();
+    writing = null;     // a turn that failed half way leaves its line as it is
     setBusy(false);
   }
 }
@@ -156,9 +186,10 @@ function onEvent(ev) {
       addLine('chat-image', `<img alt="${esc(ev.name)}" src="data:${ev.media_type};base64,${ev.data}">`);
       setThinking('thinking...');
     }
+  } else if (ev.type === 'text_piece') {
+    addPiece(ev.text);
   } else if (ev.type === 'text') {
-    clearThinking();
-    addLine('chat-a', renderText(ev.text));
+    finishText(ev.text);
     if (busy) setThinking('thinking...');
   }
 }
