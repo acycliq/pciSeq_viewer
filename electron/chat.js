@@ -396,6 +396,24 @@ function getSettings(provider) {
   };
 }
 
+// The models this provider's key can use, newest first as the service lists them,
+// for the suggestions under the Model field. Not every service has such a list (it
+// is Anthropic's /v1/models), and without a key there is nothing to ask with: then
+// the list is empty and the field is typed by hand, as before.
+async function listModels(provider) {
+  const p = PROVIDERS[provider] ? provider : activeProvider();
+  try {
+    const ids = [];
+    for await (const m of makeClient(p).models.list({ limit: 100 })) {
+      ids.push(m.id);
+      if (ids.length >= 100) break;
+    }
+    return ids;
+  } catch (e) {
+    return [];
+  }
+}
+
 function saveSettings({ provider, apiKey: key, model: m, baseURL: url } = {}) {
   const p = PROVIDERS[provider] ? provider : activeProvider();
   if (typeof key === 'string' && key.trim() !== '') {
@@ -496,6 +514,13 @@ async function runTurn(messages) {
   const send = deps.send || (() => {});
 
   const history = withoutThinking(messages);
+  // The model is told which one it is. Left to itself it goes by the conversation,
+  // so after a switch (GLM to Claude, say) it reads its own earlier 'I am GLM' and
+  // repeats it.
+  const system = SYSTEM + `\n\nYou are running as the model ${modelName}, through ${PROVIDERS[p].label}. ` +
+    'If asked which model you are, say that and nothing more. The user can change the model in the ' +
+    'middle of a conversation, so an earlier answer naming another model was true when it was given: ' +
+    'never call it wrong, never apologise for it, and do not bring the switching up unless asked.';
   let finalText = '';
   let toolsRan = 0;
   let last = null;     // the last reply, to say why an empty one stopped
@@ -504,7 +529,7 @@ async function runTurn(messages) {
     const res = await reply(client, {
       model: modelName,
       max_tokens: MAX_TOKENS,
-      system: SYSTEM,
+      system,
       tools: tools.TOOLS,
       messages: withRecentImages(history),
     }, (piece) => send({ type: 'text_piece', text: piece }));
@@ -581,6 +606,7 @@ function registerIpc(ipcMain) {
     }
   });
   ipcMain.handle('chat-get-settings', (_event, provider) => getSettings(provider));
+  ipcMain.handle('chat-list-models', (_event, provider) => listModels(provider));
   // the pciSeq server, for the Connection tab: what is registered and what is running
   ipcMain.handle('chat-save-settings', (_event, s) => {
     try {
@@ -591,5 +617,5 @@ function registerIpc(ipcMain) {
   });
 }
 
-module.exports = { init, registerIpc, runTurn, reply, withRecentImages, withoutThinking, getSettings, saveSettings, makeClient, SYSTEM,
+module.exports = { init, registerIpc, runTurn, reply, listModels, withRecentImages, withoutThinking, getSettings, saveSettings, makeClient, SYSTEM,
                    SHARED_SYSTEM, VIEWER_SYSTEM, DEFAULT_MODEL, PROVIDERS };

@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   chatSend: (messages) => ipcRenderer.invoke('chat-send', messages),
   chatGetSettings: (provider) => ipcRenderer.invoke('chat-get-settings', provider),
   chatSaveSettings: (settings) => ipcRenderer.invoke('chat-save-settings', settings),
+  chatListModels: (provider) => ipcRenderer.invoke('chat-list-models', provider),
   // the picture composer: the main process sends a draw list, the renderer draws
   // it on an invisible canvas and hands the png back
   onComposeImage: (handler) => ipcRenderer.on('chat-compose-image', (_e, p) => handler(p)),

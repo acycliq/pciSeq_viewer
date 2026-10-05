@@ -2594,6 +2594,8 @@ body {
 }
 .chat-title { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .chat-prompt { font-family: 'Courier New', monospace; font-weight: 700; color: #7dd3fc; }
+/* which model is answering, next to the title, always in view */
+.chat-model-tag { color: #64748b; font-size: 12px; font-weight: 400; }
 .chat-header-btns { display: flex; align-items: center; }
 .chat-icon-btn {
     background: none;

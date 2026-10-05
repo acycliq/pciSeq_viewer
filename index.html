@@ -545,7 +545,7 @@
     <div id="chatPanel" class="chat-panel collapsed" role="complementary" aria-label="Chat">
         <div id="chatResize" class="chat-resize" title="Drag to resize"></div>
         <div class="chat-header">
-            <span class="chat-title"><span class="chat-prompt">&gt;_</span>Ask the run</span>
+            <span class="chat-title"><span class="chat-prompt">&gt;_</span><span id="chatModelTag" class="chat-model-tag" title="The model answering. Change it on the Connection tab."></span></span>
             <span class="chat-tabs" role="tablist">
                 <button id="chatTabConnection" class="chat-tab" role="tab" data-pane="chatConnection">Connection</button>
                 <button id="chatTabChat" class="chat-tab" role="tab" data-pane="chatSession">Chat</button>
@@ -566,7 +566,8 @@
                 <label>Provider <select id="chatProvider"></select></label>
                 <label id="chatBaseUrlRow">Address <input id="chatBaseUrl" type="text" autocomplete="off" placeholder="https://... (a service that speaks Anthropic's Messages API)"></label>
                 <label>API key <input id="chatApiKey" type="password" autocomplete="off" placeholder="paste your API key"></label>
-                <label>Model <input id="chatModel" type="text" autocomplete="off" placeholder="claude-sonnet-5"></label>
+                <label>Model <select id="chatModelSelect"></select>
+                    <input id="chatModel" type="text" autocomplete="off" placeholder="the model's name, as the provider writes it"></label>
                 <button id="chatSaveSettings" class="chat-small-btn">save</button>
                 <p class="chat-hint">Each provider keeps its own key, stored encrypted on this computer; it never leaves the main process and is sent only to that provider. Usage is billed to it.</p>
             </div>

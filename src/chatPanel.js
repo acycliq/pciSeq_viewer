@@ -215,6 +215,42 @@ function showTab(pane) {
 }
 
 // fill the Connection tab for a provider, the active one unless given
+// The Model field. With a key saved, the provider is asked which models the key can
+// use and they go in a dropdown, so nothing here goes out of date. The last entry
+// opens a text box for a name the list does not have. With no key, or a provider that
+// gives no list, there is only the text box. Either way the text box holds the value
+// that is saved.
+const OTHER_MODEL = '__other__';
+
+async function fillModels(provider, hasKey, current) {
+  const select = el('chatModelSelect');
+  const input = el('chatModel');
+  input.value = current || '';
+  select.innerHTML = '';
+  select.style.display = 'none';
+  input.style.display = '';
+  if (!hasKey) return;
+  const ids = await window.electronAPI.chatListModels(provider);
+  if (el('chatProvider').value !== provider || !ids.length) return;   // moved on, or no list
+  // the model in use stays selectable even if the provider no longer lists it
+  const names = ids.includes(current) || !current ? ids : [current, ...ids];
+  for (const id of names) select.add(new Option(id, id));
+  select.add(new Option('another model, type its name...', OTHER_MODEL));
+  select.value = current || names[0];
+  input.value = select.value;
+  select.style.display = '';
+  input.style.display = 'none';
+}
+
+function onModelPicked() {
+  const select = el('chatModelSelect');
+  const input = el('chatModel');
+  const other = select.value === OTHER_MODEL;
+  input.style.display = other ? '' : 'none';
+  input.value = other ? '' : select.value;
+  if (other) input.focus();
+}
+
 async function loadSettings(provider) {
   const s = await window.electronAPI.chatGetSettings(provider);
   const sel = el('chatProvider');
@@ -224,7 +260,7 @@ async function loadSettings(provider) {
   sel.value = s.provider;
   el('chatBaseUrlRow').style.display = s.provider === 'other' ? '' : 'none';
   el('chatBaseUrl').value = s.baseURL || '';
-  el('chatModel').value = s.model || '';
+  fillModels(s.provider, s.hasKey, s.model || '');
   el('chatApiKey').value = '';
   el('chatApiKey').placeholder = s.hasKey
     ? (s.keyFromEnv ? 'using ' + s.envName + ' from the environment' : 'a key is saved; paste a new one to replace it')
@@ -238,6 +274,7 @@ async function loadSettings(provider) {
   state.textContent = active.hasKey
     ? 'Ready, answers come from ' + active.model + ' via ' + label(active.provider) + '.'
     : 'Not set up yet. Choose a provider, paste its API key and save.';
+  el('chatModelTag').textContent = active.hasKey ? active.model : '';
   return active;
 }
 
@@ -371,6 +408,7 @@ export function initChatPanel() {
   el('chatSaveSettings').addEventListener('click', saveSettings);
   // switching the dropdown shows that provider's settings; nothing changes until save
   el('chatProvider').addEventListener('change', e => loadSettings(e.target.value));
+  el('chatModelSelect').addEventListener('change', onModelPicked);
 
   const input = el('chatInput');
   input.addEventListener('keydown', e => {
