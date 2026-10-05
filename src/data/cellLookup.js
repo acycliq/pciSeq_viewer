@@ -73,6 +73,44 @@ function loadFromArrowData() {
     }
 }
 
+// ---- the glide to a cell
+
+// Zoom in on a point while it slides to the middle of the map. Interpolating the
+// target and the zoom separately, each in a straight line, does not look like that:
+// the zoom is a power of two, so the place you are heading for swings out of view
+// and comes back at the end. Here the destination's distance from the centre, in
+// screen pixels, shrinks steadily as the zoom changes, so it stays in sight all the
+// way, as when you scroll the wheel with the pointer on it.
+class ZoomToPoint extends deck.TransitionInterpolator {
+    constructor() {
+        super({ compare: ['target', 'zoom'], extract: ['target', 'zoom'], required: ['target', 'zoom'] });
+    }
+
+    interpolateProps(start, end, t) {
+        const zoom = start.zoom + (end.zoom - start.zoom) * t;
+        const startScale = Math.pow(2, start.zoom);
+        const scale = Math.pow(2, zoom);
+        // where the destination sits on screen at the start, relative to the centre
+        const dx = (end.target[0] - start.target[0]) * startScale;
+        const dy = (end.target[1] - start.target[1]) * startScale;
+        return {
+            zoom,
+            target: [end.target[0] - dx * (1 - t) / scale, end.target[1] - dy * (1 - t) / scale, 0]
+        };
+    }
+}
+
+// slow start, slow stop
+const easeInOut = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+// Longer for a bigger change of zoom and for a longer way across the screen, within
+// 0.8 and 3 seconds
+function glideDuration(from, target, zoom) {
+    const levels = Math.abs(zoom - from.zoom);
+    const pixels = Math.hypot(target[0] - from.target[0], target[1] - from.target[1]) * Math.pow(2, from.zoom);
+    return Math.max(800, Math.min(3000, 600 + 350 * levels + Math.min(1200, pixels / 3)));
+}
+
 /**
  * Search for a cell by ID and navigate to it
  */
@@ -125,32 +163,26 @@ async function searchAndNavigateToCell(cellId) {
         throw new Error('Deck.GL instance not available');
     }
 
-    // Step 1: Save original controller configuration and disable controller during transition
-    const originalController = deckInstance.props.controller;
-
+    // Glide there. The glide is run by deck's controller, so the controller stays on
+    // (it used to be switched off for the move, which is why the map jumped: no
+    // controller, no transition). In uncontrolled mode a transition is started by
+    // handing deck a new initialViewState that carries the transition.
+    const from = deckInstance.viewManager.getViewState('ortho');
+    const target = [transformedX, transformedY, 0];
+    const duration = glideDuration(from, target, targetZoom);
     deckInstance.setProps({
-        controller: false
+        initialViewState: {
+            ...from,
+            target,
+            zoom: targetZoom,
+            transitionDuration: duration,
+            transitionInterpolator: new ZoomToPoint(),
+            transitionEasing: easeInOut
+        }
     });
-
-    // Step 2: Navigate with transition
-    const targetViewState = {
-        target: [transformedX, transformedY, 0],
-        zoom: targetZoom,
-        transitionDuration: 1500,
-        transitionInterpolator: new deck.LinearInterpolator(['target', 'zoom'])
-    };
-
-    deckInstance.setProps({
-        viewState: targetViewState
-    });
-
-    // Step 3: Re-enable controller with ORIGINAL configuration after transition
-    setTimeout(() => {
-        deckInstance.setProps({
-            controller: originalController,
-            viewState: undefined // Let controller take over
-        });
-    }, 1600);
+    // flash the cell's outline on arrival, whoever asked for the move (the lookup
+    // box or the chat). It used to flash at once, before the map had got there.
+    setTimeout(() => pulseCell(cellNum), duration + 100);
 
     return cellData;
 }
@@ -280,8 +312,6 @@ function setupCellLookupUI() {
         try {
             await searchAndNavigateToCell(cellId);
             closeBar();
-            // Pulse the target cell polygon
-            pulseCell(parseInt(cellId));
         } catch (error) {
             // Shake + red border
             input.classList.remove('error');
