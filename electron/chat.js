@@ -438,6 +438,20 @@ function makeClient(p) {
 
 // ------------------------------------------------------------- one turn
 
+// Earlier turns go back to the model without their thinking blocks. A thinking block
+// is signed by the model that wrote it, so after a switch of provider (GLM to Claude,
+// say) the next call fails with 'Invalid signature in thinking block' on a
+// conversation that started under the other one. The answers and the tool calls are
+// what the next turn needs; the thinking of a finished turn is not.
+function withoutThinking(messages) {
+  return messages.map((m) => {
+    if (m.role !== 'assistant' || !Array.isArray(m.content)) return m;
+    const content = m.content.filter(b => b.type !== 'thinking' && b.type !== 'redacted_thinking');
+    // a turn that was only thinking cannot go back empty
+    return { ...m, content: content.length ? content : [{ type: 'text', text: '(no answer)' }] };
+  });
+}
+
 // The images the user pasted stay in the conversation, and the whole conversation is
 // sent on every call, so each one would cost its tokens again every time. Keep the
 // last few as they are and replace older ones by a line saying one was there.
@@ -481,7 +495,7 @@ async function runTurn(messages) {
   const modelName = model(p);
   const send = deps.send || (() => {});
 
-  const history = [...messages];
+  const history = withoutThinking(messages);
   let finalText = '';
   let toolsRan = 0;
   let last = null;     // the last reply, to say why an empty one stopped
@@ -577,5 +591,5 @@ function registerIpc(ipcMain) {
   });
 }
 
-module.exports = { init, registerIpc, runTurn, reply, withRecentImages, getSettings, saveSettings, makeClient, SYSTEM,
+module.exports = { init, registerIpc, runTurn, reply, withRecentImages, withoutThinking, getSettings, saveSettings, makeClient, SYSTEM,
                    SHARED_SYSTEM, VIEWER_SYSTEM, DEFAULT_MODEL, PROVIDERS };

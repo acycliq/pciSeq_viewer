@@ -7,7 +7,7 @@ const orig = Module._load;
 Module._load = function (r, ...a) {
   return r === 'electron' ? { safeStorage: {}, ipcMain: { handle() {} } } : orig.call(this, r, ...a);
 };
-const { withRecentImages, reply } = require('./chat');
+const { withRecentImages, reply, withoutThinking } = require('./chat');
 
 const img = n => ({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'x' + n } });
 const history = [
@@ -25,6 +25,21 @@ assert.strictEqual(out[4].content[0].source.data, 'x3');
 assert.deepStrictEqual(out[3], history[3], 'tool results untouched');
 assert.strictEqual(history[0].content[0].type, 'image', 'the stored history is not changed');
 assert.deepStrictEqual(withRecentImages([{ role: 'user', content: 'plain text' }]), [{ role: 'user', content: 'plain text' }]);
+
+// withoutThinking: a conversation begun under one provider can go on under another
+const begun = [
+  { role: 'user', content: 'hello' },
+  { role: 'assistant', content: [{ type: 'thinking', thinking: 'hmm', signature: 'signed by another model' },
+                                 { type: 'tool_use', id: 't1', name: 'cell', input: { label: 5 } }] },
+  { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: '{}' }] },
+  { role: 'assistant', content: [{ type: 'thinking', thinking: 'only this', signature: 'x' }] },
+];
+const cleaned = withoutThinking(begun);
+assert.deepStrictEqual(cleaned[1].content.map(b => b.type), ['tool_use'], 'the thinking is gone, the tool call stays');
+assert.deepStrictEqual(cleaned[3].content, [{ type: 'text', text: '(no answer)' }], 'never an empty turn');
+assert.strictEqual(cleaned[0], begun[0]);
+assert.strictEqual(cleaned[2], begun[2], 'user turns untouched');
+assert.strictEqual(begun[1].content.length, 2, 'the stored conversation is not changed');
 
 // reply: the text goes out piece by piece, and the whole reply comes back at the end
 (async () => {
