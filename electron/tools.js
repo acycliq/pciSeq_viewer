@@ -1252,4 +1252,10 @@ async function call(name, input) {
   }
 }
 
-module.exports = { init, TOOLS, call, spotToDict, cellToDict, runnerUp, runInfo };
+// Tools I keep in the code but do not offer to the agent. fit_allen_regions is
+// experimental and does not fit real sections well enough, so no chat and no MCP
+// client is told about it. call() still runs it, for trying it by hand.
+const HIDDEN = new Set(['fit_allen_regions']);
+
+module.exports = { init, TOOLS: TOOLS.filter(t => !HIDDEN.has(t.name)), call,
+                   spotToDict, cellToDict, runnerUp, runInfo };
