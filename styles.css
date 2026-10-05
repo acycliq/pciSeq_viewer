@@ -2607,6 +2607,9 @@ body {
     cursor: pointer;
 }
 .chat-icon-btn:hover { background: #2a2a2a; color: #e2e8f0; }
+/* the two text size buttons, A- and A+: letters, so narrower type than the icons */
+.chat-font-btn { font-size: 12px; font-weight: 600; width: auto; padding: 0 7px; }
+.chat-font-btn:disabled { color: #475569; cursor: default; background: none; }
 
 .chat-body {
     flex: 1;
@@ -2687,23 +2690,24 @@ body {
     background: #0d0d0d;
     cursor: text;
 }
-.chat-log, .chat-prompt-line { max-width: 90ch; }
+/* the line length grows with the text size, or larger text would wrap at half the panel */
+.chat-log, .chat-prompt-line { max-width: calc(90ch * var(--chat-scale, 1)); }
 .chat-q, .chat-a, .chat-tool, .chat-error, .chat-note, .chat-welcome { margin: 0 0 8px; }
 .chat-q, .chat-prompt-line {
     font-family: 'Courier New', monospace;
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--chat-scale, 1));
     color: #e2e8f0;
 }
 .chat-q .chat-prompt, .chat-prompt-line .chat-prompt { margin-right: 8px; }
 /* images pasted into the chat, waiting to be sent (src/chatAttachments.js) */
-.chat-attachments { display: flex; gap: 10px; margin: 0 0 4px 26px; font-family: 'Courier New', monospace; font-size: 13px; }
+.chat-attachments { display: flex; gap: 10px; margin: 0 0 4px 26px; font-family: 'Courier New', monospace; font-size: calc(13px * var(--chat-scale, 1)); }
 .chat-attachments.hidden { display: none; }
 .chat-attachment button { margin-left: 2px; padding: 0 4px; border: none; background: none; color: #6b7280; cursor: pointer; }
 .chat-attachment button:hover { color: #e2e8f0; }
 .chat-image-chip { color: #94a3b8; cursor: zoom-in; }
 .chat-image-chip:hover { color: #7dd3fc; text-decoration: underline; }
 .chat-a {
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--chat-scale, 1));
     line-height: 1.55;
     color: #cbd5e1;
     padding-left: 26px;
@@ -2712,12 +2716,12 @@ body {
 .chat-a p { margin: 0 0 8px; }
 .chat-a a { color: #7dd3fc; text-decoration: underline; }
 .chat-a p:last-child { margin-bottom: 0; }
-.chat-a code { background: #1a1a1a; padding: 1px 4px; border-radius: 3px; font-size: 12.5px; }
+.chat-a code { background: #1a1a1a; padding: 1px 4px; border-radius: 3px; font-size: calc(12.5px * var(--chat-scale, 1)); }
 .chat-tool {
     padding-left: 26px;
     color: #64748b;
     font-family: 'Courier New', monospace;
-    font-size: 12px;
+    font-size: calc(12px * var(--chat-scale, 1));
 }
 .chat-tool-name { color: #7dd3fc; }
 /* a picture from cell_image or plane_image, under its tool line */
@@ -2728,9 +2732,9 @@ body {
               display: flex; align-items: center; justify-content: center; cursor: grab; overflow: hidden; }
 .image-zoom:active { cursor: grabbing; }
 .image-zoom img { max-width: 95vw; max-height: 95vh; transform-origin: center; user-select: none; }
-.chat-error { padding-left: 26px; color: #fca5a5; font-size: 13px; }
-.chat-note { padding-left: 26px; color: #64748b; font-size: 13px; font-style: italic; }
-.chat-welcome { color: #94a3b8; font-size: 13px; line-height: 1.55; }
+.chat-error { padding-left: 26px; color: #fca5a5; font-size: calc(13px * var(--chat-scale, 1)); }
+.chat-note { padding-left: 26px; color: #64748b; font-size: calc(13px * var(--chat-scale, 1)); font-style: italic; }
+.chat-welcome { color: #94a3b8; font-size: calc(13px * var(--chat-scale, 1)); line-height: 1.55; }
 .chat-welcome a { color: #7dd3fc; cursor: pointer; text-decoration: none; }
 .chat-welcome a:hover { text-decoration: underline; }
 

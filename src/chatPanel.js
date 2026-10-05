@@ -27,6 +27,10 @@ let mode = 'normal';
 let height = null;          // the dragged height, remembered between sessions
 const MIN_HEIGHT = 140;
 const HEIGHT_KEY = 'chatDockHeight';
+// the size of the conversation's text, for a demo on a projector: A- and A+ in the
+// header step through these, and the choice is remembered
+const FONT_KEY = 'chatFontScale';
+const FONT_SCALES = [1, 1.15, 1.3, 1.5, 1.75, 2, 2.5];
 
 const EXAMPLES = [
   'Why did spot 1642419 go to cell 18223?',
@@ -268,6 +272,27 @@ function close() {
   applyDock();
 }
 
+function fontScale() {
+  let saved = 1;
+  try { saved = Number(localStorage.getItem(FONT_KEY)) || 1; } catch {}
+  return FONT_SCALES.includes(saved) ? saved : 1;
+}
+
+// step: -1 smaller, +1 larger, 0 only applies what is saved
+function setFontScale(step) {
+  const at = FONT_SCALES.indexOf(fontScale());
+  const next = Math.max(0, Math.min(FONT_SCALES.length - 1, at + step));
+  const scale = FONT_SCALES[next];
+  try { localStorage.setItem(FONT_KEY, String(scale)); } catch {}
+  el('chatPanel').style.setProperty('--chat-scale', scale);
+  el('chatFontDown').disabled = next === 0;
+  el('chatFontUp').disabled = next === FONT_SCALES.length - 1;
+  el('chatFontUp').title = `Larger text (now ${Math.round(scale * 100)}%)`;
+  el('chatFontDown').title = `Smaller text (now ${Math.round(scale * 100)}%)`;
+  fitInput();
+  scrollToEnd();
+}
+
 function defaultHeight() {
   let saved = null;
   try { saved = Number(localStorage.getItem(HEIGHT_KEY)); } catch {}
@@ -364,6 +389,9 @@ export function initChatPanel() {
     if (q) { input.value = q.dataset.q; fitInput(); send(); return; }
     if (!window.getSelection().toString()) input.focus();
   });
+  el('chatFontDown').addEventListener('click', () => setFontScale(-1));
+  el('chatFontUp').addEventListener('click', () => setFontScale(1));
+  setFontScale(0);
   el('chatClear').addEventListener('click', () => {
     if (busy) return;
     messages = [];
