@@ -55,9 +55,18 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   const same = await tools.call('explain_cell', { label: 42, vs_class: 'B' });
   assert.ok(/already B/.test(same.error));
 
-  const fly = await tools.call('fly_to_cell', { label: 18223 });
-  assert.deepStrictEqual(sent, [['chat-fly-to-cell', { label: 18223 }]]);
+  // fly_to_cell waits for the renderer's answer; a cell it does not have is the
+  // model's error, not a success
+  const flown = [];
+  tools.init({ flyToCell: async (label) => {
+    flown.push(label);
+    if (label !== 42) throw new Error(`Cell ${label} not found in dataset`);
+  } });
+  const fly = await tools.call('fly_to_cell', { label: 42 });
+  assert.deepStrictEqual(flown, [42]);
   assert.strictEqual(fly.done, true);
+  const lost = await tools.call('fly_to_cell', { label: 18223 });
+  assert.ok(/not found/.test(lost.error), 'a missing cell comes back as an error');
 
   // open_cell_diagnostics: same numbers as explain_cell, plus the message to the renderer
   sent = [];

@@ -74,8 +74,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onChatAddAllenRegions: (handler) => ipcRenderer.on('chat-add-allen-regions', (_e, p) => handler(p)),
   // what the map legend says, class colours and gene glyphs, for the tools (electron/legend.js)
   setLegend: (legend) => ipcRenderer.send('legend', legend),
-  // the fly_to_cell tool: the main process asks the map to move
+  // the fly_to_cell tool: the main process asks the map to move and waits to hear
+  // whether the cell was there (electron/compose.js)
   onChatFlyToCell: (handler) => ipcRenderer.on('chat-fly-to-cell', (_e, p) => handler(p)),
+  chatFlyToCellDone: (payload) => ipcRenderer.send('chat-fly-to-cell-done', payload),
   // the open_cell_diagnostics tool: open the panel on a cell and run the compare
   onChatOpenCellDiagnostics: (handler) => ipcRenderer.on('chat-open-cell-diagnostics', (_e, p) => handler(p)),
   // and open_spot_diagnostics: open the spot panel on a spot

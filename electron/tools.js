@@ -25,7 +25,7 @@ const allenTaxonomy = require('./allenTaxonomy');
 // pciSeq source from GitHub, the global one unless a check passes a fake.
 let deps = { querySpot: null, queryCell: null, getMeta: null, send: null, docsRoot: null, fetch: null,
              saveDialog: null, writeFile: null, getTilesInfo: null, getAnnotations: () => [],
-             fitAllenRegions: null };
+             fitAllenRegions: null, flyToCell: null };
 
 // where the source is read from: the pciSeq_3d repo at the commit that made the
 // run, so the code matches the numbers, falling back to the dev_3d branch when the
@@ -1149,7 +1149,10 @@ async function call(name, input) {
     }
     if (name === 'fly_to_cell') {
       const label = Number(input.label);
-      deps.send('chat-fly-to-cell', { label });
+      // the renderer owns the map, so it checks the label and starts the glide. A
+      // cell the run does not have throws, and the catch below hands that to the
+      // model instead of a map that quietly stayed put.
+      await deps.flyToCell(label);
       return { done: true, cell: label, note: 'the map is moving to the cell' };
     }
     if (name === 'show_classes') return setVisibility('classes', input);

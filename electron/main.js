@@ -169,6 +169,8 @@ function createWindow() {
     queryCell: diagnostics.queryCell,
     getMeta: diagnostics.getMeta,
     send: (channel, payload) => { if (mainWindow) mainWindow.webContents.send(channel, payload); },
+    // fly_to_cell waits for the renderer to say whether it found the cell
+    flyToCell: compose.flyToCell,
     // the docs pages: next to the code in a checkout, in resources/ when packaged
     // (extraResources in package.json)
     docsRoot: app.isPackaged

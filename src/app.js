@@ -762,10 +762,18 @@ window.addEventListener('load', async () => {
 
     // Initialize cell lookup UI
     // the chat panel's fly_to_cell tool lands here: same search-and-navigate the
-    // cell lookup box uses, so the outline flashes the same way
+    // cell lookup box uses, so the outline flashes the same way. The answer goes
+    // back to the tool, so a cell the run does not have reaches the model as an
+    // error rather than a map that quietly stayed put
     if (window.electronAPI?.onChatFlyToCell) {
-        window.electronAPI.onChatFlyToCell(({ label }) => {
-            if (window.cellLookup) window.cellLookup.search(label);
+        window.electronAPI.onChatFlyToCell(async ({ id, label }) => {
+            try {
+                if (!window.cellLookup) throw new Error('the map is not ready yet');
+                await window.cellLookup.search(label);
+                window.electronAPI.chatFlyToCellDone({ id });
+            } catch (e) {
+                window.electronAPI.chatFlyToCellDone({ id, error: e.message });
+            }
         });
     }
     // and open_cell_diagnostics: the same panel Ctrl+Click opens, compare already run
