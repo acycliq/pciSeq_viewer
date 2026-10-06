@@ -111,6 +111,70 @@ function glideDuration(from, target, zoom) {
     return Math.max(800, Math.min(3000, 600 + 350 * levels + Math.min(1200, pixels / 3)));
 }
 
+// ---- the flight to a cell outside the window
+
+// At the close-up a straight glide to a far cell shows nothing but tiles streaming
+// past, and the user lands without knowing where on the section they went. So for
+// a cell outside the window the view widens until both ends are in sight, crosses,
+// and narrows again. This is van Wijk and Nuij (2003), the path behind the fly-to
+// of map applications: w is the visible width in world units, u the distance
+// covered along the line between the two centres, s the position along the path,
+// and rho says how far out it goes. The perceived speed stays constant.
+class FlyTo extends deck.TransitionInterpolator {
+    constructor(screenWidth) {
+        super({ compare: ['target', 'zoom'], extract: ['target', 'zoom'], required: ['target', 'zoom'] });
+        this.screenWidth = screenWidth;
+    }
+
+    // the path between two view states, worked out once and reused every frame
+    path(start, end) {
+        const key = [start.zoom, ...start.target, end.zoom, ...end.target].join(',');
+        if (this._path && this._path.key === key) return this._path;
+        const rho = 1.414, rho2 = rho * rho;
+        const w0 = this.screenWidth / Math.pow(2, start.zoom);
+        const w1 = this.screenWidth / Math.pow(2, end.zoom);
+        const u1 = Math.hypot(end.target[0] - start.target[0], end.target[1] - start.target[1]);
+        let S, u, w;
+        if (u1 < 1e-6) {
+            // nothing to cross, a plain change of zoom
+            const k = w1 < w0 ? -1 : 1;
+            S = Math.abs(Math.log(w1 / w0)) / rho;
+            u = () => 0;
+            w = s => w0 * Math.exp(k * rho * s);
+        } else {
+            const r = i => {
+                const b = (w1 * w1 - w0 * w0 + (i ? -1 : 1) * rho2 * rho2 * u1 * u1) / (2 * (i ? w1 : w0) * rho2 * u1);
+                return Math.log(Math.sqrt(b * b + 1) - b);
+            };
+            const r0 = r(0), r1 = r(1);
+            S = (r1 - r0) / rho;
+            u = s => (w0 / rho2) * (Math.cosh(r0) * Math.tanh(rho * s + r0) - Math.sinh(r0));
+            w = s => w0 * Math.cosh(r0) / Math.cosh(rho * s + r0);
+        }
+        this._path = { key, S, u, w, u1 };
+        return this._path;
+    }
+
+    interpolateProps(start, end, t) {
+        const { S, u, w, u1 } = this.path(start, end);
+        const s = t * S;
+        const f = u1 < 1e-6 ? t : u(s) / u1;
+        return {
+            zoom: Math.log2(this.screenWidth / w(s)),
+            target: [start.target[0] + (end.target[0] - start.target[0]) * f,
+                     start.target[1] + (end.target[1] - start.target[1]) * f, 0]
+        };
+    }
+}
+
+// S grows with the log of the distance, so this stays within 1.2 and 5 seconds for
+// anything on a section. PACE is the knob: 1 felt too quick to follow, 1.5 was
+// asked for.
+const PACE = 1.5;
+function flightDuration(S) {
+    return PACE * Math.max(800, Math.min(3500, 500 + 300 * S));
+}
+
 /**
  * Search for a cell by ID and navigate to it
  */
@@ -169,14 +233,26 @@ async function searchAndNavigateToCell(cellId) {
     // handing deck a new initialViewState that carries the transition.
     const from = deckInstance.viewManager.getViewState('ortho');
     const target = [transformedX, transformedY, 0];
-    const duration = glideDuration(from, target, targetZoom);
+    // a cell inside the window glides straight there; one outside flies, zooming
+    // out and back in, so the user sees where on the section the map went
+    const vp = deckInstance.getViewports()[0];
+    const [sx, sy] = vp.project([transformedX, transformedY]);
+    const offScreen = sx < 0 || sy < 0 || sx > vp.width || sy > vp.height;
+    let interpolator, duration;
+    if (offScreen) {
+        interpolator = new FlyTo(vp.width);
+        duration = flightDuration(interpolator.path(from, { target, zoom: targetZoom }).S);
+    } else {
+        interpolator = new ZoomToPoint();
+        duration = glideDuration(from, target, targetZoom);
+    }
     deckInstance.setProps({
         initialViewState: {
             ...from,
             target,
             zoom: targetZoom,
             transitionDuration: duration,
-            transitionInterpolator: new ZoomToPoint(),
+            transitionInterpolator: interpolator,
             transitionEasing: easeInOut
         }
     });
