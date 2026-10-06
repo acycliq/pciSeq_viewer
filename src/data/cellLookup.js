@@ -135,12 +135,15 @@ class FlyTo extends deck.TransitionInterpolator {
         const w1 = this.screenWidth / Math.pow(2, end.zoom);
         const u1 = Math.hypot(end.target[0] - start.target[0], end.target[1] - start.target[1]);
         let S, u, w;
+        let sTop;
         if (u1 < 1e-6) {
-            // nothing to cross, a plain change of zoom
+            // nothing to cross, a plain change of zoom; the widest view is at the
+            // end when zooming out, at the start when zooming in
             const k = w1 < w0 ? -1 : 1;
             S = Math.abs(Math.log(w1 / w0)) / rho;
             u = () => 0;
             w = s => w0 * Math.exp(k * rho * s);
+            sTop = k > 0 ? S : 0;
         } else {
             const r = i => {
                 const b = (w1 * w1 - w0 * w0 + (i ? -1 : 1) * rho2 * rho2 * u1 * u1) / (2 * (i ? w1 : w0) * rho2 * u1);
@@ -150,8 +153,10 @@ class FlyTo extends deck.TransitionInterpolator {
             S = (r1 - r0) / rho;
             u = s => (w0 / rho2) * (Math.cosh(r0) * Math.tanh(rho * s + r0) - Math.sinh(r0));
             w = s => w0 * Math.cosh(r0) / Math.cosh(rho * s + r0);
+            // w is widest where cosh is smallest, rho s + r0 = 0
+            sTop = Math.max(0, Math.min(S, -r0 / rho));
         }
-        this._path = { key, S, u, w, u1 };
+        this._path = { key, S, u, w, u1, sTop };
         return this._path;
     }
 
@@ -167,10 +172,21 @@ class FlyTo extends deck.TransitionInterpolator {
     }
 }
 
-// S grows with the log of the distance, so this stays within 1.2 and 5 seconds for
-// anything on a section. PACE is the knob: 1 felt too quick to follow, 1.5 was
-// asked for.
-const PACE = 1.5;
+// The fraction of the duration at which the eased path reaches fraction f of
+// itself: easeInOut inverted by bisection, it is monotone
+function timeOf(f) {
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 30; i++) {
+        const mid = (lo + hi) / 2;
+        if (easeInOut(mid) < f) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+}
+
+// S grows with the log of the distance, so this stays within 1.6 and 7 seconds for
+// anything on a section. PACE is the knob: 1 felt too quick to follow, 2 is where
+// it settled after trying it live.
+const PACE = 2.0;
 function flightDuration(S) {
     return PACE * Math.max(800, Math.min(3500, 500 + 300 * S));
 }
@@ -207,16 +223,21 @@ async function searchAndNavigateToCell(cellId) {
     // CRITICAL: Transform coordinates from original image space to tile coordinate space
     const [transformedX, transformedY] = transformToTileCoordinates(cellData.x, cellData.y, imageDimensions);
 
-    // Calculate plane number from Z coordinate
+    // Calculate plane number from Z coordinate. Floor, not round: plane p is the
+    // stretch from p up to p + 1, so a centroid at 21.88 is on plane 21. Same rule
+    // as a spot's plane_id in pciSeq, the Centroid Plane in the tooltip
+    // (ui/uiHelpers.js) and the mcp tools (pciSeq_3d e4270778). Do not use Round as it
+    // would put the fly-to one plane off the tooltip.
     const [xVoxelSize, yVoxelSize, zVoxelSize] = config.voxelSize; // [0.28, 0.28, 0.7]
     const planeNumber = Math.floor(cellData.z * xVoxelSize / zVoxelSize);
 
-    // Switch to the calculated plane
-    if (window.updatePlane && typeof window.updatePlane === 'function') {
-        window.updatePlane(planeNumber);
-    } else {
-        console.warn('Could not switch plane - updatePlane function not available');
-    }
+    const switchPlane = () => {
+        if (window.updatePlane && typeof window.updatePlane === 'function') {
+            window.updatePlane(planeNumber);
+        } else {
+            console.warn('Could not switch plane - updatePlane function not available');
+        }
+    };
 
     // CRITICAL: Use high zoom for close-up view of the cell
     const targetZoom = 8; // Maximum zoom for detailed cell view
@@ -241,10 +262,16 @@ async function searchAndNavigateToCell(cellId) {
     let interpolator, duration;
     if (offScreen) {
         interpolator = new FlyTo(vp.width);
-        duration = flightDuration(interpolator.path(from, { target, zoom: targetZoom }).S);
+        const path = interpolator.path(from, { target, zoom: targetZoom });
+        duration = flightDuration(path.S);
+        // the plane changes at the top of the arc, where the view is widest and
+        // the swap of background and cells is least noticeable, as a map
+        // application changes the layer at the top of a fly-to
+        setTimeout(switchPlane, duration * timeOf(path.sTop / path.S));
     } else {
         interpolator = new ZoomToPoint();
         duration = glideDuration(from, target, targetZoom);
+        switchPlane();
     }
     deckInstance.setProps({
         initialViewState: {
