@@ -138,21 +138,28 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.deepStrictEqual(sent, [], 'nothing sent on a refusal');
   tools.init({ getMeta: () => ({ class_names: names }) });
 
-  // docs: a tiny corpus in a temp folder, the ranking of docs.py
+  // docs: a tiny corpus, handed over as the pages saved inside the run, the ranking
+  // of docs.py
   const fs = require('fs'), os = require('os'), path = require('path');
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pciseq-docs-'));
-  fs.writeFileSync(path.join(root, 'index.md'), '# pciSeq\n\nAssigns spots to cells.\n');
-  fs.mkdirSync(path.join(root, 'the-model'));
-  fs.writeFileSync(path.join(root, 'the-model', 'settings.md'),
+  const run = require('./run');
+  const realDocsFromRun = run.docsFromRun;
+  const settingsPage =
     '---\ndescription: The settings\n---\n\n## rTheta\n\nrTheta is the shape of the gamma prior on the cell ' +
     'scale factor theta.\n\n## mrf_beta\n\nmrf_beta is the strength of the spatial term.\n\n' +
-    '## Where\n\n| Quantity | Code |\n|---|---|\n| theta | `main.py` `theta_upd` line 831 |\n| rho | `main.py` `rho_upd` line 653 |\n');
-  tools.init({ docsRoot: root });
+    '## Where\n\n| Quantity | Code |\n|---|---|\n| theta | `main.py` `theta_upd` line 831 |\n| rho | `main.py` `rho_upd` line 653 |\n';
+  run.docsFromRun = () => new Map([
+    ['index.md', '# pciSeq\n\nAssigns spots to cells.\n'],
+    ['the-model/settings.md', settingsPage],
+  ]);
+  // GitHub is never asked for the docs
+  let githubCalls = 0;
+  tools.init({ fetch: async () => { githubCalls++; throw new Error('offline'); } });
   const found = await tools.call('docs', { query: 'rTheta' });
   assert.strictEqual(found.hits.length, 1);
   assert.strictEqual(found.hits[0].page, 'the-model/settings.md');
   assert.strictEqual(found.hits[0].heading, 'rTheta');
   assert.strictEqual(found.hits[0].title, 'The settings');
+  assert.ok(/saved inside this run/.test(found.docs_are), found.docs_are);
   // a table comes back one row at a time, with its heading
   const row = await tools.call('docs', { query: 'rho_upd' });
   assert.strictEqual(row.hits.length, 1);
@@ -172,32 +179,20 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.ok(toc.contents[0].about.indexOf('#') < 0, 'the heading is not the about');
   // one whole page by name, and a name that is not there
   const whole = await tools.call('docs', { page: 'the-model/settings.md' });
-  assert.strictEqual(whole.text, fs.readFileSync(path.join(root, 'the-model/settings.md'), 'utf8'));
+  assert.strictEqual(whole.text, settingsPage);
   const missing = await tools.call('docs', { page: 'nope.md' });
   assert.ok(/no page nope\.md/.test(missing.error));
   assert.ok(missing.contents.length === 2, 'a wrong page name gives the list back');
-  // the pages saved inside the run win, and GitHub is not asked at all
-  const run = require('./run');
-  const realDocsFromRun = run.docsFromRun;
-  let githubCalls = 0;
-  run.docsFromRun = () => new Map([['index.md', '# pciSeq\n\nThe mrf_beta of the run.\n']]);
-  tools.init({ fetch: async () => { githubCalls++; throw new Error('offline'); } });
-  const saved = await tools.call('docs', { query: 'mrf_beta' });
-  assert.strictEqual(saved.hits.length, 1);
-  assert.strictEqual(saved.hits[0].page, 'index.md');
-  assert.ok(/saved inside this run/.test(saved.docs_are), saved.docs_are);
-  assert.strictEqual(githubCalls, 0, 'no GitHub fetch when the run has its docs');
-  // a run without the table: back to the old order, here the viewer's copy
+  // a run with no pages saved: no docs, said plainly, nothing read from anywhere else
   run.docsFromRun = () => null;
-  const older = await tools.call('docs', { query: 'mrf_beta' });
-  assert.strictEqual(older.hits[0].page, 'the-model/settings.md');
-  assert.ok(/shipped with this viewer/.test(older.docs_are), older.docs_are);
+  for (const input of [{ query: 'mrf_beta' }, { page: 'index.md' }, {}]) {
+    const older = await tools.call('docs', input);
+    assert.ok(/not available/.test(older.error), JSON.stringify(older));
+    assert.ok(!older.hits && !older.contents && !older.text, 'no pages from elsewhere');
+  }
+  assert.strictEqual(githubCalls, 0, 'the docs are never fetched from GitHub');
   run.docsFromRun = realDocsFromRun;
   tools.init({ fetch: null });
-
-  fs.rmSync(root, { recursive: true });
-  tools.init({ docsRoot: null });
-  assert.ok(/no documentation/.test((await tools.call('docs', { query: 'x' })).error));
 
   // the legend: the window sends it, the tools read one class or one gene
   const legend = require('./legend');

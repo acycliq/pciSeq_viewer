@@ -16,14 +16,13 @@
 const { narrateCell, narrateSpot } = require('./narrative');
 const run = require('./run');
 const docs = require('./docs');
-const docsAtCommit = require('./docsAtCommit');
 const allen = require('./allen');
 const { exportTable, EXPORTABLE } = require('./exportTable');
 const allenTaxonomy = require('./allenTaxonomy');
 
-// docsRoot: the folder of documentation pages, see docs.js. fetch: for reading the
-// pciSeq source from GitHub, the global one unless a check passes a fake.
-let deps = { querySpot: null, queryCell: null, getMeta: null, send: null, docsRoot: null, fetch: null,
+// fetch: for reading the pciSeq source from GitHub, the global one unless a check
+// passes a fake.
+let deps = { querySpot: null, queryCell: null, getMeta: null, send: null, fetch: null,
              saveDialog: null, writeFile: null, getTilesInfo: null, getAnnotations: () => [],
              fitAllenRegions: null, flyToCell: null };
 
@@ -1158,24 +1157,18 @@ async function call(name, input) {
     if (name === 'show_classes') return setVisibility('classes', input);
     if (name === 'show_genes') return setVisibility('genes', input);
     if (name === 'docs') {
-      // the pages saved inside the run at fit time first; runs from before that have
-      // none, then the pages of the run's own commit from GitHub, as the source tools
-      // do; the copy shipped with the viewer only when those cannot be fetched
-      let inRun = null;
-      try { inRun = run.docsFromRun(); } catch { inRun = null; }
-      const atCommit = inRun ? null
-        : await docsAtCommit.docsAt(sourceRef() === 'dev_3d' ? null : sourceRef(), deps.fetch);
-      const corpus = inRun || atCommit || deps.docsRoot;
-      if (!corpus) return { error: 'this build of the viewer carries no documentation pages' };
-      const docsAre = inRun
-        ? 'the documentation saved inside this run when it was fitted, so it describes ' +
-          'the pciSeq that produced these numbers'
-        : atCommit
-        ? `the documentation at the commit that made this run (${sourceRef()}), so it ` +
-          'describes the pciSeq that produced these numbers'
-        : 'the documentation shipped with this viewer, not the run\'s own commit ' +
-          '(it could not be fetched from GitHub), so a page may describe a newer ' +
-          'pciSeq than the run';
+      // Only the pages saved inside the run at fit time: they are the documentation
+      // of the pciSeq that made the numbers. A run without them gets no pages, and
+      // the agent says so rather than read those of some other version.
+      let corpus = null;
+      try { corpus = run.docsFromRun(); } catch { corpus = null; }
+      if (!corpus) {
+        return { error: 'documentation is not available: this run has none saved ' +
+                        'inside it. Say so, and do not answer from memory as if from ' +
+                        'the documentation.' };
+      }
+      const docsAre = 'the documentation saved inside this run when it was fitted, so ' +
+                      'it describes the pciSeq that produced these numbers';
       // a page, the whole of it
       if (input.page) {
         try {

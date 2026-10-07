@@ -663,9 +663,9 @@ function explainCell(label, vsClass = null, topN = 10) {
 
 // whether the open run saves its class score (format version 1); false with no db
 // The documentation pages saved inside the run at fit time (the docs table, pciSeq
-// export_docs), as a Map of page -> text, the same shape docsAtCommit.js makes.
+// export_docs), as a Map of page -> text.
 // null for runs written before the table existed, or when it came out empty; the
-// docs tool then goes to GitHub as before.
+// docs tool then says the documentation is not available.
 function docsFromRun() {
   const h = db();   // first, see cellColumns for why
   if (cache.docs === undefined) {

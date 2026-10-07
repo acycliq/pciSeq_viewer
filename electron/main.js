@@ -171,11 +171,6 @@ function createWindow() {
     send: (channel, payload) => { if (mainWindow) mainWindow.webContents.send(channel, payload); },
     // fly_to_cell waits for the renderer to say whether it found the cell
     flyToCell: compose.flyToCell,
-    // the docs pages: next to the code in a checkout, in resources/ when packaged
-    // (extraResources in package.json)
-    docsRoot: app.isPackaged
-      ? path.join(process.resourcesPath, 'pciseq_docs')
-      : path.join(__dirname, 'pciseq_docs'),
     // run_info quotes what the background tiles say about themselves
     getTilesInfo: dataLoader.getTilesInfo,
     // export_table: the user picks where the CSV goes, starting in Documents
