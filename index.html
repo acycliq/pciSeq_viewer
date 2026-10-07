@@ -384,7 +384,7 @@
                         </div>
                     </div>
                     <label class="toggle-switch">
-                        <span class="label-text">Cell Projection</span>
+                        <span class="label-text">Cells from all planes</span>
                         <input type="checkbox" id="cellProjectionToggle">
                         <span class="switch-slider"></span>
                     </label>
@@ -586,7 +586,7 @@
 
     <!-- About (Info) Button and Modal -->
     <div id="chatBtn" class="chat-btn" aria-label="Ask the run a question" title="Ask the run"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="8" cy="10" r="0.6" fill="currentColor"/><circle cx="12" cy="10" r="0.6" fill="currentColor"/><circle cx="16" cy="10" r="0.6" fill="currentColor"/></svg></div>
-    <div id="aboutBtn" class="about-btn" aria-label="About this viewer" title="About">i</div>
+    <div id="aboutBtn" class="about-btn" role="button" aria-label="About this viewer, and a tour of the controls" title="Help and tour">?</div>
     <div id="aboutModal" class="about-modal-bg" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
         <div class="about-modal" role="document">
             <button class="about-modal-close" id="aboutClose" aria-label="Close">×</button>
@@ -607,6 +607,11 @@
                 the Selection tool: enable Tools\Selection, then hold Ctrl (or Cmd on Mac) and drag to draw a rectangle; releasing
                 spawns the 3D view for that region.
             </p>
+            <!-- starts the guided tour (src/tour.js) -->
+            <div class="about-tour">
+                <span>New here? A short tour shows the main controls.</span>
+                <button id="aboutTourBtn" class="about-tour-btn" type="button">Take the tour</button>
+            </div>
         </div>
     </div>
 
@@ -637,6 +642,8 @@
     <div id="cellInfoPanel" class="cell-info-panel">
         <div class="cell-info-header">
             <span id="cellInfoTitle">Cell Information</span>
+            <!-- shown only while the panel is frozen on a cell (styles.css) -->
+            <span id="cellInfoFrozenIcon" class="cell-info-frozen-icon" data-tooltip="Frozen. Esc or click the map to resume." aria-label="Frozen. Esc or click the map to resume."><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg></span>
             <button id="cellInfoToggle" class="widget-close-btn" title="Minimize" aria-label="Minimize panel">&minus;</button>
         </div>
         <div class="cell-info-content">

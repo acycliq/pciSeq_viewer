@@ -86,7 +86,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onChatOpen3dView: (handler) => ipcRenderer.on('chat-open-3d-view', (_e, p) => handler(p)),
   // the show_classes and show_genes tools: change which classes or genes are drawn
   onChatShowVisibility: (handler) => ipcRenderer.on('chat-show-visibility', (_e, p) => handler(p)),
-  onShowShortcuts: (handler) => ipcRenderer.on('show-shortcuts', handler)
+  onShowShortcuts: (handler) => ipcRenderer.on('show-shortcuts', handler),
+  // Help > Take a Tour
+  onStartTour: (handler) => ipcRenderer.on('start-tour', handler)
 });
 
 console.log('Preload script loaded - electronAPI exposed to renderer');

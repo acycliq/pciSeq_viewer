@@ -34,7 +34,7 @@ interface; each feature has its own page with the details.
 | **Gene Controls** | Spot size, score/intensity filters, distribution chart | [Genes & Cell Classes](./genes-and-cells) |
 | **Misreads** | Misread charts and grey-out / hide toggles | [Charts & Misreads](./charts-and-misreads) |
 | **Regions** | Import and manage anatomical region boundaries | [Selection & Regions](./selection-tool) |
-| **Layers** | Tiles, polygons, z-projection, cell projection + export | [Layers & Export](./layers-and-export) |
+| **Layers** | Tiles, polygons, z-projection, cells from all planes + export | [Layers & Export](./layers-and-export) |
 | **Tools** | The rectangle selection tool | [Selection & Regions](./selection-tool) |
 
 ## Inspecting cells and spots

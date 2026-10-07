@@ -185,7 +185,7 @@ export async function prepareProjectionFromCaches(state) {
     if (loadingIndicator) {
         loadingIndicator.style.display = 'block';
         const textEl = document.getElementById('loadingText') || loadingIndicator;
-        textEl.textContent = 'Preparing projection...';
+        textEl.textContent = 'Preparing the cells of all planes...';
         await new Promise(resolve => requestAnimationFrame(resolve));
     }
 

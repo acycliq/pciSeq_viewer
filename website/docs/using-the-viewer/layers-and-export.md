@@ -38,16 +38,17 @@ channel, rename the files so that it sorts first.
   view. Use it to see structure that spans several planes without leaving the
   current one. It has no switch in the drawer; press `A` to turn it on and off.
 
-## Cell Projection
+## Cells from all planes
 
-- **Cell Projection** toggle, switches to a mode that projects cells by class,
-  useful for answering "where does this cell type live?" across the stack.
-- **Min Genes / Max Genes** sliders, restrict the projection to cells whose
+- **Cells from all planes** toggle, draws the cells of every plane at once, laid
+  over each other, where normally only the cells of the current plane are drawn.
+  Useful for answering "where does this cell type live?" across the stack.
+- **Min Genes / Max Genes** sliders, restrict the cells drawn to those whose
   gene count falls in the chosen range.
 
 ### Per-class image export
 
-While Cell Projection is active, **Export per-class PNGs** captures one PNG per
+While Cells from all planes is on, **Export per-class PNGs** captures one PNG per
 cell class and bundles them into a single ZIP download. For each class the
 exporter isolates that class, lets the map redraw, captures the canvas, then
 restores your original selection at the end. The status text next to the button

@@ -43,7 +43,7 @@ export function handleCellHover(info) {
  * @param {string|number} cellLabel - Cell label/ID
  * @returns {Object} Formatted cell data for info panel
  */
-function buildCellInfoData(fullCellData, cellLabel) {
+export function buildCellInfoData(fullCellData, cellLabel) {
     const cx = Number(fullCellData.position?.x || 0);
     const cy = Number(fullCellData.position?.y || 0);
 

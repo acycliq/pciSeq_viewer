@@ -697,6 +697,12 @@ function createMenu() {
       label: 'Help',
       submenu: [
         {
+          label: 'Take a Tour',
+          click: () => {
+            if (mainWindow) mainWindow.webContents.send('start-tour');
+          }
+        },
+        {
           label: 'Keyboard Shortcuts...',
           accelerator: 'CmdOrCtrl+/',
           click: () => {

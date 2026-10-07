@@ -31,7 +31,9 @@
     visibility: visible;
 }
 
-/* Frozen (click-to-freeze): blue accent + hint on how to resume live updates. */
+/* Frozen (click-to-freeze): blue accent + a pin in the header. The pin's tooltip
+   says how to resume live updates; the same words used to sit after the title and
+   made the header long. */
 .cell-info-panel.frozen {
     border-color: rgba(59, 130, 246, 0.4);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.2);
@@ -41,12 +43,15 @@
     border-bottom-color: rgba(59, 130, 246, 0.3);
 }
 
-.cell-info-panel.frozen:not(.minimized) .cell-info-header #cellInfoTitle::after {
-    content: ' • frozen — Esc or click map to resume';
-    font-size: 10px;
-    font-weight: 400;
-    color: rgba(59, 130, 246, 0.7);
+/* right after the title; the auto margin keeps the minimize button on the right */
+.cell-info-frozen-icon {
+    display: none;
+    align-items: center;
+    margin: 0 auto 0 8px;
+    color: rgba(59, 130, 246, 0.9);
+    cursor: help;
 }
+.cell-info-panel.frozen .cell-info-frozen-icon { display: inline-flex; }
 
 /* Minimized: collapse to the header strip only. */
 .cell-info-panel.minimized .cell-info-content {
@@ -1944,8 +1949,8 @@ body {
 
 /* About (Info) Button + Modal */
 .about-btn {
-    font-weight: 800;
-    font-family: Times, serif;
+    font-weight: 700;
+    font-family: var(--app-font);
     position: absolute;
     top: 18px;
     right: 18px;
@@ -1954,7 +1959,7 @@ body {
     border-radius: 40px;
     line-height: 30px;
     text-align: center;
-    font-size: 20px;
+    font-size: 16px;
     cursor: pointer;
     background: var(--drawer-bg);
     border: 1px solid var(--drawer-border);
@@ -2756,3 +2761,99 @@ body {
     margin: 0;
     line-height: 1.4;
 }
+
+/* ------------------------------------------------------------------ guided tour
+   The offer of the tour in the About box, and the overlay of src/tour.js:
+   a hole over one control, the rest of the window dimmed by the hole's own shadow,
+   and a box of text beside it. */
+/* the ? button (.about-btn) pulses green until the tour has been taken once, so a
+   new user notices it */
+.about-btn.unseen {
+    border-color: var(--drawer-accent);
+    color: var(--drawer-accent);
+    animation: tour-pulse 2s ease-out infinite;
+}
+@keyframes tour-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+    100% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+}
+/* the last line of the About box: the offer of the tour */
+.about-tour {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.about-tour-btn {
+    flex: none;
+    font: inherit;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    color: #fff;
+    background: var(--drawer-accent-strong);
+    border: 1px solid var(--drawer-accent-strong);
+}
+.about-tour-btn:hover { background: var(--drawer-accent); }
+
+.tour-root {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;          /* over the panels and modals, under the tooltips */
+    overflow: hidden;
+}
+.tour-hole {
+    position: absolute;
+    border-radius: 6px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.62);
+    outline: 2px solid var(--drawer-accent);
+    transition: left 180ms ease, top 180ms ease, width 180ms ease, height 180ms ease;
+}
+.tour-tip {
+    position: absolute;
+    width: 320px;
+    padding: 14px 16px 12px;
+    background: var(--drawer-surface);
+    color: var(--drawer-text);
+    border: 1px solid var(--drawer-border);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    font-family: var(--app-font);
+    font-size: 13px;
+    line-height: 1.5;
+}
+.tour-title { font-size: 15px; font-weight: 600; margin: 0 20px 6px 0; }
+.tour-text { color: #c9cdd2; }
+.tour-text b { color: var(--drawer-text); font-weight: 600; }
+.tour-text code { font-size: 12px; background: #262626; padding: 1px 4px; border-radius: 3px; }
+.tour-close {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--drawer-muted);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+.tour-close:hover { color: var(--drawer-text); }
+.tour-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+.tour-count { color: var(--drawer-muted); font-size: 12px; }
+.tour-btns { display: flex; gap: 8px; }
+.tour-btns button {
+    font: inherit;
+    padding: 5px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--drawer-text);
+    border: 1px solid var(--drawer-border);
+}
+.tour-btns button:disabled { opacity: 0.35; cursor: default; }
+.tour-btns .tour-next { background: var(--drawer-accent-strong); border-color: var(--drawer-accent-strong); color: #fff; }
+.tour-btns .tour-next:hover { background: var(--drawer-accent); }

@@ -25,6 +25,7 @@ import { showMetadataError } from './ui/metadataError.js';
 import { initChannelSwitcher } from './ui/channelSwitcher.js';
 import { initTooltips } from './ui/tooltip.js';
 import { initChatPanel } from './chatPanel.js';
+import { initTour } from './tour.js';
 import { initChatImageComposer } from './chatImageComposer.js';
 import { initCellClassDrawer, populateCellClassDrawer } from './cellClassDrawer.js';
 import { sendLegend } from './legendSync.js';
@@ -674,6 +675,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Styled tooltip bubble shared across the app (replaces native title boxes)
     initTooltips();
     initChatPanel();
+    initTour();
     initChatImageComposer();
 
     // Initialize cell info panel (close button + color scheme)
