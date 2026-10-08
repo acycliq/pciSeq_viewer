@@ -24,6 +24,7 @@ async function loadDatasetMetadata() {
             imageHeight: result.imageHeight,
             voxelSize: result.voxelSize,
             planeCount: result.planeCount,
+            tileMaxZoom: result.tileMaxZoom,
             source: result.source,
             hasMbtiles: result.hasMbtiles
         };
@@ -68,6 +69,8 @@ function config() {
         imageHeight: meta?.imageHeight,
         planeCount: meta?.planeCount,
         voxelSize: meta?.voxelSize,
+        // the deepest zoom level of the background tiles, when the file says it
+        tileMaxZoom: meta?.tileMaxZoom,
 
         // Background tiles via mbtiles:// protocol
         // {channel} selects the imaging channel (e.g. dapi, gcamp)

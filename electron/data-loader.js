@@ -482,6 +482,9 @@ ipcMain.handle('get-dataset-metadata', async () => {
         if (row.name === 'width') result.imageWidth = parseInt(row.value);
         if (row.name === 'height') result.imageHeight = parseInt(row.value);
         if (row.name === 'plane_count') result.planeCount = parseInt(row.value);
+        // the deepest zoom level the file holds. A lighter file can stop before 8,
+        // and the map then enlarges its deepest tiles (tileLayerCreator.js)
+        if (row.name === 'maxzoom' && Number.isFinite(parseInt(row.value))) result.tileMaxZoom = parseInt(row.value);
       });
 
       result.source = 'mbtiles';

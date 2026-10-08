@@ -19,12 +19,16 @@ const { COORDINATE_SYSTEM, TileLayer, BitmapLayer } = deck;
  * Handles tile loading, caching, and rendering with opacity control
  */
 export function createTileLayer(channel, planeNum, opacity, tileCache, showTiles) {
+    // The deepest zoom level the background file holds, 8 when it does not say.
+    // Past it the layer asks for no deeper tiles and enlarges the deepest it has,
+    // so a file that stops at level 5 still has a background at zoom 8.
+    const deepest = (window.config && window.config().tileMaxZoom) ?? 8;
     return new TileLayer({
         id: `tiles-${channel}-${planeNum}`,
         pickable: false,
         tileSize: IMG_DIMENSIONS.tileSize,
         minZoom: 0,
-        maxZoom: 8,
+        maxZoom: deepest,
         opacity: opacity,
         visible: showTiles,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,

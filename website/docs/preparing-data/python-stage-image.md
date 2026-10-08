@@ -19,7 +19,7 @@ Converts a microscopy image (or z-stack) into a multi-plane **MBTiles** file. Th
 pciSeq.stage_image(img, out_dir=None, name=None, description=None, tint=None)
 ```
 
-Advanced arguments (rarely needed): `zoom_levels=8`, `plane_prefix="plane_"`, `use_buffer=True`.
+Advanced arguments (rarely needed): `zoom_levels=None` (the deepest zoom level, by default the first one that holds the image at full resolution), `plane_prefix="plane_"`, `use_buffer=True`.
 
 ## Parameters
 
