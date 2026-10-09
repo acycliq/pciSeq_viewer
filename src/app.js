@@ -71,7 +71,7 @@ import { streamSpotsIntoScatterCache } from './data/spotStreamLoader.js';
 import { buildGeneSpotIndexes, assignColorsToCellClasses } from './data/cellIndexes.js';
 
 // === EVENT HANDLING IMPORTS ===
-import { setupEventHandlers, setupAdvancedKeyboardShortcuts } from './events/eventHandlers.js';
+import { setupEventHandlers, setupAdvancedKeyboardShortcuts, setCellProjection, runPerClassExport } from './events/eventHandlers.js';
 import { setupCheckCellBridge, openCheckCellModal, openCheckCellCompare } from './checkCellBridge.js';
 import { setupCheckSpotBridge, openCheckSpotModal } from './checkSpotBridge.js';
 
@@ -318,6 +318,12 @@ function updateAllLayers() {
 
 // Expose updateAllLayers globally for widget modules
 window.updateAllLayers = updateAllLayers;
+
+// settles once the spots are in and the gene list is built (init step 9). The
+// chat's show_genes waits on it, since before that the spot stream resets the
+// selection to every gene and the gene list is still empty
+let resolveSpotsReady;
+const spotsReady = new Promise(r => { resolveSpotsReady = r; });
 
 // === PLANE UPDATE WRAPPER ===
 /**
@@ -657,6 +663,7 @@ async function runInit() {
     // 9. Per-gene spot objects + indexes (gene drawer, cell info panel, icon layers)
     await initializeGeneData(progressiveSpots);
     buildGeneSpotIndexes(state.geneDataMap, state.cellToSpotsIndex, state.spotToParentsIndex);
+    resolveSpotsReady();
 
     // 10. Finalize UI + layers
     finalizeInitialization(updateAllLayers);
@@ -800,8 +807,11 @@ window.addEventListener('load', async () => {
     // rebuild the drawer and the widget from it, the way the colour import does, so
     // the eyes and checkboxes match the map
     if (window.electronAPI?.onChatShowVisibility) {
-        window.electronAPI.onChatShowVisibility(({ kind, mode, names }) => {
+        window.electronAPI.onChatShowVisibility(async ({ kind, mode, names }) => {
             const classes = kind === 'classes';
+            // the spot stream starts by selecting every gene, so a request that lands
+            // before it has run would be undone; wait for the spots, then apply
+            if (!classes) await spotsReady;
             const shown = classes ? state.selectedCellClasses : state.selectedGenes;
             const all = classes ? Array.from(state.allCellClasses) : Array.from(state.geneDataMap.keys());
             const have = new Set(all);
@@ -818,6 +828,38 @@ window.addEventListener('load', async () => {
                 populateGeneDrawer();
             }
             if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
+        });
+    }
+    // and show_all_planes: the Cells from all planes switch. The answer waits for
+    // every plane to load, so the tool does not come back to a map still loading
+    if (window.electronAPI?.onChatAllPlanes) {
+        window.electronAPI.onChatAllPlanes(async ({ id, on }) => {
+            try {
+                await setCellProjection(!!on, state, updateAllLayers);
+                window.electronAPI.chatAllPlanesDone({ id, on: !!state.zProjectionCellMode });
+            } catch (e) {
+                window.electronAPI.chatAllPlanesDone({ id, error: e.message });
+            }
+        });
+    }
+    // and export_per_class_pngs: the drawer's export, hands off. Cells from all
+    // planes goes on first if it is off, the region is what the tool asked for or
+    // the whole view, and every PNG is written to the folder the tool chose through
+    // the main process, no zip and no save dialog
+    if (window.electronAPI?.onChatExportPerClass) {
+        window.electronAPI.onChatExportPerClass(async ({ id, region, dir }) => {
+            try {
+                if (!state.zProjectionCellMode) await setCellProjection(true, state, updateAllLayers);
+                const sink = async (name, blob) => {
+                    const bytes = await blob.arrayBuffer();
+                    await window.electronAPI.savePng({ dir, name, bytes });
+                };
+                const r = await runPerClassExport(state, updateAllLayers,
+                                                  { region: region || null, wholeView: !region, sink });
+                window.electronAPI.chatExportPerClassDone({ id, bounds: r.bounds, files: r.files });
+            } catch (e) {
+                window.electronAPI.chatExportPerClassDone({ id, error: e.message });
+            }
         });
     }
     if (window.cellLookup) {

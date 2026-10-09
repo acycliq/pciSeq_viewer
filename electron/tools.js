@@ -24,7 +24,8 @@ const allenTaxonomy = require('./allenTaxonomy');
 // passes a fake.
 let deps = { querySpot: null, queryCell: null, getMeta: null, send: null, fetch: null,
              saveDialog: null, writeFile: null, getTilesInfo: null, getAnnotations: () => [],
-             fitAllenRegions: null, flyToCell: null };
+             fitAllenRegions: null, flyToCell: null, showAllPlanes: null, exportPerClassPngs: null,
+             getDataPath: () => '', existsDir: (p) => { try { return require('fs').statSync(p).isDirectory(); } catch { return false; } } };
 
 // where the source is read from: the pciSeq_3d repo at the commit that made the
 // run, so the code matches the numbers, falling back to the dev_3d branch when the
@@ -828,7 +829,64 @@ const TOOLS = [
       required: ['mode'],
     },
   },
+  {
+    name: 'show_all_planes',
+    description:
+      'Draw the cells of every plane together on the map, the same as the Cells from ' +
+      'all planes switch in the Layers drawer, or go back to one plane at a time. Use ' +
+      'it when the user asks to see the cells of all planes, or every cell at once. ' +
+      'Loading every plane takes a while on a big run; the tool returns when the map ' +
+      'is drawn.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        on: { type: 'boolean', description: 'true to draw the cells of every plane, false to go back to one plane. Default true.' },
+      },
+    },
+  },
+  {
+    name: 'export_per_class_pngs',
+    description:
+      'Save one PNG per cell class, of the cells of every plane on the DAPI, the same ' +
+      'pictures as the Export per-class PNGs button in the Layers drawer, but with no ' +
+      'drag and no dialog: the files are written to a folder and the tool returns ' +
+      'where. Cells from all planes is switched on first if it is off. The pictures ' +
+      'are of the map as shown, so by default the whole window; region, in image ' +
+      'pixels, crops to that area, cut to what is on screen, so move the map there ' +
+      'first (fly_to_cell). Gene spots that are drawn end up in the pictures too; ' +
+      'hide them with show_genes none before calling unless the user wants them. ' +
+      'Use it only when the user asks for the pictures.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        region: {
+          type: 'object',
+          description: 'Optional area in image pixels: {x_min, x_max, y_min, y_max}. Default: the whole window.',
+          properties: {
+            x_min: { type: 'number' }, x_max: { type: 'number' },
+            y_min: { type: 'number' }, y_max: { type: 'number' },
+          },
+          required: ['x_min', 'x_max', 'y_min', 'y_max'],
+        },
+        folder: { type: 'string', description: 'Where to write the PNGs. Default: a cell_projections folder in the run\'s output folder.' },
+      },
+    },
+  },
 ];
+
+// where export_per_class_pngs puts its pictures: the folder asked for, else a
+// cell_projections folder inside the run's own output folder when that folder is
+// on this pc, else inside the data folder the viewer has open
+function exportFolder(folder) {
+  const path = require('path');
+  if (folder) return path.resolve(String(folder));
+  const meta = deps.getMeta ? deps.getMeta() : null;
+  const out = meta && meta.config && meta.config.output_path;
+  if (out && deps.existsDir(out)) return path.join(out, 'cell_projections');
+  const data = deps.getDataPath ? deps.getDataPath() : '';
+  if (data) return path.join(data, 'cell_projections');
+  throw new Error('no run folder to write to; give a folder');
+}
 
 // ---------------------------------------------------------------- adapters
 
@@ -1156,6 +1214,22 @@ async function call(name, input) {
     }
     if (name === 'show_classes') return setVisibility('classes', input);
     if (name === 'show_genes') return setVisibility('genes', input);
+    if (name === 'show_all_planes') {
+      const on = input.on !== false;
+      // the renderer owns the switch and the planes; it answers when they are drawn
+      const r = await deps.showAllPlanes(on);
+      return { done: true, on: r.on,
+               note: r.on ? 'the cells of every plane are drawn together on the map'
+                          : 'the map is back to the cells of one plane at a time' };
+    }
+    if (name === 'export_per_class_pngs') {
+      const dir = exportFolder(input.folder);
+      const region = input.region || null;
+      const r = await deps.exportPerClassPngs({ region, dir });
+      return { done: true, folder: dir, classes: r.files.length, files: r.files,
+               region: region ? 'the region asked for, cut to what is on screen' : 'the whole map as shown',
+               note: 'one PNG per class is in the folder; tell the user where' };
+    }
     if (name === 'docs') {
       // Only the pages saved inside the run at fit time: they are the documentation
       // of the pciSeq that made the numbers. A run without them gets no pages, and

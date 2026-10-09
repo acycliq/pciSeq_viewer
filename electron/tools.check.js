@@ -138,6 +138,44 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.deepStrictEqual(sent, [], 'nothing sent on a refusal');
   tools.init({ getMeta: () => ({ class_names: names }) });
 
+  // show_all_planes / export_per_class_pngs: the renderer does the work and answers;
+  // the tool passes the answer on, and a cancelled drag is not a success
+  const planes = [], exports = [];
+  tools.init({
+    getMeta: () => ({ class_names: names, config: { output_path: '/runs/r1' } }),
+    getDataPath: () => '/data/r1/viewer_data',
+    existsDir: (p) => p === '/runs/r1',
+    showAllPlanes: async (on) => { planes.push(on); return { on }; },
+    exportPerClassPngs: async (opts) => {
+      exports.push(opts);
+      return { files: ['A.png', 'B.png', 'C.png'], bounds: { x: 0, y: 0, width: 10, height: 10 } };
+    },
+  });
+  const allOn = await tools.call('show_all_planes', {});
+  assert.strictEqual(allOn.on, true, 'on by default');
+  const allOff = await tools.call('show_all_planes', { on: false });
+  assert.strictEqual(allOff.on, false);
+  assert.deepStrictEqual(planes, [true, false]);
+  assert.ok(/one plane/.test(allOff.note));
+  // the whole view into the run's own folder, nothing asked
+  const wholeMap = await tools.call('export_per_class_pngs', {});
+  assert.strictEqual(wholeMap.done, true);
+  assert.strictEqual(wholeMap.classes, 3);
+  assert.strictEqual(wholeMap.folder, '/runs/r1/cell_projections', 'the run folder, since it is on this pc');
+  assert.ok(/whole map/.test(wholeMap.region));
+  // a region and a folder of the user's
+  const reg = { x_min: 100, x_max: 900, y_min: 50, y_max: 400 };
+  const part = await tools.call('export_per_class_pngs', { region: reg, folder: '/tmp/pics' });
+  assert.strictEqual(part.folder, '/tmp/pics');
+  assert.ok(/region asked for/.test(part.region));
+  assert.deepStrictEqual(exports, [{ region: null, dir: '/runs/r1/cell_projections' }, { region: reg, dir: '/tmp/pics' }]);
+  // the run folder is on another pc: the data folder instead
+  tools.init({ existsDir: () => false });
+  assert.strictEqual((await tools.call('export_per_class_pngs', {})).folder, '/data/r1/viewer_data/cell_projections');
+  tools.init({ exportPerClassPngs: async () => { throw new Error('the region is not on screen; move the map there first'); } });
+  assert.ok(/not on screen/.test((await tools.call('export_per_class_pngs', {})).error), 'the renderer\'s refusal reaches the model');
+  tools.init({ getMeta: () => ({ class_names: names }) });
+
   // docs: a tiny corpus, handed over as the pages saved inside the run, the ranking
   // of docs.py
   const fs = require('fs'), os = require('os'), path = require('path');

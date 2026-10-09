@@ -12,7 +12,7 @@
 let getWindow = () => null;
 let nextId = 1;
 const pending = new Map();
-const CHANNELS = ['chat-compose-image', 'chat-fly-to-cell'];
+const CHANNELS = ['chat-compose-image', 'chat-fly-to-cell', 'chat-all-planes', 'chat-export-per-class'];
 
 function init(d, ipcMain) {
   getWindow = d.getWindow;
@@ -57,4 +57,17 @@ function flyToCell(label, timeoutMs = 10000) {
   return ask('chat-fly-to-cell', { label }, timeoutMs, 'the viewer did not move the map in time');
 }
 
-module.exports = { init, compose, flyToCell };
+// the renderer flips the Cells from all planes switch and answers once every plane
+// is loaded and drawn, which on a big run takes minutes, hence the long timeout
+function showAllPlanes(on, timeoutMs = 600000) {
+  return ask('chat-all-planes', { on }, timeoutMs, 'the viewer did not finish loading the planes in time');
+}
+
+// the renderer runs the drawer's per-class png export over region (image pixels)
+// or the whole view, writing each png into dir. It may have to load the planes
+// first, so this one is given a long time too
+function exportPerClassPngs({ region, dir }, timeoutMs = 600000) {
+  return ask('chat-export-per-class', { region, dir }, timeoutMs, 'the export did not finish in time');
+}
+
+module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs };

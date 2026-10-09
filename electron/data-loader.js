@@ -202,6 +202,54 @@ function getChannels() {
 
 // === IPC Handlers ===
 
+// Open a data folder: what the welcome screen's button does once the user has
+// picked the folder, without the picking. The --data launch flag (main.js) comes
+// here too, so a script can start the viewer straight on a run.
+function openDataFolder(selectedPath) {
+  // Validate that the folder has the expected structure
+  const expectedSubdirs = ['arrow_spots', 'arrow_cells', 'arrow_boundaries'];
+  const hasValidStructure = expectedSubdirs.some(subdir =>
+    fs.existsSync(path.join(selectedPath, subdir))
+  );
+  if (!hasValidStructure) {
+    return { success: false, error: 'Invalid folder structure' };
+  }
+
+  store.set('dataPath', selectedPath);
+
+  // Auto-discover all MBTiles channels in the data folder
+  try {
+    const discovered = discoverChannels(selectedPath);
+    if (discovered.length > 0) {
+      // Keep mbtilesPath pointing at the default channel for backward compatibility
+      store.set('mbtilesPath', discovered[0].path);
+      console.log('Discovered background channels:', discovered.map(c => c.id).join(', '));
+    }
+  } catch (e) {
+    console.warn('Failed to auto-discover MBTiles:', e);
+  }
+
+  // Auto-discover diagnostics database in diagnostics folder
+  try {
+    const diagnosticsDir = path.join(selectedPath, 'diagnostics');
+    const unifiedDbPath = path.join(diagnosticsDir, 'diagnostics.db');
+
+    if (fs.existsSync(unifiedDbPath)) {
+      console.log('Auto-discovered unified diagnostics database:', unifiedDbPath);
+      diagnostics.openDiagnosticsDatabase(unifiedDbPath);
+      store.set('checkCellPath', diagnosticsDir);
+      store.set('checkSpotPath', diagnosticsDir);
+      store.set('diagnosticsPath', diagnosticsDir);
+
+      diagnostics.broadcastDiagnosticsState(true);
+    }
+  } catch (e) {
+    console.warn('Failed to auto-discover diagnostics databases:', e);
+  }
+
+  return { success: true, path: selectedPath };
+}
+
 ipcMain.handle('select-data-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
@@ -210,55 +258,14 @@ ipcMain.handle('select-data-folder', async () => {
   });
 
   if (!result.canceled && result.filePaths.length > 0) {
-    const selectedPath = result.filePaths[0];
-
-    // Validate that the folder has the expected structure
-    const expectedSubdirs = ['arrow_spots', 'arrow_cells', 'arrow_boundaries'];
-    const hasValidStructure = expectedSubdirs.some(subdir =>
-      fs.existsSync(path.join(selectedPath, subdir))
-    );
-
-    if (!hasValidStructure) {
+    const opened = openDataFolder(result.filePaths[0]);
+    if (!opened.success) {
       dialog.showErrorBox(
         'Invalid Data Folder',
         'The selected folder does not contain the expected subdirectories (arrow_spots, arrow_cells, or arrow_boundaries).'
       );
-      return { success: false, error: 'Invalid folder structure' };
     }
-
-    store.set('dataPath', selectedPath);
-
-    // Auto-discover all MBTiles channels in the data folder
-    try {
-      const discovered = discoverChannels(selectedPath);
-      if (discovered.length > 0) {
-        // Keep mbtilesPath pointing at the default channel for backward compatibility
-        store.set('mbtilesPath', discovered[0].path);
-        console.log('Discovered background channels:', discovered.map(c => c.id).join(', '));
-      }
-    } catch (e) {
-      console.warn('Failed to auto-discover MBTiles:', e);
-    }
-
-    // Auto-discover diagnostics database in diagnostics folder
-    try {
-      const diagnosticsDir = path.join(selectedPath, 'diagnostics');
-      const unifiedDbPath = path.join(diagnosticsDir, 'diagnostics.db');
-
-      if (fs.existsSync(unifiedDbPath)) {
-        console.log('Auto-discovered unified diagnostics database:', unifiedDbPath);
-        diagnostics.openDiagnosticsDatabase(unifiedDbPath);
-        store.set('checkCellPath', diagnosticsDir);
-        store.set('checkSpotPath', diagnosticsDir);
-        store.set('diagnosticsPath', diagnosticsDir);
-
-        diagnostics.broadcastDiagnosticsState(true);
-      }
-    } catch (e) {
-      console.warn('Failed to auto-discover diagnostics databases:', e);
-    }
-
-    return { success: true, path: selectedPath };
+    return opened;
   }
 
   return { success: false };
@@ -528,6 +535,7 @@ module.exports = {
   init,
   openDatabase,
   openChannels,
+  openDataFolder,
   discoverChannels,
   closeDatabase,
   getDatabase,

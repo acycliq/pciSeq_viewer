@@ -155,6 +155,16 @@ function createWindow() {
   // the ported read-only tools read diagnostics.db through run.js
   compose.init({ getWindow: () => mainWindow }, ipcMain);
   legend.init(ipcMain);
+  // export_per_class_pngs: the renderer hands over each png and the folder the
+  // tool chose, and the file is written here, no download and no dialog. Only
+  // the file's own name is taken from the renderer's name, the folder is the
+  // tool's.
+  ipcMain.handle('chat-save-png', (_e, { dir, name, bytes }) => {
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, path.basename(String(name)));
+    fs.writeFileSync(file, Buffer.from(bytes));
+    return file;
+  });
   run.init({
     getDb: diagnostics.rawDb,
     getMeta: diagnostics.getMeta,
@@ -171,6 +181,11 @@ function createWindow() {
     send: (channel, payload) => { if (mainWindow) mainWindow.webContents.send(channel, payload); },
     // fly_to_cell waits for the renderer to say whether it found the cell
     flyToCell: compose.flyToCell,
+    // show_all_planes and export_per_class_pngs wait for the planes to load; the
+    // export falls back to the data folder when the run folder is not on this pc
+    showAllPlanes: compose.showAllPlanes,
+    exportPerClassPngs: compose.exportPerClassPngs,
+    getDataPath: () => store.get('dataPath', ''),
     // run_info quotes what the background tiles say about themselves
     getTilesInfo: dataLoader.getTilesInfo,
     // export_table: the user picks where the CSV goes, starting in Documents
@@ -757,6 +772,24 @@ app.whenReady().then(async () => {
 
   createWindow();
   createMenu();
+
+  // --data=<folder> (or --data <folder>): open that run straight away, the same
+  // as clicking Open Data Folder on the welcome screen, so a script or an agent
+  // can start the viewer on a run with nobody at the keyboard. The window has
+  // already loaded on the welcome screen by now, so it is reloaded, as the File
+  // menu does after its dialog.
+  const dataFlag = args.findIndex(a => a === '--data' || a.startsWith('--data='));
+  if (dataFlag >= 0) {
+    const given = args[dataFlag].startsWith('--data=') ? args[dataFlag].slice(7) : args[dataFlag + 1];
+    const folder = given ? path.resolve(given) : '';
+    const opened = folder ? dataLoader.openDataFolder(folder) : { success: false, error: 'no folder given' };
+    if (opened.success) {
+      console.log('Opened from --data:', folder);
+      if (mainWindow) mainWindow.reload();
+    } else {
+      console.error('--data could not open', folder || '(nothing)', ':', opened.error);
+    }
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

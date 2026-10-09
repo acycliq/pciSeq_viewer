@@ -24,6 +24,8 @@ import {
 } from '../data/cellProjectionLoader.js';
 import { exportPerClassPNGs } from '../data/cellProjectionExporter.js';
 import { selectCanvasRectangle } from '../ui/canvasRectSelector.js';
+import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
+import { IMG_DIMENSIONS } from '../../config/constants.js';
 import { unfreeze as unfreezeCellInfoPanel } from '../cellInfoPanel/index.js';
 import { isFrozen as isCellInfoFrozen } from '../cellInfoPanel/panelState.js';
 
@@ -366,19 +368,8 @@ function setupCellProjectionToggle(state, updateLayersCallback) {
     const geneCountMaxValue = document.getElementById('geneCountMaxValue');
 
     if (cellProjectionToggle) {
-        cellProjectionToggle.addEventListener('change', async () => {
-            state.zProjectionCellMode = cellProjectionToggle.checked;
-
-            // Show/hide gene count slider controls
-            if (cellProjectionControls) {
-                cellProjectionControls.style.display = cellProjectionToggle.checked ? 'block' : 'none';
-            }
-
-            if (cellProjectionToggle.checked) {
-                await handleCellProjectionEnable(state, updateLayersCallback);
-            } else {
-                handleCellProjectionDisable(state, updateLayersCallback);
-            }
+        cellProjectionToggle.addEventListener('change', () => {
+            setCellProjection(cellProjectionToggle.checked, state, updateLayersCallback);
         });
     }
 
@@ -419,6 +410,28 @@ function setupCellProjectionToggle(state, updateLayersCallback) {
 }
 
 /**
+ * Switch "Cells from all planes" on or off. The drawer switch and the chat's
+ * show_all_planes tool both land here, so the switch, the sub controls and the
+ * state always agree. Resolves once the planes are loaded and drawn, which on a
+ * big run is a while, so a caller can wait for the map to be ready.
+ */
+export async function setCellProjection(on, state, updateLayersCallback) {
+    const toggle = document.getElementById('cellProjectionToggle');
+    const controls = document.getElementById('cellProjectionControls');
+    if (toggle) toggle.checked = on;
+    state.zProjectionCellMode = on;
+
+    // Show/hide gene count slider controls
+    if (controls) controls.style.display = on ? 'block' : 'none';
+
+    if (on) {
+        await handleCellProjectionEnable(state, updateLayersCallback);
+    } else {
+        handleCellProjectionDisable(state, updateLayersCallback);
+    }
+}
+
+/**
  * Wire the "Export per-class PNGs" button inside the Cell Projection controls.
  * The button is only useful while projection mode is on (the controls block is
  * hidden otherwise), so no extra enable/disable wiring is needed beyond the
@@ -431,30 +444,80 @@ function setupPerClassExportButton(state, updateLayersCallback) {
 
     button.addEventListener('click', async () => {
         if (!state.zProjectionCellMode) return;
-
-        const canvas = document.querySelector('#map canvas');
-        if (!canvas) {
-            console.warn('Per-class export aborted: deck.gl canvas not found');
-            return;
-        }
-
-        if (statusEl) statusEl.textContent = 'Drag a rectangle on the viewer';
-        const bounds = await selectCanvasRectangle({ canvas });
-        if (!bounds) {
-            if (statusEl) statusEl.textContent = '';
-            return;
-        }
-
-        button.disabled = true;
         try {
-            await exportPerClassPNGs({ state, updateLayers: updateLayersCallback, bounds, statusEl });
+            await runPerClassExport(state, updateLayersCallback);
         } catch (err) {
             console.error('Per-class PNG export failed:', err);
             if (statusEl) statusEl.textContent = 'Export failed';
-        } finally {
-            button.disabled = false;
         }
     });
+}
+
+/**
+ * The per-class PNG export itself, shared by the drawer button and the chat's
+ * export_per_class_pngs tool. Where the pictures come from, in this order:
+ *   region   {x_min, x_max, y_min, y_max} in image pixels, cut to what is on screen
+ *   wholeView  the whole canvas as it is on screen
+ *   neither    the user drags the rectangle (the button)
+ * Where they go: into the zip download, or through sink (fileName, blob) when
+ * given. Resolves with {bounds, files}, or null when the user pressed Escape
+ * instead of dragging.
+ */
+export async function runPerClassExport(state, updateLayersCallback,
+                                        { wholeView = false, region = null, sink = null } = {}) {
+    if (!state.zProjectionCellMode) throw new Error('Cells from all planes is off');
+    const canvas = document.querySelector('#map canvas');
+    if (!canvas) throw new Error('the map canvas is not there');
+    const button = document.getElementById('exportPerClassBtn');
+    const statusEl = document.getElementById('exportPerClassStatus');
+
+    let bounds;
+    if (region) {
+        bounds = regionToCanvasBounds(region, state, canvas);
+    } else if (wholeView) {
+        bounds = { x: 0, y: 0, width: canvas.width, height: canvas.height };
+    } else {
+        if (statusEl) statusEl.textContent = 'Drag a rectangle on the viewer';
+        bounds = await selectCanvasRectangle({ canvas });
+        if (!bounds) {
+            if (statusEl) statusEl.textContent = '';
+            return null;
+        }
+    }
+
+    if (button) button.disabled = true;
+    try {
+        const files = await exportPerClassPNGs({ state, updateLayers: updateLayersCallback, bounds, statusEl, sink });
+        return { bounds, files };
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
+
+/**
+ * A region in image pixels to the canvas pixels it covers on screen. The map
+ * works in tile coordinates, so image to tile first, then the viewport projects
+ * to CSS pixels, and the canvas has devicePixelRatio times as many. The part
+ * outside the window is cut off; a region wholly off screen is an error, since a
+ * picture of nothing helps nobody.
+ */
+function regionToCanvasBounds(region, state, canvas) {
+    const deck = state.deckglInstance;
+    if (!deck) throw new Error('the map is not ready');
+    const vp = deck.getViewports()[0];
+    const { x_min, x_max, y_min, y_max } = region;
+    for (const v of [x_min, x_max, y_min, y_max]) {
+        if (!Number.isFinite(Number(v))) throw new Error('region needs numbers x_min, x_max, y_min, y_max in image pixels');
+    }
+    const [sx0, sy0] = vp.project(transformToTileCoordinates(Number(x_min), Number(y_min), IMG_DIMENSIONS));
+    const [sx1, sy1] = vp.project(transformToTileCoordinates(Number(x_max), Number(y_max), IMG_DIMENSIONS));
+    const k = canvas.width / vp.width;     // CSS pixels to canvas pixels
+    const x = Math.max(0, Math.floor(Math.min(sx0, sx1) * k));
+    const y = Math.max(0, Math.floor(Math.min(sy0, sy1) * k));
+    const r = Math.min(canvas.width, Math.ceil(Math.max(sx0, sx1) * k));
+    const b = Math.min(canvas.height, Math.ceil(Math.max(sy0, sy1) * k));
+    if (r <= x || b <= y) throw new Error('the region is not on screen; move the map there first');
+    return { x, y, width: r - x, height: b - y };
 }
 
 /**

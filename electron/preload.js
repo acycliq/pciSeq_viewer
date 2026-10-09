@@ -86,6 +86,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onChatOpen3dView: (handler) => ipcRenderer.on('chat-open-3d-view', (_e, p) => handler(p)),
   // the show_classes and show_genes tools: change which classes or genes are drawn
   onChatShowVisibility: (handler) => ipcRenderer.on('chat-show-visibility', (_e, p) => handler(p)),
+  // the show_all_planes tool: the Cells from all planes switch, answered once the
+  // planes are loaded (electron/compose.js)
+  onChatAllPlanes: (handler) => ipcRenderer.on('chat-all-planes', (_e, p) => handler(p)),
+  chatAllPlanesDone: (payload) => ipcRenderer.send('chat-all-planes-done', payload),
+  // the export_per_class_pngs tool: the drawer's export, each PNG written by the
+  // main process into the folder the tool chose, answered when all are on disk
+  onChatExportPerClass: (handler) => ipcRenderer.on('chat-export-per-class', (_e, p) => handler(p)),
+  chatExportPerClassDone: (payload) => ipcRenderer.send('chat-export-per-class-done', payload),
+  savePng: ({ dir, name, bytes }) => ipcRenderer.invoke('chat-save-png', { dir, name, bytes }),
   onShowShortcuts: (handler) => ipcRenderer.on('show-shortcuts', handler),
   // Help > Take a Tour
   onStartTour: (handler) => ipcRenderer.on('start-tour', handler)

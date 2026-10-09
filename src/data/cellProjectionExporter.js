@@ -38,8 +38,13 @@ import { populateCellClassWidget } from '../cellClassWidget.js';
  * @param {Function}    args.updateLayers    Callback that rebuilds and pushes layers to deck.gl.
  * @param {Object}      args.bounds          {x, y, width, height} in canvas pixel coords.
  * @param {HTMLElement} [args.statusEl]      Optional element to receive progress text.
+ * @param {Function}    [args.sink]          Optional (fileName, blob) => Promise. When given,
+ *                                           every PNG goes there instead of into the zip,
+ *                                           and nothing is downloaded (the chat tool
+ *                                           writes them to a folder this way).
+ * @returns {Promise<string[]>} the file names, one per class
  */
-export async function exportPerClassPNGs({ state, updateLayers, bounds, statusEl }) {
+export async function exportPerClassPNGs({ state, updateLayers, bounds, statusEl, sink = null }) {
     const deck = state.deckglInstance;
     const canvas = document.querySelector('#map canvas');
 
@@ -65,7 +70,8 @@ export async function exportPerClassPNGs({ state, updateLayers, bounds, statusEl
 
     const classes = Array.from(state.allCellClasses).sort();
     const originalSelection = new Set(state.selectedCellClasses);
-    const zip = new window.JSZip();
+    const zip = sink ? null : new window.JSZip();
+    const files = [];
 
     setStatus(statusEl, `Capturing 0 / ${classes.length}`);
 
@@ -81,7 +87,10 @@ export async function exportPerClassPNGs({ state, updateLayers, bounds, statusEl
 
             const blob = await canvasRegionToBlob(canvas, bounds);
             if (blob) {
-                zip.file(`${sanitiseFilename(className)}.png`, blob);
+                const fileName = `${sanitiseFilename(className)}.png`;
+                if (sink) await sink(fileName, blob);
+                else zip.file(fileName, blob);
+                files.push(fileName);
             } else {
                 console.warn(`Cell Projection export: failed to capture frame for class "${className}"`);
             }
@@ -89,10 +98,13 @@ export async function exportPerClassPNGs({ state, updateLayers, bounds, statusEl
             setStatus(statusEl, `Capturing ${i + 1} / ${classes.length}`);
         }
 
-        setStatus(statusEl, 'Building ZIP...');
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
-        downloadBlob(zipBlob, 'cell_projections.zip');
+        if (zip) {
+            setStatus(statusEl, 'Building ZIP...');
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            downloadBlob(zipBlob, 'cell_projections.zip');
+        }
         setStatus(statusEl, 'Done');
+        return files;
     } finally {
         state.selectedCellClasses.clear();
         originalSelection.forEach(c => state.selectedCellClasses.add(c));
