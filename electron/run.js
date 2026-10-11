@@ -214,6 +214,133 @@ function cell(label) {
   };
 }
 
+// eigenvalues and eigenvectors of a small symmetric matrix, by Jacobi rotations.
+// No numpy here, and d is 2 or 3, so a dozen sweeps are plenty. Returns the
+// eigenvalues descending and the eigenvectors as columns, in the same order.
+function symEig(a) {
+  const d = a.length;
+  const m = a.map(r => r.slice());
+  const v = Array.from({ length: d }, (_, i) => Array.from({ length: d }, (_, j) => (i === j ? 1 : 0)));
+  for (let sweep = 0; sweep < 50; sweep++) {
+    let off = 0;
+    for (let p = 0; p < d; p++) for (let q = p + 1; q < d; q++) off += m[p][q] * m[p][q];
+    if (off < 1e-22) break;
+    for (let p = 0; p < d; p++) {
+      for (let q = p + 1; q < d; q++) {
+        if (Math.abs(m[p][q]) < 1e-300) continue;
+        const theta = (m[q][q] - m[p][p]) / (2 * m[p][q]);
+        const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+        const c = 1 / Math.sqrt(t * t + 1);
+        const s = t * c;
+        for (let k = 0; k < d; k++) {
+          const mkp = m[k][p], mkq = m[k][q];
+          m[k][p] = c * mkp - s * mkq;
+          m[k][q] = s * mkp + c * mkq;
+        }
+        for (let k = 0; k < d; k++) {
+          const mpk = m[p][k], mqk = m[q][k];
+          m[p][k] = c * mpk - s * mqk;
+          m[q][k] = s * mpk + c * mqk;
+        }
+        for (let k = 0; k < d; k++) {
+          const vkp = v[k][p], vkq = v[k][q];
+          v[k][p] = c * vkp - s * vkq;
+          v[k][q] = s * vkp + c * vkq;
+        }
+      }
+    }
+  }
+  const order = Array.from({ length: d }, (_, i) => i).sort((i, j) => m[j][j] - m[i][i]);
+  return {
+    values: order.map(i => m[i][i]),
+    vectors: order.map(i => v.map(r => r[i])),   // vectors[k] is the k-th eigenvector
+  };
+}
+
+// the shape of a cell's Gaussian from its covariance, the same numbers and words
+// as shape_of in pciSeq's mcp/tools.py
+function shapeOf(cov, mcr) {
+  const d = cov.length;
+  const axes = ['x', 'y', 'z'].slice(0, d);
+  const { values, vectors } = symEig(cov);
+  const radii = values.map(x => Math.sqrt(Math.max(x, 0)));
+  // null rather than Infinity for a zero radius, which cannot come out of the
+  // update anyway: Infinity does not survive JSON
+  const elongation = radii[d - 1] > 0 ? radii[0] / radii[d - 1] : null;
+  const r3 = x => Math.round(x * 1000) / 1000;
+  const shape = elongation === null ? 'degenerate, no spread along one axis'
+    : elongation < 1.1 ? 'round' : elongation < 1.5 ? 'slightly elongated' : 'elongated';
+
+  let longAxis = null;
+  let longAxisIs = 'not given, the cell is round so no axis stands out';
+  if (elongation !== null && elongation >= 1.1) {
+    let v = vectors[0];
+    let i = 0;
+    for (let k = 1; k < d; k++) if (Math.abs(v[k]) > Math.abs(v[i])) i = k;
+    const sign = v[i] < 0 ? -1 : 1;
+    v = v.map(x => x * sign);
+    longAxis = Object.fromEntries(axes.map((a, k) => [a, r3(v[k])]));
+    let words;
+    if (Math.abs(v[i]) >= 0.8) {
+      words = `mostly along ${axes[i]}`;
+    } else {
+      // the runner up component, never i itself even on a tie
+      const j = axes.map((_, k) => k).filter(k => k !== i)
+        .sort((a, b) => Math.abs(v[b]) - Math.abs(v[a]))[0];
+      words = `tilted, between ${axes[i]} and ${axes[j]}`;
+    }
+    longAxisIs = `a unit vector, the direction of the longest axis, ${words}. z counts ` +
+                 'in pixels of the xy plane, like Z in cellData';
+  }
+
+  const out = {
+    shape,
+    radii: radii.map(r3),
+    radii_are: 'the standard deviation of the cell\'s Gaussian along each of its own ' +
+               'axes, longest first, in pixels of the xy plane. The 3 sigma ' +
+               'ellipsoid, cellData\'s sphere_scale, is three times these',
+    elongation: elongation === null ? null : r3(elongation),
+    elongation_is: 'longest radius over shortest; 1 is a sphere',
+    long_axis: longAxis,
+    long_axis_is: longAxisIs,
+    cov: cov.map(r => r.map(x => Math.round(x * 10000) / 10000)),
+    cov_is: `the covariance of the Gaussian, ${axes.join(' ')} order, in pixels of the xy plane squared`,
+  };
+  if (mcr != null) {
+    out.radii_vs_mean_cell_radius = radii.map(r => r3(r / mcr));
+    out.radii_vs_mean_cell_radius_is =
+      `each radius over the mean cell radius, ${mcr.toFixed(3)}. The prior shape is a sphere ` +
+      'of that radius, so 1, 1, 1 is a cell the data did not move away from it';
+    if (radii.every(r => Math.abs(r - mcr) <= 1e-3 * mcr)) {
+      out.shape = 'round, the prior sphere of the mean cell radius';
+      out.note = 'the covariance is the prior one. Either the run was made without the ' +
+                 'cell geometry update, or cell_cov_prior was large enough for the prior to dominate';
+    }
+  }
+  return out;
+}
+
+// the fitted shape of one cell, from the covariance diagnostics.db keeps since
+// October 2026. Older runs get a plain 'not available'
+function cellShape(label) {
+  label = Number(label);
+  const row = toInternal(label);
+  if (row === 0) throw new Error('cell 0 is the background pseudocell, not a cell');
+  if (!cellColumns().has('cov')) {
+    return { cell: label, available: false,
+             why: 'this run was saved before diagnostics.db kept the covariance of each ' +
+                  'cell (October 2026), so its fitted shape is not available' };
+  }
+  const got = db().prepare(`SELECT cov FROM cells WHERE ${deps.getCellKey()} = ?`).get(row);
+  if (!got) throw new Error(`cell ${label} is not in diagnostics.db`);
+  const flat = f32(got.cov);
+  const d = Math.round(Math.sqrt(flat.length));
+  const cov = Array.from({ length: d }, (_, i) => Array.from({ length: d }, (_, j) => flat[i * d + j]));
+  const m = meta();
+  const mcr = m.mcr != null ? Number(m.mcr) : null;
+  return { cell: label, ...shapeOf(cov, mcr) };
+}
+
 function cellCounts(label, gene) {
   const panel = meta().gene_panel;
   const c = cellArrays(label);
@@ -1479,7 +1606,7 @@ function calculate(expression) {
   return { expression: text, result };
 }
 
-module.exports = { init, cell, cellCounts, theta, gamma, spot, gene, neighbours, explainCell, hasSavedScore, docsFromRun,
+module.exports = { init, cell, cellShape, shapeOf, cellCounts, theta, gamma, spot, gene, neighbours, explainCell, hasSavedScore, docsFromRun,
                    spotsOfClass, countSpotsOfClass,
                    spotsInCell, spotsOfCell, spotRow, cellRow, cellImage, planeImage,
                    classCounts, classPrior, findCells, metadataTool, calculate,

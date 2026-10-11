@@ -277,6 +277,45 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.strictEqual((await run2.spot(1642419)).glyph, null, 'null when the window has not said');
   run2.init({ getDb: null, getMeta: null, getCellKey: null, classColour: null, geneGlyph: null, querySpot: null });
 
+  // cell_shape: the words and numbers shape_of in pciSeq's mcp/tools.py gives, on
+  // the same three matrices its test uses, then the tool itself on a fake db
+  const sphere = run2.shapeOf([[100, 0, 0], [0, 100, 0], [0, 0, 100]], 10);
+  assert.ok(sphere.shape.startsWith('round, the prior sphere'), sphere.shape);
+  assert.strictEqual(sphere.long_axis, null);
+  assert.deepStrictEqual(sphere.radii_vs_mean_cell_radius, [1, 1, 1]);
+  const tall = run2.shapeOf([[25, 0, 0], [0, 25, 0], [0, 0, 100]], 10);
+  assert.strictEqual(tall.shape, 'elongated');
+  assert.deepStrictEqual(tall.radii, [10, 5, 5]);
+  assert.strictEqual(tall.elongation, 2);
+  assert.deepStrictEqual(tall.long_axis, { x: 0, y: 0, z: 1 });
+  assert.ok(/mostly along z/.test(tall.long_axis_is));
+  const tilted = run2.shapeOf([[50, 40], [40, 50]], null);
+  assert.strictEqual(tilted.shape, 'elongated');
+  assert.ok(/between x and y/.test(tilted.long_axis_is));
+  assert.ok(Math.abs(tilted.long_axis.x - 0.707) < 1e-3);
+  assert.strictEqual(tilted.radii_vs_mean_cell_radius, undefined);
+  const flat = run2.shapeOf([[4, 0, 0], [0, 1, 0], [0, 0, 0]], 2);
+  assert.strictEqual(flat.elongation, null, 'null, not Infinity, so it survives JSON');
+  // through the tool, reading the cov blob as diagnostics.db stores it, row by row
+  const shapeDb = (cols) => ({ prepare: (sql) => ({
+    all: () => cols.map(name => ({ name })),
+    get: () => (/SELECT cov/.test(sql) ? { cov: blob([25, 0, 0, 0, 25, 0, 0, 0, 100]) } : null),
+  }) });
+  run2.init({ getDb: () => shapeDb(['internal_label', 'x', 'y', 'z', 'cov']),
+              getMeta: () => ({ mcr: 5 }), getCellKey: () => 'internal_label' });
+  const viaShape = await tools.call('cell_shape', { label: 7 });
+  assert.strictEqual(viaShape.cell, 7);
+  assert.deepStrictEqual(viaShape.radii, [10, 5, 5]);
+  assert.deepStrictEqual(viaShape.radii_vs_mean_cell_radius, [2, 1, 1]);
+  assert.deepStrictEqual(viaShape.cov[2], [0, 0, 100]);
+  assert.ok(/background/.test((await tools.call('cell_shape', { label: 0 })).error));
+  // an older run, saved without the column: said plainly, nothing invented
+  run2.init({ getDb: () => shapeDb(['internal_label', 'x', 'y', 'z']) });
+  const older = await tools.call('cell_shape', { label: 7 });
+  assert.strictEqual(older.available, false);
+  assert.ok(/October 2026/.test(older.why));
+  run2.init({ getDb: null, getMeta: null, getCellKey: null });
+
   // allen: which experiment to show, on Plp1's real list (2026-09-30), offline
   const allen = require('./allen');
   const plp1 = [

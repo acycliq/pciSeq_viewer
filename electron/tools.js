@@ -281,6 +281,20 @@ const TOOLS = [
     },
   },
   {
+    name: 'cell_shape',
+    description:
+      'The fitted shape of one cell\'s Gaussian: round or elongated, by how much, and ' +
+      'which way the long axis points, with the radii in pixels, each one against the ' +
+      'mean cell radius, and the covariance behind them. Use it for "is cell 18223 ' +
+      'round", "which way is it elongated", "how big is its Gaussian". Runs saved ' +
+      'before October 2026 do not keep the covariance and the answer says so.',
+    input_schema: {
+      type: 'object',
+      properties: { label: { type: 'integer', description: 'The cell label, as in the segmentation.' } },
+      required: ['label'],
+    },
+  },
+  {
     name: 'cell_counts',
     description:
       'How many reads a cell holds, in total or for one gene. These are SOFT counts: ' +
@@ -1296,6 +1310,7 @@ async function call(name, input) {
       return out;
     }
     if (name === 'cell') return run.cell(input.label);
+    if (name === 'cell_shape') return run.cellShape(input.label);
     if (name === 'cell_counts') return run.cellCounts(input.label, input.gene ?? null);
     if (name === 'theta') return run.theta(input.label, input.class_name ?? null);
     if (name === 'gamma') return run.gamma(input.label, input.gene ?? null);
