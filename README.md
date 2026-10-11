@@ -13,6 +13,17 @@ Download the latest installer for your platform from
 [GitHub Releases](https://github.com/acycliq/pciSeq_viewer/releases/latest), then
 follow the [Getting Started](https://acycliq.github.io/pciSeq_viewer/) guide.
 
+## Opening a run from the command line
+
+Pass the `viewer_data` folder of a run with `--data` and the viewer opens it directly,
+without the welcome screen:
+
+```bash
+pciSeq_viewer --data=/path/to/viewer_data
+```
+
+From a source checkout: `npm start -- --data=/path/to/viewer_data`.
+
 ## Documentation
 
 Full documentation is at [docs](https://acycliq.github.io/pciSeq_viewer/).
