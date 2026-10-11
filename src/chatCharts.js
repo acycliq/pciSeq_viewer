@@ -10,6 +10,7 @@ import { showGeneDistributionWidget } from './geneDistributionChart.js';
 import { showRhoBarWidget } from './misreads/rhoBar/RhoBarWidget.js';
 import { showStackedBarWidget } from './misreads/stackedBar/StackedBarWidget.js';
 import { showPerPlaneWidget } from './misreads/perPlane/PerPlaneWidget.js';
+import { showClassPriorWidget } from './classPrior/ClassPriorWidget.js';
 
 // chart name (as in electron/tools.js) -> how to open it
 const CHARTS = {
@@ -20,6 +21,7 @@ const CHARTS = {
     misread_rho: showRhoBarWidget,
     assigned_vs_misread: showStackedBarWidget,
     misread_per_plane: showPerPlaneWidget,
+    class_prior: showClassPriorWidget,
 };
 
 // set a dropdown and tell the chart, the way a user's pick does

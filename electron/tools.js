@@ -44,7 +44,7 @@ function init(d) {
 const MAX_OUTLINED = 5000;
 
 const CHART_NAMES = ['class_distribution', 'classes_by_z', 'class_gene_counts', 'gene_distribution',
-                     'misread_rho', 'assigned_vs_misread', 'misread_per_plane'];
+                     'misread_rho', 'assigned_vs_misread', 'misread_per_plane', 'class_prior'];
 const REGION_CHARTS = ['class_distribution', 'classes_by_z'];
 
 // fit_allen_regions: check the landmarks are drawn regions, run the fit
@@ -73,6 +73,9 @@ function openChart({ chart, region = null, gene = null }) {
   if (gene != null) {
     if (chart !== 'gene_distribution') return { error: 'only gene_distribution takes a gene' };
     if (!(deps.getMeta()?.gene_panel || []).includes(gene)) return { error: `${gene} is not a gene of this run` };
+  }
+  if (chart === 'class_prior' && !deps.getMeta()?.log_prior) {
+    return { error: 'this run did not save log_prior, so there are no class weights to chart' };
   }
   deps.send('chat-open-chart', { chart, region, gene });
   return { done: true, chart, region, gene, note: 'the chart is open on the user\'s screen' };
@@ -385,6 +388,18 @@ const TOOLS = [
     },
   },
   {
+    name: 'class_prior',
+    description:
+      'The weight of every class at the end of the run: the prior probability that ' +
+      'a cell is of the class, before any of its genes is looked at. Zero is listed ' +
+      'first, the rest by weight. These are the weights the run saved and the class ' +
+      'score uses, so quote them as they are and never rebuild them from ' +
+      'class_counts. Use it for "what weight did CA3 settle on", "the class weights ' +
+      'at convergence", "the class prior of this run". For a bar chart of them, ' +
+      'call open_chart with class_prior.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
     name: 'find_cells',
     description:
       'The cells matching the filters given: class, position, plane, minimum total ' +
@@ -484,7 +499,9 @@ const TOOLS = [
       'gene_distribution, one gene\'s spots plane by plane; misread_rho, the misread ' +
       'level learned for each gene; assigned_vs_misread, each gene\'s spots split ' +
       'into assigned to cells and misread; misread_per_plane, misreads plane by ' +
-      'plane. The class charts count each cell once, by its most likely class, and ' +
+      'plane; class_prior, a bar per class with its weight at the end of the run, ' +
+      'the numbers of the class_prior tool. The other class charts count each cell ' +
+      'once, by its most likely class, and ' +
       'a cell is in a region when its centroid is. region is a name from annotations, ' +
       'for class_distribution and classes_by_z; gene for gene_distribution. The chart ' +
       'opens on the user\'s screen; say what it shows, you do not see it.',
@@ -1286,6 +1303,7 @@ async function call(name, input) {
     if (name === 'gene') return run.gene(input.name);
     if (name === 'neighbours') return run.neighbours(input.label);
     if (name === 'class_counts') return run.classCounts(input.min_counts ?? null);
+    if (name === 'class_prior') return run.classPrior();
     if (name === 'find_cells') return run.findCells(withRegion(input));
     if (name === 'annotations') return listAnnotations();
     if (name === 'outline_cells') return outlineCells(input);

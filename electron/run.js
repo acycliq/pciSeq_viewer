@@ -421,6 +421,33 @@ function classCounts(minCounts) {
   };
 }
 
+// The weight of each class at the end of the run: how likely a cell is to be of
+// the class before any of its genes is looked at. It is read from the log_prior
+// the run saved, which is the prior term the class score adds, and not rebuilt
+// from the cell counts: the counts give the mean of the weight, while the score
+// uses the mean of its log, which is lower for a class with only a few cells.
+function classPrior() {
+  const m = meta();
+  const logPrior = m.log_prior;
+  if (!logPrior) throw new Error('this run did not save log_prior, so its class weights are not known');
+  const rows = m.class_names.map((name, k) => ({
+    class: name, weight: Math.exp(logPrior[k]), log_weight: logPrior[k],
+  }));
+  const zero = rows.filter(r => r.class === 'Zero');
+  const rest = rows.filter(r => r.class !== 'Zero').sort((a, b) => b.weight - a.weight);
+  return {
+    cell_type_prior: (cfg() || {}).cell_type_prior ?? null,
+    classes: zero.concat(rest),
+    weight_is: 'the prior probability of the class at the end of the run, the one ' +
+               'the class score of a cell uses: exp of log_weight',
+    cell_type_prior_is: 'weighted: the weights were learned from the cells and ' +
+                        'refitted at every iteration, Zero apart, whose weight is ' +
+                        'fixed. uniform: all of them were fixed by cell_type_weights',
+    note: 'a cell that was pinned partway through the run kept the weights of that ' +
+          'iteration, so its own prior term can differ from these',
+  };
+}
+
 // the centroids in diagnostics.db (x, y in image pixels, z anisotropy scaled), which
 // any filter on position needs; planes need the voxel size on top
 function needCentroids(what) {
@@ -1455,5 +1482,5 @@ function calculate(expression) {
 module.exports = { init, cell, cellCounts, theta, gamma, spot, gene, neighbours, explainCell, hasSavedScore, docsFromRun,
                    spotsOfClass, countSpotsOfClass,
                    spotsInCell, spotsOfCell, spotRow, cellRow, cellImage, planeImage,
-                   classCounts, findCells, metadataTool, calculate,
+                   classCounts, classPrior, findCells, metadataTool, calculate,
                    toInternal, toExternal, planeOf };

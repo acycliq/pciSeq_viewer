@@ -308,6 +308,29 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.deepStrictEqual(sent, [], 'nothing opened');
   require('./run').init({ getMeta: null });
 
+  // class_prior: the saved weights, Zero first and the rest by weight, and the
+  // chart of them; both refused for a run that did not save log_prior
+  const priorMeta = { class_names: ['A', 'B', 'Zero'], config: { cell_type_prior: 'weighted' },
+                      log_prior: [Math.log(0.1), Math.log(0.4), Math.log(0.5)] };
+  require('./run').init({ getMeta: () => priorMeta });
+  tools.init({ getMeta: () => priorMeta });
+  const prior = await tools.call('class_prior', {});
+  assert.deepStrictEqual(prior.classes.map(c => c.class), ['Zero', 'B', 'A']);
+  assert.ok(Math.abs(prior.classes[1].weight - 0.4) < 1e-12);
+  assert.strictEqual(prior.cell_type_prior, 'weighted');
+  sent = [];
+  assert.strictEqual((await tools.call('open_chart', { chart: 'class_prior' })).done, true);
+  assert.deepStrictEqual(sent, [['chat-open-chart', { chart: 'class_prior', region: null, gene: null }]]);
+  const noPriorMeta = { class_names: ['A', 'Zero'] };
+  require('./run').init({ getMeta: () => noPriorMeta });
+  tools.init({ getMeta: () => noPriorMeta });
+  assert.ok(/did not save log_prior/.test((await tools.call('class_prior', {})).error));
+  sent = [];
+  assert.ok(/did not save log_prior/.test((await tools.call('open_chart', { chart: 'class_prior' })).error));
+  assert.deepStrictEqual(sent, [], 'no chart opened');
+  require('./run').init({ getMeta: null });
+  tools.init({ getMeta: () => ({ class_names: names }) });
+
   // spots_of_class: the counting, on a hand-made case. Class 0 is Pvalb, 1 Oligo.
   // Spot 1: 0.8 on cell 10 (Oligo, 0.9 Oligo / 0.1 Pvalb), 0.2 on cell 20 (Pvalb, 0.7 / 0.3).
   // Spot 2: 0.6 on cell 20, 0.4 on the background.

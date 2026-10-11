@@ -219,6 +219,8 @@ function createWindow() {
   if (!chatIpcRegistered) {
     chat.registerIpc(ipcMain);
     annotations.registerIpc(ipcMain, annotationDeps);
+    // the class prior chart reads the same numbers the class_prior tool gives
+    ipcMain.handle('get-class-prior', () => run.classPrior());
     chatIpcRegistered = true;
   }
 

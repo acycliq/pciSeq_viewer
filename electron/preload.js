@@ -70,6 +70,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onChatAddCellAnnotation: (handler) => ipcRenderer.on('chat-add-cell-annotation', (_e, p) => handler(p)),
   // the open_chart tool: open one of the drawer's charts (src/chatCharts.js)
   onChatOpenChart: (handler) => ipcRenderer.on('chat-open-chart', (_e, p) => handler(p)),
+  // the class prior chart: the weight of every class (run.js classPrior)
+  getClassPrior: () => ipcRenderer.invoke('get-class-prior'),
   // the fit_allen_regions tool: the Allen regions fitted to the section
   onChatAddAllenRegions: (handler) => ipcRenderer.on('chat-add-allen-regions', (_e, p) => handler(p)),
   // what the map legend says, class colours and gene glyphs, for the tools (electron/legend.js)
