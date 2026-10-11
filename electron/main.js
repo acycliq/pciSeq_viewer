@@ -23,7 +23,9 @@ const RELEASES_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/lates
 
 // --- PROFILE ISOLATION LOGIC ---
 // This must run BEFORE the Store is initialized to ensure each profile gets its own config file.
-const args = process.argv.slice(2);
+// Run from source the first two entries are electron and the app folder, in an
+// installed build there is only the app itself, so the flags start one earlier.
+const args = process.argv.slice(app.isPackaged ? 1 : 2);
 const profileArg = args.find(a => a.startsWith('--profile='));
 if (profileArg) {
   const profileName = profileArg.split('=')[1];
