@@ -71,7 +71,7 @@ jobs:
           #    Data is fetched from Google Cloud Storage at runtime, so no
           #    dataset files are bundled here.
           cp viewer-master/index.html viewer-master/styles.css viewer-master/config.js deployment_payload/web_viewer/
-          for f in genes_datatable.html cellClassViewer.html slippy_map.html selection_tool.png; do
+          for f in genes_datatable.html selection_tool.png; do
             [ -f "viewer-master/$f" ] && cp "viewer-master/$f" deployment_payload/web_viewer/
           done
           cp -r viewer-master/src viewer-master/lib viewer-master/arrow-loader viewer-master/config viewer-master/utils deployment_payload/web_viewer/
