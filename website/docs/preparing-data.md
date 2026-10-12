@@ -13,7 +13,7 @@ Before using the viewer you prepare your data in Python in two steps:
 ::: info These functions live in pciSeq, not the viewer
 
 `pciSeq.fit()` and `pciSeq.stage_image()` belong to the
-[pciSeq Python package](https://github.com/acycliq/pciSeq). The viewer only
+[pciSeq Python package](https://github.com/acycliq/pciSeq_3d). The viewer only
 *reads* the output. For the full API of these functions, see the pciSeq docs.
 
 :::
@@ -23,7 +23,7 @@ Before using the viewer you prepare your data in Python in two steps:
 Install the pciSeq Python package:
 
 ```bash
-pip install git+https://github.com/acycliq/pciSeq.git@dev_3d
+pip install git+https://github.com/acycliq/pciSeq_3d.git@dev_3d
 ```
 
 Background image processing uses **pyvips**. The `pip install` above pulls in `pyvips[binary]`, which bundles the libvips binaries, so on most setups you don't need to install anything extra.
@@ -108,9 +108,9 @@ pciSeq.stage_image(img=gcamp, out_dir=viewer_data, name='gcamp', tint='#00FF00')
 in the mbtiles metadata and the viewer uses it to colour that channel. Omit
 `tint` (as for DAPI above) to leave a channel grayscale.
 
-::: info Requires pciSeq > 0.0.65
+::: info Requires pciSeq 0.0.66 or newer
 
-`stage_image()` was added after `0.0.65`. If `out_dir` is omitted, the file is
+`stage_image()` is not in older releases. If `out_dir` is omitted, the file is
 written to the system temp directory (`/tmp` on Linux, `/var/folders/...` on macOS).
 
 :::

@@ -6,7 +6,7 @@ description: The pciSeq function that produces the data the viewer reads.
 # pciSeq.fit()
 
 ::: info Part of the pciSeq package
-`pciSeq.fit()` lives in the [pciSeq](https://github.com/acycliq/pciSeq) Python
+`pciSeq.fit()` lives in the [pciSeq](https://github.com/acycliq/pciSeq_3d) Python
 package, not the viewer. It is documented here because it is how you produce the
 data the viewer reads. See
 [`fit`](https://acycliq.github.io/pciSeq_3d/api/reference#fit) in the pciSeq API

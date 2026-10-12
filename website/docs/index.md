@@ -6,16 +6,15 @@ description: Install pciSeq Viewer on Windows, macOS, or Linux.
 # pciSeq Viewer
 
 An interactive desktop application for visualizing 3D spatial
-transcriptomics data from [pciSeq](https://github.com/acycliq/pciSeq).
+transcriptomics data from [pciSeq](https://github.com/acycliq/pciSeq_3d).
 
 ![pciSeq Viewer demo](/img/demo.gif)
 
-::: tip Existing pciSeq results
+::: tip pciSeq version
 
-If cell typing was run with **pciSeq `0.0.65`**, the Arrow files are already
-compatible with the viewer, and you can proceed to
-[Step 2: Create Background Tiles](/docs/preparing-data#step-2-create-background-tiles).
-A newer pciSeq is still required for `stage_image()`.
+The viewer reads runs of **pciSeq `0.0.66` or newer**, the `dev_3d` branch. Older runs
+have no diagnostics database, so the cell and spot inspectors and the AI agent would have
+nothing to read.
 
 :::
 

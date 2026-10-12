@@ -34,8 +34,9 @@ a background image.
 
 See [Loading Data](/docs/loading-data) for details.
 
-## Arrow files from an older pciSeq
+## Runs from an older pciSeq
 
-Results from pciSeq `0.0.65` are compatible with the viewer. For
-`stage_image()` (background tiles) you need a newer pciSeq, see
+Runs made with pciSeq `0.0.65` or older have no diagnostics database and no
+`stage_image()`, so the background is missing and the cell and spot inspectors and the AI
+agent have nothing to read. Refit with `0.0.66` or newer, see
 [Preparing Your Data](/docs/preparing-data#requirements).
