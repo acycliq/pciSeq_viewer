@@ -13,7 +13,7 @@ A high-level map of the codebase for contributors.
 - **deck.gl**, high-performance WebGL rendering for the map. Layers are defined in `src/layers/`.
 - **Apache Arrow**, the primary data format. We use `arrow-loader/` to ingest large datasets efficiently.
 - **D3.js**, used for charts (gene distributions, class probabilities) and legends.
-- **Python**, conversion scripts under `python_converters/` for preparing raw TSV data into the Arrow/MBTiles format.
+- **Python**, on the pciSeq side: `pciSeq.fit` writes the Arrow files the viewer reads and `stage_image` makes the MBTiles background.
 
 ## Process model
 
