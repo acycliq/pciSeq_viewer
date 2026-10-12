@@ -26,7 +26,6 @@
       "styles.css",
       "config.js",
       "icon.png",
-      "selection_tool.png",
       "src/**/*",
       "lib/**/*",
       "arrow-loader/**/*",
