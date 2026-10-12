@@ -1,10 +1,10 @@
 // Prints the narratives for fixed inputs, so they can be diffed against the Python
 // ones (pciSeq/src/mcp/tools.py) on the same inputs. Run from the pciSeq_3d repo:
-//   node electron/narrative.check.js > js.txt; python ... > py.txt; diff js.txt py.txt
+//   node tests/narrative.check.js > js.txt; python ... > py.txt; diff js.txt py.txt
 //
 // The fixtures below are made up. The cell labels, genes and counts are chosen to
 // reach every branch of the narrators, they do not come from any run.
-const { narrateCell, narrateSpot, strength } = require('./narrative');
+const { narrateCell, narrateSpot, strength } = require('../electron/narrative');
 
 const cellGenes = {
   cell: 1, assigned: 'A', compared_with: 'B', prob_assigned: 1.0, prob_compared: 0.0,

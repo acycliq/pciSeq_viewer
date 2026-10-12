@@ -1,6 +1,6 @@
-// Checks the annotations file format on its own: node electron/annotations.check.js
+// Checks the annotations file format on its own: node tests/annotations.check.js
 const assert = require('assert');
-const { toGeoJSON, fromGeoJSON, readFiles } = require('./annotations');
+const { toGeoJSON, fromGeoJSON, readFiles } = require('../electron/annotations');
 
 const regions = [
   { name: 'CA1', boundaries: [[0, 0], [10, 0], [10, 5]], visible: true, by: 'you' },

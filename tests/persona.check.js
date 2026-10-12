@@ -2,8 +2,9 @@
 // MCP server's INSTRUCTIONS, sentence by sentence. A change on one side must be
 // made on the other too, and this is the check that catches a miss.
 //
-// Run from the viewer repo, with the pciSeq env's python on the path or given:
-//   node electron/persona.check.js [path/to/pciSeq_3d] [python]
+// Run from the viewer repo with the pciSeq env active, or give the repo and the python:
+//   npm run test:persona
+//   node tests/persona.check.js [path/to/pciSeq_3d] [python]
 const { execFileSync } = require('child_process');
 const path = require('path');
 
@@ -14,10 +15,10 @@ Module._load = function (r, ...a) {
     ? { safeStorage: {}, ipcMain: { handle() {} } }
     : orig.call(this, r, ...a);
 };
-const chat = require('./chat');
+const chat = require('../electron/chat');
 
 const repo = process.argv[2] || path.resolve(__dirname, '../../../python/pciSeq_3d');
-const python = process.argv[3] || '/home/dimitris/mambaforge/envs/pciSeq/bin/python';
+const python = process.argv[3] || 'python';
 const py = execFileSync(python, ['-c', 'from pciSeq.src.mcp.server import INSTRUCTIONS; print(INSTRUCTIONS)'],
                         { env: { ...process.env, PYTHONPATH: repo }, encoding: 'utf8' });
 

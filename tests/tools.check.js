@@ -2,7 +2,7 @@
 // querySpot / queryCell output, so the reshaping and the dispatch can be checked
 // without Electron or a database.
 const assert = require('assert');
-const tools = require('./tools');
+const tools = require('../electron/tools');
 
 // ---- a spot, shaped like querySpot's result
 const spotRes = {
@@ -179,7 +179,7 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   // docs: a tiny corpus, handed over as the pages saved inside the run, the ranking
   // of docs.py
   const fs = require('fs'), os = require('os'), path = require('path');
-  const run = require('./run');
+  const run = require('../electron/run');
   const realDocsFromRun = run.docsFromRun;
   const settingsPage =
     '---\ndescription: The settings\n---\n\n## rTheta\n\nrTheta is the shape of the gamma prior on the cell ' +
@@ -233,7 +233,7 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   tools.init({ fetch: null });
 
   // the legend: the window sends it, the tools read one class or one gene
-  const legend = require('./legend');
+  const legend = require('../electron/legend');
   let onLegend = null;
   legend.init({ on: (ch, fn) => { assert.strictEqual(ch, 'legend'); onLegend = fn; } });
   assert.strictEqual(legend.classColour('CA1'), null, 'nothing before the window sends');
@@ -245,7 +245,7 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
 
   // theta_bar: the assigned class by default, any class by name; cell says the same
   // number and the class colour. A one-row fake of diagnostics.db.
-  const run2 = require('./run');
+  const run2 = require('../electron/run');
   const blob = a => Buffer.from(new Float32Array(a).buffer);
   const cellRowFake = { assigned_class_idx: 1, class_prob: blob([0.1, 0.8, 0.1]),
     gene_count: blob([2, 3]), theta_bar: blob([0.5, 1.7, 0.9]), gamma_assigned: blob([1, 1]),
@@ -317,7 +317,7 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   run2.init({ getDb: null, getMeta: null, getCellKey: null });
 
   // allen: which experiment to show, on Plp1's real list (2026-09-30), offline
-  const allen = require('./allen');
+  const allen = require('../electron/allen');
   const plp1 = [
     { id: 75496529, plane: 'sagittal', control: false, delegate: true },
     { id: 69117382, plane: 'sagittal', control: false, delegate: false },
@@ -337,7 +337,7 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.throws(() => allen.pick([plp1[3]], null, null), /no antisense/);
 
   // open_3d_view: one message to the window, refused for a cell the run does not have
-  require('./run').init({ getMeta: () => ({ label_map: { 5: 1 } }) });
+  require('../electron/run').init({ getMeta: () => ({ label_map: { 5: 1 } }) });
   sent = [];
   const view3d = await tools.call('open_3d_view', { label: 5 });
   assert.strictEqual(view3d.done, true);
@@ -345,13 +345,13 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   sent = [];
   assert.ok((await tools.call('open_3d_view', { label: 99 })).error, 'unknown cell refused');
   assert.deepStrictEqual(sent, [], 'nothing opened');
-  require('./run').init({ getMeta: null });
+  require('../electron/run').init({ getMeta: null });
 
   // class_prior: the saved weights, Zero first and the rest by weight, and the
   // chart of them; both refused for a run that did not save log_prior
   const priorMeta = { class_names: ['A', 'B', 'Zero'], config: { cell_type_prior: 'weighted' },
                       log_prior: [Math.log(0.1), Math.log(0.4), Math.log(0.5)] };
-  require('./run').init({ getMeta: () => priorMeta });
+  require('../electron/run').init({ getMeta: () => priorMeta });
   tools.init({ getMeta: () => priorMeta });
   const prior = await tools.call('class_prior', {});
   assert.deepStrictEqual(prior.classes.map(c => c.class), ['Zero', 'B', 'A']);
@@ -361,19 +361,19 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.strictEqual((await tools.call('open_chart', { chart: 'class_prior' })).done, true);
   assert.deepStrictEqual(sent, [['chat-open-chart', { chart: 'class_prior', region: null, gene: null }]]);
   const noPriorMeta = { class_names: ['A', 'Zero'] };
-  require('./run').init({ getMeta: () => noPriorMeta });
+  require('../electron/run').init({ getMeta: () => noPriorMeta });
   tools.init({ getMeta: () => noPriorMeta });
   assert.ok(/did not save log_prior/.test((await tools.call('class_prior', {})).error));
   sent = [];
   assert.ok(/did not save log_prior/.test((await tools.call('open_chart', { chart: 'class_prior' })).error));
   assert.deepStrictEqual(sent, [], 'no chart opened');
-  require('./run').init({ getMeta: null });
+  require('../electron/run').init({ getMeta: null });
   tools.init({ getMeta: () => ({ class_names: names }) });
 
   // spots_of_class: the counting, on a hand-made case. Class 0 is Pvalb, 1 Oligo.
   // Spot 1: 0.8 on cell 10 (Oligo, 0.9 Oligo / 0.1 Pvalb), 0.2 on cell 20 (Pvalb, 0.7 / 0.3).
   // Spot 2: 0.6 on cell 20, 0.4 on the background.
-  const runC = require('./run');
+  const runC = require('../electron/run');
   const fakeCells = new Map([[10, { class_prob: [0.1, 0.9], assigned: 1 }],
                              [20, { class_prob: [0.7, 0.3], assigned: 0 }]]);
   const fakeSpots = [{ spot: 1, labels: [10, 20], probs: [0.8, 0.2] },
@@ -392,13 +392,13 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   near(runC.countSpotsOfClass(fakeSpots, fakeCells, 1, rule({})).soft, 0.8 * 0.9 + 0.2 * 0.3 + 0.6 * 0.3);
 
   // export_table: runs the tool again, asks for every row, writes the CSV itself
-  const { toCsv } = require('./exportTable');
+  const { toCsv } = require('../electron/exportTable');
   const csv = toCsv([{ spot: 1, gene: 'Plp1', prob: 0.5 }, { spot: 2, gene: 'a,"b"', note: 'x' }]);
   assert.deepStrictEqual(csv.columns, ['spot', 'gene', 'prob', 'note']);
   assert.strictEqual(csv.csv, 'spot,gene,prob,note\n1,Plp1,0.5,\n2,"a,""b""",,x\n');
   const written = [];
   let asked = null;
-  const runE = require('./run');
+  const runE = require('../electron/run');
   const realFind = runE.findCells;
   runE.findCells = (a) => { asked = a; return { cells: [{ cell: 7, class: 'A' }, { cell: 9, class: 'B' }], cells_are: 'test cells' }; };
   tools.init({ saveDialog: async (n) => '/tmp/' + n, writeFile: (f, t) => written.push([f, t]) });
@@ -417,7 +417,7 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   tools.init({ saveDialog: null, writeFile: null });
 
   // allen_cell_type: on a tiny fake of Allen's taxonomy files, served offline
-  const allenTx = require('./allenTaxonomy');
+  const allenTx = require('../electron/allenTaxonomy');
   const fakeAllen = {
     'views/cluster_annotation_term_with_counts.csv':
       'label,name,cluster_annotation_term_set_label,parent_term_label,parent_term_set_label,term_set_order,term_order,cluster_annotation_term_set_name,color_hex_triplet,number_of_clusters,number_of_cells\n' +
@@ -463,7 +463,7 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.strictEqual(reln.suggestions[0].name, '046 Vip Gaba');
   assert.deepStrictEqual((await allenTx.matchRun(['046 Vip Gaba', 'Zero'])).not_matched, ['Zero']);
   // in this run: the tool adds the run's own numbers when the class is one of its classes
-  const runA = require('./run');
+  const runA = require('../electron/run');
   const realCC = runA.classCounts;
   runA.classCounts = () => ({ classes: [{ class: '046 Vip Gaba', cells: 236, soft: 236.1 }] });
   tools.init({ getMeta: () => ({ class_names: ['046 Vip Gaba', 'Zero'] }) });
@@ -471,7 +471,7 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.strictEqual(viaTool.in_this_run.cells, 236);
   runA.classCounts = realCC;
   fs.rmSync(allenDir, { recursive: true });
-  allenTx.init({ dir: path.join(__dirname, 'allen_taxonomy') });
+  allenTx.init({ dir: path.join(__dirname, '..', 'electron', 'allen_taxonomy') });
   // and the files that ship with the viewer: espio's class names are Allen subclasses
   assert.strictEqual((await allenTx.cellType('037 DG Glut')).allen_colour, '#CC2400');
   tools.init({ getMeta: () => ({ class_names: names }) });
@@ -525,7 +525,7 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   // --check cannot see it. Catch it here for the modules the tools lean on.
   const fs2 = require('fs'), path2 = require('path');
   for (const mod of ['run.js', 'tools.js', 'docs.js', 'chat.js']) {
-    const src = fs2.readFileSync(path2.join(__dirname, mod), 'utf8');
+    const src = fs2.readFileSync(path2.join(__dirname, '..', 'electron', mod), 'utf8');
     const names = [...src.matchAll(/^(?:async )?function ([A-Za-z_$][\w$]*)/gm)].map(m => m[1]);
     const dupes = names.filter((n, i) => names.indexOf(n) !== i);
     assert.deepStrictEqual(dupes, [], `${mod} defines these twice: ${dupes.join(', ')}`);

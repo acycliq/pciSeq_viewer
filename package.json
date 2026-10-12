@@ -6,6 +6,8 @@
   "scripts": {
     "postinstall": "electron-rebuild",
     "start": "electron .",
+    "test": "node --test tests/annotations.check.js tests/chat.check.js tests/narrative.check.js tests/tools.check.js",
+    "test:persona": "node tests/persona.check.js",
     "build:all": "electron-builder --linux --mac --win",
     "build:linux": "electron-builder --linux",
     "build:linux:deb": "electron-builder --linux deb",

@@ -1,4 +1,4 @@
-// Checks chat.js on its own, in plain node: node electron/chat.check.js
+// Checks chat.js on its own, in plain node: node tests/chat.check.js
 // Today: only the last two pasted images are resent with the conversation.
 const assert = require('assert');
 
@@ -7,7 +7,7 @@ const orig = Module._load;
 Module._load = function (r, ...a) {
   return r === 'electron' ? { safeStorage: {}, ipcMain: { handle() {} } } : orig.call(this, r, ...a);
 };
-const { withRecentImages, reply, withoutThinking } = require('./chat');
+const { withRecentImages, reply, withoutThinking } = require('../electron/chat');
 
 const img = n => ({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'x' + n } });
 const history = [
