@@ -1,9 +1,9 @@
 ---
-title: Data Format Specification
-description: The Arrow file layout the viewer reads, for generating data without the pciSeq Python package.
+title: Data format
+description: The files the viewer reads, column by column, for producing them without the pciSeq Python package.
 ---
 
-# Data Format Specification
+# Data format
 
 The viewer reads its data from **Apache Arrow (Feather v2)** files written by the
 pciSeq Python package. This page documents the exact layout each file must have.
@@ -33,7 +33,7 @@ For example, with voxel size `[0.28, 0.28, 0.7]` a `z` of `100` maps to plane
 
 ```
 viewer_data/
-├── output.mbtiles            # background image (optional, see Loading Data)
+├── output.mbtiles            # background image (optional, see Loading the data)
 ├── arrow_spots/
 │   ├── manifest.json
 │   ├── gene_dict.json
@@ -114,16 +114,16 @@ One row per cell. Note the **uppercase** `X`, `Y`, `Z` for the centroid.
 | `X` | float32 | Centroid X |
 | `Y` | float32 | Centroid Y |
 | `Z` | float32 | Centroid Z |
-| `class_name` | list&lt;string&gt; | Candidate cell-type names, ordered by probability |
+| `class_name` | list&lt;string&gt; | Candidate class names, ordered by probability |
 | `prob` | list&lt;float32&gt; | Probabilities matching `class_name` |
 | `gene_names` | list&lt;string&gt; | Genes detected in the cell |
 | `gene_counts` | list&lt;float32&gt; | Counts matching `gene_names` |
 
 ::: info No class_dict.json needed
 
-Cell-class names live directly in the `class_name` list column. A separate
-`class_dict.json` is a legacy artefact and is not required, the current
-converter does not write one.
+Class names live directly in the `class_name` list column. A separate
+`class_dict.json` is a legacy artefact and is not required; pciSeq does not write
+one.
 
 :::
 
@@ -189,9 +189,9 @@ this file adds a `plane_id` column so each z-plane gets its own pyramid.
 
 When a dataset folder holds several `.mbtiles` files, each is a switchable
 background **channel**. The viewer discovers them per folder, labels each from
-its `name`, and tints each from its own `tint` - so N files give N independently
-coloured channels you switch between (e.g. a green GCaMP channel or a grayscale
-DAPI one), shown one at a time with a smooth cross-fade.
+its `name`, and tints each from its own `tint`, so N files give N independently
+coloured channels you switch between (a green GCaMP channel next to a grayscale
+DAPI one), shown one at a time with a cross-fade.
 
 **2. Google (XYZ) tiling, not TMS.** The tiles are generated with libvips
 `dzsave(layout='google')`, so they follow the Google / OpenStreetMap slippy-map
@@ -201,7 +201,7 @@ bottom), so a generic MBTiles viewer that assumes TMS would show each plane
 flipped vertically. The pciSeq viewer requests a tile as `plane_id = plane`,
 `zoom_level = z`, `tile_column = x`, `tile_row = y`, with no flip.
 
-## How the pieces link up
+## Cross references
 
 - A spot's `gene_id` looks up its name and colour through `gene_dict.json`.
 - A boundary's `label` matches a cell's `cell_id`, that is how a polygon is tied

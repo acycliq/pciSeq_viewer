@@ -1,9 +1,9 @@
 ---
-title: Configuration Reference
-description: Every tunable setting in the viewer and what it controls.
+title: Configuration
+description: The settings in the viewer's source and what each one controls.
 ---
 
-# Configuration Reference
+# Configuration
 
 The viewer's settings live in three files, all loaded by `index.html` before the
 app starts:
@@ -27,6 +27,7 @@ rebuild the installer) for the change to take effect.
 | `preloadRadius` | `3` | How many planes ahead and behind the current one are preloaded, so moving through the z-stack feels instant. |
 | `maxTileCache` | `1000` | Maximum number of background tiles kept in memory. Once exceeded, the oldest are evicted. |
 | `showPerformanceStats` | `true` | When `true`, prints timing logs to the developer console. |
+| `progressiveSpots` | `true` | Draw the spots shard by shard as they load, nearest plane first, instead of waiting for all of them. |
 
 ### display (startup defaults)
 
@@ -57,7 +58,7 @@ You do not edit these, but they are useful to know. They are not exposed in
 |---|---|---|
 | `minZoom` / `maxZoom` | `0` / `8` | The zoom range. These are deck.gl zoom levels (a unitless log2 scale), not pixels. Set in `appInitializer.js` and `tileLayerCreator.js`. |
 | `INITIAL_VIEW_STATE.zoom` | `2.0` | The zoom level the map opens at. |
-| `SPOT_PICKABLE_MIN_ZOOM` | `7` | Below this zoom, spots render as a fast non-pickable dot layer; at or above it they switch to per-gene glyph icons. See [How spots are drawn](../using-the-viewer/genes-and-cells#how-spots-are-drawn). |
+| `SPOT_PICKABLE_MIN_ZOOM` | `7` | Below this zoom, spots render as a fast non-pickable dot layer; at or above it they switch to per-gene glyph icons. See [Spots and cells](../the-map#spots-and-cells). |
 | `IMG_DIMENSIONS` fallback | `6411 x 4412` | Only used if image width/height are missing from both the MBTiles and user input. |
 
 ## Data paths (config.js)
@@ -74,13 +75,12 @@ Electron protocols that resolve to the selected dataset folder:
 | `arrowSpotsGeneDict` | `app://arrow_spots/gene_dict.json` |
 
 Image width, height, and plane count come from the MBTiles file (or manual
-entry), and voxel size is entered on the welcome screen. None of those are set
-here. See [Loading Data](../loading-data).
+entry), and the voxel size from `diagnostics.db`. None of those are set here. See [Loading the data](../loading-data).
 
-## Defined but not currently used
+## Unused settings
 
-For honesty: these settings exist in `advanced.js` (or the constants derived
-from it) but nothing reads them, so changing them has no effect.
+These settings exist in `advanced.js` (or the constants derived from it) but nothing
+reads them, so changing them has no effect.
 
 - `performance.sliderDebounce`
 - `performance.loadingTimeout`

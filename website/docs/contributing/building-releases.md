@@ -1,9 +1,9 @@
 ---
-title: Building & Releases
+title: Building and releases
 description: Local development build and the release pipeline.
 ---
 
-# Building & Releases
+# Building and releases
 
 ## Local development
 
@@ -19,7 +19,15 @@ The viewer is an Electron application. To run it locally:
    npm start
    ```
 
-This launches the Electron app with the renderer process linked to `index.html`. You can use the Chrome DevTools (`Ctrl+Shift+I`) to debug the renderer.
+This launches the Electron app with the renderer process linked to `index.html`. The
+Chrome DevTools (`Ctrl+Shift+I`) debug the renderer.
+
+After every `npm install` the native SQLite module has to be rebuilt for Electron,
+otherwise no database opens:
+
+```bash
+npx electron-rebuild -f -w better-sqlite3
+```
 
 ## Producing installers
 
@@ -51,4 +59,4 @@ Installers are built and published by GitHub Actions, but the workflow is trigge
 - **Platforms:** Windows (NSIS `.exe`), macOS (DMG, ZIP), Linux (AppImage, DEB).
 - **Release:** the workflow attaches the artifacts to a GitHub release, marked as a pre-release when that input is set.
 
-The macOS build is **not** code-signed. The workflow sets `CSC_IDENTITY_AUTO_DISCOVERY: false`, so there are no signing certificates or secrets involved, which is why users get the Gatekeeper warning on first launch (see [Troubleshooting](/docs/troubleshooting#macos-app-wont-open)).
+The macOS build is **not** code-signed. The workflow sets `CSC_IDENTITY_AUTO_DISCOVERY: false`, so there are no signing certificates or secrets involved, which is why users get the Gatekeeper warning on first launch (see [Troubleshooting](../troubleshooting#gatekeeper-on-macos)).

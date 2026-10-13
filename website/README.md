@@ -4,10 +4,10 @@ VitePress site for the pciSeq Viewer docs.
 
 ## Layout
 
-- `index.md` is the landing page (the hero + feature cards).
+- `index.md` is the landing page: the moving picture with the three stills under it (`DemoSwap.vue`), and the three doors.
 - `docs/` holds the actual documentation, served under `/docs`.
-- `.vitepress/config.mts` has the nav, the two sidebars and the theme settings.
-- `public/img/` holds the images, screenshots and the logo.
+- `.vitepress/config.mts` has the nav, the sidebar and the theme settings.
+- `public/img/` holds the screenshots and the logo. The screenshots are taken by `dev_notes/demo_clip/shots.py` from the running viewer, so they can be shot again when the viewer changes. The gifs on the landing page are the README's, served by GitHub, not kept here.
 
 ## Local development
 
@@ -40,5 +40,6 @@ docs at https://acycliq.github.io/pciSeq_viewer/docs/.
 
 ## Theme
 
-Brand colours and fonts are in `.vitepress/theme/custom.css` (the emerald
-`--vp-c-brand-*` vars and Inter). The logo and images live in `public/img/`.
+`.vitepress/theme/custom.css` is the same theme as the pciSeq docs: the emerald
+`--vp-c-brand-*` vars, IBM Plex (sans body, serif headings, mono code), the 68ch
+measure on prose, and `figure.shot` for a screenshot with a caption.

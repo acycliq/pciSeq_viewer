@@ -13,6 +13,7 @@ A high-level map of the codebase for contributors.
 - **deck.gl**, high-performance WebGL rendering for the map. Layers are defined in `src/layers/`.
 - **Apache Arrow**, the primary data format. We use `arrow-loader/` to ingest large datasets efficiently.
 - **D3.js**, used for charts (gene distributions, class probabilities) and legends.
+- **The agent** lives in the main process: `electron/chat.js` runs a turn of conversation with the model, `electron/tools.js` defines the functions it may call and runs them against `diagnostics.db` through `electron/run.js`, and `electron/mcp-server.js` exposes the same functions to an outside assistant over HTTP on localhost.
 - **Python**, on the pciSeq side: `pciSeq.fit` writes the Arrow files the viewer reads and `stage_image` makes the MBTiles background.
 
 ## Process model
@@ -38,7 +39,7 @@ File > Open Dataset
 
 Spots are drawn one of two ways depending on zoom, with the switch decided in
 `handleViewStateChange` (`src/app.js`) against the `SPOT_PICKABLE_MIN_ZOOM`
-constant (`7`):
+constant (`7`), see [Spots and cells](../the-map#spots-and-cells):
 
 - **Below zoom 7:** a single binary `ScatterplotLayer` (the "PointCloud") draws
   every spot as a coloured dot. There is no culling here; one layer handles

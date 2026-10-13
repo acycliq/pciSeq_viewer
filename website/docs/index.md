@@ -1,64 +1,42 @@
 ---
-title: Getting Started
-description: Install pciSeq Viewer on Windows, macOS, or Linux.
+title: Overview
+description: What pciSeq Viewer is, what it reads, and where each part of it is documented.
 ---
 
 # pciSeq Viewer
 
-An interactive desktop application for visualizing 3D spatial
-transcriptomics data from [pciSeq](https://github.com/acycliq/pciSeq_3d).
+pciSeq Viewer is a desktop application that reads the output of a finished
+[pciSeq](https://acycliq.github.io/pciSeq_3d/) run. It draws the spots and the cells over
+the background image, one plane at a time, builds a selected region in 3D, and reads the
+same diagnostics as pciSeq's `check_cell` and `check_spot`, so a call can be inspected by
+clicking on it or by asking the agent about it.
 
-![pciSeq Viewer demo](/img/demo.gif)
+It is not the [live viewer](https://acycliq.github.io/pciSeq_3d/api/live-viewer). The
+live viewer runs in a browser while `fit` is still going and shows the classes as they
+settle. This one is opened afterwards, on the saved output.
 
-::: tip pciSeq version
+## Main components
 
-The viewer reads runs of **pciSeq `0.0.66` or newer**, the `dev_3d` branch. Older runs
-have no diagnostics database, so the cell and spot inspectors and the AI agent would have
-nothing to read.
+The `?` button at the top right of the window starts a tour of the controls.
 
-:::
+- **[The map](./the-map).** The main window: the background image, the cell outlines
+  filled with the colour of their class, the spots as one glyph per gene, and a slider
+  through the planes. Hover a cell and a panel shows its gene counts and its class
+  probabilities. [The drawer](./the-drawer) at the side holds the genes, the classes,
+  the charts and the layers.
+- **[The 3D view](./3d-view).** A rectangle drawn on the map opens a second window with
+  that piece of tissue built from voxels: the cells, their boundaries and the spots,
+  with depth, in a scene that can be turned and sliced.
+- **[The inspectors](./inspectors).** Ctrl-click a cell or a spot and a panel opens with
+  the terms behind its call, the ones pciSeq's own diagnostics return.
+- **[AI chat](./ai-chat).** A chat panel in which a language
+  model answers questions about the run, with functions that read the saved files and
+  act on the map. An AI assistant such as Claude Code can connect to the viewer the same
+  way.
 
-## Install
+## Requirements
 
-Download the latest installer from
-**[GitHub Releases](https://github.com/acycliq/pciSeq_viewer/releases/latest)**,
-then follow the steps for your platform.
-
-### Windows
-
-- **Installer:** `pciSeq_viewer-Setup-x.x.x.exe`, run it and follow the prompts.
-- **Portable:** `pciSeq_viewer-x.x.x.exe`, no installation, just run the .exe.
-
-### macOS
-
-- **Installer:** `pciSeq_viewer-x.x.x.dmg`, drag the app to Applications.
-- **Portable:** `pciSeq_viewer-x.x.x-mac.zip`, extract and run.
-
-::: warning First launch on macOS
-
-macOS may show a security warning the first time. Right-click the app and
-choose **Open** to bypass Gatekeeper. See
-[Troubleshooting](/docs/troubleshooting#macos-app-wont-open) if it still won't open.
-
-:::
-
-### Linux (Ubuntu / Debian)
-
-- **Installer (.deb):**
-
-  ```bash
-  sudo apt install ./pciSeq_viewer_x.x.x_amd64.deb
-  ```
-
-- **Portable (AppImage):**
-
-  ```bash
-  chmod +x pciSeq_viewer-x.x.x.AppImage
-  ./pciSeq_viewer-x.x.x.AppImage
-  ```
-
-## Next steps
-
-1. [Prepare your data](/docs/preparing-data) with the pciSeq Python package.
-2. [Load it into the viewer](/docs/loading-data).
-3. [Explore](/docs/using-the-viewer/overview) cells, genes, and boundaries in 3D.
+A run of pciSeq `0.0.66` or newer, the `dev_3d` branch, with `save_data` on. Older runs
+have no `diagnostics.db`, so the inspectors and the agent have nothing to read.
+[Loading the data](./loading-data) lists what the run writes and how the background
+image is added.
