@@ -35,21 +35,25 @@ with; they are remembered for that folder.
 
 ## Diagnostics database not connected
 
-The diagnostics database is not connected. Check that the folder holds
+Ctrl+Click on a cell or a spot does nothing, the chat says it has nothing to read, and
+the single cell window reports *Diagnostics data not loaded*. Check that the folder holds
 `diagnostics/diagnostics.db`, or point at one with **Diagnostics, Setup**. A run from
 pciSeq `0.0.65` or older has no database and no `stage_image`; refit with `0.0.66` or
 newer, the `dev_3d` branch.
 
 ## API key
 
-No key is saved for the chosen provider, or the saved one is not valid. Paste a key on
+The chat answers a question with an error naming the key. No key is saved for the chosen
+provider, or the saved one is not valid. Paste a key on
 the **Connection** tab of the chat panel and save, or set `ANTHROPIC_API_KEY` or
 `ZAI_API_KEY` in the environment the viewer starts from.
 
 ## SQLite module in a source checkout
 
-After `npm install` the native SQLite module has to be rebuilt for Electron, otherwise
-every database open fails and the viewer reports that no background tiles were found:
+From a source checkout, every run fails to open and the viewer reports that no
+background tiles were found, whatever the folder holds. The native SQLite module was
+not rebuilt for Electron. `npm install` does it through its `postinstall` step; when
+that step was skipped or failed, run it by hand:
 
 ```bash
 npx electron-rebuild -f -w better-sqlite3

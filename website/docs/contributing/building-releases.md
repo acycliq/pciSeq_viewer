@@ -22,8 +22,9 @@ The viewer is an Electron application. To run it locally:
 This launches the Electron app with the renderer process linked to `index.html`. The
 Chrome DevTools (`Ctrl+Shift+I`) debug the renderer.
 
-After every `npm install` the native SQLite module has to be rebuilt for Electron,
-otherwise no database opens:
+`npm install` rebuilds the native SQLite module for Electron in its `postinstall` step.
+If that step was skipped, no database opens and the viewer reports missing background
+tiles; run it by hand:
 
 ```bash
 npx electron-rebuild -f -w better-sqlite3

@@ -25,7 +25,8 @@ Round the map, the elements of the window:
 - **The channels**, at the top right, when the folder holds more than one background
   image, see [Loading the data](./loading-data#channels).
 - **The chat bubble** opens [the chat panel](./ai-chat), and the `?`
-  button a description of the viewer and a tour of the controls.
+  button a description of the viewer and a tour of the controls, also under **Help,
+  Take a Tour** in the menu.
 
 ## Planes
 
@@ -33,13 +34,12 @@ The map shows one plane at a time, chosen with the slider or the keyboard: **Lef
 **Right** step one plane, **PageUp** and **PageDown** ten, **Home** and **End** go to
 the first and the last.
 
-The spots of every plane are drawn at once, with their size telling how far they are
-from the plane on screen: a spot on the current plane is drawn largest and one on a
-distant plane small: the size falls with the square root of one plus the number of
-planes between them. A spot three planes away is drawn at half size, eight planes away
-at a third. So a cell on the
-current plane has its spots large and the spots of the cells above and below it fade
-into the background. The **Size** slider in the drawer scales everything on top of this,
+The spots of every plane are drawn at once, and the size of a spot tells how far its
+plane is from the plane on screen. A spot on the current plane is drawn largest. The
+size falls with the square root of one plus the number of planes in between, so a spot
+three planes away is drawn at half size and one eight planes away at a third. A cell on
+the current plane has its spots large, and the spots of the cells above and below it
+fade into the background. The **Size** slider in the drawer scales everything on top of this,
 and **Uniform Size** switches the depth cue off.
 
 The cells, in contrast, are only those of the current plane, each outline cut from the

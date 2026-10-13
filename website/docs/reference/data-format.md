@@ -33,7 +33,7 @@ For example, with voxel size `[0.28, 0.28, 0.7]` a `z` of `100` maps to plane
 
 ```
 viewer_data/
-├── output.mbtiles            # background image (optional, see Loading the data)
+├── dapi.mbtiles              # background image, named after its channel (optional)
 ├── arrow_spots/
 │   ├── manifest.json
 │   ├── gene_dict.json
@@ -170,7 +170,8 @@ The boundaries manifest adds `total_points` and a `plane` field per shard:
 
 ## Background image (MBTiles)
 
-The background is a SQLite **MBTiles** file (`output.mbtiles`) that extends the
+The background is a SQLite **MBTiles** file, named after its channel by `stage_image`
+(`dapi.mbtiles`; `output.mbtiles` when no name was given), that extends the
 standard format in two ways to handle a z-stack of microscopy images.
 
 **1. A `plane_id` dimension.** Standard MBTiles holds a single 2D tile pyramid;

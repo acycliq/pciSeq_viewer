@@ -17,7 +17,8 @@ settle. This one is opened afterwards, on the saved output.
 
 ## Main components
 
-The `?` button at the top right of the window starts a tour of the controls.
+The `?` button at the top right of the window, or **Help, Take a Tour** in the menu,
+starts a tour of the controls.
 
 - **[The map](./the-map).** The main window: the background image, the cell outlines
   filled with the colour of their class, the spots as one glyph per gene, and a slider

@@ -64,5 +64,4 @@ folder and it picks up the rest. See [Loading the data](./docs/loading-data).
 
 The viewer is a separate project from pciSeq itself. The method, its settings and the
 functions that produce the files are documented on the
-[pciSeq site](https://acycliq.github.io/pciSeq_3d/). A [web version](./web_viewer/)
-that needs no install runs in the browser, with a sample run.
+[pciSeq site](https://acycliq.github.io/pciSeq_3d/).
