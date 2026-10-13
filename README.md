@@ -33,7 +33,7 @@ counts and class probabilities, or ask the AI agent why the cell got its class.
 </tr>
 </table>
 
-## What it does
+## Features
 
 - **Explore.** Pan and zoom a large tissue image through its planes with the spots and cell
   boundaries drawn on top. Rendered on the GPU with deck.gl, so millions of spots stay
@@ -50,9 +50,6 @@ counts and class probabilities, or ask the AI agent why the cell got its class.
 - **Charts and export.** Class and gene distributions, misread diagnostics, the scRNA-seq
   reference next to the counts the model implies, per class PNG export, custom colour
   schemes.
-
-Everything runs locally. The data never leaves the machine, except what you send to the
-chat.
 
 ## Installation
 
