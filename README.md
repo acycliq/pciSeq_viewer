@@ -11,7 +11,7 @@
 
 [Documentation](https://acycliq.github.io/pciSeq_viewer/) ·
 [Installation](#installation) ·
-[Opening a run](#opening-a-run) ·
+[Loading the data](#loading-the-data) ·
 [Web demo](https://acycliq.github.io/pciSeq_viewer/web_viewer/)
 
 </div>
@@ -22,8 +22,16 @@ the class it was assigned to, plane by plane through the z-stack. Hover a cell f
 counts and class probabilities, or ask the AI agent why the cell got its class.
 
 <p align="center">
-<img src="https://github.com/user-attachments/assets/f67a473a-0f84-48e7-9b4f-27be841778aa" width="100%" alt="pciSeq Viewer">
+<img src="https://github.com/user-attachments/assets/79236976-b24c-4e5c-9b93-1577d7ffe7b6" width="100%" alt="pciSeq Viewer: the section, its classes and genes, plane by plane, one cell">
 </p>
+
+<table>
+<tr>
+<td width="33%" align="center"><a href="https://github.com/user-attachments/assets/79236976-b24c-4e5c-9b93-1577d7ffe7b6"><img src="https://github.com/user-attachments/assets/7ba100ae-4eb7-4a11-8523-c832f44ec392" width="100%" alt="Explore"></a><br><b>Explore</b><br>every spot, every cell, plane by plane</td>
+<td width="33%" align="center"><a href="https://github.com/user-attachments/assets/507606e5-d075-4ff4-a3b3-633433cf2564"><img src="https://github.com/user-attachments/assets/bff644c3-255d-4620-af5d-e099d04ee9b9" width="100%" alt="See it in 3D"></a><br><b>See it in 3D</b><br>a region as voxels, a cell and its spots inside</td>
+<td width="33%" align="center"><a href="https://github.com/user-attachments/assets/76618be3-c5ed-4403-8c4d-3edf0a45b97f"><img src="https://github.com/user-attachments/assets/b7bde1d7-5cde-48db-9f86-b13f8b263719" width="100%" alt="Ask the run"></a><br><b>Ask the run</b><br>an agent with tools over the results</td>
+</tr>
+</table>
 
 ## What it does
 
@@ -63,12 +71,22 @@ npm install
 npm start
 ```
 
-## Opening a run
+## Loading the data
 
 A run of `pciSeq.fit` with `save_data` on writes a `viewer_data` folder next to its other
-outputs, with the Arrow files, the diagnostics database and, after `stage_image`, the
-background tiles. Open that folder from the welcome screen, or pass it on the command line
-to skip the welcome screen:
+outputs, with the Arrow files and the diagnostics database. The background image is a
+separate step, optional: `stage_image` cuts the microscopy image, a 2D image or a z-stack,
+into an `.mbtiles` file in the same folder. Each `.mbtiles` in the folder is a channel the
+viewer can switch to, DAPI and a second stain for example.
+
+```python
+from skimage import io
+dapi = io.imread('/path/to/dapi.tif')                # (Z, H, W), or (H, W) for a 2D image
+pciSeq.stage_image(img=dapi, out_dir='/path/to/viewer_data', name='dapi')
+```
+
+Open the folder from the welcome screen, or pass it on the command line to skip the
+welcome screen:
 
 ```bash
 pciSeq_viewer --data=/path/to/viewer_data
