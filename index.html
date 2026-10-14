@@ -62,6 +62,14 @@
             <p class="empty-state-hint">Choose the <code>viewer_data</code> folder pciSeq wrote. It needs <code>arrow_spots</code>, <code>arrow_cells</code> and <code>arrow_boundaries</code>. Optional: <code>diagnostics/diagnostics.db</code> for the cell and spot diagnostics and the AI chat, and an <code>.mbtiles</code> file for the background image.</p>
 
             <button id="emptyStateBtn" class="accent-btn empty-state-btn">Open Data Folder</button>
+
+            <!-- the sample run (electron/sample.js): a finished run to try the viewer on -->
+            <div class="sample-run">
+                <button id="sampleRunBtn" class="secondary-btn empty-state-btn">Open the Sample Run</button>
+                <p id="sampleRunNote" class="sample-run-note">A section of mouse hippocampus, 25,000 cells and 3 million spots. The first time it is downloaded, about 600 MB.</p>
+                <div id="sampleRunProgress" class="sample-run-progress hidden"><div id="sampleRunBar" class="sample-run-bar"></div></div>
+                <p id="sampleRunWhere" class="sample-run-where hidden"></p>
+            </div>
         </div>
     </div>
 

@@ -16,6 +16,7 @@ const legend = require('./legend');
 const compose = require('./compose');
 const annotations = require('./annotations');
 const allenFit = require('./allenFit');
+const sample = require('./sample');
 
 // GitHub repo for update checks
 const GITHUB_REPO = 'acycliq/pciSeq_viewer';
@@ -283,6 +284,7 @@ function createWindow() {
   diagnostics.init(mainWindow, store);
   singleCell.init(mainWindow);
   dataLoader.init(mainWindow, store, diagnostics);
+  sample.init(mainWindow, dataLoader);
 }
 
 // Data folder we have already tried to auto-discover channels for. Without this,
@@ -730,6 +732,33 @@ function createMenu() {
         },
         { type: 'separator' },
         {
+          label: 'Remove Sample Run...',
+          click: async () => {
+            const st = sample.status();
+            if (!st.ready) {
+              dialog.showMessageBox(mainWindow, { type: 'info', message: 'The sample run is not on this computer.' });
+              return;
+            }
+            const { response } = await dialog.showMessageBox(mainWindow, {
+              type: 'question', buttons: ['Remove', 'Cancel'], defaultId: 1, cancelId: 1,
+              message: 'Remove the sample run from this computer?',
+              detail: 'It frees about 1.4 GB. It can be downloaded again from the welcome screen.',
+            });
+            if (response !== 0) return;
+            const openNow = store.get('dataPath', '') === st.folder;
+            const res = sample.remove();
+            if (!res.success) { dialog.showErrorBox('Sample run', res.error); return; }
+            if (openNow) {
+              // the open run was the sample: back to the welcome screen
+              store.delete('dataPath'); store.delete('mbtilesPath');
+              dataLoader.closeDatabase(); diagnostics.closeDiagnosticsDatabase();
+              diagnostics.broadcastDiagnosticsState(false);
+              if (mainWindow) mainWindow.reload();
+            }
+          }
+        },
+        { type: 'separator' },
+        {
           label: 'Check for Updates...',
           click: () => {
             checkForUpdates();
@@ -783,7 +812,13 @@ app.whenReady().then(async () => {
   // already loaded on the welcome screen by now, so it is reloaded, as the File
   // menu does after its dialog.
   const dataFlag = args.findIndex(a => a === '--data' || a.startsWith('--data='));
-  if (dataFlag >= 0) {
+  if (args.includes('--sample')) {
+    // --sample: the sample run, downloaded first if it is not on this computer yet
+    sample.openSample().then(opened => {
+      console.log('Opened the sample run:', opened.path);
+      if (mainWindow) mainWindow.reload();
+    }).catch(e => console.error('--sample could not open the sample run:', e.message));
+  } else if (dataFlag >= 0) {
     const given = args[dataFlag].startsWith('--data=') ? args[dataFlag].slice(7) : args[dataFlag + 1];
     const folder = given ? path.resolve(given) : '';
     const opened = folder ? dataLoader.openDataFolder(folder) : { success: false, error: 'no folder given' };

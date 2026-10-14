@@ -473,7 +473,65 @@ function showEmptyState() {
             }
         };
     }
+    setupSampleRun();
     console.warn('Data folder not configured. Waiting for user selection.');
+}
+
+// The sample run button: opens the copy on disk, or downloads and unpacks it
+// first, showing how far it has got
+function setupSampleRun() {
+    const btn = document.getElementById('sampleRunBtn');
+    const note = document.getElementById('sampleRunNote');
+    const bar = document.getElementById('sampleRunBar');
+    const track = document.getElementById('sampleRunProgress');
+    const where = document.getElementById('sampleRunWhere');
+    if (!btn || !window.electronAPI || !window.electronAPI.openSample) return;
+    const mb = n => Math.round(n / 1e6);
+    // where the sample lives on disk, said up front so nobody wonders where 1.4 GB went;
+    // Help, Remove Sample Run deletes it again
+    window.electronAPI.sampleStatus().then(st => {
+        if (st.ready) note.textContent = 'A section of mouse hippocampus, 25,000 cells and 3 million spots. Already on this computer.';
+        if (where && st.folder) {
+            where.textContent = '';
+            where.append(st.ready ? 'Kept in ' : 'It goes to ');
+            const c = document.createElement('code'); c.textContent = st.folder; where.append(c);
+            where.append('. Help, Remove Sample Run deletes it.');
+            where.classList.remove('hidden');
+        }
+    }).catch(() => {});
+    window.electronAPI.onSampleProgress(s => {
+        if (s.phase === 'download') {
+            track.classList.remove('hidden');
+            bar.style.width = (100 * s.done / s.total).toFixed(1) + '%';
+            note.textContent = `Downloading the sample run: ${mb(s.done)} of ${mb(s.total)} MB`;
+        } else if (s.phase === 'check') {
+            bar.style.width = '100%';
+            note.textContent = 'Checking the download';
+        } else if (s.phase === 'unpack') {
+            note.textContent = 'Unpacking, a minute or so';
+        } else if (s.phase === 'done') {
+            note.textContent = 'Opening';
+        }
+    });
+    btn.onclick = async () => {
+        btn.disabled = true;
+        emptyStateBtnState(true);
+        const res = await window.electronAPI.openSample();
+        if (res && res.success) {
+            window.location.reload();
+            return;
+        }
+        btn.disabled = false;
+        emptyStateBtnState(false);
+        track.classList.add('hidden');
+        note.textContent = 'The sample run could not be opened: ' + ((res && res.error) || 'unknown error') +
+            ' The button tries again, and a broken download goes on where it stopped.';
+    };
+}
+
+function emptyStateBtnState(disabled) {
+    const b = document.getElementById('emptyStateBtn');
+    if (b) b.disabled = disabled;
 }
 
 function showImageDimsPrompt() {

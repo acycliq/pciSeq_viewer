@@ -5,6 +5,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   // Folder selection methods
   selectDataFolder: () => ipcRenderer.invoke('select-data-folder'),
+  // the sample run on the welcome screen (electron/sample.js)
+  sampleStatus: () => ipcRenderer.invoke('sample-status'),
+  openSample: () => ipcRenderer.invoke('sample-open'),
+  onSampleProgress: (handler) => ipcRenderer.on('sample-progress', (_e, state) => handler(state)),
   selectTilesFolder: () => ipcRenderer.invoke('select-tiles-folder'),
 
   // MBTiles file selection
