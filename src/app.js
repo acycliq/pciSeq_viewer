@@ -969,6 +969,16 @@ window.addEventListener('load', async () => {
             if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
         });
     }
+    // the uniform_spot_size tool flips the Uniform Size switch, through its own
+    // change handler, so the drawer and the map stay in step
+    if (window.electronAPI?.onChatUniformSize) {
+        window.electronAPI.onChatUniformSize(({ on }) => {
+            const t = document.getElementById('uniformSizeToggle');
+            if (!t || t.checked === Boolean(on)) return;
+            t.checked = Boolean(on);
+            t.dispatchEvent(new Event('change'));
+        });
+    }
     // and show_all_planes: the Cells from all planes switch. The answer waits for
     // every plane to load, so the tool does not come back to a map still loading
     if (window.electronAPI?.onChatAllPlanes) {

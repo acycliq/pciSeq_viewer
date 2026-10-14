@@ -93,6 +93,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onChatOpen3dView: (handler) => ipcRenderer.on('chat-open-3d-view', (_e, p) => handler(p)),
   // the show_classes and show_genes tools: change which classes or genes are drawn
   onChatShowVisibility: (handler) => ipcRenderer.on('chat-show-visibility', (_e, p) => handler(p)),
+  // the uniform_spot_size tool: the Uniform Size switch in Gene Controls
+  onChatUniformSize: (handler) => ipcRenderer.on('chat-uniform-size', (_e, p) => handler(p)),
   // the show_all_planes tool: the Cells from all planes switch, answered once the
   // planes are loaded (electron/compose.js)
   onChatAllPlanes: (handler) => ipcRenderer.on('chat-all-planes', (_e, p) => handler(p)),

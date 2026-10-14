@@ -861,6 +861,22 @@ const TOOLS = [
     },
   },
   {
+    name: 'uniform_spot_size',
+    description:
+      'Draw every spot at the same size, the same as the Uniform Size switch in the ' +
+      'Gene Controls drawer, or go back to the normal sizing. Normally a spot is drawn ' +
+      'smaller the further its plane is from the plane on screen, so the spots of other ' +
+      'planes are hard to see; with this on, every spot of the stack counts the same. ' +
+      'Offer it after show_genes when the user wants to see where a gene is; call it ' +
+      'only when the user asks.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        on: { type: 'boolean', description: 'true for the same size everywhere, false for the normal sizing. Default true.' },
+      },
+    },
+  },
+  {
     name: 'show_all_planes',
     description:
       'Draw the cells of every plane together on the map, the same as the Cells from ' +
@@ -1244,6 +1260,13 @@ async function call(name, input) {
       return { done: true, cell: label, note: 'the map is moving to the cell' };
     }
     if (name === 'show_classes') return setVisibility('classes', input);
+    if (name === 'uniform_spot_size') {
+      const on = input.on !== false;
+      deps.send('chat-uniform-size', { on });
+      return { done: true, uniform_size: on,
+               drawn_as: on ? 'every spot at the same size, whatever its plane'
+                            : 'spots smaller the further their plane is from the one on screen' };
+    }
     if (name === 'show_genes') return setVisibility('genes', input);
     if (name === 'show_all_planes') {
       const on = input.on !== false;
