@@ -525,7 +525,7 @@ function setupSampleRun() {
         ready = !!st.ready;
         folder = st.folder || '';
         sizeHint();
-        if (st.busy) { busy(true); btn.textContent = 'Downloading'; showWhere('goes to'); }
+        if (st.busy) { busy(true); btn.textContent = 'Downloading demo'; showWhere('goes to'); }
         else if (ready) { btn.textContent = 'Open the demo data'; showWhere('is kept in'); }
     }).catch(() => {});
     // resumable: the part already downloaded is kept, so the next click goes on
@@ -557,7 +557,7 @@ function setupSampleRun() {
         if (!btn.disabled) { busy(true); showWhere('goes to'); }
         if (s.phase === 'download') {
             bar.style.width = (100 * s.done / s.total).toFixed(1) + '%';
-            btn.textContent = 'Downloading';
+            btn.textContent = 'Downloading demo';
             count.textContent = `${mb(s.done)} / ${mb(s.total)} MB`;
         } else if (s.phase === 'check') {
             track.classList.add('shimmer');
