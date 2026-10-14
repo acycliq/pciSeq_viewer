@@ -494,45 +494,56 @@ function setupSampleRun() {
     let ready = false;
     let folder = '';
     // the path line under the footer, said the moment a download starts so nobody
-    // wonders where 1.4 GB went; Help, Remove Sample Run deletes it again
+    // wonders where 1.4 GB went; Help, Remove Demo Data deletes it again
     const showWhere = (verb, note) => {
         if (!where || !folder) return;
         where.textContent = '';
-        where.append('The sample ' + verb + ' ');
+        // dry, one word: the same line whether it is still to come or already here
+        where.append('Location: ');
         const c = document.createElement('code');
         c.textContent = folder;
         where.append(c);
         if (note) where.append(note);
         where.classList.remove('hidden');
     };
+    // at rest, before the first download, the size is said next to the link, so
+    // nobody starts 600 MB by accident; once it is on disk there is nothing to say
+    const sizeHint = () => { count.textContent = ready ? '' : '(600 MB)'; };
     const busy = on => {
         track.classList.remove('shimmer');
-        if (on) btn.classList.remove('fail');
+        if (on) { btn.classList.remove('fail'); btn.title = ''; }
         btn.disabled = on;
         if (openBtn) openBtn.disabled = on;
         track.classList.toggle('hidden', !on);
-        if (!on) count.textContent = '';
+        if (!on) sizeHint();
     };
     // a download already running (started by --sample, or this page reloaded
     // halfway through one) shows its progress here too, not only one begun by a click
     window.electronAPI.sampleStatus().then(st => {
         ready = !!st.ready;
         folder = st.folder || '';
+        sizeHint();
         if (st.busy) { busy(true); btn.textContent = 'Downloading'; showWhere('goes to'); }
-        else if (ready) { btn.textContent = 'Open the sample run'; showWhere('is kept in'); }
+        else if (ready) { btn.textContent = 'Open the demo data'; showWhere('is kept in'); }
     }).catch(() => {});
     // resumable: the part already downloaded is kept, so the next click goes on
     // from there; false when it had to be deleted (a damaged download)
     const failed = (msg, resumable = true) => {
         busy(false);
         btn.classList.add('fail');
+        // the reason, on hover: retrying will not help a full disk or no internet,
+        // and the user should be able to see which it was
+        btn.title = (msg ? 'Reason: ' + msg + '.' : '') +
+            (!ready && resumable ? ' The next try goes on where this one stopped.' : '');
         if (msg) console.warn('Sample run:', msg);
         if (ready) {
             btn.textContent = 'Could not open, try again';
             showWhere('is kept in');
         } else {
             btn.textContent = 'Download failed, try again';
-            showWhere('goes to', resumable ? '; the download goes on where it stopped' : '');
+            // the path line stays one line, so the column does not move; that the
+            // download resumes is said in the hover text with the reason
+            showWhere('goes to');
         }
     };
     window.electronAPI.onSampleProgress(s => {

@@ -735,22 +735,22 @@ function createMenu() {
         },
         { type: 'separator' },
         {
-          label: 'Remove Sample Run...',
+          label: 'Remove Demo Data...',
           click: async () => {
             const st = sample.status();
             if (!st.ready) {
-              dialog.showMessageBox(mainWindow, { type: 'info', message: 'The sample run is not on this computer.' });
+              dialog.showMessageBox(mainWindow, { type: 'info', message: 'The demo data is not on this computer.' });
               return;
             }
             const { response } = await dialog.showMessageBox(mainWindow, {
               type: 'question', buttons: ['Remove', 'Cancel'], defaultId: 1, cancelId: 1,
-              message: 'Remove the sample run from this computer?',
+              message: 'Remove the demo data from this computer?',
               detail: 'It frees about 1.4 GB. It can be downloaded again from the welcome screen.',
             });
             if (response !== 0) return;
             const openNow = store.get('dataPath', '') === st.folder;
             const res = sample.remove();
-            if (!res.success) { dialog.showErrorBox('Sample run', res.error); return; }
+            if (!res.success) { dialog.showErrorBox('Demo data', res.error); return; }
             if (openNow) {
               // the open run was the sample: back to the welcome screen
               store.delete('dataPath'); store.delete('mbtilesPath');
@@ -819,8 +819,8 @@ app.whenReady().then(async () => {
     // --sample: the sample run, downloaded first if it is not on this computer yet
     // sample.openSample reloads the window itself once the run is open
     sample.openSample().then(opened => {
-      console.log('Opened the sample run:', opened.path);
-    }).catch(e => console.error('--sample could not open the sample run:', e.message));
+      console.log('Opened the demo data:', opened.path);
+    }).catch(e => console.error('--sample could not open the demo data:', e.message));
   } else if (dataFlag >= 0) {
     const given = args[dataFlag].startsWith('--data=') ? args[dataFlag].slice(7) : args[dataFlag + 1];
     const folder = given ? path.resolve(given) : '';

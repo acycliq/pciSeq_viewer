@@ -4,7 +4,7 @@
 // The run is one tar.zst archive in the pciSeq documentation bucket. The first
 // click downloads it into the app's own data folder, checks its sha256, unpacks
 // it and opens it; every later click opens the unpacked copy straight away.
-// Help, Remove Sample Run frees the space again.
+// Help, Remove Demo Data frees the space again.
 //
 // No new dependency: Node's zlib decodes zstd (Node 22.15 and newer, Electron 40
 // ships Node 24), and the tar is read by the few lines in untar() below. The
@@ -109,7 +109,7 @@ function checkSpace(have) {
   const need = (SAMPLE.bytes - have) + SAMPLE.unpacked + 100e6;
   if (free < need) {
     const gb = n => (n / 1e9).toFixed(1);
-    const e = new Error(`not enough space on the disk: the sample needs ${gb(need)} GB, ${gb(free)} GB are free`);
+    const e = new Error(`not enough space on the disk: the demo data needs ${gb(need)} GB, ${gb(free)} GB are free`);
     e.resumable = true;
     throw e;
   }
@@ -248,7 +248,7 @@ async function openSample() {
         await unpack();
       }
       const opened = dataLoader.openDataFolder(folder());
-      if (!opened.success) throw new Error(opened.error || 'the sample run could not be opened');
+      if (!opened.success) throw new Error(opened.error || 'the demo data could not be opened');
       send({ phase: 'done' });
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.reload();
       return opened;
@@ -267,7 +267,7 @@ function status() {
 }
 
 function remove() {
-  if (busy) return { success: false, error: 'the sample run is still downloading' };
+  if (busy) return { success: false, error: 'the demo data is still downloading' };
   fs.rmSync(root(), { recursive: true, force: true });
   return { success: true };
 }

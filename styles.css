@@ -504,8 +504,10 @@ body {
 /* the sample's download bar, sitting above the footer line */
 .welcome-bar {
     display: block;
+    /* as wide as the door above it */
+    width: min(346px, 100%);
     height: 2px;
-    margin: 0 0 8px;
+    margin: 0 auto 8px;
     border-radius: 1px;
     background: rgba(255, 255, 255, 0.08);
     overflow: hidden;
@@ -573,8 +575,35 @@ body {
     border-bottom-color: transparent;
 }
 
+.welcome-links {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: baseline;
+}
+
+.welcome-links-left {
+    text-align: right;
+}
+
+.welcome-links-right {
+    text-align: left;
+    white-space: nowrap;
+}
+
 .welcome-sep {
-    padding: 0 6px;
+    padding: 0 8px;
+}
+
+/* the bar and the path line keep their place when they are not shown, so the
+   column does not move when a download starts or ends */
+.welcome-foot #sampleRunProgress.hidden,
+.welcome-foot #sampleRunWhere.hidden {
+    display: block !important;
+    visibility: hidden;
+}
+
+.welcome-foot #sampleRunWhere {
+    min-height: 1.8em;
 }
 
 .welcome-count {

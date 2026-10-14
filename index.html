@@ -59,7 +59,7 @@
         <div class="welcome-col">
             <img class="welcome-mark" src="src/ui/poppy.png" alt="" draggable="false">
             <h2 class="welcome-title">pciSeq Viewer</h2>
-            <p class="welcome-lede">Open the output of a pciSeq run, or try the sample.</p>
+            <p class="welcome-lede">Open the output of a pciSeq run, or try the demo data.</p>
 
             <div class="welcome-doors">
                 <button id="emptyStateBtn" class="welcome-door" type="button">
@@ -74,11 +74,12 @@
                 <!-- the sample run (electron/sample.js): a finished run to try the viewer on;
                      while it downloads, the bar above the line carries the progress -->
                 <span id="sampleRunProgress" class="welcome-bar hidden"><i id="sampleRunBar"></i></span>
-                <span>
-                    <a href="https://acycliq.github.io/pciSeq_viewer/docs/" target="_blank" rel="noopener">Documentation</a>
+                <!-- three columns, the dot fixed in the middle, so the link's changing
+                     text never moves Documentation -->
+                <span class="welcome-links" aria-live="polite">
+                    <span class="welcome-links-left"><a href="https://acycliq.github.io/pciSeq_viewer/docs/" target="_blank" rel="noopener">Documentation</a></span>
                     <span class="welcome-sep" aria-hidden="true">&middot;</span>
-                    <button id="sampleRunBtn" class="welcome-sample" type="button">Try the sample run</button>
-                    <span id="sampleRunCount" class="welcome-count"></span>
+                    <span class="welcome-links-right"><button id="sampleRunBtn" class="welcome-sample" type="button">Try the demo data</button> <span id="sampleRunCount" class="welcome-count"></span></span>
                 </span>
                 <span id="sampleRunWhere" class="hidden"></span>
             </p>
