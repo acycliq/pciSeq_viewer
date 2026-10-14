@@ -69,11 +69,13 @@
                 </button>
                 <!-- the sample run (electron/sample.js): a finished run to try the viewer on -->
                 <button id="sampleRunBtn" class="welcome-door" type="button">
-                    <svg class="welcome-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-                    <b>Try the sample run</b>
-                    <span id="sampleRunNote" class="welcome-text">Mouse hippocampus, 25,000 cells, 3 million spots. A 600 MB download the first time.</span>
-                    <span id="sampleRunProgress" class="welcome-bar hidden"><i id="sampleRunBar"></i></span>
-                    <span id="sampleRunMeta" class="welcome-meta hidden"><span id="sampleRunPhase">Downloading</span><span id="sampleRunCount"></span></span>
+                    <span id="sampleRunIcon"><svg class="welcome-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span>
+                    <b id="sampleRunTitle">Try the sample run</b>
+                    <span class="welcome-swap">
+                        <span id="sampleRunNote" class="welcome-text">Mouse hippocampus, 25,000 cells, 3 million spots. A 600 MB download the first time.</span>
+                        <span id="sampleRunProgress" class="welcome-bar hidden"><i id="sampleRunBar"></i></span>
+                        <span id="sampleRunMeta" class="welcome-meta hidden"><span id="sampleRunPhase">Downloading</span><span id="sampleRunCount"></span></span>
+                    </span>
                 </button>
             </div>
 

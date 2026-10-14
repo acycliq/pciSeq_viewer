@@ -427,6 +427,48 @@ body {
 .welcome-door:focus-visible {
     outline: none;
     border-color: rgba(16, 185, 129, 0.8);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+/* the part of the sample door that changes, text or bar, keeps one height so the
+   door does not jump when a download starts */
+.welcome-swap {
+    display: block;
+    min-height: 60px;
+}
+
+/* a failed download: a red edge, a red icon and a red note */
+.welcome-door.fail {
+    border-color: rgba(239, 68, 68, 0.55);
+}
+
+.welcome-door.fail .welcome-text {
+    color: #f2a3a3;
+}
+
+.welcome-door.fail .welcome-ic {
+    color: #ef4444;
+}
+
+/* checking and unpacking have no byte count: a short stripe slides along the bar,
+   so the door looks busy rather than stuck */
+.welcome-bar.shimmer {
+    position: relative;
+}
+
+.welcome-bar.shimmer i {
+    position: absolute;
+    width: 40% !important;
+    animation: welcome-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes welcome-slide {
+    from { left: -40%; }
+    to { left: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .welcome-bar.shimmer i { animation: none; left: 0; width: 100% !important; }
 }
 
 /* the other door while the sample downloads: dimmed, not flattened */
