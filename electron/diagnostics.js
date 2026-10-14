@@ -10,6 +10,16 @@ let diagnosticsMeta = null;
 let diagnosticsSetupWindow = null;
 let hasCellInefficiency = false;
 let hasGeneInefficiency = false;
+// format 2 of diagnostics.db (October 2026): area_factor per cell in place of the
+// scaled_means blob, with the shared matrix mean_expression_adj in the metadata;
+// the candidate ids of a spot as an int32 blob of the cells only (format 1: JSON
+// text with the background 0 last); the spot blobs without the background slot;
+// gene_inefficiency gone, logeta_bar per gene in the metadata instead; and no
+// bonus column on a run without InsideCellBonus. Both formats are read here, and
+// the format is decided once, at open, from the file's own format_version: a file
+// without the key is from before the versions and is read as format 1.
+let dbFormat = 1;
+let meanExpressionAdj = null;   // Float32Array of nG * nK, format 2 only
 let hasBonus = false;
 let hasMrf = false;
 let hasAssignedClassIdx = false;
@@ -73,6 +83,18 @@ function openDiagnosticsDatabase(dbPath) {
   // Check if mrf column exists in cells table (needed for posterior reconstruction)
   const cellCols = diagnosticsDb.prepare("PRAGMA table_info(cells)").all();
   hasMrf = cellCols.some(col => col.name === 'mrf');
+  dbFormat = Number(diagnosticsMeta.format_version) >= 2 ? 2 : 1;
+  if (dbFormat === 2) {
+    // what format 2 moved out of the cells and spots tables; refuse a file that
+    // says format 2 and lacks them rather than answer with NaN
+    if (!cellCols.some(col => col.name === 'area_factor')) throw new Error('format 2 diagnostics.db without an area_factor column');
+    if (!Array.isArray(diagnosticsMeta.mean_expression_adj)) throw new Error('format 2 diagnostics.db without mean_expression_adj');
+    if (!Array.isArray(diagnosticsMeta.logeta_bar)) throw new Error('format 2 diagnostics.db without logeta_bar');
+    // row by row, gene g class k at g * nK + k, the layout of the old scaled_means blob
+    meanExpressionAdj = Float32Array.from(diagnosticsMeta.mean_expression_adj.flat());
+  } else {
+    meanExpressionAdj = null;
+  }
   hasAssignedClassIdx = cellCols.some(col => col.name === 'assigned_class_idx');
 
   // Check if the tie freezing columns exist (older DBs will not have them)
@@ -93,6 +115,8 @@ function closeDiagnosticsDatabase() {
   diagnosticsMeta = null;
   hasCellInefficiency = false;
   hasGeneInefficiency = false;
+  dbFormat = 1;
+  meanExpressionAdj = null;
   hasBonus = false;
   hasMrf = false;
   hasFrozen = false;
@@ -241,15 +265,19 @@ async function querySpot(spotId) {
     if (geneIdx < 0 || geneIdx >= gene_panel.length) throw new Error(`Invalid gene index ${geneIdx} for spot ${spotId}`);
     const geneName = gene_panel[geneIdx];
 
-    // 2. Strict Neighbor Data
-    const neighIdsFull = JSON.parse(row.neighbor_cell_ids || '[]');
-    if (!neighIdsFull.length) throw new Error(`No neighbors found for spot ${spotId}`);
-
-    // Excludes the last entry (corresponds to the background).
-    // Safe to remove the last element as the background is always at the end.
-    const n = neighIdsFull.length - 1;
-    if (n < 0) throw new Error(`Malformed neighbor data for spot ${spotId}`);
-    const neighIds = neighIdsFull.slice(0, n);
+    // 2. Strict Neighbor Data. Format 2 stores the cells only, as int32; format 1
+    // a JSON list with the background 0 at the end, which is dropped here.
+    let neighIds;
+    if (dbFormat === 2) {
+      if (!Buffer.isBuffer(row.neighbor_cell_ids)) throw new Error(`Malformed neighbor data for spot ${spotId}: format 2 expects an int32 blob`);
+      neighIds = Array.from(new Int32Array(row.neighbor_cell_ids.buffer, row.neighbor_cell_ids.byteOffset, row.neighbor_cell_ids.byteLength / 4));
+    } else {
+      const neighIdsFull = JSON.parse(row.neighbor_cell_ids || '[]');
+      if (!neighIdsFull.length) throw new Error(`No neighbors found for spot ${spotId}`);
+      neighIds = neighIdsFull.slice(0, neighIdsFull.length - 1);
+    }
+    const n = neighIds.length;
+    if (n < 1) throw new Error(`Malformed neighbor data for spot ${spotId}`);
 
     // 3. Strict Buffer Decoding
     if (!row.mvn_loglik || !row.attention || !row.expr_fluct) throw new Error(`Missing score buffers for spot ${spotId}`);
@@ -259,12 +287,21 @@ async function querySpot(spotId) {
     const cellIneff = (hasCellInefficiency && row.cell_inefficiency)
       ? new Float32Array(row.cell_inefficiency.buffer, row.cell_inefficiency.byteOffset, n)
       : null;
-    const geneIneff = (hasGeneInefficiency && row.gene_inefficiency)
-      ? new Float32Array(row.gene_inefficiency.buffer, row.gene_inefficiency.byteOffset, n)
-      : null;
+    // the gene term is one number per gene: a blob in format 1, logeta_bar in the
+    // metadata in format 2
+    let geneIneff = null;
+    if (dbFormat === 2) {
+      const le = diagnosticsMeta.logeta_bar[geneIdx];
+      if (typeof le !== 'number') throw new Error(`Incomplete database: no logeta_bar for gene index ${geneIdx}`);
+      geneIneff = new Float32Array(n).fill(le);
+    } else if (hasGeneInefficiency && row.gene_inefficiency) {
+      geneIneff = new Float32Array(row.gene_inefficiency.buffer, row.gene_inefficiency.byteOffset, n);
+    }
+    // no bonus column: in format 2 that means the run had no InsideCellBonus, so
+    // the term is zero; in an older file it means the column was not saved yet
     const bonus = (hasBonus && row.bonus)
       ? new Float32Array(row.bonus.buffer, row.bonus.byteOffset, n)
-      : null;
+      : (dbFormat === 2 ? new Float32Array(n) : null);
 
     // 4. Strict Label Mapping
     let neighborLabels = neighIds.map(id => id);
@@ -364,9 +401,10 @@ async function queryCell(cellId, userClass, topN = 10) {
 
   try {
     // Query SQLite for this cell's data. Include mrf column if present.
+    const scaledCol = dbFormat === 2 ? 'area_factor' : 'scaled_means';
     const baseCols = hasMrf
-      ? 'scaled_means, theta_bar, gene_count, class_prob, mrf'
-      : 'scaled_means, theta_bar, gene_count, class_prob';
+      ? scaledCol + ', theta_bar, gene_count, class_prob, mrf'
+      : scaledCol + ', theta_bar, gene_count, class_prob';
     const frozenCols = hasFrozen ? ', frozen_eta_bar, frozen_log_prior, frozen_iter' : '';
     const savedCols = hasSavedScore ? ', gene_loglik, runner_up_idx, contr_assigned, contr_runner_up' : '';
     const selectCellCols = 'SELECT ' + baseCols + frozenCols + savedCols + ' FROM cells WHERE ' + cellKey + ' = ?';
@@ -376,7 +414,14 @@ async function queryCell(cellId, userClass, topN = 10) {
     }
 
     // Convert BLOBs to Float32Arrays
-    const scaledMeans = new Float32Array(row.scaled_means.buffer, row.scaled_means.byteOffset, nG * nK);
+    // the expected counts before eta and theta: area_factor times the shared matrix
+    // (format 2), or the cell's own blob (format 1)
+    let scaledMeans;
+    if (dbFormat === 2) {
+      scaledMeans = meanExpressionAdj.map(v => Math.fround(v * row.area_factor));
+    } else {
+      scaledMeans = new Float32Array(row.scaled_means.buffer, row.scaled_means.byteOffset, nG * nK);
+    }
     const thetaBar = new Float32Array(row.theta_bar.buffer, row.theta_bar.byteOffset, nK);
     const geneCount = new Float32Array(row.gene_count.buffer, row.gene_count.byteOffset, nG);
     const classProb = new Float32Array(row.class_prob.buffer, row.class_prob.byteOffset, nK);
