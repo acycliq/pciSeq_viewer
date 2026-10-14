@@ -53,7 +53,8 @@
     <!-- Initial loading curtain overlay (blocks and hides controls) -->
     <div id="appCurtain" class="app-curtain"></div>
     
-    <!-- Empty State / Welcome Screen (Electron only): two doors, open a run or the sample run -->
+    <!-- Empty State / Welcome Screen (Electron only): one door to open a run,
+         the sample as a quiet link in the footer -->
     <div id="emptyState" class="empty-state welcome hidden">
         <div class="welcome-col">
             <img class="welcome-mark" src="src/ui/poppy.png" alt="" draggable="false">
@@ -67,21 +68,19 @@
                     <b>Open a run</b>
                     <span class="welcome-text">The <code>viewer_data</code> folder a run of pciSeq.fit wrote.</span>
                 </button>
-                <!-- the sample run (electron/sample.js): a finished run to try the viewer on -->
-                <button id="sampleRunBtn" class="welcome-door" type="button">
-                    <span id="sampleRunIcon"><svg class="welcome-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span>
-                    <b id="sampleRunTitle">Try the sample run</b>
-                    <span class="welcome-swap">
-                        <span id="sampleRunNote" class="welcome-text">Mouse hippocampus, 25,000 cells, 3 million spots. A 600 MB download the first time.</span>
-                        <span id="sampleRunProgress" class="welcome-bar hidden"><i id="sampleRunBar"></i></span>
-                        <span id="sampleRunMeta" class="welcome-meta hidden"><span id="sampleRunPhase">Downloading</span><span id="sampleRunCount"></span></span>
-                    </span>
-                </button>
             </div>
 
             <p class="welcome-foot">
+                <!-- the sample run (electron/sample.js): a finished run to try the viewer on;
+                     while it downloads, the bar above the line carries the progress -->
+                <span id="sampleRunProgress" class="welcome-bar hidden"><i id="sampleRunBar"></i></span>
+                <span>
+                    <a href="https://acycliq.github.io/pciSeq_viewer/docs/" target="_blank" rel="noopener">Documentation</a>
+                    <span class="welcome-sep" aria-hidden="true">&middot;</span>
+                    <button id="sampleRunBtn" class="welcome-sample" type="button">Try the sample run</button>
+                    <span id="sampleRunCount" class="welcome-count"></span>
+                </span>
                 <span id="sampleRunWhere" class="hidden"></span>
-                <a href="https://acycliq.github.io/pciSeq_viewer/docs/" target="_blank" rel="noopener">Documentation</a>
             </p>
         </div>
     </div>

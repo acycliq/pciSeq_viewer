@@ -11,7 +11,7 @@
 // archive is ours, plain files and folders in one viewer_data folder, so that
 // is all the reader has to know.
 
-const { app, ipcMain } = require('electron');
+const { app, ipcMain, Menu } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -24,7 +24,31 @@ const SAMPLE = {
   url: 'https://storage.googleapis.com/pciseq_documentation/demo/pciSeq_demo_data.tar.zst',
   bytes: 598358587,
   sha256: 'd8f248f321a712cd929b217ba445bff95ba49824d8ca175b7d56d88c9675fefa',
+  unpacked: 1526199647,     // the files inside, once unpacked
 };
+
+// a download that receives nothing for this long is given up, so a connection that
+// goes quiet without closing ends in an error the user can retry, not a frozen bar
+const IDLE_MS = 30000;
+
+// the menu items that would open another run while the sample is downloading; they
+// are greyed out until it is done, or the sample would open over the user's run
+const MENU_IDS = ['open-dataset', 'open-tiles', 'close-dataset'];
+function menuEnabled(on) {
+  const menu = Menu.getApplicationMenu();
+  if (!menu) return;
+  for (const id of MENU_IDS) {
+    const item = menu.getMenuItemById(id);
+    if (item) item.enabled = on;
+  }
+}
+
+// an error the next click cannot fix by resuming: the partial file is gone
+function fresh(message) {
+  const e = new Error(message);
+  e.resumable = false;
+  return e;
+}
 
 let mainWindow = null;
 let dataLoader = null;
@@ -54,7 +78,7 @@ function send(state) {
 function get(url, start, hops = 0) {
   return new Promise((resolve, reject) => {
     const headers = start > 0 ? { Range: `bytes=${start}-` } : {};
-    https.get(url, { headers }, res => {
+    const req = https.get(url, { headers }, res => {
       if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && hops < 5) {
         res.resume();
         resolve(get(new URL(res.headers.location, url).toString(), start, hops + 1));
@@ -64,8 +88,31 @@ function get(url, start, hops = 0) {
         res.resume();
         reject(new Error(`the download answered ${res.statusCode}`));
       }
-    }).on('error', reject);
+    });
+    req.on('error', reject);
+    // no answer at all, a server or network that never replies
+    req.setTimeout(IDLE_MS, () => req.destroy(new Error('the server did not answer')));
   });
+}
+
+// space for what is still to come: the rest of the archive and the unpacked files,
+// with a little room on top. Checked before the download, not discovered halfway
+// through the unpack.
+function checkSpace(have) {
+  let free;
+  try {
+    const st = fs.statfsSync(root());
+    free = st.bavail * st.bsize;
+  } catch {
+    return;                                    // cannot tell: let it try
+  }
+  const need = (SAMPLE.bytes - have) + SAMPLE.unpacked + 100e6;
+  if (free < need) {
+    const gb = n => (n / 1e9).toFixed(1);
+    const e = new Error(`not enough space on the disk: the sample needs ${gb(need)} GB, ${gb(free)} GB are free`);
+    e.resumable = true;
+    throw e;
+  }
 }
 
 async function download() {
@@ -73,8 +120,11 @@ async function download() {
   const part = archive() + '.part';
   let have = fs.existsSync(part) ? fs.statSync(part).size : 0;
   if (have > SAMPLE.bytes) { fs.rmSync(part); have = 0; }
+  checkSpace(have);
   if (have < SAMPLE.bytes) {
     const res = await get(SAMPLE.url, have);
+    // data that stops coming: give up after a while, the part on disk is kept
+    res.setTimeout(IDLE_MS, () => res.destroy(new Error('the connection stalled')));
     // a server that ignores the range sends the whole file again: start over
     if (have > 0 && res.statusCode === 200) have = 0;
     let got = have, last = 0;
@@ -91,7 +141,7 @@ async function download() {
   const sum = hash.digest('hex');
   if (sum !== SAMPLE.sha256) {
     fs.rmSync(part, { force: true });
-    throw new Error('the downloaded file is damaged (its checksum does not match). Try again.');
+    throw fresh('the downloaded file was damaged and has been deleted');
   }
   fs.renameSync(part, archive());
 }
@@ -186,22 +236,28 @@ async function unpack() {
 
 // Download and unpack when needed, then open it like any data folder. The
 // renderer reloads on success, the same as after Open Data Folder.
+// The window is reloaded here, in the main process, once the sample is open, not
+// by the page that was clicked: that page may have been reloaded meanwhile, and
+// --sample has no click at all.
 async function openSample() {
   if (!busy) {
     busy = (async () => {
       if (!ready()) {
+        menuEnabled(false);
         if (!fs.existsSync(archive())) await download();
         await unpack();
       }
       const opened = dataLoader.openDataFolder(folder());
       if (!opened.success) throw new Error(opened.error || 'the sample run could not be opened');
       send({ phase: 'done' });
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.reload();
       return opened;
     })().catch(e => {
-      // whoever started it, a click or --sample, the welcome screen says what went wrong
-      send({ phase: 'error', error: e.message });
+      // whoever started it, a click or --sample, the welcome screen says what went
+      // wrong, and whether the next click goes on from where this one stopped
+      send({ phase: 'error', error: e.message, resumable: e.resumable !== false });
       throw e;
-    }).finally(() => { busy = null; });
+    }).finally(() => { busy = null; menuEnabled(true); });
   }
   return busy;
 }
@@ -221,7 +277,7 @@ ipcMain.handle('sample-open', async () => {
   try {
     return await openSample();
   } catch (e) {
-    return { success: false, error: e.message };
+    return { success: false, error: e.message, resumable: e.resumable !== false };
   }
 });
 

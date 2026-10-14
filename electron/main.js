@@ -481,6 +481,7 @@ function createMenu() {
       label: 'File',
       submenu: [
         {
+          id: 'open-dataset',
           label: 'Open Dataset...',
           accelerator: 'CmdOrCtrl+O',
           click: async () => {
@@ -543,6 +544,7 @@ function createMenu() {
           }
         },
         {
+          id: 'close-dataset',
           label: 'Close Dataset',
           click: () => {
             store.delete('dataPath');
@@ -563,6 +565,7 @@ function createMenu() {
           }
         },
         {
+          id: 'open-tiles',
           label: 'Open Background Tiles...',
           accelerator: 'CmdOrCtrl+Shift+O',
           click: async () => {
@@ -814,9 +817,9 @@ app.whenReady().then(async () => {
   const dataFlag = args.findIndex(a => a === '--data' || a.startsWith('--data='));
   if (args.includes('--sample')) {
     // --sample: the sample run, downloaded first if it is not on this computer yet
+    // sample.openSample reloads the window itself once the run is open
     sample.openSample().then(opened => {
       console.log('Opened the sample run:', opened.path);
-      if (mainWindow) mainWindow.reload();
     }).catch(e => console.error('--sample could not open the sample run:', e.message));
   } else if (dataFlag >= 0) {
     const given = args[dataFlag].startsWith('--data=') ? args[dataFlag].slice(7) : args[dataFlag + 1];
