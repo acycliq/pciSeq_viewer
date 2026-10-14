@@ -6,6 +6,11 @@
 // it and opens it; every later click opens the unpacked copy straight away.
 // Help, Remove Demo Data frees the space again.
 //
+// The archive is encrypted with a keyword, AES-256-GCM (made by
+// dev_notes/demo_clip/encrypt_demo.sh), so only people given the keyword can use
+// it. The keyword is checked against the file's 58-byte header before the big
+// download, used once to decrypt while unpacking, and never saved.
+//
 // No new dependency: Node's zlib decodes zstd (Node 22.15 and newer, Electron 40
 // ships Node 24), and the tar is read by the few lines in untar() below. The
 // archive is ours, plain files and folders in one viewer_data folder, so that
@@ -21,11 +26,39 @@ const { pipeline } = require('stream/promises');
 const { Writable } = require('stream');
 
 const SAMPLE = {
-  url: 'https://storage.googleapis.com/pciseq_documentation/demo/pciSeq_demo_data.tar.zst',
-  bytes: 598358587,
-  sha256: 'd8f248f321a712cd929b217ba445bff95ba49824d8ca175b7d56d88c9675fefa',
+  url: 'https://storage.googleapis.com/pciseq_documentation/demo/pciSeq_demo_data.tar.zst.enc',
+  bytes: 598358661,         // the encrypted file: header, data, tag
+  sha256: 'cd1e638b131325dce637d47fb62616c1de8608407581b60e158710ebd5722c06',
   unpacked: 1526199647,     // the files inside, once unpacked
 };
+
+// The encrypted file, as encrypt_demo.js writes it: 'PCSQENC1', scrypt N (4 bytes,
+// big endian), r, p, salt (16), iv (12), a keyword check (16), then the data, then
+// the 16-byte GCM tag.
+const HEADER = 58, TAG = 16;
+
+// a keyword error: says so plainly, and keeps whatever was already downloaded
+function wrongKeyword() {
+  const e = new Error('wrong keyword');
+  e.code = 'WRONG_KEYWORD';
+  e.resumable = true;
+  return e;
+}
+
+// the key from the keyword and the header; throws on a wrong keyword or a file
+// that is not ours
+function keyFrom(keyword, header) {
+  if (header.length < HEADER || header.toString('ascii', 0, 8) !== 'PCSQENC1') {
+    throw new Error('the demo file is not in the expected format');
+  }
+  if (!keyword) throw wrongKeyword();
+  const N = header.readUInt32BE(8), r = header[12], p = header[13];
+  const salt = header.subarray(14, 30), iv = header.subarray(30, 42), check = header.subarray(42, 58);
+  const key = crypto.scryptSync(String(keyword), salt, 32, { N, r, p, maxmem: 256 * 1024 * 1024 });
+  const mine = crypto.createHmac('sha256', key).update('pciseq-demo-check').digest().subarray(0, 16);
+  if (!crypto.timingSafeEqual(mine, check)) throw wrongKeyword();
+  return { key, iv };
+}
 
 // a download that receives nothing for this long is given up, so a connection that
 // goes quiet without closing ends in an error the user can retry, not a frozen bar
@@ -61,7 +94,7 @@ function init(mw, loader) {
 
 const root = () => path.join(app.getPath('userData'), 'sample_run');
 const folder = () => path.join(root(), 'viewer_data');
-const archive = () => path.join(root(), 'pciSeq_demo_data.tar.zst');
+const archive = () => path.join(root(), 'pciSeq_demo_data.tar.zst.enc');
 
 // unpacked and complete: the marker is written last, so a crash halfway through
 // the unpack leaves no marker and the next click unpacks again
@@ -75,13 +108,13 @@ function send(state) {
 
 // GET with a Range header when part of the file is already on disk, so a broken
 // download goes on where it stopped. Redirects are followed, up to five.
-function get(url, start, hops = 0) {
+function get(url, start, hops = 0, range = null) {
   return new Promise((resolve, reject) => {
-    const headers = start > 0 ? { Range: `bytes=${start}-` } : {};
+    const headers = range ? { Range: range } : start > 0 ? { Range: `bytes=${start}-` } : {};
     const req = https.get(url, { headers }, res => {
       if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && hops < 5) {
         res.resume();
-        resolve(get(new URL(res.headers.location, url).toString(), start, hops + 1));
+        resolve(get(new URL(res.headers.location, url).toString(), start, hops + 1, range));
       } else if (res.statusCode === 200 || res.statusCode === 206) {
         resolve(res);
       } else {
@@ -93,6 +126,25 @@ function get(url, start, hops = 0) {
     // no answer at all, a server or network that never replies
     req.setTimeout(IDLE_MS, () => req.destroy(new Error('the server did not answer')));
   });
+}
+
+// the first bytes of the file: from what is already on disk when there is enough,
+// otherwise a range request for just the header
+async function readHeader() {
+  for (const f of [archive(), archive() + '.part']) {
+    if (fs.existsSync(f) && fs.statSync(f).size >= HEADER) {
+      const fd = fs.openSync(f, 'r');
+      const h = Buffer.alloc(HEADER);
+      fs.readSync(fd, h, 0, HEADER, 0);
+      fs.closeSync(fd);
+      return h;
+    }
+  }
+  const res = await get(SAMPLE.url, 0, 0, `bytes=0-${HEADER - 1}`);
+  const chunks = [];
+  let n = 0;
+  for await (const c of res) { chunks.push(c); n += c.length; if (n >= HEADER) { res.destroy(); break; } }
+  return Buffer.concat(chunks).subarray(0, HEADER);
 }
 
 // space for what is still to come: the rest of the archive and the unpacked files,
@@ -216,12 +268,33 @@ function untar(dest) {
   });
 }
 
-async function unpack() {
+async function unpack({ key, iv }) {
   send({ phase: 'unpack' });
   const tmp = path.join(root(), 'unpacking');
   fs.rmSync(tmp, { recursive: true, force: true });
   fs.mkdirSync(tmp, { recursive: true });
-  await pipeline(fs.createReadStream(archive()), zlib.createZstdDecompress(), untar(tmp));
+  // decrypt, decompress and untar in one stream. The tag sits at the end of the
+  // file and is read first; a changed byte makes the decipher fail at the end,
+  // and nothing reaches the folder the viewer opens, it is all still in tmp.
+  const size = fs.statSync(archive()).size;
+  const tag = Buffer.alloc(TAG);
+  const fd = fs.openSync(archive(), 'r');
+  fs.readSync(fd, tag, 0, TAG, size - TAG);
+  fs.closeSync(fd);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  try {
+    await pipeline(fs.createReadStream(archive(), { start: HEADER, end: size - TAG - 1 }),
+                   decipher, zlib.createZstdDecompress(), untar(tmp));
+  } catch (e) {
+    fs.rmSync(tmp, { recursive: true, force: true });
+    // the GCM tag did not match: a changed byte. The file is no use, start over
+    if (/authenticate/i.test(e.message)) {
+      fs.rmSync(archive(), { force: true });
+      throw fresh('the demo file failed its integrity check and has been deleted');
+    }
+    throw e;
+  }
   if (!fs.existsSync(path.join(tmp, 'viewer_data', 'arrow_cells'))) {
     throw new Error('the archive does not hold a viewer_data folder');
   }
@@ -239,13 +312,16 @@ async function unpack() {
 // The window is reloaded here, in the main process, once the sample is open, not
 // by the page that was clicked: that page may have been reloaded meanwhile, and
 // --sample has no click at all.
-async function openSample() {
+async function openSample(keyword) {
   if (!busy) {
     busy = (async () => {
       if (!ready()) {
         menuEnabled(false);
+        fs.mkdirSync(root(), { recursive: true });
+        // the keyword first, against the header: a wrong one costs 58 bytes, not 600 MB
+        const k = keyFrom(keyword, await readHeader());
         if (!fs.existsSync(archive())) await download();
-        await unpack();
+        await unpack(k);
       }
       const opened = dataLoader.openDataFolder(folder());
       if (!opened.success) throw new Error(opened.error || 'the demo data could not be opened');
@@ -255,7 +331,7 @@ async function openSample() {
     })().catch(e => {
       // whoever started it, a click or --sample, the welcome screen says what went
       // wrong, and whether the next click goes on from where this one stopped
-      send({ phase: 'error', error: e.message, resumable: e.resumable !== false });
+      send({ phase: 'error', error: e.message, resumable: e.resumable !== false, code: e.code || null });
       throw e;
     }).finally(() => { busy = null; menuEnabled(true); });
   }
@@ -273,11 +349,11 @@ function remove() {
 }
 
 ipcMain.handle('sample-status', () => status());
-ipcMain.handle('sample-open', async () => {
+ipcMain.handle('sample-open', async (_e, keyword) => {
   try {
-    return await openSample();
+    return await openSample(keyword);
   } catch (e) {
-    return { success: false, error: e.message, resumable: e.resumable !== false };
+    return { success: false, error: e.message, resumable: e.resumable !== false, code: e.code || null };
   }
 });
 

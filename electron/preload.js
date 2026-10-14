@@ -8,7 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
   // the sample run on the welcome screen (electron/sample.js)
   sampleStatus: () => ipcRenderer.invoke('sample-status'),
-  openSample: () => ipcRenderer.invoke('sample-open'),
+  openSample: (keyword) => ipcRenderer.invoke('sample-open', keyword),
   onSampleProgress: (handler) => ipcRenderer.on('sample-progress', (_e, state) => handler(state)),
   selectTilesFolder: () => ipcRenderer.invoke('select-tiles-folder'),
 

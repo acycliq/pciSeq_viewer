@@ -818,7 +818,8 @@ app.whenReady().then(async () => {
   if (args.includes('--sample')) {
     // --sample: the sample run, downloaded first if it is not on this computer yet
     // sample.openSample reloads the window itself once the run is open
-    sample.openSample().then(opened => {
+    // the keyword from the environment, there is no screen to type it into yet
+    sample.openSample(process.env.PCISEQ_DEMO_KEYWORD).then(opened => {
       console.log('Opened the demo data:', opened.path);
     }).catch(e => console.error('--sample could not open the demo data:', e.message));
   } else if (dataFlag >= 0) {

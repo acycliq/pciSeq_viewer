@@ -488,6 +488,8 @@ function setupSampleRun() {
     const count = document.getElementById('sampleRunCount');
     const where = document.getElementById('sampleRunWhere');
     const kbd = document.getElementById('openRunKbd');
+    const keyRow = document.getElementById('sampleKeyRow');
+    const keyInput = document.getElementById('sampleKey');
     if (kbd && window.electronAPI && window.electronAPI.platform === 'darwin') kbd.textContent = '\u2318 O';
     if (!btn || !window.electronAPI || !window.electronAPI.openSample) return;
     const mb = n => Math.round(n / 1e6);
@@ -547,7 +549,11 @@ function setupSampleRun() {
         }
     };
     window.electronAPI.onSampleProgress(s => {
-        if (s.phase === 'error') { failed(s.error, s.resumable); return; }
+        if (s.phase === 'error') {
+            // a wrong keyword is answered by the click that sent it, with the field again
+            if (s.code !== 'WRONG_KEYWORD') failed(s.error, s.resumable);
+            return;
+        }
         if (!btn.disabled) { busy(true); showWhere('goes to'); }
         if (s.phase === 'download') {
             bar.style.width = (100 * s.done / s.total).toFixed(1) + '%';
@@ -566,17 +572,47 @@ function setupSampleRun() {
             count.textContent = '';
         }
     });
-    btn.onclick = async () => {
+    // the keyword: asked in place of the link the first time, never stored; the
+    // demo data once on this computer opens without it
+    const askKeyword = (wrong = false) => {
+        btn.classList.add('hidden');
+        count.classList.add('hidden');
+        keyRow.classList.remove('hidden');
+        keyRow.classList.toggle('wrong', wrong);
+        keyInput.value = '';
+        keyInput.placeholder = wrong ? 'Wrong keyword, try again' : 'Keyword, then Enter';
+        keyInput.focus();
+    };
+    const closeKeyword = () => {
+        keyRow.classList.add('hidden');
+        keyRow.classList.remove('wrong');
+        btn.classList.remove('hidden');
+        count.classList.remove('hidden');
+    };
+    const start = async keyword => {
         busy(true);
         showWhere('goes to');
         bar.style.width = '0';
         btn.textContent = 'Starting';
         count.textContent = '';
         // on success the main process reloads the window itself
-        const res = await window.electronAPI.openSample();
+        const res = await window.electronAPI.openSample(keyword);
         if (res && res.success) return;
+        if (res && res.code === 'WRONG_KEYWORD') { busy(false); askKeyword(true); return; }
         failed(res && res.error, !res || res.resumable !== false);
     };
+    btn.onclick = () => (ready ? start('') : askKeyword());
+    keyInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && keyInput.value) {
+            const k = keyInput.value;
+            keyInput.value = '';
+            closeKeyword();
+            start(k);
+        } else if (e.key === 'Escape') {
+            e.stopPropagation();
+            closeKeyword();
+        }
+    });
 }
 
 function showImageDimsPrompt() {
