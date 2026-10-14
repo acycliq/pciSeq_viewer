@@ -35,7 +35,7 @@ function init(mw, loader) {
   dataLoader = loader;
 }
 
-const root = () => path.join(app.getPath('userData'), 'sample-run');
+const root = () => path.join(app.getPath('userData'), 'sample_run');
 const folder = () => path.join(root(), 'viewer_data');
 const archive = () => path.join(root(), 'pciSeq_demo_data.tar.zst');
 
@@ -197,7 +197,11 @@ async function openSample() {
       if (!opened.success) throw new Error(opened.error || 'the sample run could not be opened');
       send({ phase: 'done' });
       return opened;
-    })().finally(() => { busy = null; });
+    })().catch(e => {
+      // whoever started it, a click or --sample, the welcome screen says what went wrong
+      send({ phase: 'error', error: e.message });
+      throw e;
+    }).finally(() => { busy = null; });
   }
   return busy;
 }
@@ -217,7 +221,6 @@ ipcMain.handle('sample-open', async () => {
   try {
     return await openSample();
   } catch (e) {
-    send({ phase: 'error', error: e.message });
     return { success: false, error: e.message };
   }
 });

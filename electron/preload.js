@@ -5,6 +5,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   // Folder selection methods
   selectDataFolder: () => ipcRenderer.invoke('select-data-folder'),
+  platform: process.platform,
   // the sample run on the welcome screen (electron/sample.js)
   sampleStatus: () => ipcRenderer.invoke('sample-status'),
   openSample: () => ipcRenderer.invoke('sample-open'),

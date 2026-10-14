@@ -477,61 +477,78 @@ function showEmptyState() {
     console.warn('Data folder not configured. Waiting for user selection.');
 }
 
-// The sample run button: opens the copy on disk, or downloads and unpacks it
-// first, showing how far it has got
+// The sample run door: opens the copy on disk, or downloads and unpacks it
+// first, its progress shown inside the door while the other door waits
 function setupSampleRun() {
     const btn = document.getElementById('sampleRunBtn');
+    const openBtn = document.getElementById('emptyStateBtn');
     const note = document.getElementById('sampleRunNote');
     const bar = document.getElementById('sampleRunBar');
     const track = document.getElementById('sampleRunProgress');
+    const meta = document.getElementById('sampleRunMeta');
+    const phase = document.getElementById('sampleRunPhase');
+    const count = document.getElementById('sampleRunCount');
     const where = document.getElementById('sampleRunWhere');
+    const kbd = document.getElementById('openRunKbd');
+    if (kbd && window.electronAPI && window.electronAPI.platform === 'darwin') kbd.textContent = '\u2318 O';
     if (!btn || !window.electronAPI || !window.electronAPI.openSample) return;
     const mb = n => Math.round(n / 1e6);
-    // where the sample lives on disk, said up front so nobody wonders where 1.4 GB went;
-    // Help, Remove Sample Run deletes it again
+    const busy = on => {
+        btn.classList.toggle('busy', on);
+        btn.disabled = on;
+        if (openBtn) openBtn.disabled = on;
+        note.classList.toggle('hidden', on);
+        track.classList.toggle('hidden', !on);
+        meta.classList.toggle('hidden', !on);
+    };
+    // where the sample lives on disk, said up front so nobody wonders where 1.4 GB
+    // went; Help, Remove Sample Run deletes it again
+    // a download already running (started by --sample, or this page reloaded
+    // halfway through one) shows its progress here too, not only one begun by a click
     window.electronAPI.sampleStatus().then(st => {
-        if (st.ready) note.textContent = 'A section of mouse hippocampus, 25,000 cells and 3 million spots. Already on this computer.';
+        if (st.busy) { busy(true); phase.textContent = 'Downloading'; }
+        if (st.ready) note.textContent = 'Mouse hippocampus, 25,000 cells, 3 million spots. Already on this computer.';
         if (where && st.folder) {
             where.textContent = '';
-            where.append(st.ready ? 'Kept in ' : 'It goes to ');
+            where.append(st.ready ? 'The sample is kept in ' : 'The sample goes to ');
             const c = document.createElement('code'); c.textContent = st.folder; where.append(c);
-            where.append('. Help, Remove Sample Run deletes it.');
             where.classList.remove('hidden');
         }
     }).catch(() => {});
+    const failed = msg => {
+        busy(false);
+        note.textContent = 'Could not open the sample run: ' + (msg || 'unknown error') +
+            ' Click to try again; a broken download goes on where it stopped.';
+    };
     window.electronAPI.onSampleProgress(s => {
+        if (s.phase === 'error') { failed(s.error); return; }
+        if (!btn.classList.contains('busy')) busy(true);
         if (s.phase === 'download') {
-            track.classList.remove('hidden');
             bar.style.width = (100 * s.done / s.total).toFixed(1) + '%';
-            note.textContent = `Downloading the sample run: ${mb(s.done)} of ${mb(s.total)} MB`;
+            phase.textContent = 'Downloading';
+            count.textContent = `${mb(s.done)} / ${mb(s.total)} MB`;
         } else if (s.phase === 'check') {
             bar.style.width = '100%';
-            note.textContent = 'Checking the download';
+            phase.textContent = 'Checking the download';
+            count.textContent = '';
         } else if (s.phase === 'unpack') {
-            note.textContent = 'Unpacking, a minute or so';
+            phase.textContent = 'Unpacking, a minute or so';
         } else if (s.phase === 'done') {
-            note.textContent = 'Opening';
+            phase.textContent = 'Opening';
         }
     });
     btn.onclick = async () => {
-        btn.disabled = true;
-        emptyStateBtnState(true);
+        busy(true);
+        bar.style.width = '0';
+        phase.textContent = 'Starting';
+        count.textContent = '';
         const res = await window.electronAPI.openSample();
         if (res && res.success) {
             window.location.reload();
             return;
         }
-        btn.disabled = false;
-        emptyStateBtnState(false);
-        track.classList.add('hidden');
-        note.textContent = 'The sample run could not be opened: ' + ((res && res.error) || 'unknown error') +
-            ' The button tries again, and a broken download goes on where it stopped.';
+        failed(res && res.error);
     };
-}
-
-function emptyStateBtnState(disabled) {
-    const b = document.getElementById('emptyStateBtn');
-    if (b) b.disabled = disabled;
 }
 
 function showImageDimsPrompt() {

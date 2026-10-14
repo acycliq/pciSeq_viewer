@@ -365,89 +365,180 @@ body {
     line-height: 1.5;
 }
 
-.empty-state-hint {
-    font-size: 13px;
-    margin-bottom: 30px;
-    color: #666;
-    background: rgba(0, 0, 0, 0.3);
-    padding: 10px;
-    border-radius: 6px;
-    display: inline-block;
+/* --- the welcome screen: the name, two doors, a quiet footer --------------- */
+.empty-state.welcome {
+    background: radial-gradient(1200px 700px at 50% 30%, #111827 0%, #0b0f19 60%);
 }
 
-.empty-state-hint code {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-family: monospace;
-    color: #ccc;
+.welcome-col {
+    width: 560px;
+    max-width: calc(100vw - 48px);
+    text-align: center;
 }
 
-.empty-state-btn {
-    font-size: 14px;
-    padding: 12px 24px;
-    min-width: 160px;
+.welcome-mark {
+    height: 64px;
+    width: auto;
+    margin: 0 auto 22px;
+    display: block;
+    user-select: none;
 }
 
-/* the sample run under the open button */
-.sample-run {
-    margin-top: 28px;
-    padding-top: 22px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+.empty-state h2.welcome-title {
+    font-weight: 500;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+    color: #e8eaed;
 }
 
-.sample-run .secondary-btn {
-    background: rgba(255, 255, 255, 0.08);
-    color: #c9ccd1;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 6px;
+.empty-state p.welcome-lede {
+    color: #8b919a;
+    font-size: 14.5px;
+    margin: 0 0 40px;
+}
+
+.welcome-doors {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    text-align: left;
+}
+
+.welcome-door {
+    position: relative;
+    display: block;
+    padding: 20px 20px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    color: #e8eaed;
+    font: inherit;
+    text-align: left;
     cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, opacity 0.15s;
 }
 
-.sample-run .secondary-btn:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.13);
+.welcome-door:hover:not(:disabled) {
+    border-color: rgba(16, 185, 129, 0.55);
+    background: rgba(16, 185, 129, 0.04);
 }
 
-.sample-run .secondary-btn:disabled {
+.welcome-door:focus-visible {
+    outline: none;
+    border-color: rgba(16, 185, 129, 0.8);
+}
+
+/* the other door while the sample downloads: dimmed, not flattened */
+.welcome-door:disabled {
     cursor: default;
-    opacity: 0.7;
+    opacity: 0.45;
 }
 
-.empty-state p.sample-run-note {
+/* the door that is busy keeps its full colour and a green edge */
+.welcome-door.busy,
+.welcome-door.busy:disabled {
+    opacity: 1;
+    border-color: rgba(16, 185, 129, 0.45);
+}
+
+.welcome-ic {
+    display: block;
+    width: 22px;
+    height: 22px;
+    color: #10b981;
+    margin-bottom: 14px;
+}
+
+.welcome-kbd {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    color: #5b616b;
+    font-size: 11px;
+    font-family: ui-monospace, monospace;
+}
+
+.welcome-door b {
+    display: block;
+    font-weight: 500;
+    font-size: 15px;
+    margin-bottom: 6px;
+}
+
+.welcome-text {
+    display: block;
+    color: #8b919a;
     font-size: 12.5px;
-    color: #777;
-    margin: 10px auto 0;
-    max-width: 360px;
+    line-height: 1.5;
 }
 
-.empty-state p.sample-run-where {
+.welcome-text code {
+    font-family: ui-monospace, monospace;
     font-size: 11.5px;
-    color: #666;
-    margin: 10px auto 0;
-    max-width: 400px;
-    word-break: break-all;
-    user-select: text;
+    color: #aeb3ba;
 }
 
-.sample-run-where code {
-    font-family: monospace;
-    color: #8a8f96;
-}
-
-.sample-run-progress {
-    width: 280px;
-    height: 4px;
-    margin: 14px auto 0;
-    border-radius: 2px;
+.welcome-bar {
+    display: block;
+    height: 2px;
+    margin-top: 14px;
+    border-radius: 1px;
     background: rgba(255, 255, 255, 0.08);
     overflow: hidden;
 }
 
-.sample-run-bar {
+.welcome-bar i {
+    display: block;
     height: 100%;
     width: 0;
     background: #10b981;
     transition: width 0.2s;
+}
+
+.welcome-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 11.5px;
+    color: #8b919a;
+    font-variant-numeric: tabular-nums;
+}
+
+.empty-state p.welcome-foot {
+    margin: 34px 0 0;
+    color: #5b616b;
+    font-size: 12px;
+    line-height: 1.8;
+}
+
+.welcome-foot #sampleRunWhere {
+    display: block;
+}
+
+.welcome-foot #sampleRunWhere.hidden {
+    display: none;
+}
+
+.welcome-foot code {
+    font-family: ui-monospace, monospace;
+    font-size: 11.5px;
+    color: #8b919a;
+    user-select: text;
+}
+
+.welcome-foot a {
+    color: #8b919a;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.welcome-foot a:hover {
+    color: #e8eaed;
+}
+
+@media (max-width: 620px) {
+    .welcome-doors { grid-template-columns: 1fr; }
 }
 
 .image-dims-content {

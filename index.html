@@ -53,23 +53,34 @@
     <!-- Initial loading curtain overlay (blocks and hides controls) -->
     <div id="appCurtain" class="app-curtain"></div>
     
-    <!-- Empty State / Welcome Screen (Electron only) -->
-    <div id="emptyState" class="empty-state hidden">
-        <div class="empty-state-content">
-            <div class="empty-state-icon">📂</div>
-            <h2>No Dataset Loaded</h2>
-            <p>Please select a data folder to begin.</p>
-            <p class="empty-state-hint">Choose the <code>viewer_data</code> folder pciSeq wrote. It needs <code>arrow_spots</code>, <code>arrow_cells</code> and <code>arrow_boundaries</code>. Optional: <code>diagnostics/diagnostics.db</code> for the cell and spot diagnostics and the AI chat, and an <code>.mbtiles</code> file for the background image.</p>
+    <!-- Empty State / Welcome Screen (Electron only): two doors, open a run or the sample run -->
+    <div id="emptyState" class="empty-state welcome hidden">
+        <div class="welcome-col">
+            <img class="welcome-mark" src="src/ui/poppy.png" alt="" draggable="false">
+            <h2 class="welcome-title">pciSeq Viewer</h2>
+            <p class="welcome-lede">Open the output of a pciSeq run, or try the sample.</p>
 
-            <button id="emptyStateBtn" class="accent-btn empty-state-btn">Open Data Folder</button>
-
-            <!-- the sample run (electron/sample.js): a finished run to try the viewer on -->
-            <div class="sample-run">
-                <button id="sampleRunBtn" class="secondary-btn empty-state-btn">Open the Sample Run</button>
-                <p id="sampleRunNote" class="sample-run-note">A section of mouse hippocampus, 25,000 cells and 3 million spots. The first time it is downloaded, about 600 MB.</p>
-                <div id="sampleRunProgress" class="sample-run-progress hidden"><div id="sampleRunBar" class="sample-run-bar"></div></div>
-                <p id="sampleRunWhere" class="sample-run-where hidden"></p>
+            <div class="welcome-doors">
+                <button id="emptyStateBtn" class="welcome-door" type="button">
+                    <svg class="welcome-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                    <span id="openRunKbd" class="welcome-kbd">Ctrl O</span>
+                    <b>Open a run</b>
+                    <span class="welcome-text">The <code>viewer_data</code> folder a run of pciSeq.fit wrote.</span>
+                </button>
+                <!-- the sample run (electron/sample.js): a finished run to try the viewer on -->
+                <button id="sampleRunBtn" class="welcome-door" type="button">
+                    <svg class="welcome-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+                    <b>Try the sample run</b>
+                    <span id="sampleRunNote" class="welcome-text">Mouse hippocampus, 25,000 cells, 3 million spots. A 600 MB download the first time.</span>
+                    <span id="sampleRunProgress" class="welcome-bar hidden"><i id="sampleRunBar"></i></span>
+                    <span id="sampleRunMeta" class="welcome-meta hidden"><span id="sampleRunPhase">Downloading</span><span id="sampleRunCount"></span></span>
+                </button>
             </div>
+
+            <p class="welcome-foot">
+                <span id="sampleRunWhere" class="hidden"></span>
+                <a href="https://acycliq.github.io/pciSeq_viewer/docs/" target="_blank" rel="noopener">Documentation</a>
+            </p>
         </div>
     </div>
 
