@@ -27,9 +27,9 @@ const { Writable } = require('stream');
 
 const SAMPLE = {
   url: 'https://storage.googleapis.com/pciseq_documentation/demo/pciSeq_demo_data.tar.zst.enc',
-  bytes: 598046363,         // the encrypted file: header, data, tag
-  sha256: '866640d3c1eef46377de1d2e9827d5541e209908339e69c7cdd2cbef580ef379',
-  unpacked: 1535534431,     // the files inside, once unpacked
+  bytes: 608415139,         // the encrypted file: header, data, tag
+  sha256: '54e3c2a9a7d4372ced959795c435ddba903157762d95d4aa861bf2d2ce992756',
+  unpacked: 1556030815,     // the files inside, once unpacked
 };
 
 // The encrypted file, as encrypt_demo.js writes it: 'PCSQENC1', scrypt N (4 bytes,
