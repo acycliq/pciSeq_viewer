@@ -1219,6 +1219,37 @@ window.addEventListener('load', async () => {
             }
         });
     }
+    // go_to_plane: the plane slider; the answer waits for the plane's cells so the
+    // agent never talks about a map still loading. Out of range is refused, the
+    // slider would clamp it and the agent would name the wrong plane
+    if (window.electronAPI?.onChatGoToPlane) {
+        window.electronAPI.onChatGoToPlane(async ({ id, plane }) => {
+            try {
+                const planes = window.appState.totalPlanes;
+                if (plane < 0 || plane >= planes) {
+                    window.electronAPI.chatGoToPlaneDone({ id, error: `plane must be between 0 and ${planes - 1}, this run has ${planes} planes` });
+                    return;
+                }
+                updatePlane(plane);
+                if (!state.polygonCache.has(plane)) await loadPlane(plane);
+                updateAllLayers();
+                let spots = 0;
+                for (const [g, list] of state.geneDataMap) {
+                    if (!state.selectedGenes.has(g)) continue;
+                    for (const d of list) if (d.plane_id === plane) spots++;
+                }
+                window.electronAPI.chatGoToPlaneDone({
+                    id,
+                    plane: state.currentPlane,
+                    planes,
+                    spots_on_plane: spots,
+                    counted_as: 'the spots of the genes on the map that sit on this plane, before the score and intensity filters',
+                });
+            } catch (e) {
+                window.electronAPI.chatGoToPlaneDone({ id, error: e.message });
+            }
+        });
+    }
     // and show_all_planes: the Cells from all planes switch. The answer waits for
     // every plane to load, so the tool does not come back to a map still loading
     if (window.electronAPI?.onChatAllPlanes) {

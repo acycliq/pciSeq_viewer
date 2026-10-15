@@ -13,7 +13,7 @@ let getWindow = () => null;
 let nextId = 1;
 const pending = new Map();
 const CHANNELS = ['chat-compose-image', 'chat-fly-to-cell', 'chat-all-planes', 'chat-export-per-class',
-                  'chat-viewer-state', 'chat-spot-filters', 'chat-misread-display', 'chat-map-layers'];
+                  'chat-viewer-state', 'chat-spot-filters', 'chat-misread-display', 'chat-map-layers', 'chat-go-to-plane'];
 
 function init(d, ipcMain) {
   getWindow = d.getWindow;
@@ -93,4 +93,9 @@ function mapLayers(settings, timeoutMs = 10000) {
   return ask('chat-map-layers', settings, timeoutMs, 'the viewer did not change the layers in time');
 }
 
-module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters, misreadDisplay, mapLayers };
+// go_to_plane: the page moves the plane slider and waits for that plane's cells
+function goToPlane(settings, timeoutMs = 30000) {
+  return ask('chat-go-to-plane', settings, timeoutMs, 'the viewer did not change plane in time');
+}
+
+module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters, misreadDisplay, mapLayers, goToPlane };

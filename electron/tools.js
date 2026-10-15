@@ -885,6 +885,26 @@ const TOOLS = [
     },
   },
   {
+    name: 'go_to_plane',
+    description:
+      'Move the map to a plane, the same as the plane slider. Planes are numbered from ' +
+      '0 as the viewer shows them. viewer_state gives the current plane and how many ' +
+      'there are. A z from the cell or spot tools is not a plane: it is the plane ' +
+      'scaled by voxel_size[2] / voxel_size[0]. Use the plane a tool gives next to z; ' +
+      'when there is none, the plane is the whole part of z * voxel_size[0] / ' +
+      'voxel_size[2] (run_info has voxel_size), worked out with calculate. ' +
+      'The answer comes once that plane\'s cells are drawn, and says how many spots of ' +
+      'the genes on the map lie on it, before the score and intensity filters. Use it ' +
+      'when the user asks to go to a plane or to move up or down through the stack.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        plane: { type: 'integer', description: 'The plane number, from 0.' },
+      },
+      required: ['plane'],
+    },
+  },
+  {
     name: 'fly_to_cell',
     description:
       'Move the map to a cell and flash its outline, so the user can see the cell ' +
@@ -1362,6 +1382,12 @@ async function call(name, input) {
         out.cell_opacity = v;
       }
       return await deps.mapLayers(out);
+    }
+    if (name === 'go_to_plane') {
+      if (!deps.goToPlane) return { error: 'the viewer window is not available' };
+      const plane = Number(input.plane);
+      if (!Number.isInteger(plane)) return { error: 'plane must be a whole number' };
+      return await deps.goToPlane({ plane });
     }
     if (name === 'fly_to_cell') {
       const label = Number(input.label);

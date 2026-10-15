@@ -110,6 +110,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // the map_layers tool: background, its channel, cells and their opacity
   onChatMapLayers: (handler) => ipcRenderer.on('chat-map-layers', (_e, p) => handler(p)),
   chatMapLayersDone: (payload) => ipcRenderer.send('chat-map-layers-done', payload),
+  // the go_to_plane tool: the plane slider
+  onChatGoToPlane: (handler) => ipcRenderer.on('chat-go-to-plane', (_e, p) => handler(p)),
+  chatGoToPlaneDone: (payload) => ipcRenderer.send('chat-go-to-plane-done', payload),
   chatAllPlanesDone: (payload) => ipcRenderer.send('chat-all-planes-done', payload),
   // the export_per_class_pngs tool: the drawer's export, each PNG written by the
   // main process into the folder the tool chose, answered when all are on disk
