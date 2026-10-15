@@ -77,7 +77,12 @@ descriptions; nothing is run unless a question needs it.
 - **The map.** Fly to a cell, outline a set of cells as an
   [annotation](./annotations), show or hide classes and genes, draw the cells of all
   planes, open one of the charts of the drawer, open the [3D view](./3d-view) round a
-  cell, save one picture per class.
+  cell, save one picture per class. The controls of [the drawer](./the-drawer) are
+  reachable too: the plane, the background image and its channel, the cells and their
+  opacity, the score and intensity filters and the size of the spots, the misreads
+  shown, greyed out or hidden, and the Min and Max genes filter. The model reads the
+  current settings before it describes the map, and each change returns what is drawn
+  after it, for example how many spots pass a filter.
 - **Arithmetic**, so that a sum or an exponential is computed rather than guessed.
 
 The model is told to explain as a mentor would, from the numbers, and never to promise
