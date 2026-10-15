@@ -236,15 +236,23 @@ function narrateSpot(e) {
   if (classes.size === 1) {
     out.push(`Every candidate is a ${winner.class} cell, so on class alone ${gene} fits them all equally; ` +
              'what separates them is how much each already holds.');
-  } else {
-    out.push(`Cell ${winner.cell} is a ${winner.class} cell, and that class ` +
-             `${winner['class expression'] > 0 ? 'expresses' : 'barely expresses'} ${gene}.`);
-    if (runner && runner.class !== winner.class) {
-      out.push(`Cell ${runner.cell} is a ${runner.class} cell, which ` +
-               `${runner['class expression'] > 0 ? 'does too' : 'does not'}.`);
-    } else if (runner) {
-      out.push(`Cell ${runner.cell} is a ${runner.class} cell too.`);
+  } else if (runner && runner.class !== winner.class) {
+    // compared between the two, never read on its own: the term is
+    // log(class mean x Inefficiency + SpotReg), below zero whenever the class mean is
+    // under about 9 counts, so its sign does not say whether a class expresses the
+    // gene. Same as narrate_spot in the python tools
+    const dCe = winner['class expression'] - runner['class expression'];
+    if (Math.abs(dCe) <= 0.2) {
+      out.push(`Cell ${winner.cell} is a ${winner.class} cell and cell ${runner.cell} a ${runner.class} cell, ` +
+               `and the two classes express ${gene} about equally.`);
+    } else {
+      out.push(`Cell ${winner.cell} is a ${winner.class} cell, whose class expresses ${gene} ` +
+               `${dCe > 0 ? 'more' : 'less'} than the class of cell ${runner.cell}, ${runner.class}.`);
     }
+  } else if (runner) {
+    out.push(`Cell ${winner.cell} is a ${winner.class} cell, and so is cell ${runner.cell}.`);
+  } else {
+    out.push(`Cell ${winner.cell} is a ${winner.class} cell.`);
   }
   if (runner) {
     const pieces = [];
