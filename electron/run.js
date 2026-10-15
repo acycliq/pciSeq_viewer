@@ -1293,7 +1293,20 @@ async function cellRow(label) {
                 'spot_id lists every spot with probability above 0.0001 on ' +
                 'this cell, lined up with Genenames, and their probabilities ' +
                 'add up to CellGeneCount',
+    ...cellPlane(label),
   };
+}
+
+// the plane a cell's centroid is on, next to a note on Z, the same as cell_row in
+// the python tools. Given so the agent never works it out: Z is the anisotropy
+// scaled z, and a model read Z = 9.256 of espio cell 8 as plane 9 when it is plane
+// 3. From the full z in diagnostics.db, the Z of cellData is cut to 3 decimals
+function cellPlane(label) {
+  const got = db().prepare(`SELECT z FROM cells WHERE ${deps.getCellKey()} = ?`).get(toInternal(label));
+  const plane = got && got.z != null ? planeOf(got.z) : null;
+  return plane != null
+    ? { plane, Z_is: 'the anisotropy scaled z the model works in, not a plane; plane is the plane the centroid sits on' }
+    : { Z_is: 'the anisotropy scaled z the model works in, not a plane. This run carries no voxel_size, so the plane cannot be given' };
 }
 
 // ------------------------------------------------------------- the pictures
