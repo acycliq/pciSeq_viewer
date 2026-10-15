@@ -156,6 +156,26 @@ function classIndex(name) {
   return k;
 }
 
+// x, y, z and the plane of a spot from diagnostics.db. Files from before October
+// 2026 (no spot_z_exact) saved the spot z cut to a whole number, and a plane from
+// that is one too low for about one spot in ten, so they give no plane. Same as
+// _spot_position in the python tools; fix_spot_z there repairs such a file
+function spotPosition(res) {
+  const out = { x: res.x, y: res.y, z: res.z };
+  if (String(meta().spot_z_exact) !== '1') {
+    out.z_is = 'the anisotropy scaled z the model works in, cut to a whole number by the ' +
+               'pciSeq that saved this run, so the plane cannot be given. ' +
+               'pciSeq.src.core.io.fix_spot_z repairs the file';
+  } else if (planeOf(res.z) === null) {
+    out.z_is = 'the anisotropy scaled z the model works in, not the plane index. This run ' +
+               'carries no voxel_size, so the plane cannot be given';
+  } else {
+    out.plane = planeOf(res.z);
+    out.z_is = 'the anisotropy scaled z the model works in; plane is the plane index it sits on';
+  }
+  return out;
+}
+
 // the plane a scaled z is on. A z is the plane stretched to the units of x, not a
 // plane number. Floor, never round: plane p is the stretch from p up to p + 1, as
 // pciSeq gives a spot its plane_id. The 1e-4 stops a z exactly on a plane landing
@@ -442,9 +462,7 @@ async function spot(spotId) {
     spot: id,
     gene: res.geneName,
     glyph: glyphOf(res.geneName),
-    position: { x: res.x, y: res.y, z: res.z, plane: planeOf(res.z),
-                z_is: 'the anisotropy scaled z the model works in; plane is the ' +
-                      'plane index, None when the run carries no voxel_size' },
+    position: spotPosition(res),
     assigned_to: cands[best].cell,
     prob: res.probabilities[best],
     candidates: cands,
@@ -1681,4 +1699,4 @@ module.exports = { init, cell, cellShape, shapeOf, cellCounts, theta, gamma, spo
                    spotsOfClass, countSpotsOfClass,
                    spotsInCell, spotsOfCell, spotRow, cellRow, cellImage, planeImage,
                    classCounts, classPrior, findCells, metadataTool, calculate,
-                   toInternal, toExternal, planeOf, planeOfZ };
+                   toInternal, toExternal, planeOf, planeOfZ, spotPosition };

@@ -39,3 +39,20 @@ test('the start of every plane comes back to that plane', async () => {
     }
   }
 });
+
+// fractional planes, the same as ROUND_TRIP_PLANES in tests/test_geometry.py
+const ROUND_TRIP_PLANES = [0.0, 0.3, 1.15, 20.999, 21.0, 21.56, 88.85];
+
+test('a fractional plane goes to z and back, and the floor of it is the plane', async () => {
+  const page = await import(pathToFileURL(path.join(__dirname, '..', 'utils', 'planes.js')).href);
+  for (const voxel of [[0.28, 0.28, 0.7], [0.147, 0.147, 0.9], [1, 1, 4]]) {
+    const [vx, , vz] = voxel;
+    for (const zp of ROUND_TRIP_PLANES) {
+      const z = page.planeToZ(zp, voxel);
+      assert.ok(Math.abs(z * vx / vz - zp) < 1e-12, `back from z ${z} with ${voxel}`);
+      assert.strictEqual(page.planeOf(z, voxel), Math.floor(zp));
+      assert.strictEqual(run.planeOfZ(z, voxel), Math.floor(zp));
+    }
+  }
+});
+

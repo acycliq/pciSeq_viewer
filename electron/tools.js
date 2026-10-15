@@ -1054,12 +1054,7 @@ function spotToDict(res) {
   const out = {
     spot: res.spotId,
     gene: res.geneName,
-    position: run.planeOf(res.z) !== null
-      ? { x: res.x, y: res.y, z: res.z, plane: run.planeOf(res.z),
-          z_is: 'the anisotropy scaled z the model works in; plane is the plane index it sits on' }
-      : { x: res.x, y: res.y, z: res.z,
-          z_is: 'the anisotropy scaled z the model works in, not the plane index. This run ' +
-                'carries no voxel_size, so the plane cannot be given' },
+    position: run.spotPosition(res),
     candidates: rows,
     assigned_to: best === n ? 'background' : res.neighborIds[best],
   };
