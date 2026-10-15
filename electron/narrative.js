@@ -24,6 +24,10 @@ function strength(d) {
   // e**d to one, in round numbers while the number still means anything, and a
   // word once it does not. Meant to close a sentence.
   if (d < 0.4) return 'only just';
+  // a d above 10 is past 20,000 to one, where the words no longer change, so it
+  // is answered before taking exp, the same as _strength in the python tools,
+  // where math.exp raises on the huge d of a cell against a far off class
+  if (d > 10) return 'overwhelmingly, beyond any doubt';
   const odds = Math.exp(d);
   if (odds < 3) return 'slightly';
   if (odds < 20) return `about ${pyRound(odds)} to one`;
