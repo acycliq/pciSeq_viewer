@@ -27,9 +27,9 @@ const { Writable } = require('stream');
 
 const SAMPLE = {
   url: 'https://storage.googleapis.com/pciseq_documentation/demo/pciSeq_demo_data.tar.zst.enc',
-  bytes: 598358661,         // the encrypted file: header, data, tag
-  sha256: '1c50a7b92b5f6c8f0fd610b43c240fd772aef591f3123cdd7483ae89de647465',
-  unpacked: 1526199647,     // the files inside, once unpacked
+  bytes: 598046363,         // the encrypted file: header, data, tag
+  sha256: '866640d3c1eef46377de1d2e9827d5541e209908339e69c7cdd2cbef580ef379',
+  unpacked: 1535534431,     // the files inside, once unpacked
 };
 
 // The encrypted file, as encrypt_demo.js writes it: 'PCSQENC1', scrypt N (4 bytes,
@@ -96,9 +96,17 @@ const root = () => path.join(app.getPath('userData'), 'sample_run');
 const folder = () => path.join(root(), 'viewer_data');
 const archive = () => path.join(root(), 'pciSeq_demo_data.tar.zst.enc');
 
-// unpacked and complete: the marker is written last, so a crash halfway through
-// the unpack leaves no marker and the next click unpacks again
-const ready = () => fs.existsSync(path.join(root(), '.complete'));
+// unpacked, complete and the current one: the marker is written last, so a crash
+// halfway through the unpack leaves no marker and the next click unpacks again. It
+// holds the checksum of the archive it came from, so after a new archive goes up an
+// older copy no longer counts and the next click downloads the new one
+const ready = () => {
+  try {
+    return fs.readFileSync(path.join(root(), '.complete'), 'utf8').trim() === SAMPLE.sha256;
+  } catch {
+    return false;
+  }
+};
 
 function send(state) {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('sample-progress', state);
