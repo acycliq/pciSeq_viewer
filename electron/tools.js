@@ -905,6 +905,25 @@ const TOOLS = [
     },
   },
   {
+    name: 'cells_by_gene_count',
+    description:
+      'Draw only the cells whose total gene count is between min and max, the same as ' +
+      'the Min genes and Max genes sliders under Cells from all planes. The total gene ' +
+      'count is the sum of the cell\'s counts over every gene, soft counts, so it is ' +
+      'about how many spots the cell holds, not how many different genes. It works ' +
+      'only while the cells of all planes are drawn: call show_all_planes first. Whole ' +
+      'numbers, from 0 to the largest total in the run, which the answer gives. Give ' +
+      'only what should change. Returns how many cells are drawn. Use it when the user ' +
+      'asks to hide the weak or empty cells, or to see only the strongly expressing ones.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        min: { type: 'integer', description: 'Lowest total gene count drawn.' },
+        max: { type: 'integer', description: 'Highest total gene count drawn.' },
+      },
+    },
+  },
+  {
     name: 'fly_to_cell',
     description:
       'Move the map to a cell and flash its outline, so the user can see the cell ' +
@@ -1383,6 +1402,17 @@ async function call(name, input) {
       const plane = Number(input.plane);
       if (!Number.isInteger(plane)) return { error: 'plane must be a whole number' };
       return await deps.goToPlane({ plane });
+    }
+    if (name === 'cells_by_gene_count') {
+      if (!deps.geneCountFilter) return { error: 'the viewer window is not available' };
+      const out = {};
+      for (const k of ['min', 'max']) {
+        if (input[k] == null) continue;
+        const v = Number(input[k]);
+        if (!Number.isInteger(v)) return { error: `${k} must be a whole number` };
+        out[k] = v;
+      }
+      return await deps.geneCountFilter(out);
     }
     if (name === 'fly_to_cell') {
       const label = Number(input.label);

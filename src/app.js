@@ -1250,6 +1250,56 @@ window.addEventListener('load', async () => {
             }
         });
     }
+    // cells_by_gene_count: the Min and Max genes sliders. They only act on the cells
+    // of all planes, so with that off nothing is moved and the agent is told why
+    if (window.electronAPI?.onChatGeneCountFilter) {
+        window.electronAPI.onChatGeneCountFilter(({ id, min, max }) => {
+            try {
+                const done = (payload) => window.electronAPI.chatGeneCountFilterDone({ id, ...payload });
+                if (!state.zProjectionCellMode) {
+                    done({ error: 'the gene count filter works only while the cells of all planes are drawn, nothing changed; call show_all_planes first' });
+                    return;
+                }
+                const top = Math.ceil(Number(state.maxTotalGeneCount || 0));
+                const lo = min != null ? min : state.geneCountThreshold;
+                const hi = max != null ? max : (Number.isFinite(state.geneCountMaxThreshold) ? state.geneCountMaxThreshold : top);
+                if (lo < 0 || hi > top || lo > hi) {
+                    done({ error: `min and max must be whole numbers with 0 <= min <= max <= ${top} for this run, nothing changed` });
+                    return;
+                }
+                const move = (elId, v) => {
+                    const el = document.getElementById(elId);
+                    if (!el || v == null) return;
+                    el.value = String(v);
+                    el.dispatchEvent(new Event('input'));
+                };
+                move('geneCountSlider', min);
+                move('geneCountMaxSlider', max);
+                // the cells drawn: those with an outline whose total is in range and
+                // whose class is shown, each cell once however many planes it is on
+                const inRange = new Set(), drawn = new Set(), all = new Set();
+                for (const f of state.cellProjectionFeatures || []) {
+                    const p = f.properties;
+                    all.add(p.label);
+                    const n = p.totalGeneCount || 0;
+                    if (n < state.geneCountThreshold || n > state.geneCountMaxThreshold) continue;
+                    inRange.add(p.label);
+                    if (state.selectedCellClasses.has(p.cellClass)) drawn.add(p.label);
+                }
+                done({
+                    min: state.geneCountThreshold,
+                    max: state.geneCountMaxThreshold,
+                    largest_total_in_run: top,
+                    cells_drawn: drawn.size,
+                    cells_in_range: inRange.size,
+                    cells_with_an_outline: all.size,
+                    counted_as: 'cells, each once, whose total gene count is between min and max; cells_drawn also needs the cell\'s class to be shown',
+                });
+            } catch (e) {
+                window.electronAPI.chatGeneCountFilterDone({ id, error: e.message });
+            }
+        });
+    }
     // and show_all_planes: the Cells from all planes switch. The answer waits for
     // every plane to load, so the tool does not come back to a map still loading
     if (window.electronAPI?.onChatAllPlanes) {

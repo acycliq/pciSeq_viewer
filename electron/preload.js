@@ -113,6 +113,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // the go_to_plane tool: the plane slider
   onChatGoToPlane: (handler) => ipcRenderer.on('chat-go-to-plane', (_e, p) => handler(p)),
   chatGoToPlaneDone: (payload) => ipcRenderer.send('chat-go-to-plane-done', payload),
+  // the cells_by_gene_count tool: the Min and Max genes sliders
+  onChatGeneCountFilter: (handler) => ipcRenderer.on('chat-gene-count-filter', (_e, p) => handler(p)),
+  chatGeneCountFilterDone: (payload) => ipcRenderer.send('chat-gene-count-filter-done', payload),
   chatAllPlanesDone: (payload) => ipcRenderer.send('chat-all-planes-done', payload),
   // the export_per_class_pngs tool: the drawer's export, each PNG written by the
   // main process into the folder the tool chose, answered when all are on disk

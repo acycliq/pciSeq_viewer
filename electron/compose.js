@@ -13,7 +13,7 @@ let getWindow = () => null;
 let nextId = 1;
 const pending = new Map();
 const CHANNELS = ['chat-compose-image', 'chat-fly-to-cell', 'chat-all-planes', 'chat-export-per-class',
-                  'chat-viewer-state', 'chat-spot-filters', 'chat-misread-display', 'chat-map-layers', 'chat-go-to-plane'];
+                  'chat-viewer-state', 'chat-spot-filters', 'chat-misread-display', 'chat-map-layers', 'chat-go-to-plane', 'chat-gene-count-filter'];
 
 function init(d, ipcMain) {
   getWindow = d.getWindow;
@@ -98,4 +98,10 @@ function goToPlane(settings, timeoutMs = 30000) {
   return ask('chat-go-to-plane', settings, timeoutMs, 'the viewer did not change plane in time');
 }
 
-module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters, misreadDisplay, mapLayers, goToPlane };
+// cells_by_gene_count: the page moves the Min and Max genes sliders and counts the
+// cells still drawn
+function geneCountFilter(settings, timeoutMs = 10000) {
+  return ask('chat-gene-count-filter', settings, timeoutMs, 'the viewer did not filter the cells in time');
+}
+
+module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters, misreadDisplay, mapLayers, goToPlane, geneCountFilter };

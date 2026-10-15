@@ -192,6 +192,7 @@ function createWindow() {
     misreadDisplay: compose.misreadDisplay,
     mapLayers: compose.mapLayers,
     goToPlane: compose.goToPlane,
+    geneCountFilter: compose.geneCountFilter,
     exportPerClassPngs: compose.exportPerClassPngs,
     getDataPath: () => store.get('dataPath', ''),
     // run_info quotes what the background tiles say about themselves
