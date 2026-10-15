@@ -1122,6 +1122,46 @@ window.addEventListener('load', async () => {
             }
         });
     }
+    // misread_display: tick the two misread boxes the way a user would, so the
+    // drawer and the map agree, then count the misreads of the genes on the map
+    if (window.electronAPI?.onChatMisreadDisplay) {
+        window.electronAPI.onChatMisreadDisplay(({ id, mode }) => {
+            try {
+                const tick = (elId, on) => {
+                    const el = document.getElementById(elId);
+                    if (!el || el.checked === on) return;
+                    el.checked = on;
+                    el.dispatchEvent(new Event('change'));
+                };
+                if (mode) {
+                    tick('greyOutMisreadsToggle', mode === 'greyed');
+                    tick('hideMisreadsToggle', mode === 'hidden');
+                }
+                const perGene = {};
+                let misreads = 0, total = 0;
+                for (const [g, spots] of state.geneDataMap) {
+                    if (!state.selectedGenes.has(g)) continue;
+                    let n = 0;
+                    for (const d of spots) if (d.is_hard_misread) n++;
+                    misreads += n;
+                    total += spots.length;
+                    perGene[g] = { misreads: n, of: spots.length };
+                }
+                const genes = Object.keys(perGene);
+                window.electronAPI.chatMisreadDisplayDone({
+                    id,
+                    misreads: state.hideMisreads ? 'hidden' : state.greyOutMisreads ? 'greyed out' : 'shown',
+                    misread_spots: misreads,
+                    spots_of_genes_on_map: total,
+                    genes_on_map: genes.length,
+                    ...(genes.length <= 25 ? { per_gene: perGene } : {}),
+                    counted_as: 'the spots of the genes on the map, every plane, whose most likely source is the background; the score and intensity filters are not applied',
+                });
+            } catch (e) {
+                window.electronAPI.chatMisreadDisplayDone({ id, error: e.message });
+            }
+        });
+    }
     // and show_all_planes: the Cells from all planes switch. The answer waits for
     // every plane to load, so the tool does not come back to a map still loading
     if (window.electronAPI?.onChatAllPlanes) {

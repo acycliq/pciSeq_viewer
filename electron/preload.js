@@ -104,6 +104,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // the spot_filters tool: score, intensity and size, set through the sliders
   onChatSpotFilters: (handler) => ipcRenderer.on('chat-spot-filters', (_e, p) => handler(p)),
   chatSpotFiltersDone: (payload) => ipcRenderer.send('chat-spot-filters-done', payload),
+  // the misread_display tool: show, grey out or hide the misreads
+  onChatMisreadDisplay: (handler) => ipcRenderer.on('chat-misread-display', (_e, p) => handler(p)),
+  chatMisreadDisplayDone: (payload) => ipcRenderer.send('chat-misread-display-done', payload),
   chatAllPlanesDone: (payload) => ipcRenderer.send('chat-all-planes-done', payload),
   // the export_per_class_pngs tool: the drawer's export, each PNG written by the
   // main process into the folder the tool chose, answered when all are on disk

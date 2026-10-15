@@ -189,6 +189,7 @@ function createWindow() {
     showAllPlanes: compose.showAllPlanes,
     viewerState: compose.viewerState,
     spotFilters: compose.spotFilters,
+    misreadDisplay: compose.misreadDisplay,
     exportPerClassPngs: compose.exportPerClassPngs,
     getDataPath: () => store.get('dataPath', ''),
     // run_info quotes what the background tiles say about themselves

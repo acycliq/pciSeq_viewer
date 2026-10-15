@@ -849,6 +849,22 @@ const TOOLS = [
     },
   },
   {
+    name: 'misread_display',
+    description:
+      'Show, grey out or hide the misreads on the map, the same as the two misread ' +
+      'boxes in the Gene Controls drawer. A misread here is a spot whose most likely ' +
+      'source is the background, not any cell. mode is shown, greyed or hidden; leave ' +
+      'it out to only count. Returns how many of the spots of the genes on the map ' +
+      'are misreads, every plane, in all and per gene when a few genes are shown. ' +
+      'Use it when the user asks to see or hide the misreads, or how many there are.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        mode: { type: 'string', enum: ['shown', 'greyed', 'hidden'], description: 'How the misreads are drawn.' },
+      },
+    },
+  },
+  {
     name: 'fly_to_cell',
     description:
       'Move the map to a cell and flash its outline, so the user can see the cell ' +
@@ -1304,6 +1320,12 @@ async function call(name, input) {
       }
       if (!Object.keys(out).length) return { error: 'give at least one of score, intensity, size' };
       return await deps.spotFilters(out);
+    }
+    if (name === 'misread_display') {
+      if (!deps.misreadDisplay) return { error: 'the viewer window is not available' };
+      const mode = input.mode == null ? null : String(input.mode);
+      if (mode != null && !['shown', 'greyed', 'hidden'].includes(mode)) return { error: 'mode must be one of shown, greyed, hidden' };
+      return await deps.misreadDisplay({ mode });
     }
     if (name === 'fly_to_cell') {
       const label = Number(input.label);

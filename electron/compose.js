@@ -13,7 +13,7 @@ let getWindow = () => null;
 let nextId = 1;
 const pending = new Map();
 const CHANNELS = ['chat-compose-image', 'chat-fly-to-cell', 'chat-all-planes', 'chat-export-per-class',
-                  'chat-viewer-state', 'chat-spot-filters'];
+                  'chat-viewer-state', 'chat-spot-filters', 'chat-misread-display'];
 
 function init(d, ipcMain) {
   getWindow = d.getWindow;
@@ -82,4 +82,9 @@ function spotFilters(settings, timeoutMs = 10000) {
   return ask('chat-spot-filters', settings, timeoutMs, 'the viewer did not apply the filters in time');
 }
 
-module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters };
+// misread_display: the page ticks the two misread boxes and counts the misreads
+function misreadDisplay(settings, timeoutMs = 10000) {
+  return ask('chat-misread-display', settings, timeoutMs, 'the viewer did not change the misreads in time');
+}
+
+module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters, misreadDisplay };
