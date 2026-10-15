@@ -305,7 +305,11 @@ function viewerSnapshot() {
         },
         layers: {
             background: !!state.showTiles,
-            background_channel: state.currentChannel || null,
+            // the name the channel radio shows, the same as map_layers gives
+            background_channel: (() => {
+                const r = [...document.querySelectorAll('input[name="background-channel"]')].find(x => x.value === state.currentChannel);
+                return (r && r.parentElement?.textContent?.trim()) || state.currentChannel || null;
+            })(),
             cells: !!state.showPolygons,
             cell_opacity: state.polygonOpacity,
             cells_from_all_planes: !!state.zProjectionCellMode,
@@ -1159,6 +1163,58 @@ window.addEventListener('load', async () => {
                 });
             } catch (e) {
                 window.electronAPI.chatMisreadDisplayDone({ id, error: e.message });
+            }
+        });
+    }
+    // map_layers: the Map Layers boxes, the channel radios and the opacity slider,
+    // all moved the way a user would so the drawer and the map agree
+    if (window.electronAPI?.onChatMapLayers) {
+        window.electronAPI.onChatMapLayers(({ id, background, channel, cells, cell_opacity }) => {
+            try {
+                // the channel names: the radios when there are two or more, else
+                // the one channel the run has
+                const radios = [...document.querySelectorAll('input[name="background-channel"]')];
+                const channels = radios.length
+                    ? radios.map(r => ({ id: r.value, name: r.parentElement?.textContent?.trim() || r.value }))
+                    : Object.keys(state.channelOpacity || {}).map(c => ({ id: c, name: c }));
+                let radio = null;
+                if (channel != null) {
+                    const want = channel.trim().toLowerCase();
+                    const hit = channels.find(c => c.id.toLowerCase() === want || c.name.toLowerCase() === want);
+                    if (!hit) {
+                        window.electronAPI.chatMapLayersDone({ id, error: `no channel ${channel}, this run has ${channels.map(c => c.name).join(', ') || 'no background'}` });
+                        return;
+                    }
+                    radio = radios.find(r => r.value === hit.id) || null;
+                }
+                const tick = (elId, on) => {
+                    const el = document.getElementById(elId);
+                    if (!el || on == null || el.checked === on) return;
+                    el.checked = on;
+                    el.dispatchEvent(new Event('change'));
+                };
+                tick('showTiles', background);
+                tick('showPolygons', cells);
+                if (radio && !radio.checked) {
+                    radio.checked = true;
+                    radio.dispatchEvent(new Event('change'));
+                }
+                if (cell_opacity != null) {
+                    const el = document.getElementById('polygonOpacitySlider');
+                    el.value = String(cell_opacity);
+                    el.dispatchEvent(new Event('input'));
+                }
+                const cur = channels.find(c => c.id === state.currentChannel);
+                window.electronAPI.chatMapLayersDone({
+                    id,
+                    background: !!state.showTiles,
+                    channel: cur ? cur.name : (state.currentChannel || null),
+                    channels: channels.map(c => c.name),
+                    cells: !!state.showPolygons,
+                    cell_opacity: +Number(state.polygonOpacity).toFixed(2),
+                });
+            } catch (e) {
+                window.electronAPI.chatMapLayersDone({ id, error: e.message });
             }
         });
     }

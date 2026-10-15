@@ -107,6 +107,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // the misread_display tool: show, grey out or hide the misreads
   onChatMisreadDisplay: (handler) => ipcRenderer.on('chat-misread-display', (_e, p) => handler(p)),
   chatMisreadDisplayDone: (payload) => ipcRenderer.send('chat-misread-display-done', payload),
+  // the map_layers tool: background, its channel, cells and their opacity
+  onChatMapLayers: (handler) => ipcRenderer.on('chat-map-layers', (_e, p) => handler(p)),
+  chatMapLayersDone: (payload) => ipcRenderer.send('chat-map-layers-done', payload),
   chatAllPlanesDone: (payload) => ipcRenderer.send('chat-all-planes-done', payload),
   // the export_per_class_pngs tool: the drawer's export, each PNG written by the
   // main process into the folder the tool chose, answered when all are on disk

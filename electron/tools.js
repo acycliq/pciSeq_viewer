@@ -865,6 +865,26 @@ const TOOLS = [
     },
   },
   {
+    name: 'map_layers',
+    description:
+      'Turn the map layers on or off, the same as the boxes in the Map Layers drawer: ' +
+      'background, the microscope image under the spots; channel, which image is the ' +
+      'background when the run has more than one (DAPI, GCaMP, ...), the names are in ' +
+      'the answer; cells, the coloured cell outlines; cell_opacity, how solid the cells ' +
+      'are filled, 0 to 1 in steps of 0.1. Give only what should change, or nothing to ' +
+      'only read them. Use it when the user asks to hide or show the image or the ' +
+      'cells, to switch the image, or to make the cells lighter or darker.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        background: { type: 'boolean', description: 'Show the background image.' },
+        channel: { type: 'string', description: 'The background channel, by its name.' },
+        cells: { type: 'boolean', description: 'Show the cells.' },
+        cell_opacity: { type: 'number', description: 'Cell fill opacity, 0 to 1.' },
+      },
+    },
+  },
+  {
     name: 'fly_to_cell',
     description:
       'Move the map to a cell and flash its outline, so the user can see the cell ' +
@@ -1326,6 +1346,22 @@ async function call(name, input) {
       const mode = input.mode == null ? null : String(input.mode);
       if (mode != null && !['shown', 'greyed', 'hidden'].includes(mode)) return { error: 'mode must be one of shown, greyed, hidden' };
       return await deps.misreadDisplay({ mode });
+    }
+    if (name === 'map_layers') {
+      if (!deps.mapLayers) return { error: 'the viewer window is not available' };
+      const out = {};
+      for (const k of ['background', 'cells']) {
+        if (input[k] == null) continue;
+        if (typeof input[k] !== 'boolean') return { error: `${k} must be true or false` };
+        out[k] = input[k];
+      }
+      if (input.channel != null) out.channel = String(input.channel);
+      if (input.cell_opacity != null) {
+        const v = Number(input.cell_opacity);
+        if (!Number.isFinite(v) || v < 0 || v > 1) return { error: 'cell_opacity must be between 0 and 1' };
+        out.cell_opacity = v;
+      }
+      return await deps.mapLayers(out);
     }
     if (name === 'fly_to_cell') {
       const label = Number(input.label);

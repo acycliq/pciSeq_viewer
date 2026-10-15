@@ -13,7 +13,7 @@ let getWindow = () => null;
 let nextId = 1;
 const pending = new Map();
 const CHANNELS = ['chat-compose-image', 'chat-fly-to-cell', 'chat-all-planes', 'chat-export-per-class',
-                  'chat-viewer-state', 'chat-spot-filters', 'chat-misread-display'];
+                  'chat-viewer-state', 'chat-spot-filters', 'chat-misread-display', 'chat-map-layers'];
 
 function init(d, ipcMain) {
   getWindow = d.getWindow;
@@ -87,4 +87,10 @@ function misreadDisplay(settings, timeoutMs = 10000) {
   return ask('chat-misread-display', settings, timeoutMs, 'the viewer did not change the misreads in time');
 }
 
-module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters, misreadDisplay };
+// map_layers: the page ticks the background and cell boxes, picks the channel
+// and moves the cell opacity slider
+function mapLayers(settings, timeoutMs = 10000) {
+  return ask('chat-map-layers', settings, timeoutMs, 'the viewer did not change the layers in time');
+}
+
+module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters, misreadDisplay, mapLayers };
