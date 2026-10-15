@@ -733,6 +733,48 @@ function metadataTool(key) {
 // here in five years is the story of the run, whatever the model looks like then.
 // Against any other class only the totals are saved (per gene for every class
 // would be ~800 MB), and the answer says so.
+// The per gene numbers of the assigned class and another class, rebuilt, or null
+// when the rebuild is not the run's own. The same as _checked_contributions in the
+// python tools, same rule and same tolerances.
+//
+// The run saves per gene numbers for the runner up only, so for any other class
+// they are rebuilt, with the arithmetic of the model (_nb_contributions in python):
+// the expected count is the class mean scaled by the cell's area, by eta and by the
+// cell's theta for that class, plus SpotReg, scored against the counts the class
+// update used (scored_gene_count; gene_count is after the spot update that follows
+// it). They are used only when the rebuild of the assigned class matches the saved
+// per gene numbers gene by gene, and the rebuilt totals of both classes match the
+// saved gene_loglik: then the formula and the inputs are the run's. A change to the
+// model the rebuild does not follow, or a run from before the scored counts were
+// saved where the counts moved, fails here, and the caller says the detail is not
+// available rather than show numbers the run would not have given.
+function nbContributions(got, a, other) {
+  const m = meta();
+  const nG = m.gene_panel.length, nK = m.class_names.length;
+  const rSpot = Number(m.rSpot), spotReg = Number(m.SpotReg);
+  const eta = got.frozen_eta_bar ? f32(got.frozen_eta_bar) : m.eta_bar;
+  const theta = f32(got.theta_bar);
+  const counts = f32(got.scored_gene_count || got.gene_count);
+  const savedTotal = f32(got.gene_loglik);
+  const savedA = f32(got.contr_assigned);
+  // gene g class k: area_factor times the shared matrix (format 2), or the cell's
+  // own blob (format 1)
+  const scaled = got.area_factor != null
+    ? (g, k) => Math.fround(m.mean_expression_adj[g][k] * got.area_factor)
+    : (() => { const b = f32(got.scaled_means); return (g, k) => b[g * nK + k]; })();
+  const column = k => Float64Array.from({ length: nG }, (_, g) => {
+    const expected = scaled(g, k) * eta[g] * theta[k] + spotReg;
+    const p = expected / (rSpot + expected);
+    return counts[g] * Math.log(p) + rSpot * Math.log(1 - p);
+  });
+  const ok = (r, s, rel, abs) => Math.abs(r - s) <= rel * Math.abs(s) + abs;
+  const ca = column(a), co = column(other);
+  for (let g = 0; g < nG; g++) if (!ok(ca[g], savedA[g], 1e-4, 1e-3)) return null;
+  const sum = c => c.reduce((s, v) => s + v, 0);
+  if (!ok(sum(ca), savedTotal[a], 1e-4, 0.05) || !ok(sum(co), savedTotal[other], 1e-4, 0.05)) return null;
+  return [ca, co];
+}
+
 function explainCell(label, vsClass = null, topN = 10) {
   const m = meta();
   if (!cellColumns().has('gene_loglik')) {
@@ -795,20 +837,27 @@ function explainCell(label, vsClass = null, topN = 10) {
     score_is: 'saved by the run itself at fit time, read here, not recomputed',
   };
 
+  // per gene: the run's own contributions, diff positive pulls for the assigned.
+  // The run saves them for the runner up only; against any other class they are
+  // rebuilt from the saved inputs, the same as _nb_contributions in the python
+  // tools, and used only when they add up to the gene score the run saved for both
+  // classes, so a rebuilt number is never shown unless it is the run's own
+  let ca, cr;
   if (vsClass != null && other !== got.runner_up_idx) {
-    // per gene detail is only saved for the runner up
-    out.genes_favouring_assigned = [];
-    out.genes_favouring_compared = [];
-    out.detail_note = 'the run saves the per gene contributions only for the assigned ' +
-      'class and the runner up (' + names[got.runner_up_idx >= 0 ? got.runner_up_idx : a] +
-      '), so against ' + vsClass + ' only the three score totals are available. The ' +
-      'gene log-likelihood difference above is still the run\'s own number.';
-    return out;
+    const rebuilt = nbContributions(got, a, other);
+    if (!rebuilt) {
+      out.genes_favouring_assigned = [];
+      out.genes_favouring_compared = [];
+      out.detail_note = 'the per gene contributions against ' + vsClass + ' could not be ' +
+        'rebuilt to match the run\'s own gene score, so only the three score totals are ' +
+        'available. The gene log-likelihood difference above is still the run\'s own number.';
+      return out;
+    }
+    [ca, cr] = rebuilt;
+  } else {
+    ca = f32(got.contr_assigned);
+    cr = f32(got.contr_runner_up);
   }
-
-  // per gene: the run's own contributions, diff positive pulls for the assigned
-  const ca = f32(got.contr_assigned);
-  const cr = f32(got.contr_runner_up);
   const geneRow = g => ({
     gene: panel[g],
     counts: counts[g],
@@ -1699,4 +1748,4 @@ module.exports = { init, cell, cellShape, shapeOf, cellCounts, theta, gamma, spo
                    spotsOfClass, countSpotsOfClass,
                    spotsInCell, spotsOfCell, spotRow, cellRow, cellImage, planeImage,
                    classCounts, classPrior, findCells, metadataTool, calculate,
-                   toInternal, toExternal, planeOf, planeOfZ, spotPosition };
+                   toInternal, toExternal, planeOf, planeOfZ, spotPosition, nbContributions };
