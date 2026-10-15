@@ -98,6 +98,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // the show_all_planes tool: the Cells from all planes switch, answered once the
   // planes are loaded (electron/compose.js)
   onChatAllPlanes: (handler) => ipcRenderer.on('chat-all-planes', (_e, p) => handler(p)),
+  // the viewer_state tool: the renderer answers with a snapshot of its state
+  onChatViewerState: (handler) => ipcRenderer.on('chat-viewer-state', (_e, p) => handler(p)),
+  chatViewerStateDone: (payload) => ipcRenderer.send('chat-viewer-state-done', payload),
   chatAllPlanesDone: (payload) => ipcRenderer.send('chat-all-planes-done', payload),
   // the export_per_class_pngs tool: the drawer's export, each PNG written by the
   // main process into the folder the tool chose, answered when all are on disk

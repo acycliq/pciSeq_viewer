@@ -257,6 +257,65 @@ function scheduleLineOverlayZoomRefresh() {
  * Compute current viewport bounds in tile (deck) coordinates
  * @returns {Object|null} Bounds object with minX, minY, maxX, maxY or null
  */
+// what the map shows now, for the viewer_state tool. Coordinates are image
+// pixels, the same as the cells and spots; the map works in tile units, 256 across
+// the longer side of the image.
+function viewerSnapshot() {
+    const cfg = (window.config && window.config()) || {};
+    const longer = Math.max(cfg.imageWidth || 0, cfg.imageHeight || 0) || 256;
+    const px = v => Math.round(v * longer / 256);
+    const listed = (shown, all) => {
+        const on = all.filter(n => shown.has(n));
+        const out = { shown: on.length, of: all.length };
+        if (on.length === all.length) out.which = 'all';
+        else if (on.length === 0) out.which = 'none';
+        else if (on.length <= 25) out.which = on;
+        else if (all.length - on.length <= 25) out.hidden = all.filter(n => !shown.has(n));
+        return out;
+    };
+    const b = getCurrentViewportTileBounds();
+    let zoom = null;
+    try { zoom = state.deckglInstance.viewManager.getViewState('ortho').zoom; } catch {}
+    const misreads = state.hideMisreads ? 'hidden' : state.greyOutMisreads ? 'greyed out' : 'shown';
+    const genes = Array.from(state.geneDataMap.keys());
+    const classes = Array.from(state.allCellClasses);
+    return {
+        plane: state.currentPlane,
+        planes: cfg.planeCount ?? null,
+        zoom: zoom == null ? null : Math.round(zoom * 100) / 100,
+        // the screen can show more than the image when zoomed out: cut to the image
+        in_view: b ? {
+            x_from: Math.max(0, px(b.minX)), x_to: Math.min(cfg.imageWidth || Infinity, px(b.maxX)),
+            y_from: Math.max(0, px(b.minY)), y_to: Math.min(cfg.imageHeight || Infinity, px(b.maxY)),
+        } : null,
+        in_view_is: 'the part of the image on screen, in image pixels, the same as the cell and spot coordinates',
+        image: { width: cfg.imageWidth ?? null, height: cfg.imageHeight ?? null },
+        genes: listed(state.selectedGenes, genes),
+        // the classes that have cells in this run, as listed in the drawer
+        classes: listed(state.selectedCellClasses, classes),
+        spots: {
+            drawn: !!state.showGenes,
+            size: state.geneSizeScale,
+            uniform_size: !!state.uniformMarkerSize,
+            score_filter: state.hasScores ? state.scoreThreshold : 'not available, this run has no scores',
+            intensity_filter: state.hasIntensity ? state.intensityThreshold : 'not available, this run has no intensities',
+            misreads,
+        },
+        layers: {
+            background: !!state.showTiles,
+            background_channel: state.currentChannel || null,
+            cells: !!state.showPolygons,
+            cell_opacity: state.polygonOpacity,
+            cells_from_all_planes: !!state.zProjectionCellMode,
+            gene_count_range: state.zProjectionCellMode
+                ? [state.geneCountThreshold, Number.isFinite(state.geneCountMaxThreshold) ? state.geneCountMaxThreshold : null]
+                : null,
+            all_planes_overlay: !!state.showZProjectionOverlay,
+            spot_to_cell_lines: !!state.showCellSpotLines,
+        },
+    };
+}
+
 function getCurrentViewportTileBounds() {
     try {
         const vps = state.deckglInstance && state.deckglInstance.getViewports && state.deckglInstance.getViewports();
@@ -977,6 +1036,18 @@ window.addEventListener('load', async () => {
             if (!t || t.checked === Boolean(on)) return;
             t.checked = Boolean(on);
             t.dispatchEvent(new Event('change'));
+        });
+    }
+    // the viewer_state tool: a snapshot of what the map shows, read from state, the
+    // object the drawer writes into and the map is drawn from, so it cannot disagree
+    // with the screen. Lists longer than 25 come back as counts.
+    if (window.electronAPI?.onChatViewerState) {
+        window.electronAPI.onChatViewerState(({ id }) => {
+            try {
+                window.electronAPI.chatViewerStateDone({ id, ...viewerSnapshot() });
+            } catch (e) {
+                window.electronAPI.chatViewerStateDone({ id, error: e.message });
+            }
         });
     }
     // and show_all_planes: the Cells from all planes switch. The answer waits for

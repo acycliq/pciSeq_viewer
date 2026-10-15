@@ -12,7 +12,8 @@
 let getWindow = () => null;
 let nextId = 1;
 const pending = new Map();
-const CHANNELS = ['chat-compose-image', 'chat-fly-to-cell', 'chat-all-planes', 'chat-export-per-class'];
+const CHANNELS = ['chat-compose-image', 'chat-fly-to-cell', 'chat-all-planes', 'chat-export-per-class',
+                  'chat-viewer-state'];
 
 function init(d, ipcMain) {
   getWindow = d.getWindow;
@@ -70,4 +71,10 @@ function exportPerClassPngs({ region, dir }, timeoutMs = 600000) {
   return ask('chat-export-per-class', { region, dir }, timeoutMs, 'the export did not finish in time');
 }
 
-module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs };
+// viewer_state: what the map shows now, read by the renderer from its state, the
+// same object every drawer control writes into and the map draws from
+function viewerState(timeoutMs = 5000) {
+  return ask('chat-viewer-state', {}, timeoutMs, 'the viewer did not report its state in time');
+}
+
+module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState };

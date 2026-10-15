@@ -813,6 +813,19 @@ const TOOLS = [
     },
   },
   {
+    name: 'viewer_state',
+    description:
+      'What the map shows right now, read from the viewer itself: the plane on screen ' +
+      'and the area in view (image pixels), the zoom, which genes and which cell classes ' +
+      'are drawn, the spot settings (size, uniform size, score and intensity filters), ' +
+      'how misreads are drawn (shown, greyed out or hidden), and the layers (background ' +
+      'image and its channel, cells and their opacity, cells from all planes and its ' +
+      'gene count range, the all-planes overlay, the spot-to-cell lines). Call it ' +
+      'before saying anything about what is on screen, and to check what a screen tool ' +
+      'changed. It reads only, it changes nothing.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
     name: 'fly_to_cell',
     description:
       'Move the map to a cell and flash its outline, so the user can see the cell ' +
@@ -1250,6 +1263,10 @@ async function call(name, input) {
       run.toInternal(label);   // throws for a label the run does not have
       deps.send('chat-open-3d-view', { label });
       return { done: true, cell: label, note: 'the 3D viewer is opening in its own window, around the cell and its neighbours' };
+    }
+    if (name === 'viewer_state') {
+      if (!deps.viewerState) return { error: 'the viewer window is not available' };
+      return await deps.viewerState();
     }
     if (name === 'fly_to_cell') {
       const label = Number(input.label);

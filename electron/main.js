@@ -187,6 +187,7 @@ function createWindow() {
     // show_all_planes and export_per_class_pngs wait for the planes to load; the
     // export falls back to the data folder when the run folder is not on this pc
     showAllPlanes: compose.showAllPlanes,
+    viewerState: compose.viewerState,
     exportPerClassPngs: compose.exportPerClassPngs,
     getDataPath: () => store.get('dataPath', ''),
     // run_info quotes what the background tiles say about themselves
