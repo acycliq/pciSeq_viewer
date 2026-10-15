@@ -19,6 +19,10 @@ let hasGeneInefficiency = false;
 // the format is decided once, at open, from the file's own format_version: a file
 // without the key is from before the versions and is read as format 1.
 let dbFormat = 1;
+// internal label -> segmentation label, built once per open database; querySpot
+// used to rebuild it from label_map on every call, 25,000 entries, which made
+// cell_row (a querySpot per candidate spot) take seconds
+let reverseLabels = null;
 let meanExpressionAdj = null;   // Float32Array of nG * nK, format 2 only
 let hasBonus = false;
 let hasMrf = false;
@@ -84,6 +88,12 @@ function openDiagnosticsDatabase(dbPath) {
   const cellCols = diagnosticsDb.prepare("PRAGMA table_info(cells)").all();
   hasMrf = cellCols.some(col => col.name === 'mrf');
   dbFormat = Number(diagnosticsMeta.format_version) >= 2 ? 2 : 1;
+  reverseLabels = null;
+  const lm = diagnosticsMeta.label_map;
+  if (lm && Object.keys(lm).length > 0) {
+    reverseLabels = new Map();
+    for (const [ext, inter] of Object.entries(lm)) reverseLabels.set(Number(inter), Number(ext));
+  }
   if (dbFormat === 2) {
     // what format 2 moved out of the cells and spots tables; refuse a file that
     // says format 2 and lacks them rather than answer with NaN
@@ -117,6 +127,7 @@ function closeDiagnosticsDatabase() {
   hasGeneInefficiency = false;
   dbFormat = 1;
   meanExpressionAdj = null;
+  reverseLabels = null;
   hasBonus = false;
   hasMrf = false;
   hasFrozen = false;
@@ -305,13 +316,11 @@ async function querySpot(spotId) {
 
     // 4. Strict Label Mapping
     let neighborLabels = neighIds.map(id => id);
-    if (label_map && Object.keys(label_map).length > 0) {
-      const reverse = {};
-      for (const [ext, inter] of Object.entries(label_map)) reverse[inter] = ext;
-
+    if (reverseLabels) {
       neighborLabels = neighIds.map(id => {
-          if (reverse[id] === undefined) throw new Error(`Data inconsistency: Internal cell ID ${id} not found in label_map`);
-          return Number(reverse[id]);
+          const ext = reverseLabels.get(Number(id));
+          if (ext === undefined) throw new Error(`Data inconsistency: Internal cell ID ${id} not found in label_map`);
+          return ext;
       });
     }
 

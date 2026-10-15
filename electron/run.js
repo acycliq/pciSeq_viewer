@@ -938,6 +938,73 @@ async function spotsInCell(label, gene) {
   };
 }
 
+// Every spot's candidate cells, grouped by cell, built once per run (python's
+// Run._cell_index). spots_of_cell and cell_row ask "which spots name this cell as
+// a candidate"; scanning the 3 million spots for that took most of a minute per
+// question, this reads the spot files once and then each question touches only
+// that cell's entries. Grouped with a counting sort, the labels are small
+// integers, so it is linear. Per entry: the spot it belongs to, its probability,
+// whether it is the spot's first candidate; about 9 bytes, ~300 MB on espio,
+// held only once a question has needed it.
+function cellIndex() {
+  db();                                    // drops the index when the run changes
+  if (!cache.cellIndex) cache.cellIndex = buildCellIndex();
+  return cache.cellIndex;
+}
+
+async function buildCellIndex() {
+  const batches = [];
+  let nSpots = 0, nEntries = 0, maxLabel = 0;
+  for await (const b of spotBatches()) {
+    const na = flatList(b, 'neighbour_array');
+    const n = flat(b, 'spot_id').length;
+    const e = n ? na.offs[n] - na.offs[0] : 0;
+    for (let j = na.offs[0]; j < na.offs[0] + e; j++) if (na.vals[j] > maxLabel) maxLabel = na.vals[j];
+    batches.push(b);
+    nSpots += n;
+    nEntries += e;
+  }
+  const spotId = new Float64Array(nSpots);
+  const geneId = new Uint32Array(nSpots);
+  const counts = new Uint32Array(maxLabel + 2);
+  // pass 1: the spots, and how many entries each cell has
+  let s0 = 0;
+  for (const b of batches) {
+    const sid = flat(b, 'spot_id'), gid = flat(b, 'gene_id');
+    const na = flatList(b, 'neighbour_array');
+    for (let i = 0; i < sid.length; i++) {
+      spotId[s0 + i] = Number(sid[i]);
+      geneId[s0 + i] = gid[i];
+      for (let j = na.offs[i]; j < na.offs[i + 1]; j++) counts[na.vals[j] + 1]++;
+    }
+    s0 += sid.length;
+  }
+  const start = new Uint32Array(maxLabel + 2);
+  for (let c = 1; c < start.length; c++) start[c] = start[c - 1] + counts[c];
+  // pass 2: each entry into its cell's slot, in the order of the files
+  const fill = start.slice();
+  const spotRow = new Int32Array(nEntries);
+  const prob = new Float32Array(nEntries);
+  const first = new Uint8Array(nEntries);
+  s0 = 0;
+  for (const b of batches) {
+    const n = flat(b, 'spot_id').length;
+    const na = flatList(b, 'neighbour_array');
+    const np = flatList(b, 'neighbour_prob');
+    for (let i = 0; i < n; i++) {
+      const lo = na.offs[i];
+      for (let j = lo; j < na.offs[i + 1]; j++) {
+        const at = fill[na.vals[j]]++;
+        spotRow[at] = s0 + i;
+        prob[at] = np.vals[j];
+        first[at] = j === lo ? 1 : 0;
+      }
+    }
+    s0 += n;
+  }
+  return { spotId, geneId, start, spotRow, prob, first, maxLabel };
+}
+
 async function spotsOfCell(label, minProb = null, gene = null) {
   label = Number(label);
   toInternal(label);
@@ -946,21 +1013,16 @@ async function spotsOfCell(label, minProb = null, gene = null) {
     throw new Error(`no gene '${gene}' in this run`);
   }
   const rows = [];
-  for await (const b of spotBatches()) {
-    const sid = flat(b, 'spot_id');
-    const gid = flat(b, 'gene_id');
-    const na = flatList(b, 'neighbour_array');
-    const np = flatList(b, 'neighbour_prob');
-    for (let i = 0; i < sid.length; i++) {
-      const lo = na.offs[i], hi = na.offs[i + 1];
-      for (let j = lo; j < hi; j++) {
-        if (na.vals[j] !== label) continue;
-        if (gene != null && names.get(gid[i]) !== gene) break;
-        const p = np.vals[j];
-        const keep = minProb == null ? na.vals[lo] === label : p > minProb;
-        if (keep) rows.push({ spot: Number(sid[i]), gene: names.get(gid[i]), prob: p });
-        break;
-      }
+  const ix = await cellIndex();
+  if (Number.isInteger(label) && label >= 0 && label <= ix.maxLabel) {
+    // a spot lists a cell at most once, so each entry is one spot, as in the scan
+    for (let k = ix.start[label]; k < ix.start[label + 1]; k++) {
+      const r = ix.spotRow[k];
+      const g = names.get(ix.geneId[r]);
+      if (gene != null && g !== gene) continue;
+      const p = ix.prob[k];
+      const keep = minProb == null ? ix.first[k] === 1 : p > minProb;
+      if (keep) rows.push({ spot: ix.spotId[r], gene: g, prob: p });
     }
   }
   rows.sort((a, b) => b.prob - a.prob);
