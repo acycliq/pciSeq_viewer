@@ -16,6 +16,7 @@
 
 import { transformToTileCoordinates, transformFromTileCoordinates } from '../../utils/coordinateTransform.js';
 import { IMG_DIMENSIONS } from '../../config/constants.js';
+import { planeToZ } from '../../utils/planes.js';
 
 /**
  * Get cell class color using the global color scheme
@@ -152,10 +153,9 @@ export class RectangularSelector {
         const [pixelLeft, pixelTop] = transformFromTileCoordinates(bounds.left, bounds.top, IMG_DIMENSIONS);
         const [pixelRight, pixelBottom] = transformFromTileCoordinates(bounds.right, bounds.bottom, IMG_DIMENSIONS);
 
-        // Calculate stack depth in pixel coordinates
+        // the stack depth as a scaled z, the units the cells and spots are in
         const userConfig = window.config();
-        const [xVoxel, yVoxel, zVoxel] = userConfig.voxelSize;
-        const stackDepth = window.appState.totalPlanes * (zVoxel / xVoxel);
+        const stackDepth = planeToZ(window.appState.totalPlanes, userConfig.voxelSize);
 
         // Convert cell boundaries from tile coordinates to pixel coordinates
         const clippedCellsInPixels = clippedCells.map(cell => ({

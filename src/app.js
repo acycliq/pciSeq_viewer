@@ -16,6 +16,7 @@ import { elements } from './domElements.js';
 import { transformToTileCoordinates, clamp } from '../utils/coordinateTransform.js';
 import { updateScaleBar } from '../utils/scaleBar.js';
 import { updateCoordinateDisplay } from '../utils/coordinateDisplay.js';
+import { planeOf } from '../utils/planes.js';
 import { debounce } from '../utils/common.js';
 import Perf from '../utils/runtimePerf.js';
 
@@ -214,10 +215,10 @@ window.getCellMeta = (cellId) => {
         if (cell.position && cell.position.z !== undefined) {
             const cfg = window.config ? window.config() : null;
             if (cfg && Array.isArray(cfg.voxelSize)) {
-                const [xVoxel, , zVoxel] = cfg.voxelSize;
-                plane_id = Math.floor(cell.position.z * xVoxel / zVoxel);
+                // floor, not round, see utils/planes.js for why
+                plane_id = planeOf(cell.position.z, cfg.voxelSize);
             } else {
-                plane_id = Math.floor(cell.position.z);
+                plane_id = planeOf(cell.position.z, [1, 1, 1]);
             }
         }
 

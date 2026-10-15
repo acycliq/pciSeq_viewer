@@ -156,13 +156,22 @@ function classIndex(name) {
   return k;
 }
 
-// the plane a scaled z falls on: floor, as pciSeq gives a spot its plane_id, with
-// the same tiny tolerance as the Python _plane_of. null without voxel_size
+// the plane a scaled z is on. A z is the plane stretched to the units of x, not a
+// plane number. Floor, never round: plane p is the stretch from p up to p + 1, as
+// pciSeq gives a spot its plane_id. The 1e-4 stops a z exactly on a plane landing
+// one below in floating point. Twin of utils/planes.js (the page) and of plane_of
+// in pciSeq/src/core/utils/geometry.py, the source of the rule; keep them the same,
+// tests/planes.check.js checks the numbers the python test checks
+function planeOfZ(z, voxelSize) {
+  const [vx, , vz] = voxelSize;
+  return Math.floor(z * vx / vz + 1e-4);
+}
+
+// the same for this run, null when it carries no voxel_size
 function planeOf(z) {
   const c = cfg();
   if (!c || !c.voxel_size) return null;
-  const [vx, , vz] = c.voxel_size;
-  return Math.floor(z * vx / vz + 1e-4);
+  return planeOfZ(z, c.voxel_size);
 }
 
 // the top classes of one cell by probability, as [k, prob] pairs
@@ -1672,4 +1681,4 @@ module.exports = { init, cell, cellShape, shapeOf, cellCounts, theta, gamma, spo
                    spotsOfClass, countSpotsOfClass,
                    spotsInCell, spotsOfCell, spotRow, cellRow, cellImage, planeImage,
                    classCounts, classPrior, findCells, metadataTool, calculate,
-                   toInternal, toExternal, planeOf };
+                   toInternal, toExternal, planeOf, planeOfZ };

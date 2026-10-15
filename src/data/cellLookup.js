@@ -14,6 +14,7 @@
 
 // Import the shared coordinate transformation function
 import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
+import { planeOf } from '../../utils/planes.js';
 
 // Global cell data storage
 let cellLookupData = new Map(); // cellId -> { x, y, z, bounds }
@@ -223,13 +224,8 @@ async function searchAndNavigateToCell(cellId) {
     // CRITICAL: Transform coordinates from original image space to tile coordinate space
     const [transformedX, transformedY] = transformToTileCoordinates(cellData.x, cellData.y, imageDimensions);
 
-    // Calculate plane number from Z coordinate. Floor, not round: plane p is the
-    // stretch from p up to p + 1, so a centroid at 21.88 is on plane 21. Same rule
-    // as a spot's plane_id in pciSeq, the Centroid Plane in the tooltip
-    // (ui/uiHelpers.js) and the mcp tools (pciSeq_3d e4270778). Do not use Round as it
-    // would put the fly-to one plane off the tooltip.
-    const [xVoxelSize, yVoxelSize, zVoxelSize] = config.voxelSize; // [0.28, 0.28, 0.7]
-    const planeNumber = Math.floor(cellData.z * xVoxelSize / zVoxelSize);
+    // the plane the centroid is on; floor, not round, see utils/planes.js for why
+    const planeNumber = planeOf(cellData.z, config.voxelSize);
 
     const switchPlane = () => {
         if (window.updatePlane && typeof window.updatePlane === 'function') {

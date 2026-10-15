@@ -7,6 +7,7 @@
 
 import { getCellInfo } from '../data/tooltipDiagnostics.js';
 import { escapeHtml } from '../../utils/domSafe.js';
+import { planeOf } from '../../utils/planes.js';
 import { SPOT_PICKABLE_MIN_ZOOM } from '../../config/constants.js';
 
 // Note: Arrow-only runtime; no TSV-specific palette usage here
@@ -425,10 +426,10 @@ export function showTooltip(info, tooltipElement) {
                             if (coords.z !== undefined) {
                                 const cfg = window.config ? window.config() : null;
                                 if (cfg && Array.isArray(cfg.voxelSize)) {
-                                    const [xVoxel, , zVoxel] = cfg.voxelSize;
-                                    centroidPlane = `<strong>Centroid Plane:</strong> ${Math.floor(coords.z * xVoxel / zVoxel)}<br>`;
+                                    // floor, not round, see utils/planes.js for why
+                                    centroidPlane = `<strong>Centroid Plane:</strong> ${planeOf(coords.z, cfg.voxelSize)}<br>`;
                                 } else {
-                                    centroidPlane = `<strong>Centroid Plane:</strong> ${Math.floor(coords.z)}<br>`;
+                                    centroidPlane = `<strong>Centroid Plane:</strong> ${planeOf(coords.z, [1, 1, 1])}<br>`;
                                 }
                             }
                         }

@@ -10,6 +10,7 @@ import { state } from './state/stateManager.js';
 import { pointInPolygon } from '../utils/pointInPolygon.js';
 import { isRegion, getRegionBoundaries, getVisibleRegions } from './regionsManager.js';
 import { escapeHtml } from '../utils/domSafe.js';
+import { planeOf } from '../utils/planes.js';
 
 class CellClassDistributionWidget extends WidgetBase {
     constructor() {
@@ -114,7 +115,7 @@ class CellClassDistributionWidget extends WidgetBase {
         const z_class_counts = {};
         const all_classes = new Set();
         const userConfig = window.config();
-        const [xVoxel, , zVoxel] = userConfig.voxelSize;
+        const voxelSize = userConfig.voxelSize;
 
         const isInsideRegions = (x, y) => {
             if (!regionPolygons || regionPolygons.length === 0) return true;
@@ -127,7 +128,7 @@ class CellClassDistributionWidget extends WidgetBase {
             
             if (!isInsideRegions(cell.position.x, cell.position.y)) return;
 
-            const planeId = Math.floor(cell.position.z * xVoxel / zVoxel);
+            const planeId = planeOf(cell.position.z, voxelSize); // floor, see utils/planes.js
             const cls = cell.primaryClass || 'Unknown';
 
             if (!z_class_counts[planeId]) z_class_counts[planeId] = {};

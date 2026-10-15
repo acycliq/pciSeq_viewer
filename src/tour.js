@@ -23,6 +23,7 @@ import { freezeOnCell, unfreeze } from './cellInfoPanel/index.js';
 import { isMinimized, isFrozen, minimize } from './cellInfoPanel/panelState.js';
 import { buildCellInfoData } from './ui/cellHoverHandler.js';
 import { transformToTileCoordinates } from '../utils/coordinateTransform.js';
+import { planeOf } from '../utils/planes.js';
 
 const SEEN_KEY = 'tourSeen';
 const PAD = 6;          // gap between a control and the edge of the hole, px
@@ -52,14 +53,14 @@ function cellAtCentre() {
     const dims = { width: config.imageWidth, height: config.imageHeight, tileSize: 256 };
     const vp = deckInstance.getViewports()[0];
     const [cx, cy] = vp.unproject([vp.width / 2, vp.height / 2]);
-    const [xVoxel, , zVoxel] = config.voxelSize || [1, 1, 1];
+    const voxelSize = config.voxelSize || [1, 1, 1];
     let best = null, bestHere = null;
     for (const [label, cell] of app.cellDataMap) {
         const [x, y] = transformToTileCoordinates(cell.position.x, cell.position.y, dims);
         const d = (x - cx) * (x - cx) + (y - cy) * (y - cy);
         if (!best || d < best.d) best = { label, d };
-        // same rule as the cell lookup: plane p is the stretch from p up to p + 1
-        const plane = Math.floor((cell.position.z || 0) * xVoxel / zVoxel);
+        // the plane the centroid is on, floor as everywhere, see utils/planes.js
+        const plane = planeOf(cell.position.z || 0, voxelSize);
         if (plane === app.currentPlane && (!bestHere || d < bestHere.d)) bestHere = { label, d };
     }
     return (bestHere || best).label;
