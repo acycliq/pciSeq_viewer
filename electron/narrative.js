@@ -36,8 +36,11 @@ function strength(d) {
   return 'overwhelmingly, beyond any doubt';
 }
 
+// how strongly the neighbourhood favours one class over the other, from the size of
+// the spatial term difference; not how many neighbours are of it, the term does not
+// say that. Same as _mostly in the python tools
 function mostly(d) {
-  return d > 8 ? 'overwhelmingly' : d > 2 ? 'mostly' : 'somewhat more';
+  return d > 8 ? 'strongly' : d > 2 ? 'clearly' : 'slightly';
 }
 
 function prob(x) {
@@ -157,10 +160,10 @@ function narrateCell(e) {
   if (Math.abs(d.neighbours) < 0.4) {
     out.push('The neighbouring cells make no real difference either way.');
   } else if (d.neighbours > 0) {
-    out.push(`The neighbouring cells are ${mostly(d.neighbours)} ${a}, which ` +
+    out.push(`The neighbourhood ${mostly(d.neighbours)} favours ${a} over ${o}, which ` +
              `${d.genes > 0 ? 'strengthens' : 'is what carries'} the call.`);
   } else {
-    out.push(`The neighbouring cells lean towards ${o}, which counts against the call.`);
+    out.push(`The neighbourhood favours ${o}, which counts against the call.`);
   }
 
   // what settled it
