@@ -13,7 +13,7 @@ let getWindow = () => null;
 let nextId = 1;
 const pending = new Map();
 const CHANNELS = ['chat-compose-image', 'chat-fly-to-cell', 'chat-all-planes', 'chat-export-per-class',
-                  'chat-viewer-state'];
+                  'chat-viewer-state', 'chat-spot-filters'];
 
 function init(d, ipcMain) {
   getWindow = d.getWindow;
@@ -77,4 +77,9 @@ function viewerState(timeoutMs = 5000) {
   return ask('chat-viewer-state', {}, timeoutMs, 'the viewer did not report its state in time');
 }
 
-module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState };
+// spot_filters: the page moves the sliders and counts the spots still drawn
+function spotFilters(settings, timeoutMs = 10000) {
+  return ask('chat-spot-filters', settings, timeoutMs, 'the viewer did not apply the filters in time');
+}
+
+module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters };

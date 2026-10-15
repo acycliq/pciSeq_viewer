@@ -826,6 +826,29 @@ const TOOLS = [
     input_schema: { type: 'object', properties: {} },
   },
   {
+    name: 'spot_filters',
+    description:
+      'Set how the spots are drawn, the same as the sliders in the Gene Controls drawer: ' +
+      'score, the lowest detection score a spot needs to be drawn; intensity, the same ' +
+      'for the detection intensity; size, a scale on every spot (0.5 to 3, 1 is normal). ' +
+      'Score and intensity are in the run\'s own units, the slider ranges cover the ' +
+      'run\'s values, and viewer_state gives the ranges; the lowest value draws every ' +
+      'spot. Give only what should change. A value is snapped to the slider\'s step, ' +
+      'so quote the applied values the tool returns. The score and intensity come from ' +
+      'the spot calling before pciSeq; a run without them cannot be filtered on them. ' +
+      'Returns how many spots of the genes on the map are still drawn, in all and per ' +
+      'gene when a few genes are shown. Use it when the user asks to filter or resize ' +
+      'the spots; offer it when they doubt whether a pattern is real.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        score: { type: 'number', description: 'Lowest score drawn, within the range viewer_state gives.' },
+        intensity: { type: 'number', description: 'Lowest intensity drawn, within the range viewer_state gives.' },
+        size: { type: 'number', description: 'Spot size scale, 0.5 to 3.' },
+      },
+    },
+  },
+  {
     name: 'fly_to_cell',
     description:
       'Move the map to a cell and flash its outline, so the user can see the cell ' +
@@ -1267,6 +1290,20 @@ async function call(name, input) {
     if (name === 'viewer_state') {
       if (!deps.viewerState) return { error: 'the viewer window is not available' };
       return await deps.viewerState();
+    }
+    if (name === 'spot_filters') {
+      if (!deps.spotFilters) return { error: 'the viewer window is not available' };
+      // the ranges are the sliders' own, set from the run's values, so the page
+      // checks them; here only that each is a number
+      const out = {};
+      for (const k of ['score', 'intensity', 'size']) {
+        if (input[k] == null) continue;
+        const v = Number(input[k]);
+        if (!Number.isFinite(v)) return { error: `${k} must be a number` };
+        out[k] = v;
+      }
+      if (!Object.keys(out).length) return { error: 'give at least one of score, intensity, size' };
+      return await deps.spotFilters(out);
     }
     if (name === 'fly_to_cell') {
       const label = Number(input.label);

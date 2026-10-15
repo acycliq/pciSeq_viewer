@@ -188,6 +188,7 @@ function createWindow() {
     // export falls back to the data folder when the run folder is not on this pc
     showAllPlanes: compose.showAllPlanes,
     viewerState: compose.viewerState,
+    spotFilters: compose.spotFilters,
     exportPerClassPngs: compose.exportPerClassPngs,
     getDataPath: () => store.get('dataPath', ''),
     // run_info quotes what the background tiles say about themselves

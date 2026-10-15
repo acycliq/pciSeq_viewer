@@ -297,8 +297,10 @@ function viewerSnapshot() {
             drawn: !!state.showGenes,
             size: state.geneSizeScale,
             uniform_size: !!state.uniformMarkerSize,
-            score_filter: state.hasScores ? state.scoreThreshold : 'not available, this run has no scores',
-            intensity_filter: state.hasIntensity ? state.intensityThreshold : 'not available, this run has no intensities',
+            score_filter: state.hasScores ? +Number(state.scoreThreshold).toPrecision(4) : 'not available, this run has no scores',
+            score_range: state.hasScores ? (state.scoreRange || []).map(v => +Number(v).toPrecision(4)) : null,
+            intensity_filter: state.hasIntensity ? +Number(state.intensityThreshold).toPrecision(4) : 'not available, this run has no intensities',
+            intensity_range: state.hasIntensity ? (state.intensityRange || []).map(v => +Number(v).toPrecision(4)) : null,
             misreads,
         },
         layers: {
@@ -1047,6 +1049,76 @@ window.addEventListener('load', async () => {
                 window.electronAPI.chatViewerStateDone({ id, ...viewerSnapshot() });
             } catch (e) {
                 window.electronAPI.chatViewerStateDone({ id, error: e.message });
+            }
+        });
+    }
+    // the spot_filters tool: each value goes through its slider, so the drawer, the
+    // map and viewer_state agree; then the spots still drawn are counted, over the
+    // genes on the map, with the misread setting applied as the map applies it
+    if (window.electronAPI?.onChatSpotFilters) {
+        window.electronAPI.onChatSpotFilters(({ id, score, intensity, size }) => {
+            try {
+                // each slider's own range, set from the run's values; a value outside
+                // it is refused, not clamped, so the agent never reports a filter it
+                // did not get
+                const sliders = { score: 'scoreFilterSlider', intensity: 'intensityFilterSlider', size: 'geneSizeSlider' };
+                const asked = { score, intensity, size };
+                for (const [k, elId] of Object.entries(sliders)) {
+                    const el = document.getElementById(elId);
+                    const v = asked[k];
+                    if (!el || v == null) continue;
+                    const lo = Number(el.min), hi = Number(el.max);
+                    if (v < lo || v > hi) {
+                        window.electronAPI.chatSpotFiltersDone({ id, error: `${k} must be between ${lo} and ${+hi.toPrecision(4)} for this run, nothing changed` });
+                        return;
+                    }
+                }
+                const move = (elId, v) => {
+                    const el = document.getElementById(elId);
+                    if (!el || v == null) return;
+                    el.value = String(v);
+                    el.dispatchEvent(new Event('input'));
+                };
+                const notes = [];
+                if (score != null && !state.hasScores) notes.push('this run has no scores, the score filter does nothing');
+                if (intensity != null && !state.hasIntensity) notes.push('this run has no intensities, the intensity filter does nothing');
+                move('scoreFilterSlider', score);
+                move('intensityFilterSlider', intensity);
+                move('geneSizeSlider', size);
+                const s = state.hasScores ? state.scoreThreshold : 0;
+                const it = state.hasIntensity ? state.intensityThreshold : 0;
+                const perGene = {};
+                let drawn = 0, total = 0;
+                for (const [g, spots] of state.geneDataMap) {
+                    if (!state.selectedGenes.has(g)) continue;
+                    let n = 0;
+                    for (const d of spots) {
+                        if (state.hideMisreads && d.is_hard_misread) continue;
+                        if (s > 0 && !(d.score != null && Number(d.score) >= s)) continue;
+                        if (it > 0 && !(d.intensity != null && Number(d.intensity) >= it)) continue;
+                        n++;
+                    }
+                    drawn += n;
+                    total += spots.length;
+                    perGene[g] = { drawn: n, of: spots.length };
+                }
+                const genes = Object.keys(perGene);
+                window.electronAPI.chatSpotFiltersDone({
+                    id,
+                    score_filter: state.hasScores ? +Number(state.scoreThreshold).toPrecision(4) : null,
+                    intensity_filter: state.hasIntensity ? +Number(state.intensityThreshold).toPrecision(4) : null,
+                    size: state.geneSizeScale,
+                    applied_is: 'the values the sliders took, snapped to their step',
+                    spots_drawn: drawn,
+                    spots_of_genes_on_map: total,
+                    genes_on_map: genes.length,
+                    ...(genes.length <= 25 ? { per_gene: perGene } : {}),
+                    counted_as: 'the spots of the genes on the map, every plane, that pass the filters' +
+                        (state.hideMisreads ? ' and are not hidden misreads' : ''),
+                    ...(notes.length ? { notes } : {}),
+                });
+            } catch (e) {
+                window.electronAPI.chatSpotFiltersDone({ id, error: e.message });
             }
         });
     }

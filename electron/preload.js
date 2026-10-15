@@ -101,6 +101,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // the viewer_state tool: the renderer answers with a snapshot of its state
   onChatViewerState: (handler) => ipcRenderer.on('chat-viewer-state', (_e, p) => handler(p)),
   chatViewerStateDone: (payload) => ipcRenderer.send('chat-viewer-state-done', payload),
+  // the spot_filters tool: score, intensity and size, set through the sliders
+  onChatSpotFilters: (handler) => ipcRenderer.on('chat-spot-filters', (_e, p) => handler(p)),
+  chatSpotFiltersDone: (payload) => ipcRenderer.send('chat-spot-filters-done', payload),
   chatAllPlanesDone: (payload) => ipcRenderer.send('chat-all-planes-done', payload),
   // the export_per_class_pngs tool: the drawer's export, each PNG written by the
   // main process into the folder the tool chose, answered when all are on disk
