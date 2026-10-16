@@ -14,7 +14,7 @@ Module._load = function (r, ...a) {
     ? { safeStorage: {}, ipcMain: { handle() {}, on() {} }, app: { getPath: () => '/tmp', on() {} }, BrowserWindow: function () {} }
     : load.call(this, r, ...a);
 };
-const { CORE } = require('../electron/mcp-server');
+const { CORE, TOOL_RULES, toolRules, listed } = require('../electron/mcp-server');
 const chat = require('../electron/chat');
 const tools = require('../electron/tools');
 
@@ -35,8 +35,23 @@ test('every sentence of the core is in the persona word for word', () => {
   assert.deepStrictEqual(missing, []);
 });
 
-test('no tool description is long enough to be cut', () => {
+test('no tool description is long enough to be cut, rules included', () => {
   for (const t of tools.TOOLS) {
-    assert.ok(t.description.length < 4000, `${t.name}: ${t.description.length}`);
+    const d = listed(t).description;
+    assert.ok(d.length < 4000, `${t.name}: ${d.length}`);
+  }
+});
+
+test('the tool rules are the persona\'s own words and sit on their tools', () => {
+  const full = norm(chat.SYSTEM);
+  const names = new Set(tools.TOOLS.map(t => t.name));
+  for (const [name, passages] of Object.entries(TOOL_RULES)) {
+    assert.ok(names.has(name), `no tool ${name}`);
+    for (const [start, end] of passages) {
+      const i = full.indexOf(start);
+      assert.ok(i >= 0 && full.indexOf(end, i) >= 0, `${name}: ${start} ... ${end}`);
+    }
+    const t = tools.TOOLS.find(x => x.name === name);
+    assert.ok(listed(t).description.includes(toolRules(name)), name);
   }
 });

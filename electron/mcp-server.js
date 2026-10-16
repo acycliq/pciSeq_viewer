@@ -35,9 +35,7 @@ function makeServer() {
     { capabilities: { tools: {} }, instructions: instructions() },
   );
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: tools.TOOLS.map(t => ({
-      name: t.name, description: t.description, inputSchema: t.input_schema,
-    })),
+    tools: tools.TOOLS.map(listed),
   }));
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
     const out = await tools.call(req.params.name, req.params.arguments || {});
@@ -101,6 +99,47 @@ function instructions() {
   return CORE;
 }
 
+// The rules for one kind of question, attached to the tool that question calls, for
+// an agent that gets only CORE. The same passages as TOOL_RULES in the python server
+// (pciSeq/src/mcp/server_instructions.py), cut out of chat.SYSTEM by where they start
+// and end, so the words are the persona's own and there is no second copy. Only the
+// MCP listing gets them: the built-in chat sends the whole persona already.
+// tests/mcp_core.check.js fails when a start or an end no longer matches.
+const TOOL_RULES = {
+  gamma: [['For gamma: cells of the same class', 'gamma is that allowance.'],
+          ['After saying why gamma is needed', 'is the count more or less than its class predicts?'],
+          ['Eta, theta and gamma are all the same statistic', 'give gamma as the correction the model settled on.']],
+  theta: [['When an answer about theta calls a cell bigger or smaller', 'never leave it as size.'],
+          ['Never say that eta, theta or gamma is near 1', 'tells a newcomer nothing about why 1 matters.']],
+  run_info: [['Explain rTheta, rGene and rSpot as pseudo-counts', 'give the default only as a fact, when asked.']],
+  docs: [['The four corrections that rescale', 'and the words carry it.'],
+         ['When asked why counts are not whole numbers', '0.3 give 4.3.']],
+  gene: [['All four are called inefficiencies in pciSeq', 'may have had the other way round in mind.']],
+  // the cell type definitions sentence too: unlike the python one, this core left it out
+  explain_cell: [['Cover the genes, the prior and the neighbourhood', 'say odds, or a word.'],
+                 ['The cell type definitions are the mean expression', 'unless the user says so.'],
+                 ['A little background on what a class is', 'use the class name as given.'],
+                 ['explain_cell and explain_spot return a narrative field', 'do not give every answer the same shape.']],
+  explain_spot: [['explain_cell and explain_spot return a narrative field', 'do not give every answer the same shape.']],
+  calculate: [['You may work out, from the current numbers', 'and that only a rerun can tell.']],
+};
+
+function toolRules(name) {
+  const text = chat.SYSTEM.replace(/\s+/g, ' ');
+  return (TOOL_RULES[name] || []).map(([start, end]) => {
+    const i = text.indexOf(start);
+    const j = i < 0 ? -1 : text.indexOf(end, i);
+    if (i < 0 || j < 0) throw new Error(`the rules for ${name} no longer match the persona: ${start} ... ${end}`);
+    return text.slice(i, j + end.length);
+  }).join(' ');
+}
+
+// a tool as the MCP listing shows it: its own description and the persona's rules
+function listed(t) {
+  const rules = toolRules(t.name);
+  return { name: t.name, description: rules ? t.description + '\n\n' + rules : t.description, inputSchema: t.input_schema };
+}
+
 function start(port) {
   if (httpServer) return Promise.resolve(port);
   return new Promise((resolve, reject) => {
@@ -140,4 +179,4 @@ function stop() {
   }
 }
 
-module.exports = { start, stop, DEFAULT_PORT, PATH, CORE };
+module.exports = { start, stop, DEFAULT_PORT, PATH, CORE, TOOL_RULES, toolRules, listed };
