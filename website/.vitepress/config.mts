@@ -39,6 +39,8 @@ export default defineConfig({
 
   themeConfig: {
     logo: '/img/logo.png',
+    // the root only forwards to the docs, so the logo goes there directly
+    logoLink: '/docs/',
 
     // three plain links and one action. The pages themselves are in the sidebar
     nav: [

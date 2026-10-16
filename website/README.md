@@ -4,10 +4,10 @@ VitePress site for the pciSeq Viewer docs.
 
 ## Layout
 
-- `index.md` is the landing page: the moving picture with the three stills under it (`DemoSwap.vue`), and the three doors.
+- `index.md` only sends the reader on to the docs Overview, `/docs/`. The repo README is the front page.
 - `docs/` holds the actual documentation, served under `/docs`.
 - `.vitepress/config.mts` has the nav, the sidebar and the theme settings.
-- `public/img/` holds the screenshots and the logo. The screenshots are taken by `dev_notes/demo_clip/shots.py` from the running viewer, so they can be shot again when the viewer changes. The gifs on the landing page are the README's, served by GitHub, not kept here.
+- `public/img/` holds the screenshots and the logo. The screenshots are taken by `dev_notes/demo_clip/shots.py` from the running viewer, so they can be shot again when the viewer changes. `map_still.png` is the picture a link preview shows. The videos on the AI agent page are in `public/video/`.
 
 ## Local development
 
@@ -28,8 +28,8 @@ and choose "GitHub Actions".
 and publishes them to GitHub Pages on pushes to `desktop_app` that touch
 `website/`. It can also be run by hand from the Actions tab.
 
-The main viewer is hosted at https://acycliq.github.io/pciSeq_viewer/ and the
-docs at https://acycliq.github.io/pciSeq_viewer/docs/.
+https://acycliq.github.io/pciSeq_viewer/ sends the reader on to the docs at
+https://acycliq.github.io/pciSeq_viewer/docs/.
 
 ## Editing
 

@@ -218,45 +218,6 @@
   .vp-doc .two-panel { flex-direction: column; }
 }
 
-/* --- Landing page (index.md, pageClass: landing) -------------------- */
-/* One column, no sidebar: the name, one sentence, the moving picture with the
-   three stills under it, then the first steps as a plain numbered list. */
-.landing .VPDoc .container,
-.landing .VPDoc .content {
-  max-width: 980px !important;
-}
-
-.landing .vp-doc h1 {
-  font-size: 2.6rem;
-  margin-bottom: 0.75rem;
-}
-
-.landing .vp-doc h1 + p {
-  font-size: 1.25rem;
-  line-height: 1.55;
-  color: var(--vp-c-text-1);
-  margin-top: 0;
-  max-width: 46ch;
-}
-
-.landing .vp-doc h2 {
-  margin-top: 3.5rem;
-}
-
-.landing .vp-doc ol {
-  padding-left: 1.4rem;
-}
-
-.landing .vp-doc ol > li {
-  margin-top: 0.7rem;
-}
-
-.landing .vp-doc ol > li::marker {
-  font-family: var(--font-family-display);
-  font-weight: 600;
-  color: var(--vp-c-text-2);
-}
-
 /* --- Browser surfaces ----------------------------------------------- */
 /* the parts the browser draws by default, set from the palette */
 ::selection {
