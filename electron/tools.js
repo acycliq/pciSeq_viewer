@@ -234,7 +234,9 @@ const TOOLS = [
       'description, size, planes). Use it for "when was this run made", "what is the ' +
       'mean cell radius", "what settings did it use", "did it converge" and, with ' +
       'class_counts, "what am I looking at". Older runs carry only the provenance and ' +
-      'the answer says so.',
+      'the answer says so. When the user asks about rTheta, also call theta on a cell ' +
+      'of this run and explain theta first: rTheta only makes sense through what it ' +
+      'does to theta.',
     input_schema: { type: 'object', properties: {} },
   },
   {
@@ -315,8 +317,15 @@ const TOOLS = [
       'The cell scale factor theta_bar of one cell under one class: the assigned ' +
       'class unless class_name is given, with that class\'s probability. Theta ' +
       "scales a class's expected counts to the cell's total, with a Gamma(rTheta, " +
-      'rTheta) prior of mean 1; rTheta is returned too. label is the segmentation ' +
-      'label.',
+      'rTheta) prior of mean 1; rTheta is returned too. Theta is the cell\'s reads ' +
+      'over what a class expects, with rTheta extra reads added to both. If those extra ' +
+      "reads are many compared with the cell's own total, they dominate and theta " +
+      'stays near 1, no correction; if they are few compared with it, the cell\'s reads ' +
+      'decide and theta is close to the plain ratio. label is the segmentation ' +
+      'label. Call it as well when the user asks about rTheta: show theta on a real ' +
+      "cell first, then rTheta as what decides how much the cell's own counts set " +
+      'theta, and end by asking whether the role of theta is clear, offering to go ' +
+      'through it on another cell.',
     input_schema: {
       type: 'object',
       properties: {
