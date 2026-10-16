@@ -4,7 +4,7 @@ pciSeq Viewer shows every call of a [pciSeq](https://github.com/acycliq/pciSeq_3
 tissue, plane by plane, and explains why each cell got its class.
 
 [Download](https://github.com/acycliq/pciSeq_viewer/releases/latest) for Windows, macOS or Linux ·
-[Documentation](https://acycliq.github.io/pciSeq_viewer/)
+[Documentation](https://acycliq.github.io/pciSeq_viewer/docs/)
 
 <img src="https://github.com/user-attachments/assets/79236976-b24c-4e5c-9b93-1577d7ffe7b6" width="100%" alt="pciSeq Viewer: the section, its classes and genes, plane by plane, one cell">
 
@@ -69,7 +69,7 @@ separate, optional step, see
 
 ## Documentation
 
-[acycliq.github.io/pciSeq_viewer](https://acycliq.github.io/pciSeq_viewer/), and in it:
+[acycliq.github.io/pciSeq_viewer/docs](https://acycliq.github.io/pciSeq_viewer/docs/), and in it:
 
 - [The map](https://acycliq.github.io/pciSeq_viewer/docs/the-map), the window and its controls
 - [The 3D view](https://acycliq.github.io/pciSeq_viewer/docs/3d-view), a region as voxels
