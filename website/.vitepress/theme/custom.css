@@ -476,3 +476,33 @@
   width: auto;
   max-width: min(100%, 400px);
 }
+
+/* a dark clip set on the same grey stage as the Claude Code clip, so it stands
+   apart from the page in both themes (ai-agent.md) */
+.vp-doc figure.shot.stage video {
+  box-sizing: border-box;
+  padding: 28px;
+  background: #3f4248;
+  border: 0;
+  border-radius: 8px;
+}
+
+/* the requirements picker on a panel of its own */
+.vp-doc .pick {
+  padding: 18px 20px 12px;
+  border-radius: 8px;
+  background: #eceef1;
+}
+.dark .vp-doc .pick {
+  background: #1e2024;
+}
+.vp-doc .pick .pick-opts button,
+.vp-doc .pick .pick-v {
+  background: var(--vp-c-bg);
+}
+.vp-doc .pick .pick-opts button.on {
+  background: var(--vp-c-brand-1);
+}
+.vp-doc .pick .pick-opts button.on:disabled {
+  background: var(--vp-c-bg);
+}

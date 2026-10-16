@@ -43,7 +43,7 @@ its answers come from the run itself: why a cell got its class, why a spot went 
 cell it did, what a setting was, which cells of a class sit in a region. The language
 model never reads the files; it only sees what the tools return.
 
-<figure class="shot">
+<figure class="shot stage">
 <video class="zoomable" src="/video/chat.mp4" poster="/video/chat_poster.jpg" autoplay muted loop playsinline @click="big = '/video/chat.mp4'" aria-label="The chat panel answering questions about the run: each question, the tools the agent called, and the answer"></video>
 <figcaption>The chat panel answering questions about a run. Each tool the agent called is listed above its answer, so what was looked up is visible. A click on the video shows it larger.</figcaption>
 </figure>
@@ -99,7 +99,7 @@ Protocol (MCP), such as Claude Code, Gemini CLI or Codex.
   <div class="pick-label">API key</div>
   <div class="pick-v">
     <template v-if="where === 'panel'">Required, entered once on the <a href="#connection">Connection</a> tab.</template>
-    <template v-else>Not required. {{ toolName[tool] }} uses its own account.</template>
+    <template v-else>Not required.</template>
   </div>
 </div>
 
