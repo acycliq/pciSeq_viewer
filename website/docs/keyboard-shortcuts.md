@@ -22,7 +22,7 @@ list inside the viewer.
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd> | Open background tiles |
 | <kbd>/</kbd> | Jump to the class filter box |
 | Click a cell | Freeze the cell panel on it |
-| <kbd>Ctrl</kbd>+Click a cell or a spot | Open its [inspector](./inspectors) |
+| <kbd>Ctrl</kbd>+Click a cell or a spot | Open its [diagnostics](./diagnostics) |
 | <kbd>Esc</kbd> | Unfreeze the panel, close a panel, cancel a selection |
 
 On macOS <kbd>Cmd</kbd> stands in for <kbd>Ctrl</kbd>.

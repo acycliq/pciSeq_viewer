@@ -1,12 +1,12 @@
 ---
 title: Custom colours
-description: Give the genes and the classes your own colours and glyphs, from a JSON file.
+description: Colours and glyphs for the genes and the classes, read from a JSON file.
 ---
 
 # Custom colours
 
 The viewer picks a colour for every class and a colour and a glyph for every gene. Both
-can be replaced with your own from the **Import** menu: **Gene Colours** and **Cell
+can be replaced from the **Import** menu: **Gene Colours** and **Cell
 Class Colours**, each a JSON file. Once imported the colours apply to the map, the
 drawer and the charts. Hex colours are six digits, with or without the leading `#`,
 and the key may be spelled `colour` or `color`.
@@ -44,4 +44,4 @@ Names must match the classes of the run; entries that match nothing are reported
 skipped. A class the file leaves out is drawn in grey, `#C0C0C0`.
 
 The schemes under `config/colorSchemes/` in the source, `hippocampus.js`, `zeisel.js`
-and `allen.js`, are a starting point for a file of your own.
+and `allen.js`, are a starting point for a new file.

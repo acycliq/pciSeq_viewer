@@ -80,7 +80,7 @@ What is drawn on the map:
 - **Cells from all planes** draws the cells of every plane at once instead of the
   current plane's only. **Min genes** and **Max genes** then keep only the cells whose
   gene count is in the range. **Export per-class PNGs** saves one picture per class of
-  the cells in a rectangle you drag on the map, with a transparent background, bundled
+  the cells in a rectangle dragged on the map, with a transparent background, bundled
   in one zip so that there is one save dialog rather than one per class.
 
 The key **A** lays the cell outlines of every plane over the current one, faintly, the

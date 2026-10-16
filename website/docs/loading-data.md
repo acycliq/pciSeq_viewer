@@ -10,16 +10,16 @@ The viewer reads one folder, `viewer_data`, written by a run of `pciSeq.fit` wit
 
 ```
 <output_path>/pciSeq/data/viewer_data/
-├── arrow_spots/          # every spot: gene, position, plane, candidate cells
-├── arrow_cells/          # every cell: centroid, class probabilities, gene counts
-├── arrow_boundaries/     # the cell outlines, one file per plane
+├── arrow_spots/        # every spot: gene, position, candidates
+├── arrow_cells/        # every cell: centroid, classes, counts
+├── arrow_boundaries/   # the cell outlines, one file per plane
 ├── diagnostics/
-│   └── diagnostics.db    # the terms behind every call, the settings, the voxel size
-└── dapi.mbtiles          # the background image, added by stage_image
+│   └── diagnostics.db  # the terms behind every call, settings
+└── dapi.mbtiles        # the background image, from stage_image
 ```
 
 The Arrow folders are enough to draw the map. `diagnostics.db` is what the
-[inspectors](./inspectors) and the [agent](./ai-chat) read, and it records
+[diagnostics](./diagnostics) and the [agent](./ai-agent) read, and it records
 the voxel size. The `.mbtiles` file is the background image; without it the spots and the cells are
 drawn on an empty background. [Data format](./reference/data-format) specifies each file.
 
@@ -65,7 +65,7 @@ shown at a time, the one whose file name sorts first opens by default.
 The viewer starts on a welcome screen. **Open Data Folder** (also **File, Open
 Dataset**, Ctrl+O) asks for the `viewer_data` folder. It checks that the Arrow folders
 are there, then finds the rest by itself: every `.mbtiles` file as a channel, and
-`diagnostics/diagnostics.db` for the inspectors and the agent.
+`diagnostics/diagnostics.db` for the diagnostics and the agent.
 
 Three things the viewer reads from the files, and asks for when they are missing:
 

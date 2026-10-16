@@ -5,24 +5,25 @@ description: How the pciSeq Viewer codebase is organised.
 
 # Architecture
 
-A high-level map of the codebase for contributors.
+How the code is organised, for contributors.
 
 ## Stack
 
 - **Electron**, the desktop shell. The **Main process** (`electron/main.js`) handles file system access, menu bars, and window management. The **Renderer process** (`src/app.js`) handles the UI and map.
-- **deck.gl**, high-performance WebGL rendering for the map. Layers are defined in `src/layers/`.
-- **Apache Arrow**, the primary data format. We use `arrow-loader/` to ingest large datasets efficiently.
+- **deck.gl**, the WebGL rendering of the map. Layers are defined in `src/layers/`.
+- **Apache Arrow**, the data format. `arrow-loader/` reads the large files.
 - **D3.js**, used for charts (gene distributions, class probabilities) and legends.
 - **The agent** lives in the main process: `electron/chat.js` runs a turn of conversation with the model, `electron/tools.js` defines the functions it may call and runs them against `diagnostics.db` through `electron/run.js`, and `electron/mcp-server.js` exposes the same functions to an outside assistant over HTTP on localhost.
 - **Python**, on the pciSeq side: `pciSeq.fit` writes the Arrow files the viewer reads and `stage_image` makes the MBTiles background.
 
 ## Process model
 
-When you open a dataset:
+When a dataset is opened:
+
 1. **Selection:** The Main process prompts for a folder and sends the path to the Renderer.
 2. **Metadata:** `src/data/dataLoaders.js` reads the Arrow manifests to determine the plane count, gene list, and cell classes.
-3. **Ingestion:** Spots, cells, and boundaries are loaded via `arrow-loader/`. Spots and cells are loaded once and cached in memory; boundaries are loaded per-plane as you navigate.
-4. **Indexing:** `src/data/cellIndexes.js` builds spatial and cross-reference indexes (e.g., which spots belong to which cell) for fast hover interactions.
+3. **Ingestion:** Spots, cells, and boundaries are loaded via `arrow-loader/`. Spots and cells are loaded once and cached in memory; boundaries are loaded per plane, as the planes are visited.
+4. **Indexing:** `src/data/cellIndexes.js` builds spatial and cross-reference indexes (which spots belong to which cell, for example) for fast hover interactions.
 5. **Rendering:** `src/layers/layerBuilder.js` constructs the deck.gl layer stack for the current plane and zoom level.
 
 ## Data flow

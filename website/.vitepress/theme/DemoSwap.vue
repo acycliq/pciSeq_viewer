@@ -145,7 +145,11 @@ const failed = i => { broken.value = { ...broken.value, [i]: true } }
   color: var(--vp-c-text-2);
 }
 
+/* on a phone the three stills stay in one row as small thumbnails, so the
+   first one does not repeat the big picture right under it */
 @media (max-width: 720px) {
-  .swap-row { grid-template-columns: 1fr; }
+  .swap-row { gap: 8px; margin-top: 8px; }
+  .swap-still b { font-size: 0.85rem; margin-top: 6px; }
+  .swap-still span { display: none; }
 }
 </style>

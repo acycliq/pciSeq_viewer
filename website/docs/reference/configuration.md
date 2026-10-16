@@ -8,8 +8,8 @@ description: The settings in the viewer's source and what each one controls.
 The viewer's settings live in three files, all loaded by `index.html` before the
 app starts:
 
-- **`config.js`**, data paths and the metadata-loading machinery. You normally
-  don't edit this.
+- **`config.js`**, data paths and the metadata-loading machinery, rarely
+  edited.
 - **`config/advanced.js`**, the tunable knobs (performance, startup display,
   visualization). This is the file to change.
 - **`config/constants.js`**, derived values built from `advanced.js` plus a few
@@ -51,7 +51,7 @@ the UI.
 
 ## Fixed constants (config/constants.js)
 
-You do not edit these, but they are useful to know. They are not exposed in
+These are not edited, but they are useful to know. They are not exposed in
 `advanced.js`.
 
 | Constant | Value | Meaning |
@@ -86,5 +86,5 @@ reads them, so changing them has no effect.
 - `performance.loadingTimeout`
 - `visualization.geneMinScale`, `visualization.geneMaxScale`,
   `visualization.geneScaleStep`. The Size slider's range (`0.5` to `3.0`, step
-  `0.1`) is hard-coded in `index.html`, so to change it you edit the slider
+  `0.1`) is hard-coded in `index.html`, so changing it means editing the slider
   there, not these values.

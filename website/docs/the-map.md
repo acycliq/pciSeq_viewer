@@ -15,7 +15,7 @@ moves through the planes.
 <figcaption>The main window, the mouse on an oligodendrocyte: the lines go from the cell to its spots. The drawer on the left, the plane slider at the bottom, the cell panel at the bottom right, the chat bubble and the help button at the top right.</figcaption>
 </figure>
 
-Round the map, the elements of the window:
+Around the map:
 
 - **The rail**, the strip on the left. It opens and closes [the drawer](./the-drawer),
   where the genes, the classes, the charts and the layers are. Its magnifier is
@@ -24,7 +24,7 @@ Round the map, the elements of the window:
 - **The scale bar** and the coordinates under the cursor, in pixels and in microns.
 - **The channels**, at the top right, when the folder holds more than one background
   image, see [Loading the data](./loading-data#channels).
-- **The chat bubble** opens [the chat panel](./ai-chat), and the `?`
+- **The chat bubble** opens [the chat panel](./ai-agent#chat-panel), and the `?`
   button a description of the viewer and a tour of the controls, also under **Help,
   Take a Tour** in the menu.
 
@@ -51,7 +51,7 @@ of the tissue is in one picture.
 
 Every spot is coloured by its gene and every cell by its class, with the colours from
 the Genes and Cell Classes sections of the drawer, or from a
-[colour file](./custom-colours) of your own.
+[colour file](./custom-colours).
 
 The spots change shape with the zoom. Zoomed out, every spot is a coloured dot, one fast
 layer that copes with millions of points. From zoom 7 of the map's 0 to 8 the spots in
@@ -83,7 +83,7 @@ can move onto the panel and read it; a small lock shows in its header while it i
 frozen. **Esc**, or a click on the empty background, unfreezes it.
 
 With `diagnostics.db` in the folder, **Ctrl+Click** on a cell or on a spot opens
-[the inspectors](./inspectors), the numbers behind its call.
+[the diagnostics](./diagnostics), the numbers behind its call.
 
 ## Cell search
 

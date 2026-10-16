@@ -10,8 +10,8 @@ drawn on the map or read from a file, and **cell annotations**, sets of cells dr
 their own outlines. Both are listed with an eye to hide them and a bin to delete them;
 double-click a name to rename it.
 
-Annotations are kept in memory while you work, like layers in an image editor, and
-written to a file only when you press **Save**. Closing the window or opening another
+Annotations are kept in memory during the session, like layers in an image editor, and
+written to a file only on **Save**. Closing the window or opening another
 run with unsaved changes asks first. Nothing is written into the data folder.
 
 ## Regions
@@ -27,7 +27,7 @@ with the name open for editing.
 </figure>
 
 **Save** writes the current annotations to a GeoJSON file, one polygon per region in
-image pixels, at a place you choose. **Open** reads a saved file back, replacing the
+image pixels, at a chosen place. **Open** reads a saved file back, replacing the
 list. It also opens:
 
 - plain GeoJSON polygons made in other software, in image pixels;

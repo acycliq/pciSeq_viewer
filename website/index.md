@@ -42,26 +42,24 @@ const demos = [
 
 # pciSeq Viewer
 
-A desktop application that opens the output of a [pciSeq](https://acycliq.github.io/pciSeq_3d/)
-run and draws it over the tissue image: every spot coloured by gene, every cell coloured
-by the class it was assigned to, plane by plane through the z-stack. Hover a cell for
-its gene counts and class probabilities, or ask the agent why the cell got its class.
+pciSeq Viewer shows every call of a [pciSeq](https://acycliq.github.io/pciSeq_3d/) run on
+the tissue, plane by plane, and explains why each cell got its class.
 
 <DemoSwap :items="demos" />
 
-<div class="doors">
-<a href="./docs/installation"><b>Install</b><span>Installers for Windows, macOS and Linux, or run it from source.</span></a>
-<a href="./docs/loading-data"><b>Load the data</b><span>What a run writes, how the background image is made, and how the viewer finds them.</span></a>
-<a href="./docs/the-map"><b>Start exploring</b><span>The window, the planes, the drawer, and what a click on a cell opens.</span></a>
-</div>
+## First steps
 
-## Input
-
-A run of `pciSeq.fit` writes a `viewer_data` folder: the spots, the cells and the cell
-boundaries as Arrow files, and `diagnostics.db`, the terms behind every call. The
-background image, tiled by `stage_image`, sits next to them. Point the viewer at the
-folder and it picks up the rest. See [Loading the data](./docs/loading-data).
+1. **[Install it](./docs/installation).** Installers for Windows, macOS and Linux, or run
+   it from source.
+2. **[Open a run](./docs/loading-data).** `pciSeq.fit` with `save_data` on writes a
+   `viewer_data` folder: the spots, the cells and their outlines as Arrow files, and
+   `diagnostics.db`, the terms behind every call. The background image, tiled by
+   `stage_image`, sits next to them.
+3. **[Read the map](./docs/the-map).** The window, the planes, the drawer, and what a
+   click on a cell opens.
+4. **[Ask about a call](./docs/diagnostics).** Ctrl+Click a cell or a spot for the terms
+   behind its call, or [ask the agent](./docs/ai-agent) in plain words.
 
 The viewer is a separate project from pciSeq itself. The method, its settings and the
-functions that produce the files are documented on the
+functions that write the files are documented on the
 [pciSeq site](https://acycliq.github.io/pciSeq_3d/).

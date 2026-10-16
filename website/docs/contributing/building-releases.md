@@ -32,11 +32,11 @@ npx electron-rebuild -f -w better-sqlite3
 
 ## Producing installers
 
-We use **electron-builder** to package the application for Windows, macOS, and Linux.
+**electron-builder** packages the application for Windows, macOS and Linux.
 
 ### Local builds
 
-You can build installers locally if you have the required toolchains (e.g., Xcode for macOS, NSIS for Windows):
+Installers can be built locally with each platform's toolchain, Xcode for macOS and NSIS for Windows for example:
 
 ```bash
 # Build for one platform
@@ -54,7 +54,7 @@ The output artifacts are placed in the `dist/` folder.
 
 ### Releasing through GitHub Actions
 
-Installers are built and published by GitHub Actions, but the workflow is triggered **manually**, not by pushing a tag. Open the Actions tab, pick the "Build and Release" workflow, and run it with the tag (e.g., `v0.0.6-alpha.1`) and the pre-release flag as inputs.
+Installers are built and published by GitHub Actions, but the workflow is triggered **manually**, not by pushing a tag. Open the Actions tab, pick the "Build and Release" workflow, and run it with the tag (`v0.0.6-alpha.1` for example) and the pre-release flag as inputs.
 
 - **Workflow:** `.github/workflows/build-release.yml`
 - **Platforms:** Windows (NSIS `.exe`), macOS (DMG, ZIP), Linux (AppImage, DEB).

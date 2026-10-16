@@ -26,8 +26,8 @@ planes they span.
 ## The agent
 
 A chat panel that answers questions about the run in plain words. It answers from the run's
-own numbers, which it reads through its tools, and it can move the map, open the inspectors
-or draw a cell for you. It needs an API key, Anthropic or an Anthropic compatible endpoint.
+own numbers, which it reads through its tools, and it can move the map, open the diagnostics
+or draw a cell. It needs an API key, Anthropic or an Anthropic compatible endpoint.
 The same tools are served over MCP, so Claude Code, Gemini CLI or Codex can ask too.
 
 > **Why is cell 22245 called 031 CT SUB Glut?**
@@ -73,8 +73,8 @@ separate, optional step, see
 
 - [The map](https://acycliq.github.io/pciSeq_viewer/docs/the-map), the window and its controls
 - [The 3D view](https://acycliq.github.io/pciSeq_viewer/docs/3d-view), a region as voxels
-- [The inspectors](https://acycliq.github.io/pciSeq_viewer/docs/inspectors), why a cell got its class and a spot its cell
-- [AI chat](https://acycliq.github.io/pciSeq_viewer/docs/ai-chat), the agent, its tools, and using it from Claude Code
+- [Diagnostics](https://acycliq.github.io/pciSeq_viewer/docs/diagnostics), why a cell got its class and a spot its cell
+- [AI agent](https://acycliq.github.io/pciSeq_viewer/docs/ai-agent), the chat panel, AI assistants such as Claude Code, and what each needs
 - [Data format](https://acycliq.github.io/pciSeq_viewer/docs/reference/data-format), the files the viewer reads
 
 ## Citation

@@ -49,8 +49,8 @@ viewer_data/
 ## manifest.json
 
 Each `arrow_*` folder has a manifest listing its shards. The viewer reads the
-shards in the listed order and concatenates them, so you can split a table into
-as many shards as you like (pciSeq uses 200,000 rows per spot shard and 100,000
+shards in the listed order and concatenates them, so a table can be split into
+any number of shards (pciSeq uses 200,000 rows per spot shard and 100,000
 per cell shard, but that is a producer choice, not a requirement).
 
 ```json
@@ -80,9 +80,9 @@ One row per spot (gene read).
 | `y` | float32 | yes | Y coordinate |
 | `z` | float32 | yes (3D) | Z coordinate |
 | `plane_id` | uint16 | yes | Z-plane index the spot belongs to |
-| `spot_id` | uint32 | yes | Unique spot id (used for picking and the Spot Inspector) |
+| `spot_id` | uint32 | yes | Unique spot id (used for picking and the spot diagnostics) |
 | `gene_id` | uint32 | yes | Gene id, mapped to a name through `gene_dict.json` |
-| `neighbour_array` | list&lt;int32&gt; | optional | Candidate cell ids, for the Spot Inspector |
+| `neighbour_array` | list&lt;int32&gt; | optional | Candidate cell ids, for the spot diagnostics |
 | `neighbour_prob` | list&lt;float32&gt; | optional | Assignment probabilities, matching `neighbour_array` |
 | `omp_score` | float32 | optional | Detection score, drives the **Score Filter** |
 | `omp_intensity` | float32 | optional | Detection intensity, drives the **Intensity Filter** |
@@ -142,8 +142,8 @@ plane number). One row per polygon.
 ::: warning Every plane needs a shard, even empty ones
 
 There must be one shard per plane, with no gaps in the plane numbering. If a
-plane has no polygons, you still write a `boundaries_plane_XX.feather` with the
-same four-column schema and **zero rows**, and you still list it in the manifest
+plane has no polygons, a `boundaries_plane_XX.feather` is still written with the
+same four-column schema and **zero rows**, and still listed in the manifest
 with `"rows": 0` (see `boundaries_plane_00.feather` in the example below). Do not
 skip empty planes.
 
@@ -191,7 +191,7 @@ this file adds a `plane_id` column so each z-plane gets its own pyramid.
 When a dataset folder holds several `.mbtiles` files, each is a switchable
 background **channel**. The viewer discovers them per folder, labels each from
 its `name`, and tints each from its own `tint`, so N files give N independently
-coloured channels you switch between (a green GCaMP channel next to a grayscale
+coloured channels to switch between (a green GCaMP channel next to a grayscale
 DAPI one), shown one at a time with a cross-fade.
 
 **2. Google (XYZ) tiling, not TMS.** The tiles are generated with libvips

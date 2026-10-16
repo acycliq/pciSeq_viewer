@@ -1,12 +1,12 @@
 ---
-title: The inspectors
+title: Diagnostics
 description: Ctrl-click a cell or a spot and a panel opens with the terms behind its call, the same numbers as pciSeq's check_cell and check_spot.
 ---
 
-# The inspectors
+# Diagnostics
 
 pciSeq saves, with its results, the terms from which every assignment was computed.
-The inspectors show them: **Ctrl+Click** a cell for why it got its class, **Ctrl+Click**
+The diagnostics panels show them: **Ctrl+Click** a cell for why it got its class, **Ctrl+Click**
 a spot for why it went to its cell. They are the viewer's version of pciSeq's
 [`check_cell`](https://acycliq.github.io/pciSeq_3d/api/reference#check-cell) and
 [`check_spot`](https://acycliq.github.io/pciSeq_3d/api/reference#check-spot), read from
@@ -18,19 +18,19 @@ and
 [how a spot's call was made](https://acycliq.github.io/pciSeq_3d/explaining-the-calls/why-a-spot-got-its-cell).
 
 ::: info The diagnostics database
-The inspectors need `diagnostics/diagnostics.db` in the data folder, which the viewer
+The diagnostics need `diagnostics/diagnostics.db` in the data folder, which the viewer
 finds on its own. A database kept elsewhere can be pointed to with **Diagnostics,
 Setup** in the menu. If Ctrl+Click does nothing, the database is not connected; a run
 from pciSeq older than `0.0.66` has none.
 :::
 
-## The cell inspector
+## Cell diagnostics
 
 The panel opens with the cell's assigned class and asks which class to compare it
 against, the runner up by default. **Compare** then shows the two side by side.
 
-<figure class="shot">
-<img src="/img/cell-inspector.png" alt="The cell inspector: the genes that favour each of the two classes as diverging bars, and the tables under them">
+<figure class="shot panel">
+<img src="/img/cell-diagnostics.png" alt="The cell diagnostics panel: the genes that favour each of the two classes as diverging bars, and the tables under them">
 <figcaption>Cell 14270, assigned oligodendrocyte, against its runner up. The genes that argued for each class, and by how much.</figcaption>
 </figure>
 
@@ -46,7 +46,7 @@ Two tabs:
 A borderline call is one where the bars nearly cancel, or where the two probabilities on
 the Posterior tab are close.
 
-## The spot inspector
+## Spot diagnostics
 
 The panel shows the spot's gene and position, then every cell the spot was scored
 against plus the background:
@@ -59,13 +59,13 @@ against plus the background:
 - **The table**, the same numbers as a table, with the sum and the probability of each
   row.
 
-<figure class="shot">
-<img src="/img/spot-inspector.png" alt="The spot inspector: the probability of each candidate cell and the background, and the score of each split into its terms">
+<figure class="shot panel">
+<img src="/img/spot-diagnostics.png" alt="The spot diagnostics panel: the probability of each candidate cell and the background, and the score of each split into its terms">
 <figcaption>A spot between two cells. The bars show which term tipped it.</figcaption>
 </figure>
 
 ## The agent
 
 The same terms, explained in prose rather than shown, are what
-[the agent](./ai-chat) gives when asked why a cell or a spot got its call.
-It reads the same database and can open either inspector on request.
+[the agent](./ai-agent) gives when asked why a cell or a spot got its call.
+It reads the same database and can open either panel on request.
