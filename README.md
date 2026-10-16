@@ -1,65 +1,51 @@
-<div align="center">
-
 # pciSeq Viewer
 
-**A desktop application for exploring pciSeq results in 3D**
+pciSeq Viewer shows every call of a [pciSeq](https://github.com/acycliq/pciSeq_3d) run on the
+tissue, plane by plane, and explains why each cell got its class.
 
-[![Documentation](https://img.shields.io/badge/docs-acycliq.github.io-0a7d5a)](https://acycliq.github.io/pciSeq_viewer/)
-[![Download](https://img.shields.io/github/v/release/acycliq/pciSeq_viewer?include_prereleases&label=download)](https://github.com/acycliq/pciSeq_viewer/releases/latest)
-[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-3776ab)](#installation)
-[![Licence](https://img.shields.io/badge/licence-MIT-lightgrey)](LICENSE)
+[Download](https://github.com/acycliq/pciSeq_viewer/releases/latest) for Windows, macOS or Linux ·
+[Documentation](https://acycliq.github.io/pciSeq_viewer/)
 
-[Documentation](https://acycliq.github.io/pciSeq_viewer/) ·
-[Installation](#installation) ·
-[Loading the data](#loading-the-data) ·
-[Web demo](https://acycliq.github.io/pciSeq_viewer/web_viewer/)
-
-</div>
-
-pciSeq Viewer opens the output folder of a [pciSeq](https://github.com/acycliq/pciSeq_3d)
-run and draws it over the tissue image: every spot coloured by gene, every cell coloured by
-the class it was assigned to, plane by plane through the z-stack. Hover a cell for its gene
-counts and class probabilities, or ask the AI agent why the cell got its class.
-
-<p align="center">
 <img src="https://github.com/user-attachments/assets/79236976-b24c-4e5c-9b93-1577d7ffe7b6" width="100%" alt="pciSeq Viewer: the section, its classes and genes, plane by plane, one cell">
-</p>
 
-<table>
-<tr>
-<td width="33%" align="center"><a href="https://github.com/user-attachments/assets/79236976-b24c-4e5c-9b93-1577d7ffe7b6"><img src="https://github.com/user-attachments/assets/7ba100ae-4eb7-4a11-8523-c832f44ec392" width="100%" alt="Explore"></a><br><b>Explore</b><br>every spot, every cell, plane by plane</td>
-<td width="33%" align="center"><a href="https://github.com/user-attachments/assets/507606e5-d075-4ff4-a3b3-633433cf2564"><img src="https://github.com/user-attachments/assets/bff644c3-255d-4620-af5d-e099d04ee9b9" width="100%" alt="See it in 3D"></a><br><b>See it in 3D</b><br>a region as voxels, a cell and its spots inside</td>
-<td width="33%" align="center"><a href="https://github.com/user-attachments/assets/76618be3-c5ed-4403-8c4d-3edf0a45b97f"><img src="https://github.com/user-attachments/assets/b7bde1d7-5cde-48db-9f86-b13f8b263719" width="100%" alt="Ask the run"></a><br><b>Ask the run</b><br>an agent with tools over the results</td>
-</tr>
-</table>
+## The map
 
-## Features
+The section over its tissue image, every spot coloured by its gene and every cell by the
+class it was assigned to, plane by plane through the z-stack. Millions of spots stay
+interactive, and any gene or class can be shown or hidden. Hover a cell for its gene counts
+and class probabilities; Ctrl+Click a cell or a spot for the terms behind its call: why this
+class and not the runner up, why this cell and not the neighbour.
 
-- **Explore.** Pan and zoom a large tissue image through its planes with the spots and cell
-  boundaries drawn on top. Rendered on the GPU with deck.gl, so millions of spots stay
-  interactive. Show or hide any gene or cell class.
-- **Inspect.** Hovering a cell shows its gene counts, its class probabilities and a chart.
-  Ctrl+click a cell or a spot to open the diagnostics: the terms behind the assignment, why
-  this class and not the runner up, why this cell and not the neighbour.
-- **Ask.** A chat panel with an AI agent that has tools over the run: it counts cells and
-  spots, explains a cell or a spot, shows or hides classes and genes, flies to a cell, draws
-  charts and exports tables. It needs an API key, Anthropic or an Anthropic compatible
-  endpoint. The same tools are served to Claude Code over MCP, so an agent outside the
-  viewer can drive it too.
-- **3D.** Select a region and render it as voxels in a separate window.
-- **Charts and export.** Class and gene distributions, misread diagnostics, the scRNA-seq
-  reference next to the counts the model implies, per class PNG export, custom colour
-  schemes.
+## The 3D view
+
+Draw a box round a region and it opens in 3D as voxels: the cells, their spots, and the
+planes they span.
+
+<img src="https://github.com/user-attachments/assets/507606e5-d075-4ff4-a3b3-633433cf2564" width="100%" alt="A box drawn round two cells and the region built in 3D">
+
+## The agent
+
+A chat panel that answers questions about the run in plain words. It answers from the run's
+own numbers, which it reads through its tools, and it can move the map, open the inspectors
+or draw a cell for you. It needs an API key, Anthropic or an Anthropic compatible endpoint.
+The same tools are served over MCP, so Claude Code, Gemini CLI or Codex can ask too.
+
+> **Why is cell 22245 called 031 CT SUB Glut?**
+>
+> Cell 22245 is called 031 CT SUB Glut, but only just. It gets 0.51 against 0.49 for
+> 030 L6 CT CTX Glut. The genes lean one way, the prior leans the other, and the two
+> nearly cancel.
+
+<img src="https://github.com/user-attachments/assets/76618be3-c5ed-4403-8c4d-3edf0a45b97f" width="100%" alt="The chat panel answering three questions about the run">
+
+The viewer also draws class and gene charts, shows the cell type definitions next to the
+counts the model implies, exports tables and a PNG per class, and takes custom colour schemes.
 
 ## Installation
 
-Download the installer for your platform from
-[GitHub Releases](https://github.com/acycliq/pciSeq_viewer/releases/latest): Windows
-(installer or portable), macOS (dmg or zip), Linux (deb or AppImage). The
-[getting started](https://acycliq.github.io/pciSeq_viewer/docs/) page has the steps per
-platform.
-
-From source, with Node.js and npm installed:
+Installers for Windows (installer or portable), macOS (dmg or zip) and Linux (deb or
+AppImage) are on the [releases page](https://github.com/acycliq/pciSeq_viewer/releases/latest).
+From source, with Node.js and npm:
 
 ```bash
 git clone https://github.com/acycliq/pciSeq_viewer.git
@@ -68,48 +54,36 @@ npm install
 npm start
 ```
 
-## Loading the data
+## Opening a run
 
-A run of `pciSeq.fit` with `save_data` on writes a `viewer_data` folder next to its other
-outputs, with the Arrow files and the diagnostics database. The background image is a
-separate step, optional: `stage_image` cuts the microscopy image, a 2D image or a z-stack,
-into an `.mbtiles` file in the same folder. Each `.mbtiles` in the folder is a channel the
-viewer can switch to, DAPI and a second stain for example.
-
-```python
-from skimage import io
-dapi = io.imread('/path/to/dapi.tif')                # (Z, H, W), or (H, W) for a 2D image
-pciSeq.stage_image(img=dapi, out_dir='/path/to/viewer_data', name='dapi')
-```
-
-Open the folder from the welcome screen, or pass it on the command line to skip the
-welcome screen:
+`pciSeq.fit` with `save_data` on writes a `viewer_data` folder. Open it from the welcome
+screen, or skip the welcome screen with
 
 ```bash
 pciSeq_viewer --data=/path/to/viewer_data
 ```
 
-From a source checkout: `npm start -- --data=/path/to/viewer_data`. See
-[preparing data](https://acycliq.github.io/pciSeq_viewer/docs/preparing-data) for the
-Python side.
+From a source checkout: `npm start -- --data=/path/to/viewer_data`. The background image is a
+separate, optional step, see
+[Loading the data](https://acycliq.github.io/pciSeq_viewer/docs/loading-data).
 
 ## Documentation
 
-| Section | Description |
-| --- | --- |
-| [Getting started](https://acycliq.github.io/pciSeq_viewer/docs/) | install on Windows, macOS or Linux |
-| [Preparing data](https://acycliq.github.io/pciSeq_viewer/docs/preparing-data) | `pciSeq.fit` and `stage_image`, the two calls that make a folder the viewer can open |
-| [Loading data](https://acycliq.github.io/pciSeq_viewer/docs/loading-data) | open a run, set the voxel size |
-| [Using the viewer](https://acycliq.github.io/pciSeq_viewer/docs/using-the-viewer/overview) | the interface, genes and classes, the cell panel, the diagnostics, charts, the 3D view |
-| [Reference](https://acycliq.github.io/pciSeq_viewer/docs/reference/data-format) | the data format and the configuration |
-| [Troubleshooting](https://acycliq.github.io/pciSeq_viewer/docs/troubleshooting) | installation and data loading problems |
-| [Contributing](https://acycliq.github.io/pciSeq_viewer/docs/contributing/architecture) | how the code is organised, how releases are built |
+[acycliq.github.io/pciSeq_viewer](https://acycliq.github.io/pciSeq_viewer/), and in it:
 
-## Web demo
+- [The map](https://acycliq.github.io/pciSeq_viewer/docs/the-map), the window and its controls
+- [The 3D view](https://acycliq.github.io/pciSeq_viewer/docs/3d-view), a region as voxels
+- [The inspectors](https://acycliq.github.io/pciSeq_viewer/docs/inspectors), why a cell got its class and a spot its cell
+- [AI chat](https://acycliq.github.io/pciSeq_viewer/docs/ai-chat), the agent, its tools, and using it from Claude Code
+- [Data format](https://acycliq.github.io/pciSeq_viewer/docs/reference/data-format), the files the viewer reads
 
-A browser version with a sample dataset is at
-[acycliq.github.io/pciSeq_viewer/web_viewer](https://acycliq.github.io/pciSeq_viewer/web_viewer/).
-The data is fetched over the network, so it takes a moment to load.
+## Citation
+
+The method behind the calls:
+
+Qian, X., Harris, K. D., Hauling, T., Nicoloutsopoulos, D., Muñoz-Manchado, A. B., Skene, N.,
+Hjerling-Leffler, J., & Nilsson, M. (2020). Probabilistic cell typing enables fine mapping of
+closely related cell types in situ. *Nature Methods*, 17(1), 101-106.
 
 ## Licence
 
