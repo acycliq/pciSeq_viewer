@@ -124,6 +124,40 @@ const TOOL_RULES = {
   calculate: [['You may work out, from the current numbers', 'and that only a rerun can tell.']],
 };
 
+// and the rules that are only true inside the viewer, from the viewer's own part
+// of the persona: its screen tools, its panels, the Allen pictures
+const LOOKING = ['When asked what the user is looking at or what data this is', 'End with what you can do for them.'];
+const OFFERS = ['fly_to_cell moves the map to a cell', '"open it in 3D with its neighbours".'];
+const SHOW = ['show_classes and show_genes choose', 'offer the closest names of the run instead of guessing.'];
+const SOURCE = ['When a question needs the actual code', 'before hunting through the source with list_source.'];
+const ALL_PLANES = ['show_all_planes draws the cells of every plane together', 'Call it only when the user asks for the pictures.'];
+const VIEWER_RULES = {
+  run_info: [LOOKING],
+  plane_image: [LOOKING],
+  fly_to_cell: [OFFERS],
+  open_3d_view: [OFFERS],
+  export_table: [['When the user wants rows in a file, call export_table', 'a short preview at most.']],
+  show_classes: [SHOW],
+  show_genes: [SHOW, ['When the user wants to see where a gene is', 'Offer them, do not do them unasked.']],
+  spot_filters: [['spot_filters sets the score and intensity filters', 'Act only when asked.']],
+  misread_display: [['misread_display greys out or hides the misreads', 'which spots the model gave to the background.']],
+  map_layers: [['map_layers turns the background image and the cells on or off', 'offer to hide the cells or lower their opacity.']],
+  cells_by_gene_count: [['cells_by_gene_count hides the cells with too few or too many counts', 'together with show_all_planes when that is off.']],
+  go_to_plane: [['go_to_plane moves the map to a plane.', 'so do not move it again unless asked.']],
+  show_all_planes: [ALL_PLANES],
+  export_per_class_pngs: [ALL_PLANES],
+  annotations: [['If the user asks what is on the map, call annotations', 'rather than going by what you remember.']],
+  open_cell_diagnostics: [['open_cell_diagnostics opens the cell diagnostics panel', 'the bar heights, for every gene.']],
+  open_spot_diagnostics: [['open_spot_diagnostics opens the spot diagnostics panel', 'whose whole score it is.']],
+  allen_gene_image: [['allen_gene_image brings a picture from the Allen Mouse Brain Atlas', 'open in the browser.']],
+  allen_cell_type: [["allen_cell_type gives Allen's record for a cell type", 'allen_gene_image brings that picture.']],
+  list_source: [SOURCE],
+  read_source: [SOURCE],
+};
+for (const [name, passages] of Object.entries(VIEWER_RULES)) {
+  TOOL_RULES[name] = (TOOL_RULES[name] || []).concat(passages);
+}
+
 function toolRules(name) {
   const text = chat.SYSTEM.replace(/\s+/g, ' ');
   return (TOOL_RULES[name] || []).map(([start, end]) => {
