@@ -129,7 +129,7 @@ function allCells() {
     const key = deps.getCellKey();
     const hasXYZ = cellColumns().has('x');
     const rows = db().prepare(
-      `SELECT ${key} AS k, class_prob, gene_count, assigned_class_idx` +
+      `SELECT ${key} AS k, class_prob, gene_count, assigned_class_idx, theta_bar` +
       (hasXYZ ? ', x, y, z' : '') +
       ` FROM cells WHERE ${key} > 0 ORDER BY ${key}`).all();
     cache.scan = rows.map(r => ({
@@ -138,10 +138,26 @@ function allCells() {
       gene_count: f32(r.gene_count),
       total: f32(r.gene_count).reduce((s, v) => s + v, 0),
       assigned: r.assigned_class_idx,
+      // only the assigned class's theta is kept, the one the cell tooltip shows
+      theta: f32(r.theta_bar)[r.assigned_class_idx],
       x: r.x, y: r.y, z: r.z,
     }));
   }
   return cache.scan;
+}
+
+// The mean and median total count per cell of the run. A cell between the two
+// holds enough reads for its own data to set theta, and is typical of the run,
+// which is what an example cell for theta needs.
+function totalCountStats() {
+  if (!cache.totalStats) {
+    const totals = allCells().map(r => r.total).sort((a, b) => a - b);
+    const mid = Math.floor(totals.length / 2);
+    const median = totals.length % 2 ? totals[mid] : (totals[mid - 1] + totals[mid]) / 2;
+    const mean = totals.reduce((s, v) => s + v, 0) / totals.length;
+    cache.totalStats = { mean, median };
+  }
+  return cache.totalStats;
 }
 
 function geneIndex(name) {
@@ -398,6 +414,7 @@ function theta(label, className) {
   const cls = className ?? assigned;
   const k = names.indexOf(cls);
   if (k < 0) throw new Error(`no class '${cls}' in this run`);
+  const rTheta = (cfg() || {}).rTheta ?? null;
   return {
     cell: Number(label),
     class: cls,
@@ -407,7 +424,26 @@ function theta(label, className) {
                   "scaling the class's expected counts to the cell's total. " +
                   'Gamma(rTheta, rTheta) prior, mean 1',
     class_prob: c.class_prob[k],
-    rTheta: (cfg() || {}).rTheta ?? null,
+    rTheta: rTheta,
+    ...readsAgainstExpected(c, c.theta_bar[k], rTheta),
+  };
+}
+
+// The cell's reads, the total the class expects for this cell (gamma makes it
+// differ from cell to cell), and their plain ratio. The
+// expected total is read back from theta itself: theta is the cell's reads plus
+// rTheta - 1 over the expected total plus rTheta, so the expected total is
+// (reads + rTheta - 1) / theta - rTheta.
+function readsAgainstExpected(c, thetaBar, rTheta) {
+  if (rTheta == null) return {};
+  const reads = c.gene_count.reduce((s, v) => s + v, 0);
+  const expected = (reads + rTheta - 1) / thetaBar - rTheta;
+  return {
+    total_counts: reads,
+    expected_total: expected,
+    plain_ratio: reads / expected,
+    plain_ratio_is: 'the cell\'s reads over the expected total without the prior; ' +
+                    'theta_bar differs from it by the rTheta extra reads',
   };
 }
 
@@ -642,7 +678,8 @@ function pointInPolygon(x, y, poly) {
 function findCells({ class_name = null, class_rule = 'assigned', min_class_prob = null,
                      plane = null, plane_from = null, plane_to = null,
                      x_from = null, x_to = null, y_from = null, y_to = null,
-                     polygon = null, min_counts = null, top_two_within = null, n = 50 } = {}) {
+                     polygon = null, min_counts = null, top_two_within = null,
+                     theta_from = null, theta_to = null, n = 50 } = {}) {
   const names = meta().class_names;
   const k = class_name != null ? classIndex(class_name) : null;
   if (!['assigned', 'above'].includes(class_rule)) throw new Error('class_rule must be assigned or above');
@@ -657,6 +694,7 @@ function findCells({ class_name = null, class_rule = 'assigned', min_class_prob 
   let expected = 0;
   for (const r of allCells()) {
     if (min_counts != null && r.total < min_counts) continue;
+    if (!within(r.theta, theta_from, theta_to)) continue;
     const top = topClasses(r, 2);
     const margin = top[0][1] - (top[1] ? top[1][1] : 0);
     if (top_two_within != null && margin > top_two_within) continue;
@@ -676,7 +714,7 @@ function findCells({ class_name = null, class_rule = 'assigned', min_class_prob 
     n_matching: hits.length,
     shown: Math.min(hits.length, n),
     filters: { class_name, class_rule, min_class_prob, plane_from, plane_to,
-               x_from, x_to, y_from, y_to, min_counts, top_two_within },
+               x_from, x_to, y_from, y_to, min_counts, top_two_within, theta_from, theta_to },
     cells: hits.slice(0, n).map(({ r, top, margin, pl }) => ({
       cell: toExternal(r.internal),
       class: names[r.assigned],
@@ -685,14 +723,18 @@ function findCells({ class_name = null, class_rule = 'assigned', min_class_prob 
       runner_up: top[1] ? names[top[1][0]] : null,
       margin,
       total_counts: r.total,
+      theta: r.theta,
       ...(byXY || byPlane ? { x: r.x, y: r.y, plane: pl ?? planeOf(r.z) } : {}),
     })),
+    run_total_counts: totalCountStats(),
+    run_total_counts_are: 'the mean and median total count per cell over the whole run',
     cells_are: (k == null ? 'every cell the filters keep'
                 : class_rule === 'assigned' ? `cells assigned ${class_name}`
                 : `cells with a probability above ${min_class_prob} of being ${class_name}`) +
                '; position is the centroid (x, y in image pixels, plane rounded down as ' +
                'for the spots); margin is the probability of the assigned class minus ' +
-               'the runner up; sorted by prob, the first n shown',
+               'the runner up; theta is theta_bar of the assigned class; sorted by ' +
+               'prob, the first n shown',
   };
   if (k != null) {
     out.expected_count = expected;

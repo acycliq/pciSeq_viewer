@@ -321,7 +321,9 @@ const TOOLS = [
       'over what a class expects, with rTheta extra reads added to both. If those extra ' +
       "reads are many compared with the cell's own total, they dominate and theta " +
       'stays near 1, no correction; if they are few compared with it, the cell\'s reads ' +
-      'decide and theta is close to the plain ratio. label is the segmentation ' +
+      'decide and theta is close to the plain ratio. Returns as well the cell\'s ' +
+      'total counts, the total the class expects for this cell and the plain ratio of the two, ' +
+      'so the effect of the prior on this cell can be stated. label is the segmentation ' +
       'label. Call it as well when the user asks about rTheta: show theta on a real ' +
       "cell first, then rTheta as what decides how much the cell's own counts set " +
       'theta, and end by asking whether the role of theta is clear, offering to go ' +
@@ -433,8 +435,11 @@ const TOOLS = [
       'a probability: the list keeps cells assigned the class (class_rule assigned, ' +
       'the default) or with a probability above min_class_prob (class_rule above), ' +
       'and expected_count is the soft number, the class probability summed over ' +
-      'every cell in the area; give both and say which rule the list used. Returns ' +
-      'the number matching and the first n by probability. Labels are segmentation labels.',
+      'every cell in the area; give both and say which rule the list used. ' +
+      'theta_from and theta_to keep the cells whose theta, under the assigned class, ' +
+      'is in that range, for finding an example cell when explaining theta. Returns ' +
+      'the number matching and the first n by probability, each with its theta, and ' +
+      'the mean and median total count per cell of the run. Labels are segmentation labels.',
     input_schema: {
       type: 'object',
       properties: {
@@ -451,6 +456,8 @@ const TOOLS = [
         region: { type: 'string', description: 'Only cells whose centroid is inside this region, a name from annotations.' },
         min_counts: { type: 'number', description: 'Only cells with at least this many soft counts.' },
         top_two_within: { type: 'number', description: 'Only cells whose top two classes are within this.' },
+        theta_from: { type: 'number', description: 'Only cells whose theta under the assigned class is at least this.' },
+        theta_to: { type: 'number', description: 'Only cells whose theta under the assigned class is at most this.' },
         n: { type: 'integer', description: 'How many to return, default 50.' },
       },
     },
