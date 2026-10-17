@@ -1,19 +1,19 @@
 ---
 title: Troubleshooting
-description: The things that go wrong at installation and when a run is opened.
+description: Common problems during installation and when loading data.
 ---
 
 # Troubleshooting
 
 ## Gatekeeper on macOS
 
-The macOS build is not signed, so the first launch is blocked. Right-click the app
-icon, choose **Open**, then confirm. This is needed once.
+The macOS build is not signed, so the first launch is blocked. Right-click the app icon,
+choose **Open** and confirm. This is required only once.
 
 ## AppImage on Linux
 
-On an older distribution it is usually the glibc version. Make sure the file is
-executable, and if it still does not start install the `.deb` package instead.
+On older distributions, the cause is usually the glibc version. Ensure that the file is
+executable; if the application still does not start, install the `.deb` package instead.
 
 ```bash
 chmod +x pciSeq_viewer-x.x.x.AppImage
@@ -22,38 +22,38 @@ chmod +x pciSeq_viewer-x.x.x.AppImage
 
 ## Image size prompt
 
-There is no `.mbtiles` file in the data folder, which is where the width, the height
-and the number of planes come from. Enter them and the spots and the cells are drawn
-without a background, or add the background with `stage_image`, see
+The data folder contains no `.mbtiles` file, from which the width, height and number of
+planes are normally read. Once these values are entered, the spots and cells are drawn
+without a background. Alternatively, add the background with `stage_image`; see
 [Loading the data](./loading-data#background-image).
 
 ## Voxel size prompt
 
-There is no `diagnostics/diagnostics.db` in the folder, which is where the run records
-it. Enter the microns per pixel in x, y and z, the `voxel_size` the run was fitted
-with; they are remembered for that folder.
+The folder contains no `diagnostics/diagnostics.db`, in which the run records the voxel
+size. Enter the microns per pixel along x, y and z, matching the `voxel_size` used to fit
+the run; the values are stored for that folder.
 
 ## Diagnostics database not connected
 
-Ctrl+Click on a cell or a spot does nothing, the chat says it has nothing to read, and
-the single cell window reports *Diagnostics data not loaded*. Check that the folder holds
-`diagnostics/diagnostics.db`, or point at one with **Diagnostics, Setup**. A run from
-pciSeq `0.0.65` or older has no database and no `stage_image`; refit with `0.0.66` or
-newer, the `dev_3d` branch.
+Ctrl+Click on a cell or a spot has no effect, the chat reports that no diagnostics are
+available, and the single cell window reports *Diagnostics data not loaded*. Verify that
+the folder contains `diagnostics/diagnostics.db`, or select a database with
+**Diagnostics, Setup**. Runs from pciSeq `0.0.65` or earlier have neither the database nor
+`stage_image`; refit with `0.0.66` or later, from the `dev_3d` branch.
 
 ## API key
 
-The chat answers a question with an error naming the key. No key is saved for the chosen
-provider, or the saved one is not valid. Paste a key on
-the **Connection** tab of the chat panel and save, or set `ANTHROPIC_API_KEY` or
-`ZAI_API_KEY` in the environment the viewer starts from.
+The chat returns an error referring to the API key: no key is saved for the selected
+provider, or the saved key is invalid. Enter a key in the **Connection** tab of the chat
+panel and save, or set `ANTHROPIC_API_KEY` or `ZAI_API_KEY` in the environment from which
+the viewer is started.
 
 ## SQLite module in a source checkout
 
-From a source checkout, every run fails to open and the viewer reports that no
-background tiles were found, whatever the folder holds. The native SQLite module was
-not rebuilt for Electron. `npm install` does it through its `postinstall` step; when
-that step was skipped or failed, run it by hand:
+In a source checkout, no dataset can be loaded and the viewer reports that no background
+tiles were found, regardless of the folder contents. The native SQLite module has not been
+rebuilt for Electron. `npm install` performs this step through its `postinstall` script;
+if that step was skipped or failed, run it manually:
 
 ```bash
 npx electron-rebuild -f -w better-sqlite3

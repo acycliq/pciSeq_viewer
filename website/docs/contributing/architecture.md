@@ -5,16 +5,16 @@ description: How the pciSeq Viewer codebase is organised.
 
 # Architecture
 
-How the code is organised, for contributors.
+This page describes the organisation of the code, for contributors.
 
 ## Stack
 
-- **Electron**, the desktop shell. The **Main process** (`electron/main.js`) handles file system access, menu bars, and window management. The **Renderer process** (`src/app.js`) handles the UI and map.
-- **deck.gl**, the WebGL rendering of the map. Layers are defined in `src/layers/`.
-- **Apache Arrow**, the data format. `arrow-loader/` reads the large files.
-- **D3.js**, used for charts (gene distributions, class probabilities) and legends.
-- **The agent** lives in the main process: `electron/chat.js` runs a turn of conversation with the model, `electron/tools.js` defines the functions it may call and runs them against `diagnostics.db` through `electron/run.js`, and `electron/mcp-server.js` exposes the same functions to an outside assistant over HTTP on localhost.
-- **Python**, on the pciSeq side: `pciSeq.fit` writes the Arrow files the viewer reads and `stage_image` makes the MBTiles background.
+- **Electron:** the desktop shell. The **main process** (`electron/main.js`) handles file system access, menus and window management; the **renderer process** (`src/app.js`) handles the interface and the map.
+- **deck.gl:** WebGL rendering of the map. Layers are defined in `src/layers/`.
+- **Apache Arrow:** the data format. `arrow-loader/` reads the large files.
+- **D3.js:** charts (gene distributions, class probabilities) and legends.
+- **The agent** is implemented in the main process: `electron/chat.js` handles a conversation turn with the model, `electron/tools.js` defines the tools available to it and executes them against `diagnostics.db` through `electron/run.js`, and `electron/mcp-server.js` exposes the same tools to external assistants over HTTP on localhost.
+- **Python**, on the pciSeq side: `pciSeq.fit` writes the Arrow files read by the viewer, and `stage_image` produces the MBTiles background.
 
 ## Process model
 
@@ -38,27 +38,26 @@ File > Open Dataset
 
 ## Spot rendering and level of detail
 
-Spots are drawn one of two ways depending on zoom, with the switch decided in
-`handleViewStateChange` (`src/app.js`) against the `SPOT_PICKABLE_MIN_ZOOM`
-constant (`7`), see [Spots and cells](../the-map#spots-and-cells):
+Spots are drawn in one of two ways depending on the zoom level; the switch is made in
+`handleViewStateChange` (`src/app.js`) against the `SPOT_PICKABLE_MIN_ZOOM` constant
+(`7`). See [Spots and cells](../the-map#spots-and-cells).
 
-- **Below zoom 7:** a single binary `ScatterplotLayer` (the "PointCloud") draws
-  every spot as a coloured dot. There is no culling here; one layer handles
-  millions of points.
+- **Below zoom 7:** a single binary `ScatterplotLayer` (the "PointCloud") draws every
+  spot as a coloured dot. No culling is applied; a single layer handles millions of
+  points.
 - **Zoom 7 and above:** `IconLayer`s draw the spots as per-gene glyphs.
 
-deck.gl's `onViewStateChange` fires continuously during pan and zoom, and the
-handler treats two cases differently:
+deck.gl's `onViewStateChange` fires continuously during panning and zooming, and the
+handler distinguishes two cases:
 
-- **Crossing the threshold** (dots to glyphs, or back): it rebuilds the layers
-  immediately, even in the middle of a gesture, so the switch is instant.
-- **Already in glyph mode and panning:** it does not rebuild every frame. It
-  rebuilds on **pan end** (the drag is released), to re-crop the glyphs to the
-  new viewport.
+- **Crossing the threshold** (from dots to glyphs, or the reverse): the layers are
+  rebuilt immediately, even during a gesture, so that the switch is instantaneous.
+- **Panning in glyph mode:** the layers are not rebuilt on every frame, but on **pan
+  end** (when the drag is released), to crop the glyphs to the new viewport.
 
 **Viewport culling (glyph mode only).** `getCurrentViewportTileBounds()`
 unprojects the screen corners to world coordinates, and `createGeneLayers`
 (`src/layers/spotLayerCreator.js`) keeps only the spots inside those bounds
-before building the `IconLayer`. Off-screen spots are dropped. If the viewport
-bounds are unavailable for a frame, it falls back to the `ScatterplotLayer`. The
-PointCloud path never culls, since it is cheap enough to draw everything.
+before building the `IconLayer`; off-screen spots are discarded. If the viewport bounds
+are unavailable for a frame, the `ScatterplotLayer` is used instead. The PointCloud path
+does not cull, as drawing all spots is inexpensive.

@@ -4,7 +4,7 @@ import { defineConfig } from 'vitepress'
 // Pages, hence base. The landing page owns the root and the docs live under /docs.
 export default defineConfig({
   title: 'pciSeq Viewer',
-  description: 'The desktop viewer for a pciSeq run: the section plane by plane, a region in 3D, and an agent that explains the calls',
+  description: 'Desktop viewer for pciSeq results: the tissue section plane by plane, selected regions in 3D, and an AI agent that explains the cell and spot assignments',
   lang: 'en-US',
 
   // Project site at https://acycliq.github.io/pciSeq_viewer/

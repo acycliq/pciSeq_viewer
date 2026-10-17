@@ -1,31 +1,31 @@
 ---
 title: Keyboard shortcuts
-description: Every keyboard shortcut of the map.
+description: The keyboard shortcuts of the map.
 ---
 
 # Keyboard shortcuts
 
-**Help, Keyboard Shortcuts** in the menu, or <kbd>Ctrl</kbd>+<kbd>/</kbd>, opens this
-list inside the viewer.
+**Help, Keyboard Shortcuts**, or <kbd>Ctrl</kbd>+<kbd>/</kbd>, displays this list in the
+viewer.
 
 | Keys | Action |
 | --- | --- |
 | <kbd>Left</kbd> / <kbd>Right</kbd> | Previous / next plane |
 | <kbd>Home</kbd> / <kbd>End</kbd> | First / last plane |
 | <kbd>PageUp</kbd> / <kbd>PageDown</kbd> | Ten planes back / forward |
-| <kbd>T</kbd> | Background image on or off |
-| <kbd>P</kbd> | Cell outlines on or off |
-| <kbd>A</kbd> | The cell outlines of all planes laid over the current one |
-| <kbd>Ctrl</kbd>+<kbd>L</kbd> | Lines from each spot to its cell, on or off |
+| <kbd>T</kbd> | Toggle the background image |
+| <kbd>P</kbd> | Toggle the cell outlines |
+| <kbd>A</kbd> | Overlay the cell outlines of all planes on the current plane |
+| <kbd>Ctrl</kbd>+<kbd>L</kbd> | Toggle the lines from each spot to its cell |
 | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Go to a cell |
 | <kbd>Ctrl</kbd>+<kbd>O</kbd> | Open a data folder |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd> | Open background tiles |
-| <kbd>/</kbd> | Jump to the class filter box |
-| Click a cell | Freeze the cell panel on it |
+| <kbd>/</kbd> | Focus the class filter |
+| Click a cell | Freeze the cell panel on the cell |
 | <kbd>Ctrl</kbd>+Click a cell or a spot | Open its [diagnostics](./diagnostics) |
-| <kbd>Esc</kbd> | Unfreeze the panel, close a panel, cancel a selection |
+| <kbd>Esc</kbd> | Unfreeze the cell panel, close a panel, cancel a selection |
 
-On macOS <kbd>Cmd</kbd> stands in for <kbd>Ctrl</kbd>.
+On macOS, <kbd>Cmd</kbd> replaces <kbd>Ctrl</kbd>.
 
-While drawing a region: <kbd>Enter</kbd> closes it, <kbd>Backspace</kbd> removes the
-last point, <kbd>Esc</kbd> stops.
+While a region is being drawn: <kbd>Enter</kbd> closes it, <kbd>Backspace</kbd> removes
+the last point, and <kbd>Esc</kbd> cancels.

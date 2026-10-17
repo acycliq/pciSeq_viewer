@@ -1,19 +1,19 @@
 ---
 title: Custom colours
-description: Colours and glyphs for the genes and the classes, read from a JSON file.
+description: Gene and class colours and gene glyphs, imported from a JSON file.
 ---
 
 # Custom colours
 
-The viewer picks a colour for every class and a colour and a glyph for every gene. Both
-can be replaced from the **Import** menu: **Gene Colours** and **Cell
-Class Colours**, each a JSON file. Once imported the colours apply to the map, the
-drawer and the charts. Hex colours are six digits, with or without the leading `#`,
-and the key may be spelled `colour` or `color`.
+The viewer assigns a colour to each class and a colour and glyph to each gene. Both can be
+replaced from the **Import** menu, with **Gene Colours** and **Cell Class Colours**, each
+of which reads a JSON file. Imported colours apply to the map, the drawer and the charts.
+Colours are six-digit hexadecimal values, with or without the leading `#`, and the key may
+be spelled `colour` or `color`.
 
 ## Gene colours
 
-A list, one object per gene:
+A list with one object per gene:
 
 ```json
 [
@@ -22,15 +22,15 @@ A list, one object per gene:
 ]
 ```
 
-`glyphName` is one of the seventeen shapes the renderer draws: `star6`, `star5`,
+`glyphName` is one of the seventeen shapes supported by the renderer: `star6`, `star5`,
 `diamond`, `square`, `triangleUp`, `triangleDown`, `triangleRight`, `triangleLeft`,
 `tShapeTop`, `tShapeBottom`, `tShapeLeft`, `tShapeRight`, `cross`, `plus`,
-`asterisk`, `circle`, `point`. Any other name falls back to `circle`. A gene the file
-leaves out is drawn as a white circle.
+`asterisk`, `circle`, `point`. Any other name defaults to `circle`. Genes not listed in
+the file are drawn as white circles.
 
 ## Class colours
 
-A list of class name and colour, the same shape as the viewer's own schemes:
+A list of class names and colours, in the same format as the viewer's built-in schemes:
 
 ```json
 [
@@ -40,8 +40,8 @@ A list of class name and colour, the same shape as the viewer's own schemes:
 ]
 ```
 
-Names must match the classes of the run; entries that match nothing are reported and
-skipped. A class the file leaves out is drawn in grey, `#C0C0C0`.
+Names must match the classes of the run; unmatched entries are reported and ignored.
+Classes not listed in the file are drawn in grey, `#C0C0C0`.
 
-The schemes under `config/colorSchemes/` in the source, `hippocampus.js`, `zeisel.js`
-and `allen.js`, are a starting point for a new file.
+The schemes in `config/colorSchemes/` in the source (`hippocampus.js`, `zeisel.js` and
+`allen.js`) can serve as templates for a new file.

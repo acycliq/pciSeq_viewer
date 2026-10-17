@@ -1,24 +1,24 @@
 ---
 title: Single cell data
-description: The cell type definitions the run was fitted against, next to the counts the model implies from the spatial data.
+description: The cell type definitions used to fit the run, alongside the counts the fitted model implies for the spatial data.
 ---
 
 # Single cell data
 
-pciSeq scores every cell against the cell type definitions, the mean expression of each
-gene in each class, given to `fit` as `scRNAseq`. **Single Cell Data, View** in the
-menu opens them in a window of their own, next to what the fitted model implies the
-counts should be, so the two can be compared gene by gene.
+pciSeq scores each cell against the cell type definitions: the mean expression of each
+gene in each class, passed to `fit` as `scRNAseq`. **Single Cell Data, View** opens them in
+a separate window, alongside the counts implied by the fitted model, so that the two can be
+compared gene by gene.
 
-Two tabs, each a grid of genes by classes with a filter box for either:
+The window has two tabs, each a gene-by-class grid with a filter for genes and classes:
 
-- **Reference**, the definitions as they went in: the mean expression per gene per
-  class, `sc_mean_expression` in `diagnostics.db`.
-- **Implied**, the mean reads per gene per class the model expects in the spatial data
-  after fitting, pciSeq's
+- **Reference:** the definitions as supplied, the mean expression per gene per class
+  (`sc_mean_expression` in `diagnostics.db`).
+- **Implied:** the mean reads per gene per class expected by the fitted model in the
+  spatial data, pciSeq's
   [`mean_gene_reads_per_class`](https://acycliq.github.io/pciSeq_3d/api/reference#cells-mean-gene-reads-per-class).
-  The difference from the reference is what the scale factors and the gene
-  efficiencies absorbed.
+  The difference from the reference reflects the adjustment made by the scale factors and
+  the gene efficiencies.
 
-Both read `diagnostics.db`. A run without it reports *Diagnostics data not loaded*; a
-database kept elsewhere can be connected with **Diagnostics, Setup**.
+Both tabs read `diagnostics.db`. For a run without it, the window reports *Diagnostics data
+not loaded*; a database stored elsewhere can be connected with **Diagnostics, Setup**.

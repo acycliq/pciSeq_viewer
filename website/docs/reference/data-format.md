@@ -1,13 +1,13 @@
 ---
 title: Data format
-description: The files the viewer reads, column by column, for producing them without the pciSeq Python package.
+description: The files read by the viewer, column by column, for producing them without the pciSeq Python package.
 ---
 
 # Data format
 
 The viewer reads its data from **Apache Arrow (Feather v2)** files written by the
-pciSeq Python package. This page documents the exact layout each file must have.
-All Feather files are written **uncompressed**.
+pciSeq Python package. This page specifies the required layout of each file. All
+Feather files are written **uncompressed**.
 
 ## Coordinate units
 
@@ -16,11 +16,11 @@ grid. This applies to `x`, `y`, `z` for spots and `X`, `Y`, `Z` for cells.
 
 `z` and `Z` are pixel coordinates on the same scale as `x` and `y`. They are not
 plane indices and not microns. Anisotropy between the lateral and axial
-directions is not encoded in the coordinates; it is provided separately as the
-voxel size entered in the viewer, for example `[0.28, 0.28, 0.7]` microns per
-pixel for x, y, z.
+directions is not encoded in the coordinates; it is provided separately by the voxel
+size, recorded in `diagnostics.db` or entered by the user, for example
+`[0.28, 0.28, 0.7]` microns per pixel for x, y, z.
 
-The viewer maps a `z` coordinate to a plane as:
+The viewer maps a `z` coordinate to a plane as follows:
 
 ```
 plane = floor(z * voxel_x / voxel_z)
@@ -48,10 +48,10 @@ viewer_data/
 
 ## manifest.json
 
-Each `arrow_*` folder has a manifest listing its shards. The viewer reads the
-shards in the listed order and concatenates them, so a table can be split into
-any number of shards (pciSeq uses 200,000 rows per spot shard and 100,000
-per cell shard, but that is a producer choice, not a requirement).
+Each `arrow_*` folder contains a manifest listing its shards. The viewer reads the shards
+in the listed order and concatenates them, so a table may be split into any number of
+shards (pciSeq uses 200,000 rows per spot shard and 100,000 per cell shard; this is a
+choice of the producer, not a requirement).
 
 ```json
 {
@@ -67,14 +67,14 @@ per cell shard, but that is a producer choice, not a requirement).
 
 - `url` is the shard filename, relative to the manifest.
 - `rows` is the row count of that single shard.
-- `total_rows` is the sum of `rows` across all shards (here `200000 + 200000 + 50000 = 450000`). The last shard is usually smaller, since it holds the remainder.
-- The boundaries manifest has two extra fields (see below).
+- `total_rows` is the sum of `rows` across all shards (here `200000 + 200000 + 50000 = 450000`). The last shard is usually smaller, as it holds the remainder.
+- The boundaries manifest has two additional fields (see below).
 
 ## arrow_spots
 
 One row per spot (gene read).
 
-| Column | Type | Required | Meaning |
+| Column | Type | Required | Description |
 |---|---|---|---|
 | `x` | float32 | yes | X coordinate |
 | `y` | float32 | yes | Y coordinate |
@@ -84,8 +84,8 @@ One row per spot (gene read).
 | `gene_id` | uint32 | yes | Gene id, mapped to a name through `gene_dict.json` |
 | `neighbour_array` | list&lt;int32&gt; | optional | Candidate cell ids, for the spot diagnostics |
 | `neighbour_prob` | list&lt;float32&gt; | optional | Assignment probabilities, matching `neighbour_array` |
-| `omp_score` | float32 | optional | Detection score, drives the **Score Filter** |
-| `omp_intensity` | float32 | optional | Detection intensity, drives the **Intensity Filter** |
+| `omp_score` | float32 | optional | Detection score, used by the **Score Filter** |
+| `omp_intensity` | float32 | optional | Detection intensity, used by the **Intensity Filter** |
 
 ### gene_dict.json
 
@@ -100,15 +100,15 @@ Maps each `gene_id` to its gene name. Keys are the ids written as strings:
 ```
 
 `gene_id` is pciSeq's 0-based index of the gene in the alphabetically sorted
-gene panel (`np.unique` of the gene names), so the keys run `0` to `N-1` with no
-gaps and the names come out in alphabetical order. Any other stable mapping works, as long as the spots' `gene_id` column and these
-keys use the same ids.
+gene panel (`np.unique` of the gene names), so the keys run from `0` to `N-1` without
+gaps and the names are in alphabetical order. Any other stable mapping is valid, provided
+that the spots' `gene_id` column and these keys use the same ids.
 
 ## arrow_cells
 
 One row per cell. Note the **uppercase** `X`, `Y`, `Z` for the centroid.
 
-| Column | Type | Meaning |
+| Column | Type | Description |
 |---|---|---|
 | `cell_id` | int32 | The cell's original segmentation label |
 | `X` | float32 | Centroid X |
@@ -121,9 +121,8 @@ One row per cell. Note the **uppercase** `X`, `Y`, `Z` for the centroid.
 
 ::: info No class_dict.json needed
 
-Class names live directly in the `class_name` list column. A separate
-`class_dict.json` is a legacy artefact and is not required; pciSeq does not write
-one.
+Class names are stored directly in the `class_name` list column. A separate
+`class_dict.json` is a legacy artefact and is not required; pciSeq does not write one.
 
 :::
 
@@ -132,7 +131,7 @@ one.
 One Feather file **per plane**, named `boundaries_plane_XX.feather` (zero-padded
 plane number). One row per polygon.
 
-| Column | Type | Meaning |
+| Column | Type | Description |
 |---|---|---|
 | `x_list` | list&lt;float32&gt; | Polygon X coordinates |
 | `y_list` | list&lt;float32&gt; | Polygon Y coordinates |
@@ -144,8 +143,8 @@ plane number). One row per polygon.
 There must be one shard per plane, with no gaps in the plane numbering. If a
 plane has no polygons, a `boundaries_plane_XX.feather` is still written with the
 same four-column schema and **zero rows**, and still listed in the manifest
-with `"rows": 0` (see `boundaries_plane_00.feather` in the example below). Do not
-skip empty planes.
+with `"rows": 0` (see `boundaries_plane_00.feather` in the example below). Empty planes
+must not be omitted.
 
 :::
 
@@ -171,41 +170,40 @@ The boundaries manifest adds `total_points` and a `plane` field per shard:
 ## Background image (MBTiles)
 
 The background is a SQLite **MBTiles** file, named after its channel by `stage_image`
-(`dapi.mbtiles`; `output.mbtiles` when no name was given), that extends the
-standard format in two ways to handle a z-stack of microscopy images.
+(`dapi.mbtiles`; `output.mbtiles` when no name is given), which extends the standard
+format in two respects to accommodate a z-stack of microscopy images.
 
-**1. A `plane_id` dimension.** Standard MBTiles holds a single 2D tile pyramid;
-this file adds a `plane_id` column so each z-plane gets its own pyramid.
+**1. A `plane_id` dimension.** Standard MBTiles holds a single 2D tile pyramid; this
+file adds a `plane_id` column, so that each z-plane has its own pyramid.
 
 - `tiles`: `plane_id`, `zoom_level`, `tile_column`, `tile_row`, `tile_data`,
   unique on the first four. In de-duplicated files `tiles` is a view over a
   `map` table and an `images` table, with the same columns.
-- `metadata`: name/value pairs. Standard keys (`format`, `minzoom`, `maxzoom`,
-  `name`, `description`) plus custom ones: `planes` (comma-separated plane ids),
-  `plane_count`, `width`, `height`, `tint`, `created`, and `tile_count`. The viewer reads `width`,
-  `height`, and `plane_count` from here; uses `name` as the channel label; and
-  uses `tint` (a `#RRGGBB` hex) to colour the channel. A file with no `tint` key
-  renders grayscale. (Voxel size is not read from the mbtiles; it comes from the
-  welcome screen.)
+- `metadata`: name/value pairs. The standard keys (`format`, `minzoom`, `maxzoom`,
+  `name`, `description`) and the custom keys `planes` (comma-separated plane ids),
+  `plane_count`, `width`, `height`, `tint`, `created` and `tile_count`. The viewer reads
+  `width`, `height` and `plane_count` from this table, uses `name` as the channel label,
+  and uses `tint` (a `#RRGGBB` hexadecimal value) to colour the channel. A file without a
+  `tint` key is rendered in greyscale. (The voxel size is not read from the MBTiles file;
+  it is read from `diagnostics.db` or entered by the user.)
 
-When a dataset folder holds several `.mbtiles` files, each is a switchable
-background **channel**. The viewer discovers them per folder, labels each from
-its `name`, and tints each from its own `tint`, so N files give N independently
-coloured channels to switch between (a green GCaMP channel next to a grayscale
-DAPI one), shown one at a time with a cross-fade.
+When a dataset folder contains several `.mbtiles` files, each is a selectable background
+**channel**. The viewer detects them in the folder, labels each by its `name` and tints
+each by its own `tint`, so that N files yield N independently coloured channels (for
+example a green GCaMP channel alongside a greyscale DAPI channel), displayed one at a time
+with a cross-fade.
 
 **2. Google (XYZ) tiling, not TMS.** The tiles are generated with libvips
-`dzsave(layout='google')`, so they follow the Google / OpenStreetMap slippy-map
-scheme: the tile origin is the **top-left** and `tile_row` increases downward.
-This is the opposite of the standard MBTiles convention (TMS, origin at the
-bottom), so a generic MBTiles viewer that assumes TMS would show each plane
-flipped vertically. The pciSeq viewer requests a tile as `plane_id = plane`,
-`zoom_level = z`, `tile_column = x`, `tile_row = y`, with no flip.
+`dzsave(layout='google')` and therefore follow the Google / OpenStreetMap slippy-map
+scheme: the tile origin is at the **top left** and `tile_row` increases downwards. This is
+the reverse of the standard MBTiles convention (TMS, origin at the bottom), so a generic
+MBTiles viewer that assumes TMS would display each plane flipped vertically. pciSeq Viewer
+requests a tile as `plane_id = plane`, `zoom_level = z`, `tile_column = x`,
+`tile_row = y`, without flipping.
 
 ## Cross references
 
-- A spot's `gene_id` looks up its name and colour through `gene_dict.json`.
-- A boundary's `label` matches a cell's `cell_id`, that is how a polygon is tied
-  to its cell.
-- `plane_id` ties spots and boundaries to a z-plane; the number of planes comes
-  from the boundaries manifest.
+- A spot's `gene_id` resolves to its name and colour through `gene_dict.json`.
+- A boundary's `label` matches a cell's `cell_id`, which links each polygon to its cell.
+- `plane_id` links spots and boundaries to a z-plane; the number of planes is taken from
+  the boundaries manifest.
