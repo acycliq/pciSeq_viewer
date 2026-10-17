@@ -4,45 +4,41 @@ Every call of a [pciSeq](https://github.com/acycliq/pciSeq_3d) run on the tissue
 plane, and why each cell got its class.
 
 **[Download](https://github.com/acycliq/pciSeq_viewer/releases/latest)** for Windows, macOS or
-Linux, or read the **[documentation](https://acycliq.github.io/pciSeq_viewer/docs/)**.
+Linux and **[try it on the demo data](#try-it-yourself)**, or read the
+**[documentation](https://acycliq.github.io/pciSeq_viewer/docs/)**.
+
+## The map and the 3D view
+
+- **The map.** The section over its tissue image, plane by plane through the z-stack: every
+  spot coloured by its gene, every cell by the class it was assigned to. Millions of spots stay
+  interactive, and any gene or class can be shown or hidden. Hover a cell for its gene counts
+  and class probabilities; Ctrl+Click a cell or a spot for the terms behind its call: why this
+  class and not the runner up, why this cell and not the neighbour.
+- **The 3D view.** Draw a box round a region and it opens in 3D as voxels: the cells, their
+  spots, and the planes they span.
 
 <img src="https://github.com/user-attachments/assets/79236976-b24c-4e5c-9b93-1577d7ffe7b6" width="100%" alt="pciSeq Viewer: the section, its classes and genes, plane by plane, one cell">
 
-## The map
+## The AI agent
 
-The section over its tissue image, plane by plane through the z-stack: every spot coloured by
-its gene, every cell by the class it was assigned to. Millions of spots stay interactive, and
-any gene or class can be shown or hidden.
-
-Hover a cell for its gene counts and class probabilities. Ctrl+Click a cell or a spot for the
-terms behind its call: why this class and not the runner up, why this cell and not the
-neighbour.
-
-## The 3D view
-
-Draw a box round a region and it opens in 3D as voxels: the cells, their spots, and the planes
-they span.
-
-<img src="https://github.com/user-attachments/assets/507606e5-d075-4ff4-a3b3-633433cf2564" width="100%" alt="A box drawn round two cells and the region built in 3D">
-
-## The agent
-
-A chat panel that answers questions about the run in plain words, from the run's own numbers,
-which it reads through its tools. It can also move the map, open the diagnostics or draw a cell.
-
-> **Why is cell 22245 called 031 CT SUB Glut?**
->
-> Cell 22245 is called 031 CT SUB Glut, but only just. It gets 0.51 against 0.49 for
-> 030 L6 CT CTX Glut. The genes lean one way, the prior leans the other, and the two
-> nearly cancel.
+A chat panel for questions about the statistical model behind the results. It explains the
+latent variables the model estimates and the assignments: why a cell was assigned its class
+rather than the runner-up, how much the genes, the class prior and the neighbouring cells each
+contributed, and why a spot was assigned to its cell. The agent can act on the viewer while
+answering: navigating to a cell or a plane, showing or hiding genes and classes, and opening the
+diagnostics, the charts or the 3D view, or rendering a cell on the background image.
 
 <img src="https://github.com/user-attachments/assets/76618be3-c5ed-4403-8c4d-3edf0a45b97f" width="100%" alt="The chat panel answering three questions about the run">
 
-It needs an API key, Anthropic or an Anthropic compatible endpoint. The same tools are served
-over MCP, so Claude Code, Gemini CLI or Codex can ask too.
+## Try it yourself
 
-The viewer also draws class and gene charts, shows the cell type definitions next to the
-counts the model implies, exports tables and a PNG per class, and takes custom colour schemes.
+Download the installer for your platform from the
+[releases page](https://github.com/acycliq/pciSeq_viewer/releases/latest). The viewer comes with
+a demo run: on the welcome screen, click **Try the demo data** (a 600 MB download).
+
+Use of the agent requires either an API key for a supported language-model provider or a
+connection through an AI assistant such as Claude Code; the requirements for each are described
+in the [documentation](https://acycliq.github.io/pciSeq_viewer/docs/ai-agent#requirements).
 
 ## Install
 
@@ -58,10 +54,10 @@ npm install
 npm start
 ```
 
-## Open a run
+## Loading the data
 
-`pciSeq.fit` with `save_data` on writes a `viewer_data` folder. Open it from the welcome
-screen, or go straight to it:
+`pciSeq.fit` with `save_data` on writes a `viewer_data` folder, which is loaded from the
+welcome screen or directly from the command line:
 
 ```bash
 pciSeq_viewer --data=/path/to/viewer_data
@@ -75,21 +71,7 @@ The background image is a separate, optional step, see
 
 ## Documentation
 
-All of it at [acycliq.github.io/pciSeq_viewer/docs](https://acycliq.github.io/pciSeq_viewer/docs/).
-
-- [The map](https://acycliq.github.io/pciSeq_viewer/docs/the-map): the window and its controls
-- [The 3D view](https://acycliq.github.io/pciSeq_viewer/docs/3d-view): a region as voxels
-- [Diagnostics](https://acycliq.github.io/pciSeq_viewer/docs/diagnostics): why a cell got its class, and a spot its cell
-- [AI agent](https://acycliq.github.io/pciSeq_viewer/docs/ai-agent): the chat panel, AI assistants such as Claude Code, and what each needs
-- [Data format](https://acycliq.github.io/pciSeq_viewer/docs/reference/data-format): the files the viewer reads
-
-## Citation
-
-The method behind the calls:
-
-Qian, X., Harris, K. D., Hauling, T., Nicoloutsopoulos, D., Muñoz-Manchado, A. B., Skene, N.,
-Hjerling-Leffler, J., & Nilsson, M. (2020). Probabilistic cell typing enables fine mapping of
-closely related cell types in situ. *Nature Methods*, 17(1), 101-106.
+Full documentation is available [here](https://acycliq.github.io/pciSeq_viewer/docs/).
 
 ## Licence
 
