@@ -63,7 +63,9 @@ async function queryAndRender(spotId) {
     if (title) title.textContent = `check_spot - Spot ${res.spotId}`;
     const info = document.getElementById('checkSpotInfo');
     if (info) {
-      info.textContent = `Gene ${res.geneName} at (x=${res.x}, y=${res.y}, z=${res.z})`;
+      // z is the anisotropy scaled float; three decimals are enough to read it
+      const z = typeof res.z === 'number' ? res.z.toFixed(3) : res.z;
+      info.textContent = `Gene ${res.geneName} at (x=${res.x}, y=${res.y}, z=${z})`;
     }
     renderScores(document.getElementById('checkSpotScores'), res);
     renderProbs(document.getElementById('checkSpotProbs'), res);
