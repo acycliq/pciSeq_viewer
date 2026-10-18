@@ -43,6 +43,17 @@ are therefore derived from the run itself: why a cell was assigned its class, wh
 was assigned to its cell, which settings were used, which cells of a class lie in a region.
 The language model does not read the files directly; it receives only the tool output.
 
+The agent is used through one of two interfaces:
+
+- **The chat panel**, inside the viewer. The viewer calls the language model directly,
+  with an API key entered in the viewer. See [Chat panel](#chat-panel).
+- **An AI assistant**, such as Claude Code, Gemini CLI or Codex, started from a terminal or
+  command prompt while the viewer is open. The assistant connects to the viewer over MCP
+  and uses its own language model and account; no API key is entered in the viewer. See
+  [AI assistant](#ai-assistant).
+
+Both interfaces use the same tools and read the run currently loaded in the viewer.
+
 <figure class="shot stage">
 <video class="zoomable" src="/video/chat.mp4" poster="/video/chat_poster.jpg" autoplay muted loop playsinline @click="big = '/video/chat.mp4'" aria-label="The chat panel answering questions about the run: each question, the tools the agent called, and the answer"></video>
 <figcaption>The chat panel answering questions about a run. The tools called by the agent are listed above each answer. Click to enlarge.</figcaption>
