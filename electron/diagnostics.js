@@ -3,6 +3,8 @@ const { ipcMain, BrowserWindow, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
+// for nbContributions, the checked rebuild of the per-gene numbers against any class
+const run = require('./run');
 
 // Module state (same style as main.js)
 let diagnosticsDb = null;
@@ -495,23 +497,40 @@ async function queryCell(cellId, userClass, topN = 10) {
       posterior = softmaxJS(logPost);
     }
 
-    // The rebuild above uses an older formula and can disagree with the run (cell 4356
-    // on espio_v1: 100% / 0% against the run's 64.9% / 35.1%). Where the run saved its
+    // The rebuild above scores gene_count, the counts after the spot update that
+    // follows the class update, so it can disagree with the run (cell 4356 on
+    // espio_v1: 100% / 0% against the run's 64.9% / 35.1%). Where the run saved its
     // score, show that instead: the gene log-likelihood per class, the stored class
-    // probabilities, and the per-gene contributions when the comparison is against the
-    // runner up, the only class they were saved for. Old runs keep the rebuild, labelled.
+    // probabilities, and the per-gene contributions. Those were saved against the
+    // runner up only; for any other class they come from run.nbContributions, the
+    // chat's rebuild from the counts the class update scored, used only when it
+    // reproduces the saved numbers. Old runs keep the rebuild above, labelled.
     const f32 = b => new Float32Array(b.buffer, b.byteOffset, b.byteLength / 4);
     let genesNote = null;
     let posteriorNote = null;
     if (hasSavedScore && row.gene_loglik) {
       geneLoglikAll.set(f32(row.gene_loglik));
       posterior = Array.from(classProb);
+      // nbContributions reads its own columns (scored_gene_count among them), so it
+      // gets the whole row
+      const checked = (userIdx !== row.runner_up_idx && row.contr_assigned)
+        ? run.nbContributions(
+            diagnosticsDb.prepare('SELECT * FROM cells WHERE ' + cellKey + ' = ?').get(c),
+            assignedIdx, userIdx)
+        : null;
       if (userIdx === row.runner_up_idx && row.contr_assigned && row.contr_runner_up) {
         const ca = f32(row.contr_assigned), cr = f32(row.contr_runner_up);
         for (let g = 0; g < nG; g++) {
           contr[g * nK + assignedIdx] = ca[g];
           contr[g * nK + userIdx] = cr[g];
           diff[g] = ca[g] - cr[g];
+        }
+      } else if (checked) {
+        const [ca, cu] = checked;
+        for (let g = 0; g < nG; g++) {
+          contr[g * nK + assignedIdx] = ca[g];
+          contr[g * nK + userIdx] = cu[g];
+          diff[g] = ca[g] - cu[g];
         }
       } else {
         genesNote = 'Per-gene bars rebuilt by the viewer: the run saved per-gene numbers ' +
