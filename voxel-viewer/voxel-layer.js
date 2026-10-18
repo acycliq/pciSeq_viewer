@@ -1,4 +1,6 @@
 // VoxelLayer - adapted for vanilla JS
+// Based on minecraft-chunk-viewer: https://github.com/Pessimistress/minecraft-chunk-viewer
+// Copyright (c) 2017 Xiaoji Chen, MIT License
 // Only minimal changes for import/export compatibility
 
 // Import the shaders

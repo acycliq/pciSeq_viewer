@@ -42,7 +42,8 @@
       "voxel-viewer/**/*",
       "!.git/**",
       "!.idea/**",
-      "!*.md"
+      "!*.md",
+      "THIRD_PARTY_NOTICES.md"
     ],
     "extraResources": [
       {
