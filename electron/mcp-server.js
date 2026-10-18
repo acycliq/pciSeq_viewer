@@ -115,6 +115,7 @@ const TOOL_RULES = {
   run_info: [['Explain rTheta, rGene and rSpot as pseudo-counts', 'give the default only as a fact, when asked.'],
              ["rSpot is more than the weight of gamma's prior", "Never call one by the other's name."]],
   docs: [['The four corrections that rescale', 'and the words carry it.'],
+         ['Wherever you explain an idea, lead the reader', 'how it is computed comes last.'],
          ['When asked why counts are not whole numbers', '0.3 give 4.3.']],
   gene: [['All four are called inefficiencies in pciSeq', 'may have had the other way round in mind.']],
   // the cell type definitions sentence too: unlike the python one, this core left it out
@@ -122,7 +123,8 @@ const TOOL_RULES = {
                  ['The cell type definitions are the mean expression', 'unless the user says so.'],
                  ['A little background on what a class is', 'use the class name as given.'],
                  ['explain_cell and explain_spot return a narrative field', 'do not give every answer the same shape.']],
-  explain_spot: [['explain_cell and explain_spot return a narrative field', 'do not give every answer the same shape.']],
+  explain_spot: [['explain_cell and explain_spot return a narrative field', 'do not give every answer the same shape.'],
+                 ['When asked why a spot went to a cell', "share of the spot's probability."]],
   calculate: [['You may work out, from the current numbers', 'and that only a rerun can tell.']],
 };
 

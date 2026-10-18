@@ -194,7 +194,8 @@ const TOOLS = [
       'table behind where it went: the probability of each candidate cell and the ' +
       'background, and the score of each broken into its terms. Returns the same ' +
       'numbers as explain_spot. Use it when the user asks to see the diagnostics of a ' +
-      'spot; after explaining a spot, offer it rather than opening it unasked. spot_id ' +
+      'spot, or asks why a spot went to a cell, without asking first; otherwise, after ' +
+      'explaining a spot, offer it rather than opening it unasked. spot_id ' +
       'is the id shown in the viewer.',
     input_schema: {
       type: 'object',
