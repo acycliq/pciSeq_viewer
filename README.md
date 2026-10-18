@@ -1,10 +1,21 @@
+<div align="center">
+
 # pciSeq Viewer
 
-Companion application to visualise results from [pciSeq](https://github.com/acycliq/pciSeq_3d).
+**Desktop application for visualising and interpreting pciSeq results, in 3D**
 
-**[Download](https://github.com/acycliq/pciSeq_viewer/releases/latest)** for Windows, macOS or
-Linux and **[try it on the demo data](#try-it-yourself)**, or read the
-**[documentation](https://acycliq.github.io/pciSeq_viewer/docs/)**.
+[![Documentation](https://img.shields.io/badge/docs-acycliq.github.io-0a7d5a)](https://acycliq.github.io/pciSeq_viewer/docs/)
+[![Release](https://img.shields.io/github/v/release/acycliq/pciSeq_viewer)](https://github.com/acycliq/pciSeq_viewer/releases/latest)
+[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-informational)](https://github.com/acycliq/pciSeq_viewer/releases/latest)
+[![Licence](https://img.shields.io/badge/licence-MIT-lightgrey)](LICENSE)
+
+[Download](https://github.com/acycliq/pciSeq_viewer/releases/latest) ·
+[Try the demo data](#try-it-yourself) ·
+[Documentation](https://acycliq.github.io/pciSeq_viewer/docs/)
+
+</div>
+
+Companion application to visualise results from [pciSeq](https://github.com/acycliq/pciSeq_3d).
 
 ## The viewer
 
