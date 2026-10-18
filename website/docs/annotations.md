@@ -36,7 +36,7 @@ the list. It also accepts:
 
 Regions can be referred to in questions to the agent, for example "my CA1" or "the region
 I drew"; the agent can count or list the cells within a region, a cell being counted as
-inside when its centroid is.
+inside when its fitted centroid is.
 
 ## Cell annotations
 

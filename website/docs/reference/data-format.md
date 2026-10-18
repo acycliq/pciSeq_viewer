@@ -106,14 +106,14 @@ that the spots' `gene_id` column and these keys use the same ids.
 
 ## arrow_cells
 
-One row per cell. Note the **uppercase** `X`, `Y`, `Z` for the centroid.
+One row per cell. Note the **uppercase** `X`, `Y`, `Z` for the fitted cell centroid.
 
 | Column | Type | Description |
 |---|---|---|
 | `cell_id` | int32 | The cell's original segmentation label |
-| `X` | float32 | Centroid X |
-| `Y` | float32 | Centroid Y |
-| `Z` | float32 | Centroid Z |
+| `X` | float32 | Fitted centroid X |
+| `Y` | float32 | Fitted centroid Y |
+| `Z` | float32 | Fitted centroid Z |
 | `class_name` | list&lt;string&gt; | Candidate class names, ordered by probability |
 | `prob` | list&lt;float32&gt; | Probabilities matching `class_name` |
 | `gene_names` | list&lt;string&gt; | Genes detected in the cell |

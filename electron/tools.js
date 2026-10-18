@@ -133,11 +133,11 @@ const TOOLS = [
     name: 'explain_spot',
     description:
       'Why a spot was assigned to the cell it was. One row per candidate cell plus the ' +
-      'background, with the Gaussian fit to the cell centre, the class expression term, ' +
+      'background, with the Gaussian fit around the fitted cell centroid, the class expression term, ' +
       'the cell scale, the cell-gene scale, the gene efficiency and the resulting ' +
       'probability, and a narrative that tells the story in plain words with the ' +
       'evidence as odds. A spot can sit outside every cell and still go to one, because ' +
-      'position is scored against the centroid, not the mask. spot_id is the id shown in ' +
+      'position is scored against the fitted cell centroid, not the mask. spot_id is the id shown in ' +
       'the viewer.',
     input_schema: {
       type: 'object',
@@ -213,8 +213,7 @@ const TOOLS = [
       '(an idea you can describe but cannot name, or a term from another method), ' +
       'ask for the list and pick the page by its subject, then read that page. Use ' +
       'this before answering any question about how pciSeq works, a term, or a ' +
-      'setting such as rTheta, mrf_beta or Inefficiency, and name the page you took ' +
-      'the answer from. Try the docs before the source.',
+      'setting such as rTheta, mrf_beta or Inefficiency. Try the docs before the source.',
     input_schema: {
       type: 'object',
       properties: {
@@ -344,7 +343,7 @@ const TOOLS = [
       'The cell-gene scale factors gamma_bar of one cell under its assigned class, ' +
       "for every gene or for one, each with the cell's count of the gene and the count " +
       'the class predicts for it (expected). Gamma is the per cell, per gene factor ' +
-      'absorbing overdispersion; it is pulled toward 1, so compare counts with expected ' +
+      'accounting for overdispersion; 1 means no correction, so compare counts with expected ' +
       'to say how far off a gene is. Only the assigned class is kept in diagnostics.db, ' +
       'and the answer says so. label is the segmentation label.',
     input_schema: {
@@ -393,7 +392,7 @@ const TOOLS = [
     description:
       'The cells whose classes enter the spatial (mrf) term of one cell, nearest ' +
       'first, each with its class and probability and, when the run carries the ' +
-      'centroids, the centroid distance in xy pixels and the plane offset. mrf_beta ' +
+      'fitted cell centroids, the distance between centroids in xy pixels and the plane offset. mrf_beta ' +
       'is returned too. label is the segmentation label.',
     input_schema: {
       type: 'object',
@@ -432,7 +431,7 @@ const TOOLS = [
       'The cells matching the filters given: class, position, plane, minimum total ' +
       'counts, and top_two_within, the largest gap allowed between the probabilities ' +
       'of the top two classes (small values pick the uncertain cells). Position is ' +
-      'the centroid: x and y in image pixels, depth as a plane range, for "the Pvalb ' +
+      'the fitted cell centroid: x and y in image pixels, depth as a plane range, for "the Pvalb ' +
       'Gaba cells in x 2000 to 3000, y 1500 to 2500, planes 20 to 40". The class is ' +
       'a probability: the list keeps cells assigned the class (class_rule assigned, ' +
       'the default) or with a probability above min_class_prob (class_rule above), ' +
@@ -455,7 +454,7 @@ const TOOLS = [
         plane_from: { type: 'integer', description: 'First plane of the range.' },
         plane_to: { type: 'integer', description: 'Last plane of the range.' },
         plane: { type: 'integer', description: 'One plane only.' },
-        region: { type: 'string', description: 'Only cells whose centroid is inside this region, a name from annotations.' },
+        region: { type: 'string', description: 'Only cells whose fitted centroid is inside this region, a name from annotations.' },
         min_counts: { type: 'number', description: 'Only cells with at least this many soft counts.' },
         top_two_within: { type: 'number', description: 'Only cells whose top two classes are within this.' },
         theta_from: { type: 'number', description: 'Only cells whose theta under the assigned class is at least this.' },
@@ -472,7 +471,7 @@ const TOOLS = [
       'drawn with their own outlines), with who made each, the user or the chat. Use ' +
       'it when the user names a region, "my CA1", "the region I drew", then ' +
       'find_cells with region for the cells inside it; a cell is inside when its ' +
-      'centroid is.',
+      'fitted centroid is.',
     input_schema: { type: 'object', properties: {} },
   },
   {
@@ -534,7 +533,7 @@ const TOOLS = [
       'plane; class_prior, a bar per class with its weight at the end of the run, ' +
       'the numbers of the class_prior tool. The other class charts count each cell ' +
       'once, by its most likely class, and ' +
-      'a cell is in a region when its centroid is. region is a name from annotations, ' +
+      'a cell is in a region when its fitted centroid is. region is a name from annotations, ' +
       'for class_distribution and classes_by_z; gene for gene_distribution. The chart ' +
       'opens on the user\'s screen; say what it shows, you do not see it.',
     input_schema: {
@@ -683,7 +682,7 @@ const TOOLS = [
       'neighbours=true outlines only the ' +
       'cells the spatial term of the model listened to, which is what "why did its ' +
       'neighbours make it this class" needs; the answer lists them and says which ' +
-      'sit on another plane. One plane at a time; the plane is the centroid\'s when ' +
+      'sit on another plane. One plane at a time; the plane is that of the fitted centroid when ' +
       'the run knows its voxel size, else the one where the cell is biggest; pass ' +
       'plane to choose. A run can have more than one background image; channel ' +
       'picks one by name, and with several and no channel the tool refuses and ' +
@@ -1262,8 +1261,9 @@ function runInfo(meta) {
     // survives only as cellData's sphere_scale / 3
     mean_cell_radius: meta.mcr != null ? Number(meta.mcr) : null,
     mean_cell_radius_is: 'in pixels of the xy plane, the mean over the segmented ' +
-                         'cells of sqrt(area / pi), halved; the Gaussian of every ' +
-                         'cell has this radius',
+                         'cells of sqrt(area / pi), halved; unless cell_radius is set, ' +
+                         'the radius of the prior on every cell\'s Gaussian, whose ' +
+                         'covariance is then fitted per cell',
     format_version: meta.format_version != null ? Number(meta.format_version) : 0,
   };
   const cfg = meta.config;

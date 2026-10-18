@@ -53,9 +53,10 @@ The panel shows the spot's gene and position, followed by every candidate cell t
 was scored against, and the background:
 
 - **Probabilities:** one per candidate cell and one for the background.
-- **Scores:** one bar per candidate, decomposed into its terms: the Gaussian fit to the
-  cell centre, the class expression of the gene, the cell scale, the cell-gene scale, the
-  gene efficiency and the inside-cell term. A tick marks the total. The last bar is the
+- **Scores:** one bar per candidate, decomposed into its terms: the Gaussian fit around
+  the fitted cell centroid, the class expression of the gene, the cell scale, the cell-gene
+  scale, the gene efficiency and the inside-cell bonus, which is 0 at the default setting.
+  A tick marks the total. The last bar is the
   background, whose score consists solely of the misread term. Higher scores are more
   favourable.
 - **Table:** the same values in tabular form, with the sum and the probability for each

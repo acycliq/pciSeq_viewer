@@ -11,7 +11,7 @@ is enabled (the default). It is located under the run's `output_path`:
 ```
 <output_path>/pciSeq/data/viewer_data/
 ├── arrow_spots/        # all spots: gene, position, candidate cells
-├── arrow_cells/        # all cells: centroid, classes, counts
+├── arrow_cells/        # all cells: fitted centroid, classes, counts
 ├── arrow_boundaries/   # cell outlines, one file per plane
 ├── diagnostics/
 │   └── diagnostics.db  # the terms behind every assignment, settings

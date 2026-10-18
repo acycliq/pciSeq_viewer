@@ -580,7 +580,7 @@ function neighbours(label) {
     n: rows.length,
     neighbours: rows,
     neighbours_are: 'the cells the spatial (mrf) term listens to, nearest first. ' +
-                    'distance_xy is between centroids in pixels of the xy plane, ' +
+                    'distance_xy is between fitted cell centroids in pixels of the xy plane, ' +
                     'plane_offset in planes',
     mrf_beta: (cfg() || {}).mrf_beta ?? null,
   };
@@ -643,13 +643,13 @@ function classPrior() {
 // any filter on position needs; planes need the voxel size on top
 function needCentroids(what) {
   if (!cellColumns().has('x')) {
-    throw new Error('this run does not carry the cell centroids in diagnostics.db, ' +
+    throw new Error('this run does not carry the fitted cell centroids in diagnostics.db, ' +
                     `so the cells cannot be filtered by ${what}; rerun with the current pciSeq`);
   }
 }
 function needPlanes() {
   if (planeOf(0) === null) {
-    throw new Error('this run does not record its voxel size, so a centroid ' +
+    throw new Error('this run does not record its voxel size, so a fitted cell centroid ' +
                     'cannot be put on a plane; rerun with the current pciSeq to record it');
   }
 }
@@ -732,7 +732,7 @@ function findCells({ class_name = null, class_rule = 'assigned', min_class_prob 
     cells_are: (k == null ? 'every cell the filters keep'
                 : class_rule === 'assigned' ? `cells assigned ${class_name}`
                 : `cells with a probability above ${min_class_prob} of being ${class_name}`) +
-               '; position is the centroid (x, y in image pixels, plane rounded down as ' +
+               '; position is the fitted cell centroid (x, y in image pixels, plane rounded down as ' +
                'for the spots); margin is the probability of the assigned class minus ' +
                'the runner up; theta is theta_bar of the assigned class; sorted by ' +
                'prob, the first n shown',
@@ -1348,7 +1348,7 @@ function cellPlane(label) {
   const got = db().prepare(`SELECT z FROM cells WHERE ${deps.getCellKey()} = ?`).get(toInternal(label));
   const plane = got && got.z != null ? planeOf(got.z) : null;
   return plane != null
-    ? { plane, Z_is: 'the anisotropy scaled z the model works in, not a plane; plane is the plane the centroid sits on' }
+    ? { plane, Z_is: 'the anisotropy scaled z the model works in, not a plane; plane is the plane the fitted cell centroid sits on' }
     : { Z_is: 'the anisotropy scaled z the model works in, not a plane. This run carries no voxel_size, so the plane cannot be given' };
 }
 
@@ -1529,7 +1529,7 @@ async function cellImage(label, { context = false, plane = null, width = 1200,
     why = 'asked for';
   } else {
     plane = c.z != null ? planeOf(c.z) : null;
-    why = 'the plane of the cell centroid';
+    why = 'the plane of the fitted cell centroid';
     if (plane == null || !areas.has(plane)) {
       plane = [...areas.entries()].sort((a, b) => b[1].area - a[1].area)[0][0];
       why = 'the plane where the cell outline is biggest';

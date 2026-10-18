@@ -206,7 +206,7 @@ function narrateSpot(e) {
   }
 
   out.push('pciSeq weighs each nearby cell on two things: how close the spot is to the ' +
-           `cell's centre (the Gaussian fit), and how well a ${gene} spot fits that cell, ` +
+           `cell's centroid (the Gaussian fit), and how well a ${gene} spot fits that cell, ` +
            `which combines whether the cell's class expresses ${gene} (class expression), ` +
            'whether the cell holds more reads overall than its class predicts (cell ' +
            `scale), and whether it already holds more ${gene} than its class predicts ` +
@@ -237,8 +237,18 @@ function narrateSpot(e) {
   const runner = byProb.length > 1 ? byProb[1] : null;
   const classes = new Set(cells.map(c => c.class));
   if (classes.size === 1) {
-    out.push(`Every candidate is a ${winner.class} cell, so on class alone ${gene} fits them all equally; ` +
-             'what separates them is how much each already holds.');
+    // a shared most likely class is not enough: the term averages over the class
+    // probabilities, so cells of the same class can still differ on it. Name the
+    // measured best rather than guess the cause
+    const ce = cells.map(c => c['class expression']);
+    if (Math.max(...ce) - Math.min(...ce) <= 0.2) {
+      out.push(`Every candidate is a ${winner.class} cell, and on class alone ${gene} fits them about ` +
+               'equally; what separates them is how much each already holds.');
+    } else {
+      const best = cells.reduce((a, b) => (b['class expression'] > a['class expression'] ? b : a));
+      out.push(`Every candidate is a ${winner.class} cell, but their class probabilities differ, so ` +
+               `on class alone ${gene} fits cell ${best.cell} best.`);
+    }
   } else if (runner && runner.class !== winner.class) {
     // compared between the two, never read on its own: the term is
     // log(class mean x Inefficiency + SpotReg), below zero whenever the class mean is
