@@ -19,6 +19,7 @@ const docs = require('./docs');
 const allen = require('./allen');
 const { exportTable, EXPORTABLE } = require('./exportTable');
 const allenTaxonomy = require('./allenTaxonomy');
+const { FIGURES, showFigure } = require('./chatFigures');
 
 // fetch: for reading the pciSeq source from GitHub, the global one unless a check
 // passes a fake.
@@ -373,7 +374,8 @@ const TOOLS = [
   {
     name: 'gene',
     description:
-      'One gene across the run: its efficiency eta and inefficiency, its misread ' +
+      'One gene across the run: its eta and eta times the ' +
+      'Inefficiency setting, its misread ' +
       'density, how many spots it has and how many were called misreads, its soft ' +
       'counts in cells split by class (soft, and summed over the cells called each ' +
       'class), the ten cells holding most of it, and the colour and marker shape ' +
@@ -721,6 +723,23 @@ const TOOLS = [
         channel: { type: 'string', description: 'Which background image, by name.' },
         save_as: { type: 'string', description: 'Also write the png to this path, so a user in a terminal can open it.' },
       },
+    },
+  },
+  {
+    name: 'show_figure',
+    description:
+      'Shows a figure from the documentation in the chat, right under the call. ' +
+      'factor_pyramid: Inefficiency, eta, theta and gamma drawn as a pyramid ordered ' +
+      'by granularity, with Inefficiency at the base (the whole experiment), then eta ' +
+      '(gene g across all cells), theta (the total count of cell c, per class k) and ' +
+      'gamma at the top (gene g in cell c, per class k). The user sees the figure; ' +
+      'you do not, so refer to it from this description.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', enum: Object.keys(FIGURES), description: 'Which figure.' },
+      },
+      required: ['name'],
     },
   },
   {
@@ -1549,6 +1568,7 @@ async function call(name, input) {
     if (name === 'cell_image') return await run.cellImage(input.label, input);
     if (name === 'allen_gene_image') return await allen.geneImage(input);
     if (name === 'plane_image') return await run.planeImage(input);
+    if (name === 'show_figure') return showFigure(input.name);
     if (name === 'list_source') return await listSource(input.dir || '');
     if (name === 'read_source') return await readSource(input.path, input.start_line);
     return { error: `unknown tool ${name}` };

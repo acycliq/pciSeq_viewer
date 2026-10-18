@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 460" width="920" height="460">
+  <!-- Copied from pciSeq_3d website/docs/how-it-works/warping-the-reference.md,
+       with the theme's CSS (custom.css, .ip-*) written in for the dark chat panel.
+       Render to factor_pyramid.png with: npx electron scripts/render_figure.js -->
+  <style>
+    .ip-tier { stroke: #e2e8f0; stroke-opacity: 0.4; stroke-width: 1; stroke-linejoin: round; }
+    .ip-glyph { fill: #e2e8f0; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 26px; font-weight: 600; }
+    .ip-name { fill: #e2e8f0; opacity: 0.75; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 14px; font-style: italic; }
+    .ip-desc { fill: #e2e8f0; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 13px; opacity: 0.7; }
+    .ip-axis { fill: #e2e8f0; opacity: 0.6; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 13px; letter-spacing: 0.15em; }
+    .ip-leader { stroke: #e2e8f0; stroke-opacity: 0.25; stroke-width: 1; stroke-dasharray: 2 4; }
+  </style>
+  <rect width="920" height="460" fill="#111" />
+  <line x1="70" y1="396" x2="70" y2="66" stroke="#e2e8f0" stroke-opacity="0.5" stroke-width="1.5" />
+  <path d="M 70,54 L 76,68 L 70,64 L 64,68 Z" fill="#e2e8f0" fill-opacity="0.5" />
+  <text class="ip-axis" transform="rotate(-90 90,230)" x="90" y="230" text-anchor="middle">GRANULARITY INCREASES</text>
+  <path class="ip-tier" fill="#34d399" d="M 300,60.0 L 342.9,141.0 L 257.1,141.0 Z" />
+  <path class="ip-tier" fill="#10b981" d="M 252.9,149.0 L 347.1,149.0 L 387.9,226.0 L 212.1,226.0 Z" />
+  <path class="ip-tier" fill="#059669" d="M 207.9,234.0 L 392.1,234.0 L 432.9,311.0 L 167.1,311.0 Z" />
+  <path class="ip-tier" fill="#047857" d="M 162.9,319.0 L 437.1,319.0 L 477.9,396.0 L 122.1,396.0 Z" />
+  <line class="ip-leader" x1="343" y1="100.5" x2="540" y2="100.5" />
+  <line class="ip-leader" x1="368" y1="187.5" x2="540" y2="187.5" />
+  <line class="ip-leader" x1="413" y1="272.5" x2="540" y2="272.5" />
+  <line class="ip-leader" x1="458" y1="357.5" x2="540" y2="357.5" />
+  <g>
+    <text x="550" y="96" class="ip-glyph">&#947; <tspan class="ip-name">(gamma)</tspan></text>
+    <text x="550" y="116" class="ip-desc">scales gene g's count in cell c, per class k</text>
+    <text x="550" y="183" class="ip-glyph">&#952; <tspan class="ip-name">(theta)</tspan></text>
+    <text x="550" y="203" class="ip-desc">scales cell c's total count, per class k</text>
+    <text x="550" y="268" class="ip-glyph">&#951; <tspan class="ip-name">(eta)</tspan></text>
+    <text x="550" y="288" class="ip-desc">scales gene g's count across all cells</text>
+    <text x="550" y="353" class="ip-glyph" font-size="20">Inefficiency</text>
+    <text x="550" y="373" class="ip-desc">scales the whole experiment at once</text>
+  </g>
+</svg>

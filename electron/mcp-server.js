@@ -107,12 +107,14 @@ function instructions() {
 // MCP listing gets them: the built-in chat sends the whole persona already.
 // tests/mcp_core.check.js fails when a start or an end no longer matches.
 const TOOL_RULES = {
-  gamma: [['For gamma: cells of the same class', 'gamma is that allowance.'],
-          ['After saying why gamma is needed', 'is the count more or less than its class predicts?'],
-          ['Eta, theta and gamma are all the same statistic', 'give gamma as the correction the model settled on.']],
+  gamma: [['For gamma: expression of a gene varies', 'Gamma is that term.'],
+          ['After saying why gamma is needed', 'together leave unexplained.'],
+          ['When the user asks what gamma is', 'End by asking whether the role of gamma is clear.']],
   theta: [['When an answer about theta calls a cell bigger or smaller', 'never leave it as size.'],
-          ['Never say that eta, theta or gamma is near 1', 'tells a newcomer nothing about why 1 matters.']],
-  run_info: [['Explain rTheta, rGene and rSpot as pseudo-counts', 'give the default only as a fact, when asked.']],
+          ['Never say that eta, theta or gamma is near 1', 'tells a newcomer nothing about why 1 matters.'],
+          ['When the user asks what theta is', 'cell whose theta lies on the other side of 1.']],
+  run_info: [['Explain rTheta, rGene and rSpot as pseudo-counts', 'give the default only as a fact, when asked.'],
+             ["rSpot is more than the weight of gamma's prior", "Never call one by the other's name."]],
   docs: [['The four corrections that rescale', 'and the words carry it.'],
          ['When asked why counts are not whole numbers', '0.3 give 4.3.']],
   gene: [['All four are called inefficiencies in pciSeq', 'may have had the other way round in mind.']],

@@ -530,10 +530,11 @@ function gene(name) {
     gene: name,
     glyph: glyphOf(name),
     eta: m.eta_bar[g],
-    eta_is: 'eta_bar, the posterior mean of the gene inefficiency; the reference ' +
+    eta_is: 'eta_bar, the posterior mean of eta, the gene\'s detection efficiency ' +
+            'relative to the Inefficiency setting; the reference ' +
             'expression of every class is multiplied by it',
-    inefficiency: c.Inefficiency != null ? m.eta_bar[g] * c.Inefficiency : null,
-    inefficiency_is: 'eta_bar times the Inefficiency setting, as Genes.inefficiency ' +
+    eta_times_Inefficiency: c.Inefficiency != null ? m.eta_bar[g] * c.Inefficiency : null,
+    eta_times_Inefficiency_is: 'eta_bar times the Inefficiency setting, as Genes.inefficiency ' +
                      'defines it; None on runs without the settings record',
     misread_density: (m.rho_bar || {})[name] ?? null,
     misread_density_prior: (m.misread_density || {})[name] ?? null,
