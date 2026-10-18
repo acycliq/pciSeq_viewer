@@ -44,6 +44,10 @@ async function renderOne(svgPath) {
   win.destroy();
 }
 
+// Electron quits when its last window closes, which would happen between two
+// figures; keep it running until every figure is written
+app.on('window-all-closed', () => {});
+
 app.whenReady().then(async () => {
   const svgs = fs.readdirSync(FIGURES_DIR).filter(f => f.endsWith('.svg'));
   for (const f of svgs) await renderOne(path.join(FIGURES_DIR, f));

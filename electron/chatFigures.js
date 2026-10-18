@@ -14,6 +14,10 @@ const FIGURES = {
     file: 'factor_pyramid.png',
     caption: 'Inefficiency, eta, theta and gamma, ordered by granularity.',
   },
+  spot_score: {
+    file: 'spot_score.png',
+    caption: 'The terms of the spot-to-cell score.',
+  },
 };
 
 function showFigure(name) {

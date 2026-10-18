@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 338" width="940" height="338">
+  <!-- Copied from pciSeq_3d website/docs/how-it-works/spots-to-cells.md,
+       with the theme's CSS (custom.css, .sb-*) written in for the dark chat panel.
+       Render to spot_score.png with: npx electron scripts/render_figure.js -->
+  <style>
+    text { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    .sb-root { fill: #10b981; stroke: #34d399; stroke-width: 1.5; }
+    .sb-root-txt { fill: #fff; font-size: 16px; font-weight: 700; }
+    .sb-link { fill: none; stroke: #e2e8f0; stroke-opacity: 0.35; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+    .sb-plus { fill: #e2e8f0; fill-opacity: 0.4; font-size: 22px; font-weight: 700; }
+    .sb-panel-where { fill: rgba(91, 155, 213, 0.07); stroke: rgba(91, 155, 213, 0.45); stroke-width: 1.2; }
+    .sb-panel-what { fill: rgba(16, 185, 129, 0.07); stroke: rgba(16, 185, 129, 0.45); stroke-width: 1.2; }
+    .sb-head-where { fill: #4a82ba; font-size: 12px; font-weight: 700; letter-spacing: 0.07em; }
+    .sb-head-what { fill: #1f9d77; font-size: 12px; font-weight: 700; letter-spacing: 0.07em; }
+    .sb-sub { fill: #e2e8f0; fill-opacity: 0.55; font-size: 13px; }
+    .sb-card { fill: #e2e8f0; fill-opacity: 0.035; stroke-width: 1.2; }
+    .sb-card-where { stroke: rgba(91, 155, 213, 0.5); }
+    .sb-card-what { stroke: rgba(16, 185, 129, 0.5); }
+    .sb-badge-where { fill: #3a6ea5; }
+    .sb-badge-what { fill: #10b981; }
+    .sb-badge-txt { fill: #fff; font-weight: 700; }
+    .sb-name { fill: #e2e8f0; font-size: 14px; font-weight: 700; }
+    .sb-q { fill: #e2e8f0; fill-opacity: 0.7; font-size: 12.5px; }
+  </style>
+  <rect width="940" height="338" fill="#111" />
+
+<rect class="sb-root" x="380" y="12" width="180" height="42" rx="11" />
+<text class="sb-root-txt" x="470" y="39" text-anchor="middle">spot <tspan font-size="19">&#8594;</tspan> cell score</text>
+<path class="sb-link" d="M 470,54 L 470,92" />
+<path class="sb-link" d="M 122,92 L 586,92" />
+<path class="sb-link" d="M 122,92 L 122,110" />
+<path class="sb-link" d="M 586,92 L 586,110" />
+<rect class="sb-panel-where" x="24" y="110" width="196" height="216" rx="12" />
+<text class="sb-head-where" x="122" y="134" text-anchor="middle">POSITION</text>
+<text class="sb-sub" x="122" y="150" text-anchor="middle">1 term</text>
+<rect class="sb-panel-what" x="256" y="110" width="660" height="216" rx="12" />
+<text class="sb-head-what" x="586" y="134" text-anchor="middle">EXPECTED COUNT</text>
+<text class="sb-sub" x="586" y="150" text-anchor="middle">4 terms</text>
+<text class="sb-plus" x="238" y="247" text-anchor="middle">+</text>
+<text class="sb-plus" x="426" y="247" text-anchor="middle">+</text>
+<text class="sb-plus" x="586" y="247" text-anchor="middle">+</text>
+<text class="sb-plus" x="746" y="247" text-anchor="middle">+</text>
+<rect class="sb-card sb-card-where" x="44" y="174" width="156" height="136" rx="10" />
+<circle class="sb-badge-where" cx="122" cy="208" r="21" />
+<text class="sb-badge-txt" x="122" y="213" text-anchor="middle" font-size="12">loglik</text>
+<text class="sb-name" x="122" y="252" text-anchor="middle">Gaussian fit</text>
+<text class="sb-q" x="122" y="275" text-anchor="middle">distance to the</text>
+<text class="sb-q" x="122" y="292" text-anchor="middle">centroid</text>
+<rect class="sb-card sb-card-what" x="272" y="174" width="148" height="136" rx="10" />
+<rect class="sb-badge-what" x="311" y="190" width="70" height="36" rx="18" />
+<text class="sb-badge-txt" x="346" y="214" text-anchor="middle" font-size="18"><tspan font-size="12">from </tspan>&#956;</text>
+<text class="sb-name" x="346" y="252" text-anchor="middle">Class expression</text>
+<text class="sb-q" x="346" y="275" text-anchor="middle">expected count</text>
+<text class="sb-q" x="346" y="292" text-anchor="middle">of the gene</text>
+<rect class="sb-card sb-card-what" x="432" y="174" width="148" height="136" rx="10" />
+<rect class="sb-badge-what" x="471" y="190" width="70" height="36" rx="18" />
+<text class="sb-badge-txt" x="506" y="214" text-anchor="middle" font-size="18"><tspan font-size="12">from </tspan>&#952;</text>
+<text class="sb-name" x="506" y="252" text-anchor="middle">Cell scale</text>
+<text class="sb-q" x="506" y="275" text-anchor="middle">counts of the cell</text>
+<text class="sb-q" x="506" y="292" text-anchor="middle">vs its class</text>
+<rect class="sb-card sb-card-what" x="592" y="174" width="148" height="136" rx="10" />
+<rect class="sb-badge-what" x="631" y="190" width="70" height="36" rx="18" />
+<text class="sb-badge-txt" x="666" y="214" text-anchor="middle" font-size="18"><tspan font-size="12">from </tspan>&#947;</text>
+<text class="sb-name" x="666" y="252" text-anchor="middle">Cell-gene scale</text>
+<text class="sb-q" x="666" y="275" text-anchor="middle">this gene in the</text>
+<text class="sb-q" x="666" y="292" text-anchor="middle">cell vs its class</text>
+<rect class="sb-card sb-card-what" x="752" y="174" width="148" height="136" rx="10" />
+<rect class="sb-badge-what" x="791" y="190" width="70" height="36" rx="18" />
+<text class="sb-badge-txt" x="826" y="214" text-anchor="middle" font-size="18"><tspan font-size="12">from </tspan>&#951;</text>
+<text class="sb-name" x="826" y="252" text-anchor="middle">Gene efficiency</text>
+<text class="sb-q" x="826" y="275" text-anchor="middle">detection rate</text>
+<text class="sb-q" x="826" y="292" text-anchor="middle">of the gene</text>
+</svg>

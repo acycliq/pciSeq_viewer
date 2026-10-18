@@ -731,7 +731,11 @@ const TOOLS = [
       'factor_pyramid: Inefficiency, eta, theta and gamma drawn as a pyramid ordered ' +
       'by granularity, with Inefficiency at the base (the whole experiment), then eta ' +
       '(gene g across all cells), theta (the total count of cell c, per class k) and ' +
-      'gamma at the top (gene g in cell c, per class k). The user sees the figure; ' +
+      'gamma at the top (gene g in cell c, per class k). spot_score: the terms of the ' +
+      'spot-to-cell score, added together: the Gaussian fit (distance to the centroid) ' +
+      'under position, and class expression (from mu), cell scale (from theta), ' +
+      'cell-gene scale (from gamma) and gene efficiency (from eta) under expected ' +
+      'count. The user sees the figure; ' +
       'you do not, so refer to it from this description.',
     input_schema: {
       type: 'object',
