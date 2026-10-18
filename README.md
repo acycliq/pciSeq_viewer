@@ -1,32 +1,34 @@
 # pciSeq Viewer
 
-Every call of a [pciSeq](https://github.com/acycliq/pciSeq_3d) run on the tissue, plane by
-plane, and why each cell got its class.
+Companion application to visualise results from [pciSeq](https://github.com/acycliq/pciSeq_3d).
 
 **[Download](https://github.com/acycliq/pciSeq_viewer/releases/latest)** for Windows, macOS or
 Linux and **[try it on the demo data](#try-it-yourself)**, or read the
 **[documentation](https://acycliq.github.io/pciSeq_viewer/docs/)**.
 
-## The map and the 3D view
+## The viewer
 
-- **The map.** The section over its tissue image, plane by plane through the z-stack: every
-  spot coloured by its gene, every cell by the class it was assigned to. Millions of spots stay
-  interactive, and any gene or class can be shown or hidden. Hover a cell for its gene counts
-  and class probabilities; Ctrl+Click a cell or a spot for the terms behind its call: why this
-  class and not the runner up, why this cell and not the neighbour.
-- **The 3D view.** Draw a box round a region and it opens in 3D as voxels: the cells, their
-  spots, and the planes they span.
+- **The map.** Each plane of the z-stack is displayed over its background image, with spots
+  coloured by gene and cells coloured by their assigned class. Millions of spots remain
+  interactive, and the visibility of each gene and each class can be set independently.
+  Hovering over a cell displays its gene counts and class probabilities. Ctrl+Click on a cell
+  or a spot opens the diagnostics, which show the terms that determined the assignment: for a
+  cell, the comparison of the assigned class with the runner-up; for a spot, the comparison of
+  the assigned cell with its neighbours.
+- **The 3D view.** A region selected with a bounding box is displayed in three dimensions as
+  voxels, together with its cells, its spots and the planes they span.
 
 <img src="https://github.com/user-attachments/assets/79236976-b24c-4e5c-9b93-1577d7ffe7b6" width="100%" alt="pciSeq Viewer: the section, its classes and genes, plane by plane, one cell">
 
 ## The AI agent
 
-A chat panel for questions about the statistical model behind the results. It explains the
-latent variables the model estimates and the assignments: why a cell was assigned its class
-rather than the runner-up, how much the genes, the class prior and the neighbouring cells each
-contributed, and why a spot was assigned to its cell. The agent can act on the viewer while
-answering: navigating to a cell or a plane, showing or hiding genes and classes, and opening the
-diagnostics, the charts or the 3D view, or rendering a cell on the background image.
+A conversational interface to the fitted model, intended to make its assignments
+interpretable. On request, the agent provides a decomposition of cell-to-class and
+spot-to-cell assignments into their constituent terms, so that each assignment can be traced
+to the data and priors that determined it. The structure of the model and the estimation of
+its latent variables may likewise be queried. The agent also controls the viewer: navigation
+to a cell or plane, the visibility of genes and classes, and the diagnostics, chart and 3D
+views.
 
 <img src="https://github.com/user-attachments/assets/76618be3-c5ed-4403-8c4d-3edf0a45b97f" width="100%" alt="The chat panel answering three questions about the run">
 
@@ -66,7 +68,7 @@ pciSeq_viewer --data=/path/to/viewer_data
 npm start -- --data=/path/to/viewer_data
 ```
 
-The background image is a separate, optional step, see
+The background image is a separate, optional step; see
 [Loading the data](https://acycliq.github.io/pciSeq_viewer/docs/loading-data).
 
 ## Documentation
