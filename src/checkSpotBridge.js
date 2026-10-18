@@ -39,8 +39,10 @@ export function openCheckSpotModal(spotId) {
   document.getElementById('checkSpotTable').innerHTML = '';
   document.getElementById('checkSpotLoading').style.display = 'block';
   
-  // Slide in
+  // Slide in. The cell panel sits in the same place, so close it, or it would
+  // stay hidden behind this one
   panel.classList.remove('collapsed');
+  document.getElementById('checkCellPanel')?.classList.add('collapsed');
   
   queryAndRender(Number(spotId));
 }

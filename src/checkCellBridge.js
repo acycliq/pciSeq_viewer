@@ -187,8 +187,10 @@ export function openCheckCellModal(cellLabel) {
 
     if (title) title.innerHTML = 'Cell ' + escapeHtml(cellLabel) + coordStr;
 
-    // Slide in
+    // Slide in. The spot panel sits in the same place, so close it, or it would
+    // stay on top of this one
     panel.classList.remove('collapsed');
+    document.getElementById('checkSpotPanel')?.classList.add('collapsed');
 }
 
 /**
