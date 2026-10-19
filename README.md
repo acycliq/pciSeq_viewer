@@ -51,7 +51,7 @@ a demo run: on the welcome screen, click **Try the demo data** (a 600 MB downloa
 
 Use of the agent requires either an API key for a supported language-model provider or a
 connection through an AI assistant such as Claude Code; the requirements for each are described
-in the [documentation](https://acycliq.github.io/pciSeq_viewer/docs/ai-agent#requirements).
+in the [documentation](https://acycliq.github.io/pciSeq_viewer/docs/ai-agent#ai-agent).
 
 ## Install
 

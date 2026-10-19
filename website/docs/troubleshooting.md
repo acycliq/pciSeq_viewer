@@ -45,8 +45,7 @@ the folder contains `diagnostics/diagnostics.db`, or select a database with
 
 The chat returns an error referring to the API key: no key is saved for the selected
 provider, or the saved key is invalid. Enter a key in the **Connection** tab of the chat
-panel and save, or set `ANTHROPIC_API_KEY` or `ZAI_API_KEY` in the environment from which
-the viewer is started.
+panel and save.
 
 ## SQLite module in a source checkout
 

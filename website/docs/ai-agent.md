@@ -54,11 +54,6 @@ The agent is used through one of two interfaces:
 
 Both interfaces use the same tools and read the run currently loaded in the viewer.
 
-<figure class="shot stage">
-<video class="zoomable" src="/video/chat.mp4" poster="/video/chat_poster.jpg" autoplay muted loop playsinline @click="big = '/video/chat.mp4'" aria-label="The chat panel answering questions about the run: each question, the tools the agent called, and the answer"></video>
-<figcaption>The chat panel answering questions about a run. The tools called by the agent are listed above each answer. Click to enlarge.</figcaption>
-</figure>
-
 <div v-if="big" class="zoom" @click="big = ''" role="dialog" aria-label="The video, larger">
 <video :src="withBase(big)" autoplay muted loop playsinline></video>
 </div>
@@ -131,6 +126,11 @@ to accommodate it rather than overlaid. The panel height is adjusted by dragging
 edge. The header provides controls for text size, a new conversation, minimise, maximise
 and close, and a label showing the active model.
 
+<figure class="shot stage">
+<video class="zoomable" src="/video/chat.mp4" poster="/video/chat_poster.jpg" autoplay muted loop playsinline @click="big = '/video/chat.mp4'" aria-label="The chat panel answering questions about the run: each question, the tools the agent called, and the answer"></video>
+<figcaption>The chat panel answering questions about a run. The tools called by the agent are listed above each answer. Click to enlarge.</figcaption>
+</figure>
+
 Questions are entered at the prompt and sent with **Enter**. Up to three images, such as a
 screenshot of a panel, can be attached by pasting or dropping them onto the panel; they are
 shown above the prompt until the question is sent.
@@ -141,15 +141,13 @@ The language model is configured once, in the **Connection** tab:
 
 | Field | Description |
 | --- | --- |
-| Provider | **Anthropic**, **Z.ai (GLM)**, or **Other** for any service that implements Anthropic's Messages API; for **Other**, the service URL is entered in an additional field. |
+| Provider | **Anthropic** or **Z.ai (GLM)**. |
 | API key | The API key for the selected provider. A separate key is stored for each provider. |
 | Model | Selected from the provider's model list, or entered as the provider's model identifier. |
 
 **Save** applies the settings and switches to the Chat tab. The key is encrypted with the
 operating system's credential store, is not exposed to the renderer process, and is sent
-only to its provider. If no key has been saved, the environment variables
-`ANTHROPIC_API_KEY` and `ZAI_API_KEY` are used. Usage is billed to the account associated
-with the key.
+only to its provider. Usage is billed to the account associated with the key.
 
 ## AI assistant
 
@@ -197,7 +195,7 @@ AI assistants.
 | `open_cell_diagnostics` | Opens the [cell diagnostics](./diagnostics#cell-diagnostics) panel on a cell |
 | `open_spot_diagnostics` | Opens the [spot diagnostics](./diagnostics#spot-diagnostics) panel on a spot |
 
-### One cell
+### Cell
 
 | Tool | Description |
 | --- | --- |
@@ -211,7 +209,7 @@ AI assistants.
 | `spots_in_cell` | The spots inside its segmentation mask (hard count) |
 | `cell_row` | The cell's row of `cellData.tsv`, unmodified |
 
-### One spot
+### Spot
 
 | Tool | Description |
 | --- | --- |
