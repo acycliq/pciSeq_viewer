@@ -17,7 +17,6 @@ import { transformToTileCoordinates, clamp } from '../utils/coordinateTransform.
 import { updateScaleBar } from '../utils/scaleBar.js';
 import { updateCoordinateDisplay } from '../utils/coordinateDisplay.js';
 import { planeOf } from '../utils/planes.js';
-import { debounce } from '../utils/common.js';
 import Perf from '../utils/runtimePerf.js';
 
 // === UI IMPORTS ===
@@ -89,16 +88,6 @@ import { loadPlane, preloadAround, nearestLoadedPlane } from './data/planeCells.
 
 // === WIDGET IMPORTS ===
 import {
-    showCellClassWidget,
-    hideCellClassWidget,
-    filterCellClasses,
-    toggleAllCellClasses,
-    undockCellClassWidget,
-    populateCellClassWidget,
-    updateToggleAllCellClassesButton
-} from './cellClassWidget.js';
-
-import {
     initGeneDistributionChart,
     showGeneDistributionWidget,
     hideGeneDistributionWidget
@@ -138,13 +127,6 @@ import {
 } from './regionsManager.js';
 
 // === GLOBAL EXPORTS FOR WIDGETS ===
-// Cell class widget functions
-window.showCellClassWidget = showCellClassWidget;
-window.hideCellClassWidget = hideCellClassWidget;
-window.filterCellClasses = filterCellClasses;
-window.toggleAllCellClasses = toggleAllCellClasses;
-window.undockCellClassWidget = undockCellClassWidget;
-
 
 // Gene distribution chart functions
 window.showGeneDistributionWidget = showGeneDistributionWidget;
@@ -911,19 +893,6 @@ document.addEventListener('DOMContentLoaded', () => {
         try { updateScaleBarOffset(); } catch {}
     }
 
-    // Setup debounced cell class search
-    const cellClassSearchInput = document.getElementById('cellClassSearch');
-    if (cellClassSearchInput) {
-        const debouncedCellClassSearch = debounce((searchTerm) => {
-            if (typeof window.filterCellClasses === 'function') {
-                window.filterCellClasses(searchTerm);
-            }
-        }, 200);
-
-        cellClassSearchInput.addEventListener('input', (e) => {
-            debouncedCellClassSearch(e.target.value);
-        });
-    }
 
     // Setup IPC listeners for menu-based import (Electron only)
     if (window.electronAPI) {
@@ -1027,8 +996,6 @@ window.addEventListener('load', async () => {
             if (mode === 'hide') these.forEach(n => shown.delete(n));
             if (classes) {
                 populateCellClassDrawer();
-                populateCellClassWidget();
-                updateToggleAllCellClassesButton();
             } else {
                 populateGeneDrawer();
             }

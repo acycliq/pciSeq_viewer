@@ -240,26 +240,6 @@ function setupWidgetControls(elements) {
     const misreadPerPlaneBtn = document.getElementById('misreadPerPlaneBtn');
     if (misreadPerPlaneBtn) misreadPerPlaneBtn.addEventListener('click', () => window.showPerPlaneWidget?.());
 
-    // Cell class widget controls
-    elements.cellClassWidgetClose.addEventListener('click', () => {
-        window.hideCellClassWidget();
-    });
-
-    elements.cellClassWidgetUndock.addEventListener('click', () => {
-        window.undockCellClassWidget();
-    });
-
-    elements.cellClassWidgetBackdrop.addEventListener('click', () => {
-        window.hideCellClassWidget();
-    });
-
-    elements.cellClassSearch.addEventListener('input', (e) => {
-        window.filterCellClasses(e.target.value);
-    });
-
-    elements.toggleAllCellClasses.addEventListener('click', () => {
-        window.toggleAllCellClasses();
-    });
 
 
 }
@@ -590,9 +570,6 @@ function setupEscapeKeyHandler(elements) {
             // Resume live hover updates if the cell info panel is frozen.
             if (typeof isCellInfoFrozen === 'function' && isCellInfoFrozen()) {
                 unfreezeCellInfoPanel();
-            }
-            if (!elements.cellClassWidget.classList.contains('hidden')) {
-                window.hideCellClassWidget();
             }
             if (!elements.controlsPanel.classList.contains('collapsed')) {
                 window.hideControlsPanel();

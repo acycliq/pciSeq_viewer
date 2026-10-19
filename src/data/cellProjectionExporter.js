@@ -25,7 +25,6 @@
  */
 
 import { populateCellClassDrawer } from '../cellClassDrawer.js';
-import { populateCellClassWidget } from '../cellClassWidget.js';
 
 /**
  * Export one PNG per cell class, bundled into a single ZIP download.
@@ -109,7 +108,6 @@ export async function exportPerClassPNGs({ state, updateLayers, bounds, statusEl
         state.selectedCellClasses.clear();
         originalSelection.forEach(c => state.selectedCellClasses.add(c));
         populateCellClassDrawer();
-        populateCellClassWidget();
         updateLayers();
     }
 }

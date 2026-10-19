@@ -37,16 +37,6 @@ const elements = {
 
     // Gene widget removed (replaced by Genes drawer)
 
-    // Cell class widget (cellClassPanelBtn removed - now using always-visible drawer section)
-
-    cellClassWidget: document.getElementById('cellClassWidget'),
-    cellClassWidgetBackdrop: document.getElementById('cellClassWidgetBackdrop'),
-    cellClassWidgetClose: document.getElementById('cellClassWidgetClose'),
-    cellClassWidgetUndock: document.getElementById('cellClassWidgetUndock'),
-    cellClassSearch: document.getElementById('cellClassSearch'),
-    cellClassList: document.getElementById('cellClassList'),
-    toggleAllCellClasses: document.getElementById('toggleAllCellClasses'),
-
     // UI
     layerControls: document.getElementById(UI_ELEMENTS.layerControls),
     tooltip: document.getElementById(UI_ELEMENTS.tooltip),

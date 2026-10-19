@@ -39,13 +39,11 @@ export function selectCanvasRectangle({ canvas, container = document.body }) {
         function onKey(e) {
             if (e.key !== 'Escape') return;
 
-            // Two-step Esc: if a drawer/widget is open, let the global Esc
-            // handler close it first; only cancel selection on a follow-up Esc
-            // when nothing else is open to dismiss.
-            const widget = document.getElementById('cellClassWidget');
+            // Two-step Esc: if the drawer is open, let the global Esc handler
+            // close it first; only cancel selection on a follow-up Esc when
+            // nothing else is open to dismiss.
             const panel = document.getElementById('controlsPanel');
-            const drawerOpen = (widget && !widget.classList.contains('hidden'))
-                            || (panel && !panel.classList.contains('collapsed'));
+            const drawerOpen = panel && !panel.classList.contains('collapsed');
             if (drawerOpen) return;
 
             cleanup();

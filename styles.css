@@ -1266,8 +1266,7 @@ body {
     font-weight: 600;
 }
 
-.widget-close-btn,
-.widget-undock-btn {
+.widget-close-btn {
     background: none;
     border: none;
     color: rgba(255, 255, 255, 0.7);
@@ -1287,14 +1286,9 @@ body {
     font-size: 24px;
 }
 
-.widget-close-btn:hover,
-.widget-undock-btn:hover {
+.widget-close-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     color: white;
-}
-
-.widget-undock-btn:hover {
-    color: #007bff;
 }
 
 .gene-widget-search {
