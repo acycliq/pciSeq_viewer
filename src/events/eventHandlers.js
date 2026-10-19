@@ -11,8 +11,6 @@
 import {
     toggleAllGenes,
     updateGeneSize,
-    handleGenePanelMessage,
-    openGenePanel,
     toggleLayerControls
 } from '../ui/uiHelpers.js';
 import { showNotification } from '../ui/notification.js';
@@ -50,7 +48,7 @@ export function setupEventHandlers(elements, state, updatePlaneCallback, updateL
     setupZProjectionToggle(state, updateLayersCallback);
     setupCellProjectionToggle(state, updateLayersCallback);
     setupEscapeKeyHandler(elements);
-    setupCrossWindowMessaging(state, updateLayersCallback);
+    setupRegionsListResize();
 }
 
 // === PLANE NAVIGATION ===
@@ -576,43 +574,6 @@ function setupEscapeKeyHandler(elements) {
             }
         }
     });
-}
-
-// === CROSS-WINDOW MESSAGING ===
-
-/**
- * Setup cross-window messaging for undocked gene panel
- */
-function setupCrossWindowMessaging(state, updateLayersCallback) {
-    window.addEventListener('message', (event) => {
-        const msg = event.data;
-        if (!msg || !msg.type) return;
-
-        switch (msg.type) {
-            case 'genePanelReady':
-                // Send gene list to undocked panel
-                if (state.genePanelWin) {
-                    const genes = Array.from(state.geneDataMap.keys());
-                    const chosen = Array.from(state.selectedGenes);
-                    state.genePanelWin.postMessage({
-                        type: 'geneList',
-                        genes: genes,
-                        chosen: chosen
-                    }, '*');
-                }
-                break;
-
-            case 'geneVisibilityUpdate':
-                // Update gene visibility from undocked panel
-                state.selectedGenes.clear();
-                msg.chosen.forEach(g => state.selectedGenes.add(g));
-                updateLayersCallback();
-                break;
-        }
-    });
-
-    // Setup regions list resize handle
-    setupRegionsListResize();
 }
 
 /**

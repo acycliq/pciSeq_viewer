@@ -657,50 +657,6 @@ export function updateGeneSize(newScale, state, displayElement, updateLayersCall
 }
 
 /**
- * Handle gene panel communication
- * Manages communication with the separate gene panel window
- * @param {MessageEvent} event - Message event from gene panel
- * @param {Object} state - Application state object
- * @param {Function} updateLayersCallback - Callback to update layers
- */
-export function handleGenePanelMessage(event, state, updateLayersCallback) {
-    const msg = event.data;
-    if (!msg || !msg.type) return;
-
-    switch (msg.type) {
-        case 'genePanelReady':
-            // Send initial gene list to panel
-            if (state.genePanelWin) {
-                state.genePanelWin.postMessage({
-                    type: 'geneList',
-                    genes: Array.from(state.geneDataMap.keys()),
-                    chosen: Array.from(state.selectedGenes)
-                }, '*');
-            }
-            break;
-
-        case 'geneVisibilityUpdate':
-            // Update gene visibility based on panel selection
-            state.selectedGenes.clear();
-            msg.chosen.forEach(g => state.selectedGenes.add(g));
-            updateLayersCallback();
-            break;
-    }
-}
-
-/**
- * Open or focus gene panel window
- * @param {Object} state - Application state object
- */
-export function openGenePanel(state) {
-    if (!state.genePanelWin || state.genePanelWin.closed) {
-        state.genePanelWin = window.open('genes_datatable.html', 'GenePanel');
-    } else {
-        state.genePanelWin.focus();
-    }
-}
-
-/**
  * Toggle layer controls panel minimized state
  * @param {HTMLElement} layerControls - Layer controls container
  * @param {HTMLElement} minimizeBtn - Minimize button

@@ -190,43 +190,6 @@
     padding: 4px 8px;
 }
 
-.cell-info-panel .dataTables_wrapper {
-    padding: 0;
-}
-
-.cell-info-panel .dataTables_wrapper .dataTables_length,
-.cell-info-panel .dataTables_wrapper .dataTables_filter,
-.cell-info-panel .dataTables_wrapper .dataTables_info,
-.cell-info-panel .dataTables_wrapper .dataTables_paginate {
-    display: none;
-}
-
-.cell-info-panel table.dataTable {
-    background: transparent;
-    color: #e8e8f0;
-    border-collapse: collapse;
-}
-
-.cell-info-panel table.dataTable thead th {
-    background: rgba(0, 0, 0, 0.2);
-    color: #94a3b8;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 6px 8px;
-    font-weight: 600;
-    font-size: 10px;
-    text-transform: uppercase;
-}
-
-.cell-info-panel table.dataTable tbody td {
-    padding: 4px 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    color: #e8e8f0;
-}
-
-.cell-info-panel table.dataTable tbody tr:hover {
-    background: rgba(255, 255, 255, 0.05);
-}
-
 /* Donut chart styles */
 .cell-info-panel .slices path.slice {
     stroke: rgba(255, 255, 255, 0.2);

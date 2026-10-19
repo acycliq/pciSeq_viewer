@@ -95,7 +95,6 @@ const state = {
 
     // Interactions
     polygonHighlighter: null,
-    genePanelWin: null,
 
     // check_cell bridge
     checkCellConnected: false,

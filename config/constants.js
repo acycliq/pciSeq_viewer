@@ -169,7 +169,6 @@ export const UI_ELEMENTS = {
     prevBtn: 'prevBtn',
     nextBtn: 'nextBtn',
     loadingIndicator: 'loadingIndicator',
-    // genePanelBtn removed
     showTiles: 'showTiles',
     showPolygons: 'showPolygons',
     showGenes: 'showGenes',
