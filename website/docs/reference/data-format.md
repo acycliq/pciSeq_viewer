@@ -86,6 +86,7 @@ One row per spot (gene read).
 | `neighbour_prob` | list&lt;float32&gt; | optional | Assignment probabilities, matching `neighbour_array` |
 | `omp_score` | float32 | optional | Detection score, used by the **Score Filter** |
 | `omp_intensity` | float32 | optional | Detection intensity, used by the **Intensity Filter** |
+| `is_hard_misread` | uint8 | optional | 1 if the background is the spot's most probable parent; derived from `neighbour_prob` when absent |
 
 ### gene_dict.json
 
@@ -203,7 +204,8 @@ requests a tile as `plane_id = plane`, `zoom_level = z`, `tile_column = x`,
 
 ## Cross references
 
-- A spot's `gene_id` resolves to its name and colour through `gene_dict.json`.
+- A spot's `gene_id` resolves to its name through `gene_dict.json`; the name determines its
+  colour and glyph.
 - A boundary's `label` matches a cell's `cell_id`, which links each polygon to its cell.
 - `plane_id` links spots and boundaries to a z-plane; the number of planes is taken from
-  the boundaries manifest.
+  the `.mbtiles` file, or entered by the user.

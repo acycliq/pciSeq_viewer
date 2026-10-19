@@ -44,7 +44,7 @@ assigned to.
 <figcaption>Background voxels off, cell voxels on. The spots lie inside the cells they were assigned to; the lines show the assignments.</figcaption>
 </figure>
 
-The switches in the panel on the right toggle each of these elements. A useful
+The switches in the panel on the left toggle each of these elements. A useful
 configuration is background voxels off, cell voxels off and boundary voxels on, which
 renders the cells as shells with their spots visible inside.
 

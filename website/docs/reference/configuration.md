@@ -5,8 +5,9 @@ description: The settings in the viewer's source code and their effect.
 
 # Configuration
 
-The viewer's settings are defined in three files, all loaded by `index.html` before the
-application starts:
+The viewer's settings are defined in three files. `index.html` loads `config.js` and
+`config/advanced.js` before the application starts; `config/constants.js` is imported by
+the application modules:
 
 - **`config.js`:** data paths and the metadata-loading logic; rarely edited.
 - **`config/advanced.js`:** the adjustable settings (performance, startup display,
@@ -26,16 +27,16 @@ rebuild the installer) for the change to take effect.
 | `preloadRadius` | `3` | Number of planes before and after the current one that are preloaded, so that moving through the z-stack is immediate. |
 | `maxTileCache` | `1000` | Maximum number of background tiles held in memory. When exceeded, the oldest tiles are evicted. |
 | `showPerformanceStats` | `true` | When `true`, writes timing logs to the developer console. |
-| `progressiveSpots` | `true` | Draws the spots shard by shard as they load, nearest plane first, rather than after all have loaded. |
+| `progressiveSpots` | `true` | Draws the spots shard by shard as they load, in manifest order (plane 0 upwards), rather than after all have loaded. |
 
 ### display (startup defaults)
 
-These define the initial state when a dataset is opened. Each can subsequently be toggled
-in the interface.
+These define the initial state when a dataset is opened. Each except `showGeneMarkers` can
+subsequently be changed in the interface.
 
 | Setting | Default | Description |
 |---|---|---|
-| `showBackgroundImages` | `true` | Background tiles visible at startup (the "Dapi" layer toggle). |
+| `showBackgroundImages` | `true` | Background tiles visible at startup (the "Background" layer toggle). |
 | `showCellBoundaries` | `true` | Cell polygons visible at startup (the "Cells" layer toggle). |
 | `showGeneMarkers` | `true` | Gene spots visible at startup. |
 | `geneMarkerSize` | `1.0` | Initial value of the **Size** slider. |
@@ -46,7 +47,7 @@ in the interface.
 | Setting | Default | Description |
 |---|---|---|
 | `geneBaseSize` | `20` | Base spot size in pixels on the current plane. The rendered size of a spot is `geneBaseSize / sqrt(1 + |Δplane|)`, and the low-zoom dot layer uses a radius scale of `geneBaseSize / 10`. This is the principal setting for spot size. |
-| `tileSize` | `256` | Tile size of the coordinate system. In practice it is fixed at `256`, because the same value is hard-coded elsewhere (the tile URL template, the initial view, the image-dimension defaults). Changing it here alone would make these inconsistent; it should be treated as fixed. |
+| `tileSize` | `256` | Tile size of the coordinate system. In practice it is fixed at `256`, because the same value is hard-coded elsewhere (the initial view, the image-dimension defaults). Changing it here alone would make these inconsistent; it should be treated as fixed. |
 
 ## Fixed constants (config/constants.js)
 
@@ -55,7 +56,8 @@ for reference.
 
 | Constant | Value | Description |
 |---|---|---|
-| `minZoom` / `maxZoom` | `0` / `8` | The zoom range, in deck.gl zoom levels (a unitless log2 scale), not pixels. Set in `appInitializer.js` and `tileLayerCreator.js`. |
+| `minZoom` / `maxZoom` | `0` / `8` | The zoom range, in deck.gl zoom levels (a unitless log2 scale), not pixels. Also set in the map controller in `src/init/appInitializer.js`; the background tile layer
+stops at the deepest zoom level of the `.mbtiles` file. |
 | `INITIAL_VIEW_STATE.zoom` | `2.0` | The initial zoom level of the map. |
 | `SPOT_PICKABLE_MIN_ZOOM` | `7` | Below this zoom level, spots are rendered as a non-pickable dot layer; at or above it, as per-gene glyphs. See [Spots and cells](../the-map#spots-and-cells). |
 | `IMG_DIMENSIONS` fallback | `6411 x 4412` | Used only if the image width and height are available neither from the MBTiles file nor from user input. |
@@ -67,7 +69,7 @@ that resolve to the selected dataset folder:
 
 | Path | Default |
 |---|---|
-| `backgroundTiles` | `mbtiles://tiles/{plane}/{z}/{y}/{x}.jpg` |
+| `backgroundTiles` | `mbtiles://tiles/{channel}/{plane}/{z}/{y}/{x}.jpg` |
 | `arrowSpotsManifest` | `app://arrow_spots/manifest.json` |
 | `arrowCellsManifest` | `app://arrow_cells/manifest.json` |
 | `arrowBoundariesManifest` | `app://arrow_boundaries/manifest.json` |

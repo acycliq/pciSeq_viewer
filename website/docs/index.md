@@ -31,8 +31,9 @@ converge. pciSeq Viewer is used afterwards, on the saved output.
   questions about the run, using tools that read the saved files and operate the map.
   AI assistants such as Claude Code can connect to the viewer in the same way.
 
-The `?` button at the top right of the window, or **Help, Take a Tour** in the menu,
-starts a guided tour of the controls.
+The `?` button at the top right of the window opens a description of the viewer, from which
+a guided tour of the controls can be started; **Help, Take a Tour** in the menu starts the
+tour directly.
 
 ## Requirements
 

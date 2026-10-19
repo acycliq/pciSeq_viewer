@@ -20,8 +20,8 @@ This page describes the organisation of the code, for contributors.
 
 When a dataset is opened:
 
-1. **Selection:** The Main process prompts for a folder and sends the path to the Renderer.
-2. **Metadata:** `src/data/dataLoaders.js` reads the Arrow manifests to determine the plane count, gene list, and cell classes.
+1. **Selection:** The Main process prompts for a folder, stores the path and reloads the Renderer.
+2. **Metadata:** `src/data/dataLoaders.js` reads the Arrow manifests to determine the gene list and cell classes; the plane count comes from the `.mbtiles` file or user input.
 3. **Ingestion:** Spots, cells, and boundaries are loaded via `arrow-loader/`. Spots and cells are loaded once and cached in memory; boundaries are loaded per plane, as the planes are visited.
 4. **Indexing:** `src/data/cellIndexes.js` builds spatial and cross-reference indexes (which spots belong to which cell, for example) for fast hover interactions.
 5. **Rendering:** `src/layers/layerBuilder.js` constructs the deck.gl layer stack for the current plane and zoom level.
@@ -45,7 +45,7 @@ Spots are drawn in one of two ways depending on the zoom level; the switch is ma
 - **Below zoom 7:** a single binary `ScatterplotLayer` (the "PointCloud") draws every
   spot as a coloured dot. No culling is applied; a single layer handles millions of
   points.
-- **Zoom 7 and above:** `IconLayer`s draw the spots as per-gene glyphs.
+- **Zoom 7 and above:** a single `IconLayer` draws the spots in view as per-gene glyphs.
 
 deck.gl's `onViewStateChange` fires continuously during panning and zooming, and the
 handler distinguishes two cases:

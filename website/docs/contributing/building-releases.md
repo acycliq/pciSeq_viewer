@@ -54,10 +54,10 @@ The build artefacts are written to `dist/`.
 
 ### Releasing through GitHub Actions
 
-Installers are built and published by GitHub Actions. The workflow is triggered **manually**, not by pushing a tag: in the Actions tab, select the "Build and Release" workflow and run it with the tag (for example `v0.0.6-alpha.1`) and the pre-release flag as inputs.
+Installers are built and published by GitHub Actions. The workflow is triggered **manually**, not by pushing a tag: in the Actions tab, select the "Build and Release" workflow and run it with an existing tag (for example `v0.0.6-alpha.1`) and the pre-release flag as inputs.
 
 - **Workflow:** `.github/workflows/build-release.yml`
-- **Platforms:** Windows (NSIS `.exe`), macOS (DMG, ZIP), Linux (AppImage, DEB).
+- **Platforms:** Windows (NSIS and portable `.exe`), macOS (DMG, ZIP), Linux (AppImage, DEB).
 - **Release:** the workflow attaches the artefacts to a GitHub release, marked as a pre-release when that input is set.
 
 The macOS build is **not** code-signed. The workflow sets `CSC_IDENTITY_AUTO_DISCOVERY: false`, so no signing certificates or secrets are involved; as a result, users receive the Gatekeeper warning on first launch (see [Troubleshooting](../troubleshooting#gatekeeper-on-macos)).

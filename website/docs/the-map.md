@@ -79,7 +79,7 @@ the counts are rarely integers. For example, four Plp1 spots assigned to the cel
 probability 1 and one with probability 0.3 give a count of 4.3.
 
 The panel follows the cursor. **Click** on a cell freezes the panel on that cell, so that
-the cursor can be moved onto the panel; a lock icon in the header indicates the frozen
+the cursor can be moved onto the panel; a pin icon in the header indicates the frozen
 state. **Esc**, or a click on the empty background, unfreezes it.
 
 When `diagnostics.db` is present, **Ctrl+Click** on a cell or a spot opens

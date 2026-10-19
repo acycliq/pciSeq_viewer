@@ -62,12 +62,12 @@ shown at a time; by default, the one whose file name sorts first.
 
 ## Opening a folder
 
-The viewer opens on a welcome screen. **Open Data Folder** (also **File, Open Dataset**,
-Ctrl+O) prompts for the `viewer_data` folder. The viewer verifies that the Arrow folders
-are present and locates the remaining files automatically: each `.mbtiles` file as a
+The viewer opens on a welcome screen. **Open a run** (also **File, Open Dataset**,
+Ctrl+O) prompts for the `viewer_data` folder. The viewer verifies that at least one of the
+Arrow folders is present and locates the remaining files automatically: each `.mbtiles` file as a
 channel, and `diagnostics/diagnostics.db` for the diagnostics and the agent.
 
-Three properties are read from the files, and requested from the user when missing:
+Two properties are read from the files, and requested from the user when missing:
 
 - **Image size and number of planes** are read from the `.mbtiles` file. If the folder
   contains no `.mbtiles` file, a dialog requests the width, height and plane count, and
@@ -75,8 +75,9 @@ Three properties are read from the files, and requested from the user when missi
 - **Voxel size**, in microns per pixel along x, y and z, is read from `diagnostics.db`,
   where the run recorded its `voxel_size` setting. If the file is absent, a dialog
   requests the three values, which are stored for that folder.
-- **An alternative background** can be selected with **File, Open Background Tiles**:
-  one or more `.mbtiles` files from any location.
+
+**File, Open Background Tiles** replaces the background with one or more `.mbtiles` files
+from any location.
 
 The folder can also be passed on the command line, which bypasses the welcome screen:
 

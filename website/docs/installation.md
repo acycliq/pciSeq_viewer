@@ -11,8 +11,8 @@ provides an installer and a portable build that runs without installation.
 
 | Platform | Installer | Portable |
 | --- | --- | --- |
-| Windows | `pciSeq_viewer-Setup-x.x.x.exe` | `pciSeq_viewer-x.x.x.exe` |
-| macOS | `pciSeq_viewer-x.x.x.dmg`, drag the app to Applications | `pciSeq_viewer-x.x.x-mac.zip` |
+| Windows | `pciSeq_viewer.Setup.x.x.x.exe` | `pciSeq_viewer.x.x.x.exe` |
+| macOS (Apple silicon) | `pciSeq_viewer-x.x.x-arm64.dmg`, drag the app to Applications | `pciSeq_viewer-x.x.x-arm64-mac.zip` |
 | Linux | `pciSeq_viewer_x.x.x_amd64.deb` | `pciSeq_viewer-x.x.x.AppImage` |
 
 On Linux:
@@ -33,7 +33,7 @@ choose **Open** and confirm. This is required only once.
 
 ## From source
 
-The viewer is an Electron application and requires Node 20 or later.
+The viewer is an Electron application and requires Node 22.12 or later.
 
 ```bash
 git clone https://github.com/acycliq/pciSeq_viewer.git

@@ -38,7 +38,7 @@ const copy = (text) => {
 An agent is a language model with access to tools. Given a task, it selects a tool,
 evaluates the result and continues calling tools until the task is complete, whereas a
 conventional chat model answers from its training data alone. The agent in pciSeq Viewer
-has 47 tools that read the saved run on the local machine and operate the map. Its answers
+has 48 tools that read the saved run on the local machine and operate the map. Its answers
 are therefore derived from the run itself: why a cell was assigned its class, why a spot
 was assigned to its cell, which settings were used, which cells of a class lie in a region.
 The language model does not read the files directly; it receives only the tool output.
@@ -145,7 +145,7 @@ The language model is configured once, in the **Connection** tab:
 | API key | The API key for the selected provider. A separate key is stored for each provider. |
 | Model | Selected from the provider's model list, or entered as the provider's model identifier. |
 
-**Save** applies the settings and switches to the Chat tab. The key is encrypted with the
+**save** applies the settings and switches to the Chat tab. The key is encrypted with the
 operating system's credential store, is not exposed to the renderer process, and is sent
 only to its provider. Usage is billed to the account associated with the key.
 
@@ -183,7 +183,7 @@ instance can serve at a time.
 
 The tools are not called by the user directly. A question is asked in natural language,
 and the language model selects and calls the tools required, based on their descriptions;
-no tool is run unless the question requires it. The same 47 tools serve the chat panel and
+no tool is run unless the question requires it. The same 48 tools serve the chat panel and
 AI assistants.
 
 ### Explaining an assignment
@@ -242,6 +242,7 @@ AI assistants.
 | --- | --- |
 | `cell_image` | An image of a cell rendered on the background image |
 | `plane_image` | The background image of a plane, or of a region of it |
+| `show_figure` | Shows a figure from the pciSeq documentation, such as the terms of the spot score |
 | `open_chart` | Opens one of the charts of [the drawer](./the-drawer) |
 | `open_3d_view` | Opens the [3D view](./3d-view) around a cell and its neighbours |
 
@@ -290,6 +291,6 @@ predict the outcome of a rerun with different settings. It requires a run that s
 
 ## Privacy
 
-Only the question, any attached images and the tool output are sent to the language
-model. The files of the run remain on the local machine. An API key, where required, is
+Only the conversation (the questions, any attached images and the earlier answers) and
+the tool output are sent to the language model. The files of the run remain on the local machine. An API key, where required, is
 stored locally and sent only to its provider.
