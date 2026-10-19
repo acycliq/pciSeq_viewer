@@ -25,11 +25,11 @@ converge. pciSeq Viewer is used afterwards, on the saved output.
 - **[The 3D view](./3d-view).** A rectangle drawn on the map opens a second window in
   which that region of tissue is rendered as voxels: the cells, their boundaries and the
   spots, in a scene that can be rotated and sliced.
-- **[The diagnostics](./diagnostics).** Ctrl-clicking a cell or a spot opens a panel with
-  the terms behind its assignment, as returned by pciSeq's own diagnostics.
+- **[The diagnostics](./diagnostics).** Ctrl+Click on a cell or a spot opens a panel with
+  the terms that determined its assignment, as returned by pciSeq's own diagnostics.
 - **[The AI agent](./ai-agent).** A chat panel in which a language model answers
   questions about the run, using tools that read the saved files and operate the map.
-  AI assistants such as Claude Code can connect to the viewer in the same way.
+  AI assistants such as Claude Code can use the same tools over MCP.
 
 The `?` button at the top right of the window opens a description of the viewer, from which
 a guided tour of the controls can be started; **Help, Take a Tour** in the menu starts the

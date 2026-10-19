@@ -107,7 +107,7 @@ that the spots' `gene_id` column and these keys use the same ids.
 
 ## arrow_cells
 
-One row per cell. Note the **uppercase** `X`, `Y`, `Z` for the fitted cell centroid.
+One row per cell. The fitted cell centroid columns `X`, `Y`, `Z` are **uppercase**.
 
 | Column | Type | Description |
 |---|---|---|

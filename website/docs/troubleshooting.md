@@ -12,7 +12,7 @@ choose **Open** and confirm. This is required only once.
 
 ## AppImage on Linux
 
-On older distributions, the cause is usually the glibc version. Ensure that the file is
+On older distributions, an AppImage that does not start is usually caused by the glibc version. Ensure that the file is
 executable; if the application still does not start, install the `.deb` package instead.
 
 ```bash
@@ -38,7 +38,7 @@ the run; the values are stored for that folder.
 Ctrl+Click on a cell or a spot has no effect, the chat reports that no diagnostics are
 available, and the single cell window reports *Diagnostics data not loaded*. Verify that
 the folder contains `diagnostics/diagnostics.db`, or select a database with
-**Diagnostics, Setup**. Runs from pciSeq `0.0.65` or earlier have neither the database nor
+**Diagnostics, Setup**. pciSeq `0.0.65` and earlier neither write the database nor provide
 `stage_image`; refit with `0.0.66` or later, from the `dev_3d` branch.
 
 ## API key

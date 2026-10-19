@@ -20,12 +20,12 @@ Companion application to visualise results from [pciSeq](https://github.com/acyc
 ## The viewer
 
 - **The map.** Each plane of the z-stack is displayed over its background image, with spots
-  coloured by gene and cells coloured by their assigned class. Millions of spots remain
-  interactive, and the visibility of each gene and each class can be set independently.
+  coloured by gene and cells coloured by their assigned class. Millions of spots can be
+  displayed at once, and the visibility of each gene and each class can be set independently.
   Hovering over a cell displays its gene counts and class probabilities. Ctrl+Click on a cell
   or a spot opens the diagnostics, which show the terms that determined the assignment: for a
   cell, the comparison of the assigned class with the runner-up; for a spot, the comparison of
-  the assigned cell with its neighbours.
+  the assigned cell with the other candidate cells and the background.
 - **The 3D view.** A region selected with a bounding box is displayed in three dimensions as
   voxels, together with its cells, its spots and the planes they span.
 

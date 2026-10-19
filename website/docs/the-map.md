@@ -83,10 +83,10 @@ the cursor can be moved onto the panel; a pin icon in the header indicates the f
 state. **Esc**, or a click on the empty background, unfreezes it.
 
 When `diagnostics.db` is present, **Ctrl+Click** on a cell or a spot opens
-[the diagnostics](./diagnostics), which show the values behind its assignment.
+[the diagnostics](./diagnostics), which show the values that determined its assignment.
 
 ## Cell search
 
 The magnifier on the rail, or **Ctrl+F**, opens a field for a cell label, the number of the
-cell in the segmentation. On entry, the map moves to that cell and briefly highlights its
+cell in the segmentation. When a label is entered, the map moves to that cell and briefly highlights its
 outline. The agent performs the same action when asked to show a cell.

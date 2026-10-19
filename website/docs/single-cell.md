@@ -1,6 +1,6 @@
 ---
 title: Single cell data
-description: The cell type definitions used to fit the run, alongside the counts the fitted model implies for the spatial data.
+description: The cell type definitions used to fit the run, alongside the mean counts per class observed in the spatial data.
 ---
 
 # Single cell data

@@ -1,6 +1,6 @@
 ---
 title: Diagnostics
-description: Ctrl-clicking a cell or a spot opens a panel with the terms behind its assignment, identical to the values of pciSeq's check_cell and check_spot.
+description: Ctrl+Click on a cell or a spot opens a panel with the terms that determined its assignment, identical to the values of pciSeq's check_cell and check_spot.
 ---
 
 # Diagnostics
@@ -13,9 +13,9 @@ pciSeq's [`check_cell`](https://acycliq.github.io/pciSeq_3d/api/reference#check-
 same `diagnostics.db`, so the values agree exactly with those returned in Python.
 
 The meaning of each term is explained on the pciSeq site, with a worked example for each:
-[why a cell got its type](https://acycliq.github.io/pciSeq_3d/explaining-the-calls/why-a-cell-got-its-type)
+[why a cell is assigned its class](https://acycliq.github.io/pciSeq_3d/explaining-the-calls/why-a-cell-got-its-type)
 and
-[why a spot got its cell](https://acycliq.github.io/pciSeq_3d/explaining-the-calls/why-a-spot-got-its-cell).
+[why a spot is assigned to its cell](https://acycliq.github.io/pciSeq_3d/explaining-the-calls/why-a-spot-got-its-cell).
 
 ::: info The diagnostics database
 The diagnostics require `diagnostics/diagnostics.db` in the data folder, which the viewer

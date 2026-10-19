@@ -10,7 +10,7 @@ outlines drawn on the map or imported from a file, and **cell annotations**, set
 drawn with their own outlines. Each entry has a visibility toggle and a delete button; a
 double-click on a name renames it.
 
-Annotations are held in memory for the session, as layers are in an image editor, and are
+Annotations are held in memory for the session and are
 written to a file only on **Save**. Closing the window or loading another dataset with unsaved
 changes prompts for confirmation. Nothing is written to the data folder.
 
