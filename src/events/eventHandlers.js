@@ -723,7 +723,7 @@ export function setupAdvancedKeyboardShortcuts(state, updatePlaneCallback, updat
 
             case 'End':
                 e.preventDefault();
-                updatePlaneCallback(99);
+                updatePlaneCallback(window.appState.totalPlanes - 1);
                 break;
 
             case 'PageUp':
