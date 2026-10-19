@@ -634,8 +634,6 @@ function classPrior() {
     cell_type_prior_is: 'weighted: the weights were learned from the cells and ' +
                         'refitted at every iteration, Zero apart, whose weight is ' +
                         'fixed. uniform: all of them were fixed by cell_type_weights',
-    note: 'a cell that was pinned partway through the run kept the weights of that ' +
-          'iteration, so its own prior term can differ from these',
   };
 }
 
@@ -795,7 +793,7 @@ function nbContributions(got, a, other) {
   const m = meta();
   const nG = m.gene_panel.length, nK = m.class_names.length;
   const rSpot = Number(m.rSpot), spotReg = Number(m.SpotReg);
-  const eta = got.frozen_eta_bar ? f32(got.frozen_eta_bar) : m.eta_bar;
+  const eta = m.eta_bar;
   const theta = f32(got.theta_bar);
   const counts = f32(got.scored_gene_count || got.gene_count);
   const savedTotal = f32(got.gene_loglik);

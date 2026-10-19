@@ -29,10 +29,6 @@ let meanExpressionAdj = null;   // Float32Array of nG * nK, format 2 only
 let hasBonus = false;
 let hasMrf = false;
 let hasAssignedClassIdx = false;
-// Cells the tie freezing pinned carry their own eta_bar and log_prior, from
-// the iteration they were pinned on. Without those the component chart cannot
-// rebuild the class we are showing for them, see the frozen_* columns.
-let hasFrozen = false;
 // format version 1 runs save the class score the run used (gene_loglik, and the
 // per-gene contributions against the runner up); the panel then shows those
 let hasSavedScore = false;
@@ -109,13 +105,11 @@ function openDiagnosticsDatabase(dbPath) {
   }
   hasAssignedClassIdx = cellCols.some(col => col.name === 'assigned_class_idx');
 
-  // Check if the tie freezing columns exist (older DBs will not have them)
-  hasFrozen = cellCols.some(col => col.name === 'frozen_eta_bar');
   hasSavedScore = cellCols.some(col => col.name === 'gene_loglik');
 
   cellKey = cellCols.some(col => col.name === 'internal_label') ? 'internal_label' : 'cell_id';
 
-  console.log('Diagnostics DB loaded. nC=%d, nS=%d, hasCellInefficiency=%s, hasGeneInefficiency=%s, hasBonus=%s, hasMrf=%s, hasFrozen=%s', diagnosticsMeta.nC, diagnosticsMeta.nS, hasCellInefficiency, hasGeneInefficiency, hasBonus, hasMrf, hasFrozen);
+  console.log('Diagnostics DB loaded. nC=%d, nS=%d, hasCellInefficiency=%s, hasGeneInefficiency=%s, hasBonus=%s, hasMrf=%s', diagnosticsMeta.nC, diagnosticsMeta.nS, hasCellInefficiency, hasGeneInefficiency, hasBonus, hasMrf);
   return diagnosticsMeta;
 }
 
@@ -132,7 +126,6 @@ function closeDiagnosticsDatabase() {
   reverseLabels = null;
   hasBonus = false;
   hasMrf = false;
-  hasFrozen = false;
   hasSavedScore = false;
   cellKey = 'cell_id';
 }
@@ -416,9 +409,8 @@ async function queryCell(cellId, userClass, topN = 10) {
     const baseCols = hasMrf
       ? scaledCol + ', theta_bar, gene_count, class_prob, mrf'
       : scaledCol + ', theta_bar, gene_count, class_prob';
-    const frozenCols = hasFrozen ? ', frozen_eta_bar, frozen_log_prior, frozen_iter' : '';
     const savedCols = hasSavedScore ? ', gene_loglik, runner_up_idx, contr_assigned, contr_runner_up' : '';
-    const selectCellCols = 'SELECT ' + baseCols + frozenCols + savedCols + ' FROM cells WHERE ' + cellKey + ' = ?';
+    const selectCellCols = 'SELECT ' + baseCols + savedCols + ' FROM cells WHERE ' + cellKey + ' = ?';
     const row = diagnosticsDb.prepare(selectCellCols).get(c);
     if (!row) {
       return { success: false, error: 'Cell not found in database: ' + c };
@@ -440,21 +432,6 @@ async function queryCell(cellId, userClass, topN = 10) {
       ? new Float32Array(row.mrf.buffer, row.mrf.byteOffset, nK)
       : null;
 
-    // A pinned cell keeps the class it had partway through the run, but
-    // eta_bar and log_prior in the metadata are from the end of it, so they
-    // would not rebuild that class. When the cell carries its own copies we
-    // use those instead. theta_bar, gene_count and mrf above are already the
-    // pinned values, the exporter writes them into the ordinary columns.
-    const frozenIter = (hasFrozen && row.frozen_iter !== null && row.frozen_iter !== undefined)
-      ? row.frozen_iter
-      : null;
-    const etaBarCell = (hasFrozen && row.frozen_eta_bar)
-      ? new Float32Array(row.frozen_eta_bar.buffer, row.frozen_eta_bar.byteOffset, nG)
-      : eta_bar;
-    const logPriorCell = (hasFrozen && row.frozen_log_prior)
-      ? new Float32Array(row.frozen_log_prior.buffer, row.frozen_log_prior.byteOffset, nK)
-      : log_prior;
-
     // Find assigned class (argmax of classProb)
     let assignedIdx = 0;
     for (let k = 1; k < nK; k++) {
@@ -467,7 +444,7 @@ async function queryCell(cellId, userClass, topN = 10) {
     for (let g = 0; g < nG; g++) {
       for (let k = 0; k < nK; k++) {
         const idx = g * nK + k;
-        const scaledExp = scaledMeans[idx] * etaBarCell[g] * thetaBar[k] + SpotReg;
+        const scaledExp = scaledMeans[idx] * eta_bar[g] * thetaBar[k] + SpotReg;
         const pNegBin = scaledExp / (rSpot + scaledExp);
         contr[idx] = geneCount[g] * Math.log(pNegBin) + rSpot * Math.log(1 - pNegBin);
       }
@@ -490,10 +467,10 @@ async function queryCell(cellId, userClass, topN = 10) {
     // Reconstruct full posterior over K classes: softmax(geneLoglik + log_prior + mrf).
     // Only possible when both log_prior (metadata) and per-cell mrf (cells table) are present.
     let posterior = null;
-    const hasPosteriorInputs = logPriorCell != null && logPriorCell.length === nK && mrf !== null;
+    const hasPosteriorInputs = log_prior != null && log_prior.length === nK && mrf !== null;
     if (hasPosteriorInputs) {
       const logPost = new Array(nK);
-      for (let k = 0; k < nK; k++) logPost[k] = geneLoglikAll[k] + logPriorCell[k] + mrf[k];
+      for (let k = 0; k < nK; k++) logPost[k] = geneLoglikAll[k] + log_prior[k] + mrf[k];
       posterior = softmaxJS(logPost);
     }
 
@@ -587,8 +564,8 @@ async function queryCell(cellId, userClass, topN = 10) {
     const components = {
       geneLoglikAssigned: geneLoglikAll[assignedIdx],
       geneLoglikUser: geneLoglikAll[userIdx],
-      logPriorAssigned: logPriorCell != null ? logPriorCell[assignedIdx] : null,
-      logPriorUser: logPriorCell != null ? logPriorCell[userIdx] : null,
+      logPriorAssigned: log_prior != null ? log_prior[assignedIdx] : null,
+      logPriorUser: log_prior != null ? log_prior[userIdx] : null,
       mrfAssigned: mrf !== null ? mrf[assignedIdx] : null,
       mrfUser: mrf !== null ? mrf[userIdx] : null
     };
@@ -618,10 +595,7 @@ async function queryCell(cellId, userClass, topN = 10) {
       posteriorAssigned,
       posteriorUser,
       genesNote,
-      posteriorNote,
-      // null unless this cell was pinned by the tie freezing, in which case it
-      // is the iteration the numbers above come from rather than the last one
-      frozenIter
+      posteriorNote
     };
   } catch (err) {
     return { success: false, error: 'Query failed: ' + err.message };
