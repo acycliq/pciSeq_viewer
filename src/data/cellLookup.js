@@ -363,9 +363,9 @@ function setupCellLookupUI() {
     // Expose the toggle so the rail magnifying-glass button can trigger the same action.
     window.cellLookup.toggleSearch = toggleBar;
 
-    // Ctrl+F toggles the bar
+    // Ctrl+F (Cmd+F on macOS) toggles the bar
     document.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === 'f') {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
             e.preventDefault();
             toggleBar();
         }

@@ -25,8 +25,7 @@ list in the viewer.
 | <kbd>Ctrl</kbd>+Click a cell or a spot | Open its [diagnostics](./diagnostics) |
 | <kbd>Esc</kbd> | Unfreeze the cell panel; close the drawer, a dialog or the cell search; cancel the export rectangle |
 
-On macOS, <kbd>Cmd</kbd> replaces <kbd>Ctrl</kbd>, except for <kbd>Ctrl</kbd>+<kbd>F</kbd> and
-<kbd>Ctrl</kbd>+Click, which require <kbd>Ctrl</kbd>.
+On macOS, <kbd>Cmd</kbd> replaces <kbd>Ctrl</kbd>.
 
 While a region is being drawn: <kbd>Enter</kbd> closes it, <kbd>Backspace</kbd> removes
 the last point, and <kbd>Esc</kbd> cancels.
