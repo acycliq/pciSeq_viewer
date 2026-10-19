@@ -1,6 +1,6 @@
 /**
  * Check Cell Charts Module
- * Handles D3.js rendering and table generation for the Cell Inspector
+ * Handles D3.js rendering and table generation for the cell diagnostics panel
  */
 
 // --- Shared helpers ---

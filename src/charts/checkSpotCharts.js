@@ -1,6 +1,6 @@
 /**
  * Check Spot Charts Module
- * Handles D3.js rendering and table generation for the Spot Inspector
+ * Handles D3.js rendering and table generation for the spot diagnostics panel
  */
 
 export function renderTable(container, data) {
