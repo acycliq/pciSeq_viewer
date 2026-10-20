@@ -6,6 +6,7 @@
 import { state } from './state/stateManager.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG } from './icons.js';
 import { debounce } from '../utils/common.js';
+import { geneStyle } from './glyphs/geneStyle.js';
 
 export function populateGeneDrawer() {
     const listEl = document.getElementById('genesList');
@@ -26,15 +27,6 @@ export function populateGeneDrawer() {
 
     listEl.innerHTML = '';
 
-    // Build quick color map from glyph settings (same used in loaders)
-    let colorByGene = null;
-    try {
-        const settings = glyphSettings();
-        colorByGene = new Map(settings.map(s => [s.gene, s.color]));
-    } catch (e) {
-        colorByGene = new Map();
-    }
-
     for (const { name, count } of entries) {
         const item = document.createElement('div');
         item.className = 'cell-class-item'; // reuse chip styles
@@ -43,11 +35,9 @@ export function populateGeneDrawer() {
         const visible = state.selectedGenes.has(name);
         if (!visible) item.classList.add('dim');
 
-        // Color swatch (use gene color from glyph config if available)
         const swatch = document.createElement('div');
         swatch.className = 'cell-class-color';
-        const hex = colorByGene.get(name) || '#ffffff';
-        swatch.style.background = hex;
+        swatch.style.background = geneStyle(name).color;
 
         const label = document.createElement('span');
         label.className = 'cell-class-name';

@@ -5,6 +5,7 @@
 import { state } from './state/stateManager.js';
 import { buildGeneIconAtlas } from './data/dataLoaders.js';
 import { sendLegend } from './legendSync.js';
+import { geneStyle, resetGeneStyles } from './glyphs/geneStyle.js';
 
 const VALID_GLYPHS = new Set([
   'star6','star5','diamond','square','triangleUp','triangleDown','triangleRight','triangleLeft','tShapeTop','tShapeBottom','tShapeLeft','tShapeRight','cross','plus','asterisk','circle','point'
@@ -18,10 +19,10 @@ function normalizeEntries(arr) {
     const gene = String(it.gene || '').trim();
     // Accept either spelling; prefer 'colour'.
     const color = String(it.colour ?? it.color ?? '').trim();
-    const glyph = String(it.glyphName || 'circle').trim();
+    const glyph = String(it.glyphName || DEFAULT_GENE_STYLE.glyphName).trim();
     if (!gene || !/^#?[0-9a-fA-F]{6}$/.test(color)) continue;
     const hex = color.startsWith('#') ? color : `#${color}`;
-    const glyphName = VALID_GLYPHS.has(glyph) ? glyph : 'circle';
+    const glyphName = VALID_GLYPHS.has(glyph) ? glyph : DEFAULT_GENE_STYLE.glyphName;
     out.push({ gene, color: hex, glyphName });
   }
   return out;
@@ -52,8 +53,9 @@ export async function applyGeneScheme(entries, replaceMode = false) {
   const norm = normalizeEntries(entries);
   if (norm.length === 0) return { appliedCount: 0 };
 
-  // Override glyphSettings used by atlas + gene drawer
+  // Replace the table, then drop the lookup's cache so every consumer sees the new one
   overrideGlyphSettings(norm, replaceMode);
+  resetGeneStyles();
 
   // Rebuild icon atlas/mapping from current gene set
   const genes = Array.from(state.geneDataMap.keys());
@@ -65,16 +67,11 @@ export async function applyGeneScheme(entries, replaceMode = false) {
   try {
     const cache = window.appState?.arrowScatterCache;
     if (cache && cache.colors && cache.geneIds) {
-      const hexToRgb = (hex) => { const c = d3.rgb(hex); return [c.r|0, c.g|0, c.b|0]; };
-      const cfg = (typeof window.glyphSettings === 'function') ? window.glyphSettings() : [];
-      const colorByGene = new Map(cfg.map(s => [s.gene, s.color]));
       const idToName = window.appState.arrowGeneDict || {};
 
       for (let i = 0; i < cache.geneIds.length; i++) {
         const geneId = cache.geneIds[i];
-        const geneName = idToName[geneId];
-        const hexColor = colorByGene.get(geneName) || '#ffffff';
-        const rgb = hexToRgb(hexColor);
+        const rgb = geneStyle(idToName[geneId]).rgb;
         cache.colors[4*i] = rgb[0];
         cache.colors[4*i + 1] = rgb[1];
         cache.colors[4*i + 2] = rgb[2];

@@ -35,7 +35,7 @@ Three summaries of the whole run, each opening in a panel over the map:
 
 ## Genes
 
-The gene equivalent of the class list: the glyph of each gene, its name and its number of
+The gene equivalent of the class list: the colour of each gene, its name and its number of
 spots. The eye icon hides the spots of a gene, and the field filters the list. Hiding all genes and showing one
 or two reveals their spatial distribution.
 

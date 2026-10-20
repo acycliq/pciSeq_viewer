@@ -23,6 +23,7 @@
 
 import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
 import { IMG_DIMENSIONS } from '../../config/constants.js';
+import { geneStyle } from '../glyphs/geneStyle.js';
 // Track Ctrl key state globally (deck.gl Deck-level onClick doesn't reliably expose srcEvent).
 // Cmd counts too: on macOS Ctrl+Click is a right click.
 let _ctrlKeyDown = false;
@@ -287,27 +288,10 @@ export class PolygonBoundaryHighlighter {
 
 
     /**
-     * Get gene color based on gene name
+     * The hover-line colour of a gene: its spot colour, with some transparency
      */
     getGeneColor(geneName) {
-        // Try to get color from glyphSettings if available
-        if (typeof glyphSettings === 'function') {
-            const settings = glyphSettings();
-            const geneSetting = settings.find(s => s.gene === geneName);
-            if (geneSetting && geneSetting.color) {
-                // Convert hex to RGB array
-                const hex = geneSetting.color.replace('#', '');
-                return [
-                    parseInt(hex.substr(0, 2), 16),
-                    parseInt(hex.substr(2, 2), 16),
-                    parseInt(hex.substr(4, 2), 16),
-                    200 // Alpha for line transparency
-                ];
-            }
-        }
-
-        // Fallback to white with transparency
-        return [255, 255, 255, 150];
+        return [...geneStyle(geneName).rgb, 200];
     }
 
     /**

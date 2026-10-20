@@ -15,6 +15,7 @@ import {
     updateCellBoundaryIndex
 } from './cellIndexes.js';
 import { isHardMisread } from '../misreads/misreadUtils.js';
+import { geneStyle, hasGeneStyle } from '../glyphs/geneStyle.js';
 // Note: classColorsCodes is loaded globally from color scheme files
 
 /**
@@ -132,21 +133,18 @@ export async function loadGeneData(geneDataMap, selectedGenes) {
 }
 
 /**
- * Map gene id -> [r, g, b] from the glyph colour settings, keyed the way the
- * Arrow worker expects. Genes without a configured colour fall back to white.
+ * Map gene id -> [r, g, b] from the gene styles, keyed the way the Arrow worker
+ * expects. Genes without an entry get DEFAULT_GENE_STYLE; this is the one
+ * place that warns about them, once per gene, at load.
  * @param {Object} idToName - gene id -> gene name (from gene_dict.json)
  */
 export function buildGeneIdColors(idToName) {
-    const settings = glyphSettings();
-    const colorByGene = new Map(settings.map(s => [s.gene, s.color]));
     const geneIdColors = {};
     for (const [gidStr, name] of Object.entries(idToName)) {
-        const hex = colorByGene.get(name);
-        if (!hex) {
-            console.warn(`Gene '${name}' missing color config, using white fallback`);
+        if (!hasGeneStyle(name)) {
+            console.warn(`Gene '${name}' has no entry in the gene styles, drawn with the default`);
         }
-        const color = d3.rgb(hex || '#ffffff');
-        geneIdColors[gidStr] = [color.r, color.g, color.b];
+        geneIdColors[gidStr] = geneStyle(name).rgb;
     }
     return geneIdColors;
 }
@@ -340,10 +338,6 @@ export async function loadCellData(cellDataMap) {
  * @returns {Object} Canvas atlas and coordinate mapping
  */
 export function buildGeneIconAtlas(genes) {
-    const settings = glyphSettings();
-    const configMap = new Map(settings.map(s => [s.gene, {glyphName: s.glyphName, color: s.color}]));
-    const defaultConfig = {glyphName: 'circle', color: '#ffffff'};
-
     const size = 64;
 
     // Query GPU max texture size to avoid exceeding it on some hardware
@@ -377,20 +371,16 @@ export function buildGeneIconAtlas(genes) {
     allEntries.forEach((entry, i) => {
         const isGrey = entry.startsWith('_grey_');
         const gene = isGrey ? entry.slice(6) : entry;
-        const cfg = configMap.get(gene);
-        if (!cfg) {
-            if (!isGrey) console.warn(`Gene '${gene}' missing glyph config, using circle fallback`);
-        }
-        const finalConfig = cfg || defaultConfig;
+        const style = geneStyle(gene);
         const col = i % cols;
         const row = Math.floor(i / cols);
         const p = {x: col * size + size / 2, y: row * size + size / 2};
         const r = size * 0.4;
 
         ctx.save();
-        ctx.strokeStyle = isGrey ? 'rgba(160,160,160,0.75)' : finalConfig.color;
+        ctx.strokeStyle = isGrey ? 'rgba(160,160,160,0.75)' : style.color;
         ctx.lineWidth = 4;
-        ctxPath(finalConfig.glyphName, ctx, p, r);
+        ctxPath(style.glyphName, ctx, p, r);
         ctx.stroke();
         ctx.restore();
 

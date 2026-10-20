@@ -56,8 +56,8 @@ the Genes and Cell Classes sections of the drawer or those of an imported
 The representation of the spots depends on the zoom level. At low zoom, each spot is a
 coloured dot, drawn in a single layer that scales to millions of points. From zoom level 7
 (of the map's range 0 to 8), the spots in view are drawn with per-gene glyphs, such as a
-star or a triangle, so that neighbouring genes can be distinguished. The glyph of each gene
-is shown next to it in the drawer.
+star or a triangle, so that neighbouring genes can be distinguished. The glyphs are listed
+under [Gene glyphs](./custom-colours#gene-glyphs).
 
 A cell is drawn as its outline, filled with its class colour at the opacity set in the
 Layers section. Hovering over a cell highlights it, draws a line from the cell to each of

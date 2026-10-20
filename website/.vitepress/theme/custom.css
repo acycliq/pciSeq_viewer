@@ -377,3 +377,30 @@
 .vp-doc .pick .pick-opts button.on:disabled {
   background: var(--vp-c-bg);
 }
+
+/* --- Glyph list ----------------------------------------------------- */
+/* Each glyph next to its name, the name as text so it can be copied. The
+   columns fill top to bottom and drop to fewer on a narrow screen. */
+.vp-doc .glyph-grid {
+  columns: 4 10rem;
+  column-gap: 1.5rem;
+  margin: 1.25rem 0 1.75rem;
+}
+.vp-doc .glyph-grid > span {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--vp-c-divider);
+  break-inside: avoid;
+}
+.vp-doc .glyph-grid svg {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: var(--vp-c-text-1);
+  stroke-width: 4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}

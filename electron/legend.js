@@ -5,13 +5,15 @@
 // one), so it sends the legend whenever it changes (src/legendSync.js) and it is
 // kept here.
 
-let classes = {};   // class name -> '#rrggbb'
-let genes = {};     // gene name -> { colour: '#rrggbb', shape: 'diamond' }
+let classes = {};        // class name -> '#rrggbb'
+let genes = {};          // gene name -> { colour: '#rrggbb', shape: 'diamond' }
+let defaultGene = null;  // what a gene with no entry is drawn with
 
 function init(ipcMain) {
   ipcMain.on('legend', (_event, legend) => {
     classes = (legend && legend.classes) || {};
     genes = (legend && legend.genes) || {};
+    defaultGene = (legend && legend.defaultGene) || null;
   });
 }
 
@@ -20,8 +22,9 @@ function classColour(name) {
   return classes[name] ?? null;
 }
 
+// null before the window has sent the legend; the default for a gene with no entry
 function geneGlyph(name) {
-  return genes[name] ?? null;
+  return genes[name] ?? defaultGene;
 }
 
 module.exports = { init, classColour, geneGlyph };

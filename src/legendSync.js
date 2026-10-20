@@ -1,7 +1,8 @@
 /**
  * Tells the main process what the map legend says, so the chat's tools can say it
  * too (electron/legend.js keeps it): the colour of each class, and the colour and
- * shape of each gene's spots. Call it whenever the class or gene colours change.
+ * shape of each gene's spots, and the default for a gene that has no entry.
+ * Call it whenever the class or gene colours change.
  */
 import { state } from './state/stateManager.js';
 
@@ -15,5 +16,6 @@ export function sendLegend() {
     const genes = {};
     const glyphs = typeof window.glyphSettings === 'function' ? window.glyphSettings() : [];
     glyphs.forEach(g => { genes[g.gene] = { colour: g.color, shape: g.glyphName }; });
-    window.electronAPI.setLegend({ classes, genes });
+    const defaultGene = { colour: DEFAULT_GENE_STYLE.color, shape: DEFAULT_GENE_STYLE.glyphName };
+    window.electronAPI.setLegend({ classes, genes, defaultGene });
 }

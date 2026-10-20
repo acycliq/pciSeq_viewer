@@ -9,6 +9,7 @@ import { getCellInfo } from '../data/tooltipDiagnostics.js';
 import { escapeHtml } from '../../utils/domSafe.js';
 import { planeOf } from '../../utils/planes.js';
 import { SPOT_PICKABLE_MIN_ZOOM } from '../../config/constants.js';
+import { geneStyle } from '../glyphs/geneStyle.js';
 
 // Note: Arrow-only runtime; no TSV-specific palette usage here
 
@@ -494,15 +495,7 @@ export function showTooltip(info, tooltipElement) {
                 spotInfo = `<strong>Spot ID:</strong> ${info.object.spot_id}<br>`;
             }
 
-            // Get color information
-            let colorInfo = '';
-            if (typeof glyphSettings === 'function') {
-                const settings = glyphSettings();
-                const geneSetting = settings.find(s => s.gene === gene);
-                if (geneSetting && geneSetting.color) {
-                    colorInfo = `<strong>Color:</strong> ${geneSetting.color}<br>`;
-                }
-            }
+            const colorInfo = `<strong>Color:</strong> ${geneStyle(gene).color}<br>`;
 
             // Get parent cell information
             let parentInfo = '';

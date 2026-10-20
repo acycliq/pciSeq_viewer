@@ -7,13 +7,16 @@
 
 import { IMG_DIMENSIONS } from '../../config/constants.js';
 import { transformToTileCoordinates } from '../../utils/coordinateTransform.js';
+import { geneStyle } from '../glyphs/geneStyle.js';
 
 const { LineLayer, COORDINATE_SYSTEM } = deck;
 
 const planeBoundsCache = new Map(); // plane -> { ref, entries }
 const spotTileCache = new WeakMap(); // spot object -> [tileX, tileY]
 let overlayCache = { key: null, data: null };
-let geneLineColorCache = null;
+
+// Same alpha as the hover lines in polygonInteractions.getGeneColor()
+const LINE_ALPHA = 200;
 
 function intersects(bounds, item) {
     return (
@@ -92,38 +95,6 @@ function getSpotTilePosition(spot) {
     return pos;
 }
 
-function getGeneLineColor(geneName) {
-    // Build cache lazily from glyphSettings once
-    if (!geneLineColorCache) {
-        geneLineColorCache = new Map();
-        try {
-            if (typeof glyphSettings === 'function') {
-                const settings = glyphSettings();
-                for (const s of settings || []) {
-                    const gene = s?.gene;
-                    const hex = s?.color;
-                    if (!gene || typeof hex !== 'string') continue;
-                    const clean = hex.replace('#', '');
-                    if (clean.length !== 6) continue;
-                    const r = Number.parseInt(clean.slice(0, 2), 16);
-                    const g = Number.parseInt(clean.slice(2, 4), 16);
-                    const b = Number.parseInt(clean.slice(4, 6), 16);
-                    if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
-                        // Match hover-line alpha from polygonInteractions.getGeneColor()
-                        geneLineColorCache.set(gene, [r, g, b, 200]);
-                    }
-                }
-            }
-        } catch {}
-    }
-
-    if (geneLineColorCache && geneLineColorCache.has(geneName)) {
-        return geneLineColorCache.get(geneName);
-    }
-    // Match hover-line fallback from polygonInteractions.getGeneColor()
-    return [255, 255, 255, 150];
-}
-
 function makeViewportKey(viewportBounds) {
     return [
         viewportBounds.minX.toFixed(2),
@@ -195,7 +166,7 @@ export function createCellSpotLineOverlayLayer(state, viewportBounds) {
 
         for (const spot of spots) {
             const [sx, sy] = getSpotTilePosition(spot);
-            const c = getGeneLineColor(spot.gene);
+            const c = geneStyle(spot.gene).rgb;
 
             src[3 * w] = centroid[0];
             src[3 * w + 1] = centroid[1];
@@ -208,7 +179,7 @@ export function createCellSpotLineOverlayLayer(state, viewportBounds) {
             colors[4 * w] = c[0];
             colors[4 * w + 1] = c[1];
             colors[4 * w + 2] = c[2];
-            colors[4 * w + 3] = c[3];
+            colors[4 * w + 3] = LINE_ALPHA;
             w++;
         }
     }
