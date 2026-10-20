@@ -7,6 +7,7 @@ import { state } from './state/stateManager.js';
 import { buildGeneIconAtlas } from './data/dataLoaders.js';
 import { sendLegend } from './legendSync.js';
 import { geneStyle, resetGeneStyles, setDefaultGeneStyle, resetDefaultGeneStyle } from './glyphs/geneStyle.js';
+import { clearCellSpotLineOverlayCache } from './layers/cellSpotLineOverlayLayer.js';
 
 const VALID_GLYPHS = new Set([
   'star6','star5','diamond','square','triangleUp','triangleDown','triangleRight','triangleLeft','tShapeTop','tShapeBottom','tShapeLeft','tShapeRight','cross','plus','asterisk','circle','point'
@@ -62,6 +63,7 @@ export async function applyGeneScheme(entries, replaceMode = false) {
   // Replace the table, then drop the lookup's cache so every consumer sees the new one
   overrideGlyphSettings(norm.filter(e => e.gene !== '*'), replaceMode);
   resetGeneStyles();
+  clearCellSpotLineOverlayCache();
 
   // Rebuild icon atlas/mapping from current gene set
   const genes = Array.from(state.geneDataMap.keys());

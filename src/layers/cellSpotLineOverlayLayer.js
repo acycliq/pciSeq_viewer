@@ -15,6 +15,13 @@ const planeBoundsCache = new Map(); // plane -> { ref, entries }
 const spotTileCache = new WeakMap(); // spot object -> [tileX, tileY]
 let overlayCache = { key: null, data: null };
 
+// The cached lines carry their gene colours, and the cache key only tracks the
+// view, so a gene colour import must drop it or the old colours stay until the
+// view moves.
+export function clearCellSpotLineOverlayCache() {
+    overlayCache = { key: null, data: null };
+}
+
 // Same alpha as the hover lines in polygonInteractions.getGeneColor()
 const LINE_ALPHA = 200;
 
