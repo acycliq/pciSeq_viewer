@@ -19,12 +19,15 @@ A list with one object per gene:
 ```json
 [
   { "gene": "Gad1",    "colour": "#1f77b4", "glyphName": "star6" },
-  { "gene": "Slc17a7", "colour": "#d62728", "glyphName": "triangleUp" }
+  { "gene": "Slc17a7", "colour": "#d62728", "glyphName": "triangleUp" },
+  { "gene": "*",       "colour": "#ffffff", "glyphName": "circle" }
 ]
 ```
 
 `glyphName` is one of the shapes listed under [Gene glyphs](#gene-glyphs); any other name
 defaults to `circle`. Genes not listed in the file keep their current colour and glyph.
+The name `*` sets the colour and glyph of every gene that has no entry, in the file or in
+the built-in scheme.
 
 ## Gene glyphs
 
@@ -52,7 +55,7 @@ The glyphs are drawn from zoom level 7; at lower zoom every spot is a coloured d
 </div>
 
 A gene that has no entry in the colour scheme is drawn with `DEFAULT_GENE_STYLE`, set in
-`src/glyphs/glyphConfig.js` in the source: a white circle.
+`src/glyphs/glyphConfig.js` in the source: a white circle, unless an imported file sets `*`.
 
 ## Class colours
 

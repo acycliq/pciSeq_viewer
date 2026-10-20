@@ -1,11 +1,12 @@
 // Gene colour + glyph importer
 // Accepts JSON array: [{ gene, colour: '#RRGGBB', glyphName }]
 // The colour field may be spelled "colour" or "color" (both accepted).
+// The gene name "*" sets the style of every gene the file does not list.
 
 import { state } from './state/stateManager.js';
 import { buildGeneIconAtlas } from './data/dataLoaders.js';
 import { sendLegend } from './legendSync.js';
-import { geneStyle, resetGeneStyles } from './glyphs/geneStyle.js';
+import { geneStyle, resetGeneStyles, setDefaultGeneStyle, resetDefaultGeneStyle } from './glyphs/geneStyle.js';
 
 const VALID_GLYPHS = new Set([
   'star6','star5','diamond','square','triangleUp','triangleDown','triangleRight','triangleLeft','tShapeTop','tShapeBottom','tShapeLeft','tShapeRight','cross','plus','asterisk','circle','point'
@@ -53,8 +54,13 @@ export async function applyGeneScheme(entries, replaceMode = false) {
   const norm = normalizeEntries(entries);
   if (norm.length === 0) return { appliedCount: 0 };
 
+  // In replace mode, only the file counts: the default goes back to DEFAULT_GENE_STYLE
+  if (replaceMode) resetDefaultGeneStyle();
+  const star = norm.find(e => e.gene === '*');
+  if (star) setDefaultGeneStyle(star);
+
   // Replace the table, then drop the lookup's cache so every consumer sees the new one
-  overrideGlyphSettings(norm, replaceMode);
+  overrideGlyphSettings(norm.filter(e => e.gene !== '*'), replaceMode);
   resetGeneStyles();
 
   // Rebuild icon atlas/mapping from current gene set

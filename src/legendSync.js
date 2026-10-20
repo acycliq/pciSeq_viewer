@@ -6,6 +6,7 @@
  */
 import { state } from './state/stateManager.js';
 import { rgbToHex, defaultClassColour } from './classColour.js';
+import { defaultGeneStyle } from './glyphs/geneStyle.js';
 
 export function sendLegend() {
     if (!window.electronAPI?.setLegend) return;
@@ -15,6 +16,6 @@ export function sendLegend() {
     const genes = {};
     const glyphs = typeof window.glyphSettings === 'function' ? window.glyphSettings() : [];
     glyphs.forEach(g => { genes[g.gene] = { colour: g.color, shape: g.glyphName }; });
-    const defaultGene = { colour: DEFAULT_GENE_STYLE.color, shape: DEFAULT_GENE_STYLE.glyphName };
+    const defaultGene = { colour: defaultGeneStyle().color, shape: defaultGeneStyle().glyphName };
     window.electronAPI.setLegend({ classes, defaultClass, genes, defaultGene });
 }

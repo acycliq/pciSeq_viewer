@@ -5,10 +5,12 @@
  * script, and Import, Gene Colours replaces that global with a new table
  * (src/geneColorImport.js). Nothing else reads the table: the map layers, the
  * drawer, the hover lines, the tooltip and the chat legend all call geneStyle(),
- * so a gene that is not in the table gets DEFAULT_GENE_STYLE (also defined in
- * glyphConfig.js) everywhere, from one line.
+ * so a gene that is not in the table gets the default everywhere, from one line:
+ * DEFAULT_GENE_STYLE (also defined in glyphConfig.js), or the style an import
+ * file gives under the gene name "*".
  */
 
+let defaultStyle = DEFAULT_GENE_STYLE;
 let styles = null;   // gene name -> { color, glyphName, rgb }, built on first use
 
 function hexToRgb(hex) {
@@ -25,7 +27,7 @@ function buildStyles() {
     for (const s of glyphSettings()) {
         styles.set(s.gene, { color: s.color, glyphName: s.glyphName, rgb: hexToRgb(s.color) });
     }
-    styles.default = { ...DEFAULT_GENE_STYLE, rgb: hexToRgb(DEFAULT_GENE_STYLE.color) };
+    styles.default = { ...defaultStyle, rgb: hexToRgb(defaultStyle.color) };
 }
 
 // { color: '#rrggbb', glyphName, rgb: [r, g, b] }
@@ -38,6 +40,22 @@ export function geneStyle(name) {
 export function hasGeneStyle(name) {
     if (!styles) buildStyles();
     return styles.has(name);
+}
+
+// { color, glyphName } of a gene with no entry
+export function defaultGeneStyle() {
+    return defaultStyle;
+}
+
+// An import file's "*" entry
+export function setDefaultGeneStyle(style) {
+    defaultStyle = { color: style.color, glyphName: style.glyphName };
+    styles = null;
+}
+
+export function resetDefaultGeneStyle() {
+    defaultStyle = DEFAULT_GENE_STYLE;
+    styles = null;
 }
 
 // Call after an import has replaced glyphSettings, so the next lookup rebuilds.
