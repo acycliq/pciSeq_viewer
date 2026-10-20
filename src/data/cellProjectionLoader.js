@@ -109,8 +109,7 @@ export function buildGeoJsonCacheForPlane(plane, buffers, state, geojsonCache, t
                 plane_id: plane,
                 label,
                 cellClass: cellProps.cellClass,
-                totalGeneCount: cellProps.totalGeneCount,
-                colorRGB: cellProps.colorRGB
+                totalGeneCount: cellProps.totalGeneCount
             }
         });
     }
@@ -123,9 +122,8 @@ export function buildGeoJsonCacheForPlane(plane, buffers, state, geojsonCache, t
  * Extract cell properties from cellDataMap
  */
 export function extractCellProperties(label, state) {
-    let cellClass = 'Generic';
+    let cellClass = 'Unknown';
     let totalGeneCount = 0;
-    let colorRGB = [192, 192, 192];
 
     if (state.cellDataMap && label >= 0) {
         const cell = state.cellDataMap.get(Number(label));
@@ -149,15 +147,10 @@ export function extractCellProperties(label, state) {
 
             // Extract totalGeneCount for GPU filtering
             totalGeneCount = cell.totalGeneCount || 0;
-
-            // Precompute RGB color for this class
-            if (state.cellClassColors && state.cellClassColors.has(cellClass)) {
-                colorRGB = state.cellClassColors.get(cellClass);
-            }
         }
     }
 
-    return { cellClass, totalGeneCount, colorRGB };
+    return { cellClass, totalGeneCount };
 }
 
 /**

@@ -62,12 +62,16 @@ A list of class names and colours, in the same format as the viewer's built-in s
 [
   { "className": "016 CA1-ProS Glut", "colour": "#28A745" },
   { "className": "025 CA2-FC-IG Glut", "colour": "#A4C400" },
-  { "className": "017 CA3 Glut",      "colour": "#2BAF8A" }
+  { "className": "017 CA3 Glut",      "colour": "#2BAF8A" },
+  { "className": "*",                 "colour": "#C0C0C0" }
 ]
 ```
 
 Names must match the classes of the run; unmatched entries are ignored and listed in the developer console.
-Classes not listed in the file keep their current colour.
+Classes not listed in the file keep their current colour. The name `*` sets the colour of
+every class that has no entry, in the file or in the built-in scheme; without it, such a
+class is drawn with `DEFAULT_CLASS_COLOUR`, set in `config/colorSchemes.js` in the source:
+grey.
 
 The schemes in `config/colorSchemes/` in the source (`hippocampus.js`, `zeisel.js` and
 `allen.js`) can serve as templates for a new file.

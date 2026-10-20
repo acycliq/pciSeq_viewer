@@ -16,7 +16,6 @@
  *   unfreeze()             - resume hover updates (Esc / empty-map click)
  */
 
-import { initColorScheme } from './colorResolver.js';
 import { renderDonut } from './donutChart.js';
 import { renderClassLegend } from './classLegend.js';
 import { renderGeneTable } from './geneTable.js';
@@ -57,7 +56,6 @@ export function init() {
     }
 
     initPanelState();
-    initColorScheme();
 }
 
 /**

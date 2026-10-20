@@ -5,7 +5,7 @@
  * Each row shows a color dot, class name, and probability percentage.
  */
 
-import { getClassColor } from './colorResolver.js';
+import { classColourHex } from '../classColour.js';
 import { highlightClass, clearHighlight } from './highlight.js';
 import { escapeHtml } from '../../utils/domSafe.js';
 
@@ -31,7 +31,7 @@ export function renderClassLegend(cellData) {
     let html = '';
     for (let j = 0; j < rows.length; j++) {
         const r = rows[j];
-        const color = getClassColor(r.name);
+        const color = classColourHex(r.name);
         const pct = (r.prob * 100).toFixed(1) + '%';
         const safeName = escapeHtml(r.name);
         html += '<div class="legend-row" data-class="' + safeName + '">'

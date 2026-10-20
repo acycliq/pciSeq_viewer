@@ -6,7 +6,7 @@
  */
 
 import { state } from './state/stateManager.js';
-import { getClassColor } from './cellInfoPanel/colorResolver.js';
+import { classColourHex } from './classColour.js';
 import { showNotification } from './ui/notification.js';
 import { getFormattedCellCoordinates } from '../utils/cellFormatting.js';
 import { escapeHtml } from '../utils/domSafe.js';
@@ -266,8 +266,8 @@ function addNote(container, text) {
 }
 
 function renderResults(data) {
-    const colorAssigned = getClassColor(data.assignedClass);
-    const colorUser = getClassColor(data.userClass);
+    const colorAssigned = classColourHex(data.assignedClass);
+    const colorUser = classColourHex(data.userClass);
     
     // Attach to data object for charts to consume
     data.colorAssigned = colorAssigned;

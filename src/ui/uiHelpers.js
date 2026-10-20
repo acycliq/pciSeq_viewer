@@ -10,6 +10,7 @@ import { escapeHtml } from '../../utils/domSafe.js';
 import { planeOf } from '../../utils/planes.js';
 import { SPOT_PICKABLE_MIN_ZOOM } from '../../config/constants.js';
 import { geneStyle } from '../glyphs/geneStyle.js';
+import { classColourHex } from '../classColour.js';
 
 // Note: Arrow-only runtime; no TSV-specific palette usage here
 
@@ -450,16 +451,7 @@ export function showTooltip(info, tooltipElement) {
                         }
                     }
                 }
-                // Color hex (from class color schemes if available)
-                try {
-                    if (typeof classColorsCodes === 'function') {
-                        const scheme = classColorsCodes();
-                        const entry = scheme.find(e => e.className === cellClass);
-                        if (entry && entry.color) {
-                            colorHex = `<strong>Color:</strong> ${entry.color}<br>`;
-                        }
-                    }
-                } catch {}
+                colorHex = `<strong>Color:</strong> ${classColourHex(cellClass)}<br>`;
 
                 // Internal index from diagnostics label_map (only when diagnostics are loaded)
                 let internalLabel = '';

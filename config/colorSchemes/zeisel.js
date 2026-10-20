@@ -66,9 +66,7 @@ function classColorsCodes_zeisel() {
         {'className': 'VLMC2', 'IdentifiedType': 'VLMC2', 'color': '#B71123'},
         {'className': 'VSMCA', 'IdentifiedType': 'VSMCA', 'color': '#FF3F3F'},
 
-        // Default classes (always included)
-        {className: 'Zero', IdentifiedType: 'Zero', color: '#000000'},
-        {className: 'Generic', IdentifiedType: 'Generic', color: '#C0C0C0'},
-        {className: 'Other', IdentifiedType: 'Other', color: '#C0C0C0'}
+        // Zero, the class that expects no expression, is in every run
+        {className: 'Zero', IdentifiedType: 'Zero', color: '#000000'}
     ];
 }

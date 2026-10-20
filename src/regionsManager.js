@@ -10,6 +10,7 @@
 import { state } from './state/stateManager.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG, TRASH_SVG } from './icons.js';
 import { cellOutlines } from './cellOutlines.js';
+import { classColourHex } from './classColour.js';
 
 // where older versions kept the regions by themselves, one list for every run
 const OLD_STORAGE_KEY = 'pciSeq_regions';
@@ -196,8 +197,7 @@ function getRegionColorRgb(name) {
 function annotationColourHex(region) {
     if (!isRegion(region) && region.features?.length) {
         const classes = new Set(region.features.map(f => f.properties.cellClass));
-        const rgb = classes.size === 1 && state.cellClassColors?.get([...classes][0]);
-        if (rgb) return '#' + rgb.slice(0, 3).map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+        if (classes.size === 1) return classColourHex([...classes][0]);
     }
     return getRegionColorHex(region.name);
 }

@@ -98,27 +98,6 @@ export function getMostProbableCellClass(cellNum, cellDataMap) {
 }
 
 /**
- * Get color for a cell class using global classColorsCodes
- */
-export function getCellClassColor(className) {
-    if (Array.isArray(className)) return [192, 192, 192];
-    const key = String(className || '').trim();
-    
-    if (typeof classColorsCodes === 'function') {
-        const colorConfig = classColorsCodes();
-        const classEntry = colorConfig.find(entry => entry.className === key);
-        if (classEntry && classEntry.color) {
-            const hex = classEntry.color.replace('#', '');
-            const r = parseInt(hex.substr(0, 2), 16);
-            const g = parseInt(hex.substr(2, 2), 16);
-            const b = parseInt(hex.substr(4, 2), 16);
-            return [r, g, b];
-        }
-    }
-    return [192, 192, 192];
-}
-
-/**
  * Build cell boundary index for fast lookup
  */
 export function buildCellBoundaryIndex(polygonCache, cellBoundaryIndex) {
@@ -170,14 +149,3 @@ export function getCellBoundaryPlanes(cellId, cellBoundaryIndex) {
     return cellBoundaryIndex.get(cellId) || [];
 }
 
-/**
- * Assign colors to cell classes for consistent visualization
- */
-export function assignColorsToCellClasses(allCellClasses, cellClassColors) {
-    const classes = Array.from(allCellClasses);
-    classes.forEach((cellClass) => {
-        if (!cellClassColors.has(cellClass)) {
-            cellClassColors.set(cellClass, getCellClassColor(cellClass));
-        }
-    });
-}

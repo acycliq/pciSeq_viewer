@@ -1,21 +1,20 @@
 /**
  * Tells the main process what the map legend says, so the chat's tools can say it
- * too (electron/legend.js keeps it): the colour of each class, and the colour and
- * shape of each gene's spots, and the default for a gene that has no entry.
- * Call it whenever the class or gene colours change.
+ * too (electron/legend.js keeps it): the colour of each class, the colour and
+ * shape of each gene's spots, and the defaults for a class or a gene that has no
+ * entry. Call it whenever the class or gene colours change.
  */
 import { state } from './state/stateManager.js';
-
-const toHex = (rgb) => '#' + rgb.slice(0, 3)
-    .map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+import { rgbToHex, defaultClassColour } from './classColour.js';
 
 export function sendLegend() {
     if (!window.electronAPI?.setLegend) return;
     const classes = {};
-    state.cellClassColors.forEach((rgb, name) => { classes[name] = toHex(rgb); });
+    state.cellClassColors.forEach((rgb, name) => { classes[name] = rgbToHex(rgb); });
+    const defaultClass = rgbToHex(defaultClassColour());
     const genes = {};
     const glyphs = typeof window.glyphSettings === 'function' ? window.glyphSettings() : [];
     glyphs.forEach(g => { genes[g.gene] = { colour: g.color, shape: g.glyphName }; });
     const defaultGene = { colour: DEFAULT_GENE_STYLE.color, shape: DEFAULT_GENE_STYLE.glyphName };
-    window.electronAPI.setLegend({ classes, genes, defaultGene });
+    window.electronAPI.setLegend({ classes, defaultClass, genes, defaultGene });
 }

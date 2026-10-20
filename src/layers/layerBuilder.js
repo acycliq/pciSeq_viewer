@@ -10,6 +10,7 @@ import { IMG_DIMENSIONS, MAX_PRELOAD, INITIAL_VIEW_STATE, SPOT_PICKABLE_MIN_ZOOM
 import { showTooltip } from '../ui/uiHelpers.js';
 import { createTileLayer } from './tileLayerCreator.js';
 import { createPolygonLayers } from './polygonLayerCreator.js';
+import { classColour, classColourToken } from '../classColour.js';
 import { nearestLoadedPlane } from '../data/planeCells.js';
 import {
     createGeneLayers,
@@ -92,7 +93,6 @@ export function buildPolygonLayers(state) {
         plane,
         state.polygonCache,
         state.showPolygons,
-        state.cellClassColors,
         state.polygonOpacity,
         state.selectedCellClasses,
         state.cellDataMap,
@@ -207,14 +207,13 @@ export function buildCellSpotLineLayer(state, getCurrentViewportTileBounds) {
  * @returns {Array} Array of region layers
  */
 // a cell annotation: the cells' own outlines (already in tile space), each in its
-// class colour, read live so an imported colour scheme shows here too; a class
-// with no colour falls back to the annotation's own
-function cellAnnotationLayer(annotation, classColors) {
+// class colour, read live so an imported colour scheme shows here too; a cell
+// with no class takes the annotation's own colour
+function cellAnnotationLayer(annotation) {
     let fallback = [34, 197, 94];
     try { fallback = getRegionColorRgb(annotation.name); } catch {}
-    const colour = d => (classColors && classColors.get(d.properties.cellClass)) || fallback;
-    let colourToken = '';
-    for (const [cls, rgb] of (classColors || [])) colourToken += cls + ':' + rgb + ';';
+    const colour = d => d.properties.cellClass ? classColour(d.properties.cellClass) : fallback;
+    const colourToken = classColourToken();
     return new deck.GeoJsonLayer({
         id: `cell-annotation-${annotation.name}`,
         data: annotation.features || [],
@@ -240,7 +239,7 @@ export function buildRegionLayers(state, elements) {
 
     visibleRegions.forEach(region => {
         if (!isRegion(region)) {
-            layers.push(cellAnnotationLayer(region, state.cellClassColors));
+            layers.push(cellAnnotationLayer(region));
             return;
         }
         console.log('[Regions] Creating layer for:', region.name, 'boundaries:', region.boundaries.length, 'points');

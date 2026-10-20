@@ -17,29 +17,7 @@
 import { transformToTileCoordinates, transformFromTileCoordinates } from '../../utils/coordinateTransform.js';
 import { IMG_DIMENSIONS } from '../../config/constants.js';
 import { planeToZ } from '../../utils/planes.js';
-
-/**
- * Get cell class color using the global color scheme
- * @param {string} className - Cell class name
- * @returns {string} Hex color code
- */
-function getCellClassColor(className) {
-    // Use the same logic as main UI's getCellClassColor function
-    if (typeof classColorsCodes === 'function') {
-        const colorConfig = classColorsCodes();
-        const classEntry = colorConfig.find(entry => entry.className === className);
-        if (classEntry && classEntry.color) {
-            // Return hex color (chunk viewer expects hex, main UI uses RGB arrays elsewhere)
-            return classEntry.color;
-        } else {
-            console.log(`No color found for ${className}, using fallback gray`);
-        }
-    } else {
-        console.warn('classColorsCodes function not available');
-    }
-    // Fallback to gray if no color found
-    return '#C0C0C0';
-}
+import { classColourHex } from '../classColour.js';
 
 export class RectangularSelector {
     constructor(deckglInstance, state) {
@@ -425,8 +403,7 @@ export class RectangularSelector {
                     if (intersection) {
                         // Get cell class from feature properties (already computed by main UI)
                         const cellClassName = cellFeature.properties.cellClass;
-                        const cellColor = getCellClassColor(cellClassName || 'Generic');
-                        console.log(`Cell ${cellId}: cellClass=${cellClassName || 'missing'}, color=${cellColor}`);
+                        const cellColor = classColourHex(cellClassName);
 
                         results.push({
                             intersects: true,
@@ -507,7 +484,7 @@ export class RectangularSelector {
 
                     if (intersection) {
                         const cellClassName = feature.properties.cellClass;
-                        const cellColor = getCellClassColor(cellClassName || 'Generic');
+                        const cellColor = classColourHex(cellClassName);
                         results.push({
                             intersects: true,
                             clippedBoundary: intersection.geometry.coordinates[0],

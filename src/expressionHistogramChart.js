@@ -17,6 +17,7 @@
 import { WidgetBase } from './ui/widgetBase.js';
 import { state } from './state/stateManager.js';
 import { escapeHtml } from '../utils/domSafe.js';
+import { classColourHex } from './classColour.js';
 
 class ExpressionHistogramWidget extends WidgetBase {
     constructor() {
@@ -243,7 +244,7 @@ class ExpressionHistogramWidget extends WidgetBase {
         const width = totalWidth - margin.left - margin.right;
         const focusHeight = totalHeight - margin.top - margin.bottom - gap - contextHeight - marginContext.bottom;
 
-        const barColor = this.getClassColor(className);
+        const barColor = classColourHex(className);
 
         const svg = d3.select(container).append('svg')
             .attr('width', totalWidth)
@@ -458,14 +459,6 @@ class ExpressionHistogramWidget extends WidgetBase {
             .text(`#cells: ${displayedWeight.toFixed(1)}`);
     }
 
-    getClassColor(cls) {
-        if (cls === 'Zero') return '#000';
-        if (state.cellClassColors && state.cellClassColors.has(cls)) {
-            const c = state.cellClassColors.get(cls);
-            return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
-        }
-        return '#888';
-    }
 }
 
 // Singleton

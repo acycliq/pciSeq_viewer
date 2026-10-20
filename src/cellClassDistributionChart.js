@@ -11,6 +11,7 @@ import { pointInPolygon } from '../utils/pointInPolygon.js';
 import { isRegion, getRegionBoundaries, getVisibleRegions } from './regionsManager.js';
 import { escapeHtml } from '../utils/domSafe.js';
 import { planeOf } from '../utils/planes.js';
+import { classColourHex } from './classColour.js';
 
 class CellClassDistributionWidget extends WidgetBase {
     constructor() {
@@ -208,15 +209,6 @@ class CellClassDistributionWidget extends WidgetBase {
             .domain([0, maxTotal])
             .range([height, 0]);
 
-        // Color Helper
-        const getClassColor = (cls) => {
-            if (cls === 'Zero') return '#000';
-            if (state.cellClassColors && state.cellClassColors.has(cls)) {
-                const c = state.cellClassColors.get(cls);
-                return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
-            }
-            return '#888';
-        };
 
         // --- Render Bars ---
         // Helper to sanitize class names for CSS selection
@@ -252,7 +244,7 @@ class CellClassDistributionWidget extends WidgetBase {
                 .attr('y', d => yScale(d.b + d.h))
                 .attr('height', d => yScale(d.b) - yScale(d.b + d.h))
                 .attr('width', xScale.bandwidth())
-                .attr('fill', getClassColor(cls))
+                .attr('fill', classColourHex(cls))
                 .attr('stroke', 'rgba(255, 255, 255, 0.2)')
                 .attr('stroke-width', 0.5)
                 .style('cursor', 'pointer')
@@ -344,7 +336,7 @@ class CellClassDistributionWidget extends WidgetBase {
             const row = document.createElement('div');
             row.className = 'glass-legend-item';
             row.innerHTML = `
-                <div class="glass-legend-swatch" style="background:${getClassColor(cls)}"></div>
+                <div class="glass-legend-swatch" style="background:${classColourHex(cls)}"></div>
                 <div class="glass-legend-name" title="${escapeHtml(cls)}">${escapeHtml(cls)}</div>
             `;
             legendDiv.appendChild(row);

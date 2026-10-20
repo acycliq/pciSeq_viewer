@@ -6915,17 +6915,6 @@ function classColorsCodes_allen() {
             // Zero class is the "none from the above" class. If the algorithm cannot find a good
             // transcriptomic class from the single cell data then the cell will be labelled as Zero class
             {className: 'Zero', IdentifiedType: 'Zero', color: '#000000'},
-
-            // If a class is missing from the settings above, use these default settings
-            {className: 'Generic', IdentifiedType: 'Generic', color: '#228833'},
-
-            // The donut chart at the bottom right will aggregate all classes with prob < 2% under the Other
-            // label (see line 284, donut.js)
-            {className: 'Other', IdentifiedType: 'Other', color: '#CCBB44'},
-
-
-
-
     ];
 
     return out;

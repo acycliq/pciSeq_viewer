@@ -7,7 +7,7 @@
 
 import { update, freezeOnCell } from '../cellInfoPanel/index.js';
 import { isFrozen } from '../cellInfoPanel/panelState.js';
-import { getClassColor } from '../cellInfoPanel/colorResolver.js';
+import { classColourHex } from '../classColour.js';
 
 /**
  * Handle hover events on cell polygons.
@@ -89,7 +89,7 @@ export function buildCellInfoData(fullCellData, cellLabel) {
             Y: cy,
             GeneCountTotal: geneTotal,
             IdentifiedType: topClass,
-            color: getClassColor(topClass)
+            color: classColourHex(topClass)
         }
     };
 }

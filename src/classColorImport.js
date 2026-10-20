@@ -2,8 +2,10 @@
 // Applies a user-provided colour scheme to state.cellClassColors. The scheme can
 // be either an object map { className: "#RRGGBB", ... } or an array of
 // { className, color } objects (the same shape as the built-in colour schemes).
+// The name "*" sets the colour of every class the file does not list.
 
 import { state } from './state/stateManager.js';
+import { setDefaultClassColour, resetDefaultClassColour } from './classColour.js';
 
 function hexToRgb(hex) {
     try {
@@ -53,12 +55,20 @@ export function applyClassColorScheme(scheme, replaceMode = false) {
     let applied = 0;
     const notFound = [];
 
-    // In replace mode, clear existing colors first
+    // In replace mode, only the file counts: drop the colours and the default
     if (replaceMode) {
         state.cellClassColors.clear();
+        resetDefaultClassColour();
     }
 
     for (const [name, hex] of Object.entries(colorMap)) {
+        if (name === '*') {
+            const rgb = hexToRgb(hex);
+            if (!rgb) continue;
+            setDefaultClassColour(rgb);
+            applied++;
+            continue;
+        }
         if (!present.has(name)) {
             notFound.push(name);
             continue;

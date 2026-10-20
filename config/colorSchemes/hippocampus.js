@@ -76,9 +76,7 @@ function classColorsCodes_hippocampus() {
         {className: 'Ntng1.Chrm2', IdentifiedType: 'Trilaminar', color: '#1F663B'},
         {className: 'Sst.Cryab', IdentifiedType: 'Unidentified', color: '#A6A6A6'},
 
-        // Default classes (always included)
-        {className: 'Zero', IdentifiedType: 'Zero', color: '#000000'},
-        {className: 'Generic', IdentifiedType: 'Generic', color: '#C0C0C0'},
-        {className: 'Other', IdentifiedType: 'Other', color: '#C0C0C0'}
+        // Zero, the class that expects no expression, is in every run
+        {className: 'Zero', IdentifiedType: 'Zero', color: '#000000'}
     ];
 }

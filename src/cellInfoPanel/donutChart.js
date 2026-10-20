@@ -5,7 +5,7 @@
  * Assumes d3 is available globally (loaded via script tag in index.html).
  */
 
-import { getClassColor } from './colorResolver.js';
+import { classColourHex } from '../classColour.js';
 import { highlightClass, clearHighlight } from './highlight.js';
 import { escapeHtml } from '../../utils/domSafe.js';
 
@@ -120,7 +120,7 @@ export function renderDonut(dataset) {
         .attr('data-class', function(d) { return d.data.label; })
         .attr('role', 'img')
         .attr('aria-label', function(d) { return d.data.label + ': ' + percentFormat(d.data.value); })
-        .style('fill', function(d) { return getClassColor(d.data.label); })
+        .style('fill', function(d) { return classColourHex(d.data.label); })
         .transition().duration(1000)
         .attrTween('d', function(d) {
             this._current = this._current || { startAngle: d.startAngle, endAngle: d.startAngle };

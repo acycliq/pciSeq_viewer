@@ -4,8 +4,8 @@
 // fitted to the classes in the window, or the small ones would have no bar at all.
 import { createFocusContextLayout, attachBrushY } from '../ui/brushChart.js';
 import { showTooltip, moveTooltip, hideTooltip } from '../ui/chartTooltip.js';
-import { state } from '../state/stateManager.js';
 import { escapeHtml } from '../../utils/domSafe.js';
+import { classColourHex } from '../classColour.js';
 
 const MARGIN       = { top: 20, right: 0, bottom: 30, left: 170 };
 const INIT_WINDOW  = 30;
@@ -34,15 +34,6 @@ export function renderClassPrior(container, classes) {
 
 // --- private helpers ---
 
-// the colour the class has on the map, as in the other class charts
-function classColour(className) {
-    if (className === 'Zero') return '#000';
-    if (state.cellClassColors && state.cellClassColors.has(className)) {
-        const c = state.cellClassColors.get(className);
-        return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
-    }
-    return '#888';
-}
 
 function drawContextBars(gContext, classes, { focusH, contextW }) {
     const xCtx = d3.scaleLinear().domain([0, d3.max(classes, d => d.weight)]).range([0, contextW]);
@@ -78,7 +69,7 @@ function drawFocusBars(group, yAxisGrp, xAxisGrp, visible, { focusW, focusH }) {
         .attr('height', yScale.bandwidth())
         .attr('x', 0)
         .attr('width',  d => xScale(d.weight))
-        .attr('fill',   d => classColour(d.class))
+        .attr('fill',   d => classColourHex(d.class))
         .attr('stroke', 'rgba(255, 255, 255, 0.2)')
         .attr('stroke-width', 0.5)
         .attr('opacity', 0.8)

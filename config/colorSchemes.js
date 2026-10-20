@@ -18,5 +18,9 @@
 // Change this line to switch color schemes
 const CLASS_COLOURS = classColorsCodes_allen();
 
+// A class the scheme does not list is drawn in this colour. An imported colour
+// file can replace it with an entry named "*". The lookup is src/classColour.js.
+const DEFAULT_CLASS_COLOUR = '#C0C0C0';
+
 // Make it available globally (this is what the app uses)
 window.classColorsCodes = () => CLASS_COLOURS;

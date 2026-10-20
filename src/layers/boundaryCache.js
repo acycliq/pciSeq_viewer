@@ -8,6 +8,6 @@
 export let arrowBoundaryCache = new Map();
 
 // Per-plane GeoJSON for the z-projection cell mode. Features carry the richer
-// { cellClass, totalGeneCount, colorRGB } schema the projection layer needs, which is
+// { cellClass, totalGeneCount } schema the projection layer needs, which is
 // why it is kept apart from the 2D cells' { plane_id, label, cellClass }.
 export let projectionGeojsonCache = new Map();

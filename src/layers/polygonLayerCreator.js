@@ -4,6 +4,7 @@
  */
 
 import { handleCellHover, handleCellClick } from '../ui/cellHoverHandler.js';
+import { classColour, classColourToken } from '../classColour.js';
 
 const { COORDINATE_SYSTEM, GeoJsonLayer, DataFilterExtension } = deck;
 
@@ -16,12 +17,12 @@ const CELL_FILTER_EXTENSION = new DataFilterExtension({ filterSize: 1 });
  * still loading, the loaded plane nearest to it (layerBuilder decides). isCurrent says
  * which, and cells of another plane do not react to the pointer.
  */
-export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellClassColors, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null, zProjectionCellMode = false, geneCountThreshold = 0, geneCountMaxThreshold = Infinity, isCurrent = true) {
+export function createPolygonLayers(planeNum, polygonCache, showPolygons, polygonOpacity = 0.5, selectedCellClasses = null, cellDataMap = null, zProjectionCellMode = false, geneCountThreshold = 0, geneCountMaxThreshold = Infinity, isCurrent = true) {
     // Cell Projection: the Cells switch only hides the layer. It holds the outlines of
     // every plane, and building it again from nothing took seconds each time the
     // switch went back on
     if (zProjectionCellMode) {
-        return createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold, showPolygons);
+        return createZProjectionPolygonLayers(polygonCache, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold, showPolygons);
     }
 
     if (!showPolygons) return [];
@@ -30,7 +31,7 @@ export function createPolygonLayers(planeNum, polygonCache, showPolygons, cellCl
     const geojson = polygonCache.get(planeNum);
     if (!geojson) return [];
 
-    return [createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpacity, selectedCellClasses, isCurrent)];
+    return [createFilledGeoJsonLayer(planeNum, geojson, polygonOpacity, selectedCellClasses, isCurrent)];
 }
 
 // A plane's cells narrowed to the classes switched on. Filtering makes a new list, and
@@ -48,32 +49,9 @@ function visibleCells(geojson, selectedCellClasses) {
     return data;
 }
 
-function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpacity, selectedCellClasses, isCurrent) {
+function createFilledGeoJsonLayer(planeNum, geojson, polygonOpacity, selectedCellClasses, isCurrent) {
     const filteredData = visibleCells(geojson, selectedCellClasses);
-
-    // Ensure colors exist for all classes present
-    try {
-        const seen = new Set();
-        const colorFn = (typeof window.classColorsCodes === 'function') ? window.classColorsCodes : null;
-        const scheme = colorFn ? colorFn() : [];
-        for (const f of filteredData.features) {
-            const cls = f?.properties?.cellClass;
-            if (!cls || seen.has(cls) || cellClassColors.has(cls)) continue;
-            seen.add(cls);
-            const entry = scheme.find(e => e.className === cls);
-            if (entry && entry.color) {
-                const c = d3.rgb(entry.color);
-                cellClassColors.set(cls, [c.r, c.g, c.b]);
-            }
-        }
-    } catch {}
-
-    // A Map keeps the same identity when its entries change, so passing the Map
-    // itself as an updateTrigger would not re-run getFillColor after a runtime
-    // colour import. Derive a token from the contents so the trigger changes
-    // whenever a class colour (or the set of coloured classes) does.
-    let colorToken = '';
-    for (const [cls, rgb] of (cellClassColors || [])) colorToken += cls + ':' + rgb + ';';
+    const colorToken = classColourToken();
 
     return new GeoJsonLayer({
         id: `polygons-${planeNum}`,
@@ -84,22 +62,15 @@ function createFilledGeoJsonLayer(planeNum, geojson, cellClassColors, polygonOpa
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
         onHover: handleCellHover,
         onClick: handleCellClick,
-        getFillColor: d => {
-            const cellClass = d.properties.cellClass;
-            const alpha = Math.round(polygonOpacity * 255);
-            if (cellClass && cellClassColors && cellClassColors.has(cellClass)) {
-                const color = cellClassColors.get(cellClass);
-                return [...color, alpha];
-            }
-            return [192, 192, 192, alpha];
-        },
+        getFillColor: d => [...classColour(d.properties.cellClass), Math.round(polygonOpacity * 255)],
         updateTriggers: { getFillColor: [colorToken, polygonOpacity] }
     });
 }
 
-function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold, shown = true) {
+function createZProjectionPolygonLayers(polygonCache, polygonOpacity, selectedCellClasses, cellDataMap, geneCountThreshold, geneCountMaxThreshold, shown = true) {
     const features = (window.appState && window.appState.cellProjectionFeatures) || [];
     const selectedKey = selectedCellClasses ? Array.from(selectedCellClasses).sort().join('|') : '';
+    const colorToken = classColourToken();
 
     return [new GeoJsonLayer({
         id: 'polygons-z-projection',
@@ -116,14 +87,13 @@ function createZProjectionPolygonLayers(polygonCache, cellClassColors, polygonOp
         onHover: handleCellHover,
         onClick: handleCellClick,
         getFillColor: d => {
-            const rgb = d.properties.colorRGB || [192, 192, 192];
             const alpha = Math.round(polygonOpacity * 255);
             const cls = d.properties.cellClass;
             const visible = (!selectedCellClasses) || (selectedCellClasses.size > 0 && cls && selectedCellClasses.has(cls));
-            return visible ? [rgb[0], rgb[1], rgb[2], alpha] : [0, 0, 0, 0];
+            return visible ? [...classColour(cls), alpha] : [0, 0, 0, 0];
         },
         updateTriggers: {
-            getFillColor: [polygonOpacity, selectedKey]
+            getFillColor: [polygonOpacity, selectedKey, colorToken]
         }
     })];
 }

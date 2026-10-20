@@ -7,6 +7,7 @@
 import { state } from './state/stateManager.js';
 import { debounce } from '../utils/common.js';
 import { EYE_OPEN_SVG, EYE_CLOSED_SVG } from './icons.js';
+import { classColourHex } from './classColour.js';
 
 /**
  * Populate the cell class list, ranked by count
@@ -69,8 +70,7 @@ export function populateCellClassDrawer() {
         // Color swatch
         const colorSwatch = document.createElement('div');
         colorSwatch.className = 'cell-class-color';
-        const color = state.cellClassColors.get(name) || [192, 192, 192];
-        colorSwatch.style.backgroundColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+        colorSwatch.style.backgroundColor = classColourHex(name);
 
         // Class name
         const nameSpan = document.createElement('span');

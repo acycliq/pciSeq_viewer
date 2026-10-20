@@ -16,10 +16,8 @@ import {
     loadCellData,
     prebuildScatterCache
 } from '../data/dataLoaders.js';
-import {
-    assignColorsToCellClasses,
-    buildGeneSpotIndexes
-} from '../data/cellIndexes.js';
+import { buildGeneSpotIndexes } from '../data/cellIndexes.js';
+import { seedClassColours } from '../classColour.js';
 import { PolygonBoundaryHighlighter } from '../ui/polygonInteractions.js';
 import { RectangularSelector } from '../ui/rectangularSelector.js';
 import { RegionDrawer } from '../ui/regionDrawer.js';
@@ -266,7 +264,7 @@ function initializeCellClassColors() {
         }
     });
 
-    assignColorsToCellClasses(state.allCellClasses, state.cellClassColors);
+    seedClassColours(state.allCellClasses);
 
     // Apply pending color scheme if any
     try {

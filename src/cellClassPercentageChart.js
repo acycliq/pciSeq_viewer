@@ -10,6 +10,7 @@ import { state } from './state/stateManager.js';
 import { pointInPolygon } from '../utils/pointInPolygon.js';
 import { isRegion, getRegionBoundaries } from './regionsManager.js';
 import { escapeHtml } from '../utils/domSafe.js';
+import { classColourHex } from './classColour.js';
 
 class CellClassPercentageWidget extends WidgetBase {
     constructor() {
@@ -156,15 +157,6 @@ class CellClassPercentageWidget extends WidgetBase {
             .domain([0, d3.max(data.classData, d => d.percentage)])
             .range([height, 0]);
 
-        // Colors
-        const getClassColor = (cls) => {
-            if (cls === 'Zero') return '#000';
-            if (state.cellClassColors && state.cellClassColors.has(cls)) {
-                const c = state.cellClassColors.get(cls);
-                return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
-            }
-            return '#888';
-        };
 
         // Tooltip (using shared DOM element logic)
         let tooltip = document.querySelector('.chart-tooltip');
@@ -183,7 +175,7 @@ class CellClassPercentageWidget extends WidgetBase {
             .attr('width', xScale.bandwidth())
             .attr('y', d => yScale(d.percentage))
             .attr('height', d => height - yScale(d.percentage))
-            .attr('fill', d => getClassColor(d.className))
+            .attr('fill', d => classColourHex(d.className))
             .attr('stroke', 'rgba(255, 255, 255, 0.2)')
             .attr('stroke-width', 0.5)
             .attr('opacity', 0.8)

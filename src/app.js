@@ -68,7 +68,7 @@ import {
     loadCellData,
 } from './data/dataLoaders.js';
 import { streamSpotsIntoScatterCache } from './data/spotStreamLoader.js';
-import { buildGeneSpotIndexes, assignColorsToCellClasses } from './data/cellIndexes.js';
+import { buildGeneSpotIndexes } from './data/cellIndexes.js';
 
 // === EVENT HANDLING IMPORTS ===
 import { setupEventHandlers, setupAdvancedKeyboardShortcuts, setCellProjection, runPerClassExport } from './events/eventHandlers.js';
