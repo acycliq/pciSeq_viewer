@@ -415,6 +415,21 @@ function theta(label, className) {
   const k = names.indexOf(cls);
   if (k < 0) throw new Error(`no class '${cls}' in this run`);
   const rTheta = (cfg() || {}).rTheta ?? null;
+  // the Zero class, always the last one, has no scale factors: theta_bar is a
+  // fixed 1 there, not a posterior mean, and there is no expected total to turn
+  // it round into
+  if (k === names.length - 1) {
+    return {
+      cell: Number(label),
+      class: cls,
+      is_assigned: cls === assigned,
+      theta_bar: c.theta_bar[k],
+      theta_bar_is: 'fixed at 1, not fitted: the Zero class has no scale factors, ' +
+                    'it expects no expression. Do not read it as a fit',
+      class_prob: c.class_prob[k],
+      rTheta: rTheta,
+    };
+  }
   return {
     cell: Number(label),
     class: cls,
@@ -467,7 +482,18 @@ function gamma(label, gene) {
   // gamma_bar = (rSpot + counts) / (rSpot + expected), see VarBayes.gamma_upd in
   // pciSeq. Turned round it gives back the expected count the fit used
   const rSpot = Number(meta().rSpot);
-  const expected = g => Math.max((rSpot + c.gene_count[g]) / c.gamma_assigned[g] - rSpot, 0);
+  let expected = g => Math.max((rSpot + c.gene_count[g]) / c.gamma_assigned[g] - rSpot, 0);
+  if (c.assigned_class_idx === names.length - 1) {
+    // the Zero class, always the last one, has no scale factors: gamma is fixed
+    // at 1 there, so turning it round would hand back the counts themselves.
+    // Zero expects nothing, the SpotReg floor aside.
+    out.gamma_is = 'fixed at 1 on every gene, not fitted: the Zero class has no ' +
+                   'scale factors, it expects no expression';
+    out.expected_is = 'the count the Zero class predicts for the gene in this cell: 0, ' +
+                      'the SpotReg floor aside. Do not read gamma = 1 as the cell ' +
+                      'holding what its class expects';
+    expected = () => 0;
+  }
   if (gene != null) {
     const g = geneIndex(gene);
     out.gene = gene;

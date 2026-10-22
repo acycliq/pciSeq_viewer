@@ -256,9 +256,21 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
               geneGlyph: g => (g === 'Synpr' ? { colour: '#00ff00', shape: 'square' } : null),
               querySpot: async () => spotRes });
   const th = run2.theta(5);
-  // gamma: a gamma of 1 means the class expected just what the cell holds
+  // gamma: for a real class a gamma of 1 means the class expected just what the
+  // cell holds
   assert.deepStrictEqual(run2.gamma(5).gamma.map(r => r.expected), [2, 3]);
   assert.strictEqual(run2.gamma(5, 'g2').expected, 3);
+  // the Zero class (the last one) has no scale factors: gamma 1 is not a fit and
+  // must not be turned round into an expected count, theta_bar 1 is not a posterior
+  cellRowFake.assigned_class_idx = 2;
+  const gz = run2.gamma(5);
+  assert.strictEqual(gz.class, 'C');
+  assert.deepStrictEqual(gz.gamma.map(r => r.expected), [0, 0]);
+  assert.ok(gz.gamma_is.includes('not fitted'));
+  assert.strictEqual(run2.gamma(5, 'g2').expected, 0);
+  const tz = run2.theta(5);
+  assert.ok(tz.theta_bar_is.includes('not fitted'));
+  cellRowFake.assigned_class_idx = 1;
   assert.strictEqual(th.class, 'B');
   assert.strictEqual(th.is_assigned, true);
   assert.strictEqual(th.theta_bar, Math.fround(1.7));

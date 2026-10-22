@@ -65,7 +65,8 @@ function _resolveInternalCellIdx(externalLabel) {
 //   theta_bar  = alpha / beta
 //
 // A theta_bar of 1 means the cell's total reads match the class-k* baseline,
-// > 1 means it has more, < 1 means it has fewer.
+// > 1 means it has more, < 1 means it has fewer. Not for the Zero class, whose
+// theta_bar is a fixed 1 (no scale factors there).
 function logThetaChain(parentLabel, info) {
     if (window.appState?.debugThetaChain !== true) return;
     if (window.appState?.thetaChainAvailable !== true) return;
@@ -85,6 +86,13 @@ function logThetaChain(parentLabel, info) {
     const thetaStored = info.thetaHard;
     const geneCount   = info.geneCountVec;
     const gammaVec    = info.gammaAssignedVec;
+
+    // the Zero class (the last one) has no scale factors, theta is a fixed 1
+    // there, so there is no chain to rebuild
+    if (kStar === (window.appState.classNames || []).length - 1) {
+        console.log(`[theta chain] cell ${parentLabel}  k* = Zero: theta_bar fixed at 1, not fitted`);
+        return;
+    }
 
     const inefficiency = window.appState.Inefficiency;
     const aC           = window.appState.A_c[cInternal];
@@ -158,6 +166,13 @@ function logGammaChain(spotId, parentLabel, geneIdx, gene, info) {
     const thetaHard   = info.thetaHard;
     const observed    = info.geneCountVec[geneIdx];
     const gammaStored = info.gammaAssignedVec[geneIdx];
+
+    // the Zero class (the last one) has no scale factors, gamma is a fixed 1
+    // there, so there is no chain to rebuild
+    if (kStar === (window.appState.classNames || []).length - 1) {
+        console.log(`[gamma chain] spot ${spotId}  cell ${parentLabel}  k* = Zero: gamma fixed at 1, not fitted`);
+        return;
+    }
 
     const inefficiency = window.appState.Inefficiency;
     const aC           = window.appState.A_c[cInternal];

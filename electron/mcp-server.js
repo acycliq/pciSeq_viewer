@@ -110,7 +110,7 @@ const TOOL_RULES = {
           ['After saying why gamma is needed', 'together leave unexplained.'],
           ['When the user asks what gamma is', 'End by asking whether the role of gamma is clear.']],
   theta: [['When an answer about theta calls a cell bigger or smaller', 'never leave it as size.'],
-          ['Never say that eta, theta or gamma is near 1', 'tells a newcomer nothing about why 1 matters.'],
+          ['Never say that eta, theta or gamma is near 1', 'never read that 1 as a fit.'],
           ['When the user asks what theta is', 'cell whose theta lies on the other side of 1.']],
   run_info: [['Explain rTheta, rGene and rSpot as pseudo-counts', 'give the default only as a fact, when asked.'],
              ["rSpot is more than the weight of gamma's prior", "Never call one by the other's name."]],
