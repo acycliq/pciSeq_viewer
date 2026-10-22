@@ -417,8 +417,9 @@ function theta(label, className) {
   const rTheta = (cfg() || {}).rTheta ?? null;
   // the Zero class, always the last one, has no scale factors: theta_bar is a
   // fixed 1 there, not a posterior mean, and there is no expected total to turn
-  // it round into
-  if (k === names.length - 1) {
+  // it round into. A run fitted before that change has a fitted number there
+  // and keeps the path below
+  if (k === names.length - 1 && c.theta_bar[k] === 1) {
     return {
       cell: Number(label),
       class: cls,
@@ -483,10 +484,11 @@ function gamma(label, gene) {
   // pciSeq. Turned round it gives back the expected count the fit used
   const rSpot = Number(meta().rSpot);
   let expected = g => Math.max((rSpot + c.gene_count[g]) / c.gamma_assigned[g] - rSpot, 0);
-  if (c.assigned_class_idx === names.length - 1) {
+  if (assignedIdx(c) === names.length - 1 && c.gamma_assigned.every(g => g === 1)) {
     // the Zero class, always the last one, has no scale factors: gamma is fixed
     // at 1 there, so turning it round would hand back the counts themselves.
-    // Zero expects nothing, the SpotReg floor aside.
+    // Zero expects nothing, the SpotReg floor aside. A run fitted before that
+    // change has a fitted gamma there and keeps the path below.
     out.gamma_is = 'fixed at 1 on every gene, not fitted: the Zero class has no ' +
                    'scale factors, it expects no expression';
     out.expected_is = 'the count the Zero class predicts for the gene in this cell: 0, ' +

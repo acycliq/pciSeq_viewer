@@ -88,8 +88,9 @@ function logThetaChain(parentLabel, info) {
     const gammaVec    = info.gammaAssignedVec;
 
     // the Zero class (the last one) has no scale factors, theta is a fixed 1
-    // there, so there is no chain to rebuild
-    if (kStar === (window.appState.classNames || []).length - 1) {
+    // there, so there is no chain to rebuild (older runs carry a fitted number
+    // there and go through the check)
+    if (kStar === (window.appState.classNames || []).length - 1 && thetaStored === 1) {
         console.log(`[theta chain] cell ${parentLabel}  k* = Zero: theta_bar fixed at 1, not fitted`);
         return;
     }
@@ -168,8 +169,9 @@ function logGammaChain(spotId, parentLabel, geneIdx, gene, info) {
     const gammaStored = info.gammaAssignedVec[geneIdx];
 
     // the Zero class (the last one) has no scale factors, gamma is a fixed 1
-    // there, so there is no chain to rebuild
-    if (kStar === (window.appState.classNames || []).length - 1) {
+    // there, so there is no chain to rebuild (older runs carry a fitted number
+    // there and go through the check)
+    if (kStar === (window.appState.classNames || []).length - 1 && gammaStored === 1) {
         console.log(`[gamma chain] spot ${spotId}  cell ${parentLabel}  k* = Zero: gamma fixed at 1, not fitted`);
         return;
     }

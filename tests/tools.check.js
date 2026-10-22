@@ -263,6 +263,7 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   // the Zero class (the last one) has no scale factors: gamma 1 is not a fit and
   // must not be turned round into an expected count, theta_bar 1 is not a posterior
   cellRowFake.assigned_class_idx = 2;
+  cellRowFake.theta_bar = blob([0.5, 1.7, 1]);
   const gz = run2.gamma(5);
   assert.strictEqual(gz.class, 'C');
   assert.deepStrictEqual(gz.gamma.map(r => r.expected), [0, 0]);
@@ -270,6 +271,14 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.strictEqual(run2.gamma(5, 'g2').expected, 0);
   const tz = run2.theta(5);
   assert.ok(tz.theta_bar_is.includes('not fitted'));
+  // a run fitted before the change carries fitted numbers there, not 1, and
+  // then the tools must not call them fixed
+  cellRowFake.gamma_assigned = blob([1.3, 1.3]);
+  cellRowFake.theta_bar = blob([0.5, 1.7, 1.15]);
+  assert.ok(!run2.gamma(5).gamma_is.includes('not fitted'));
+  assert.ok(!run2.theta(5).theta_bar_is.includes('not fitted'));
+  cellRowFake.gamma_assigned = blob([1, 1]);
+  cellRowFake.theta_bar = blob([0.5, 1.7, 0.9]);
   cellRowFake.assigned_class_idx = 1;
   assert.strictEqual(th.class, 'B');
   assert.strictEqual(th.is_assigned, true);
