@@ -113,6 +113,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // the go_to_plane tool: the plane slider
   onChatGoToPlane: (handler) => ipcRenderer.on('chat-go-to-plane', (_e, p) => handler(p)),
   chatGoToPlaneDone: (payload) => ipcRenderer.send('chat-go-to-plane-done', payload),
+  // the screenshot tool: where the map is in the window and what part of the image
+  // it shows; the main process does the capture
+  onChatScreenshot: (handler) => ipcRenderer.on('chat-screenshot', (_e, p) => handler(p)),
+  chatScreenshotDone: (payload) => ipcRenderer.send('chat-screenshot-done', payload),
   // the cells_by_gene_count tool: the Min and Max genes sliders
   onChatGeneCountFilter: (handler) => ipcRenderer.on('chat-gene-count-filter', (_e, p) => handler(p)),
   chatGeneCountFilterDone: (payload) => ipcRenderer.send('chat-gene-count-filter-done', payload),

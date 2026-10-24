@@ -38,7 +38,7 @@ const copy = (text) => {
 An agent is a language model with access to tools. Given a task, it selects a tool,
 evaluates the result and continues calling tools until the task is complete, whereas a
 conventional chat model answers from its training data alone. The agent in pciSeq Viewer
-has 48 tools that read the saved run on the local machine and operate the map. Its answers
+has 49 tools that read the saved run on the local machine and operate the map. Its answers
 are therefore derived from the run itself: why a cell was assigned its class, why a spot
 was assigned to its cell, which settings were used, which cells of a class lie in a region.
 The language model does not read the files directly; it receives only the tool output.
@@ -251,6 +251,7 @@ AI assistants.
 | Tool | Description |
 | --- | --- |
 | `viewer_state` | The current state of the map: plane, visible area, genes, classes, settings |
+| `screenshot` | A picture of the map as shown on screen, taken only when the user asks |
 | `fly_to_cell` | Moves the map to a cell and flashes its outline |
 | `go_to_plane` | Moves the map to a plane |
 | `show_classes` | Shows or hides cell classes |

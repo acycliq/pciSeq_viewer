@@ -14,6 +14,7 @@ const mcpServer = require('./mcp-server');
 const run = require('./run');
 const legend = require('./legend');
 const compose = require('./compose');
+const screenshot = require('./screenshot');
 const annotations = require('./annotations');
 const allenFit = require('./allenFit');
 const sample = require('./sample');
@@ -157,6 +158,7 @@ function createWindow() {
   // are registered once, createWindow can run again on macOS.
   // the ported read-only tools read diagnostics.db through run.js
   compose.init({ getWindow: () => mainWindow }, ipcMain);
+  screenshot.init({ getWindow: () => mainWindow });
   legend.init(ipcMain);
   // export_per_class_pngs: the renderer hands over each png and the folder the
   // tool chose, and the file is written here, no download and no dialog. Only
@@ -193,6 +195,8 @@ function createWindow() {
     mapLayers: compose.mapLayers,
     goToPlane: compose.goToPlane,
     geneCountFilter: compose.geneCountFilter,
+    // screenshot captures the map from the window, so the agent sees what the user sees
+    screenshot: screenshot.take,
     exportPerClassPngs: compose.exportPerClassPngs,
     getDataPath: () => store.get('dataPath', ''),
     // run_info quotes what the background tiles say about themselves

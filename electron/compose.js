@@ -13,7 +13,8 @@ let getWindow = () => null;
 let nextId = 1;
 const pending = new Map();
 const CHANNELS = ['chat-compose-image', 'chat-fly-to-cell', 'chat-all-planes', 'chat-export-per-class',
-                  'chat-viewer-state', 'chat-spot-filters', 'chat-misread-display', 'chat-map-layers', 'chat-go-to-plane', 'chat-gene-count-filter'];
+                  'chat-viewer-state', 'chat-spot-filters', 'chat-misread-display', 'chat-map-layers', 'chat-go-to-plane', 'chat-gene-count-filter',
+                  'chat-screenshot'];
 
 function init(d, ipcMain) {
   getWindow = d.getWindow;
@@ -104,4 +105,10 @@ function geneCountFilter(settings, timeoutMs = 10000) {
   return ask('chat-gene-count-filter', settings, timeoutMs, 'the viewer did not filter the cells in time');
 }
 
-module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters, misreadDisplay, mapLayers, goToPlane, geneCountFilter };
+// screenshot: where the map is in the window and which part of the image it shows,
+// for electron/screenshot.js to capture
+function mapView(timeoutMs = 5000) {
+  return ask('chat-screenshot', {}, timeoutMs, 'the viewer did not say where the map is in time');
+}
+
+module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters, misreadDisplay, mapLayers, goToPlane, geneCountFilter, mapView };

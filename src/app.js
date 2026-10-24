@@ -241,12 +241,9 @@ function scheduleLineOverlayZoomRefresh() {
  * @returns {Object|null} Bounds object with minX, minY, maxX, maxY or null
  */
 // what the map shows now, for the viewer_state tool. Coordinates are image
-// pixels, the same as the cells and spots; the map works in tile units, 256 across
-// the longer side of the image.
+// pixels, the same as the cells and spots (toImagePixels).
 function viewerSnapshot() {
     const cfg = (window.config && window.config()) || {};
-    const longer = Math.max(cfg.imageWidth || 0, cfg.imageHeight || 0) || 256;
-    const px = v => Math.round(v * longer / 256);
     const listed = (shown, all) => {
         const on = all.filter(n => shown.has(n));
         const out = { shown: on.length, of: all.length };
@@ -268,8 +265,8 @@ function viewerSnapshot() {
         zoom: zoom == null ? null : Math.round(zoom * 100) / 100,
         // the screen can show more than the image when zoomed out: cut to the image
         in_view: b ? {
-            x_from: Math.max(0, px(b.minX)), x_to: Math.min(cfg.imageWidth || Infinity, px(b.maxX)),
-            y_from: Math.max(0, px(b.minY)), y_to: Math.min(cfg.imageHeight || Infinity, px(b.maxY)),
+            x_from: Math.max(0, toImagePixels(b.minX)), x_to: Math.min(cfg.imageWidth || Infinity, toImagePixels(b.maxX)),
+            y_from: Math.max(0, toImagePixels(b.minY)), y_to: Math.min(cfg.imageHeight || Infinity, toImagePixels(b.maxY)),
         } : null,
         in_view_is: 'the part of the image on screen, in image pixels, the same as the cell and spot coordinates',
         image: { width: cfg.imageWidth ?? null, height: cfg.imageHeight ?? null },
@@ -322,6 +319,14 @@ function getCurrentViewportTileBounds() {
         console.warn('Failed to compute viewport bounds:', e);
         return null;
     }
+}
+
+// a tile coordinate from the bounds above as an image pixel, the same units as the
+// cells and spots; the map works in tile units, 256 across the longer side of the image
+function toImagePixels(tileCoordinate) {
+    const cfg = (window.config && window.config()) || {};
+    const longer = Math.max(cfg.imageWidth || 0, cfg.imageHeight || 0) || 256;
+    return Math.round(tileCoordinate * longer / 256);
 }
 
 // === MAIN UPDATE FUNCTION ===
@@ -1183,6 +1188,30 @@ window.addEventListener('load', async () => {
                 });
             } catch (e) {
                 window.electronAPI.chatMapLayersDone({ id, error: e.message });
+            }
+        });
+    }
+    // screenshot: where the map is in the window, for the main process to capture,
+    // and the part of the image it shows edge to edge. Unlike in_view in
+    // viewer_state this is not cut to the image, so a point of the picture maps
+    // straight to image pixels even when the map is zoomed out past the image
+    if (window.electronAPI?.onChatScreenshot) {
+        window.electronAPI.onChatScreenshot(({ id }) => {
+            try {
+                const b = getCurrentViewportTileBounds();
+                if (!b) {
+                    window.electronAPI.chatScreenshotDone({ id, error: 'the map is not drawn yet' });
+                    return;
+                }
+                const r = document.getElementById('map').getBoundingClientRect();
+                window.electronAPI.chatScreenshotDone({
+                    id,
+                    rect: { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) },
+                    plane: state.currentPlane,
+                    bbox: [toImagePixels(b.minX), toImagePixels(b.minY), toImagePixels(b.maxX), toImagePixels(b.maxY)],
+                });
+            } catch (e) {
+                window.electronAPI.chatScreenshotDone({ id, error: e.message });
             }
         });
     }

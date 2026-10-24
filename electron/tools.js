@@ -946,6 +946,20 @@ const TOOLS = [
     },
   },
   {
+    name: 'screenshot',
+    description:
+      'A picture of the map exactly as the user sees it now: the background, the cells ' +
+      'and spots drawn, their colours and glyphs, at the current plane and zoom, and ' +
+      'any drawer that lies over the map. Call it only when the user asks you to look ' +
+      'at the screen, the map or what they see, never on your own. The answer says ' +
+      'the plane and the scale, and gives bbox, the part of the image the picture ' +
+      'covers as [x0, y0, x1, y1] in image pixels, the same coordinates as the cells ' +
+      'and spots; it reaches past the image when the map is zoomed out. With these a ' +
+      'point of the image can be placed on the picture. For the background alone, at ' +
+      'a chosen plane or region, use plane_image instead.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
     name: 'cells_by_gene_count',
     description:
       'Draw only the cells whose total gene count is between min and max, the same as ' +
@@ -1444,6 +1458,10 @@ async function call(name, input) {
       const plane = Number(input.plane);
       if (!Number.isInteger(plane)) return { error: 'plane must be a whole number' };
       return await deps.goToPlane({ plane });
+    }
+    if (name === 'screenshot') {
+      if (!deps.screenshot) return { error: 'the viewer window is not available' };
+      return await deps.screenshot();
     }
     if (name === 'cells_by_gene_count') {
       if (!deps.geneCountFilter) return { error: 'the viewer window is not available' };
