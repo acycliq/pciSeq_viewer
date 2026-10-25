@@ -12,13 +12,19 @@ choose **Open** and confirm. This is required only once.
 
 ## AppImage on Linux
 
-On older distributions, an AppImage that does not start is usually caused by the glibc version. Ensure that the file is
-executable; if the application still does not start, install the `.deb` package instead.
+Ensure that the file is executable:
 
 ```bash
 chmod +x pciSeq_viewer-x.x.x.AppImage
 ./pciSeq_viewer-x.x.x.AppImage
 ```
+
+On Ubuntu 24.04 and later the AppImage exits immediately with a message that the SUID
+sandbox helper is not configured correctly. Ubuntu restricts unprivileged user namespaces,
+which the sandbox requires, and an AppImage cannot carry the setuid helper that would
+otherwise be used. Install the `.deb` package instead, which configures the helper at
+installation. On older distributions, an AppImage that does not start is usually caused by
+the glibc version; the `.deb` package is again the remedy.
 
 ## Image size prompt
 
@@ -57,3 +63,24 @@ if that step was skipped or failed, run it manually:
 ```bash
 npx electron-rebuild -f -w better-sqlite3
 ```
+
+## Sandbox on Ubuntu in a source checkout
+
+On Ubuntu 24.04 and later, `npm start` exits with a message that the SUID sandbox helper
+is not configured correctly. The Electron binary under `node_modules` is denied the
+unprivileged user namespace that its sandbox requires. Grant it with an AppArmor profile,
+replacing the path with that of the checkout:
+
+```bash
+sudo tee /etc/apparmor.d/pciseq-viewer-electron > /dev/null <<'EOF'
+abi <abi/4.0>,
+include <tunables/global>
+profile pciseq-viewer-electron /path/to/pciSeq_viewer/node_modules/electron/dist/electron flags=(unconfined) {
+  userns,
+}
+EOF
+sudo apparmor_parser -r /etc/apparmor.d/pciseq-viewer-electron
+```
+
+The profile matches on the path and therefore survives `npm install`; a checkout at
+another path requires its own profile.
