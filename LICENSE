@@ -19,8 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-Third party material is not covered by this licence. The libraries under
-lib/vendor keep their own licences, and the Allen Institute files under
-electron/allen_taxonomy are used under the Allen Institute Terms of Use, for
-research and noncommercial purposes, see the README in that folder.

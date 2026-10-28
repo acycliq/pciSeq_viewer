@@ -1,6 +1,11 @@
 # Third-party notices
 
-This project includes code adapted from the following software.
+Third party material is not covered by the MIT licence of this project. The
+libraries under `lib/vendor` keep their own licences, and the Allen Institute files
+under `electron/allen_taxonomy` are used under the Allen Institute Terms of Use, for
+research and noncommercial purposes, see the README in that folder.
+
+This project also includes code adapted from the following software.
 
 ## minecraft-chunk-viewer
 
