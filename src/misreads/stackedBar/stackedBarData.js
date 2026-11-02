@@ -1,17 +1,18 @@
 import { state } from '../../state/stateManager.js';
 
 // Returns [{gene, assigned, misread}] unsorted (caller applies sortData).
-// Computes misread counts from spot.is_hard_misread, which is either read from the Arrow feather
-// column (feature/gene_indexed_rho and later) or computed on-the-fly from prob_array as a fallback.
-// See src/misreads/misreadUtils.js and src/data/dataLoaders.js for the fallback.
-// Ask Dimitri if you want to delete this fallback.
+// is_hard_misread comes from the Arrow column (feature/gene_indexed_rho and later)
+// or, for older files, is derived from the probabilities in the Arrow worker.
 export function prepareStackedData() {
-    const result = [];
-    for (const [gene, spots] of state.geneDataMap) {
-        const misread = spots.reduce((s, sp) => s + (sp.is_hard_misread ? 1 : 0), 0);
-        result.push({ gene, misread, assigned: spots.length - misread });
+    const table = state.spotTable;
+    const misreadOfGene = new Uint32Array(table.geneCount);
+    for (let row = 0; row < table.length; row++) {
+        if (table.isHardMisread[row]) misreadOfGene[table.geneId[row]]++;
     }
-    return result;
+    return table.genes.map(gene => {
+        const misread = misreadOfGene[table.idOfGene(gene)];
+        return { gene, misread, assigned: table.countOfGene(gene) - misread };
+    });
 }
 
 // Sort [{gene, assigned, misread}] by 'name', 'count', or 'pct', asc or desc.

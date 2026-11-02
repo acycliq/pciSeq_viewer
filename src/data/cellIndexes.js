@@ -1,69 +1,7 @@
 /**
  * Cell Indexes Module
- * Handles index-building and color-mapping for cells and gene spots
+ * Handles index-building and color-mapping for cells
  */
-
-/**
- * Build gene spot indexes for lightning-fast lookups
- * @param {Map} geneDataMap - Map of gene data by gene name
- * @param {Map} cellToSpotsIndex - Index to populate: cellId -> spots
- * @param {Map} spotToParentsIndex - Index to populate: spotId -> parents
- */
-export function buildGeneSpotIndexes(geneDataMap, cellToSpotsIndex, spotToParentsIndex) {
-    console.log('Building gene spot indexes for lightning-fast lookups...');
-
-    // Clear existing indexes
-    cellToSpotsIndex.clear();
-    spotToParentsIndex.clear();
-
-    let totalSpots = 0;
-
-    geneDataMap.forEach((spots, geneName) => {
-        spots.forEach((spot) => {
-            const spot_id = spot.spot_id;
-            totalSpots++;
-
-            // Index 1: Cell parent -> spots
-            const primaryParent = spot.neighbour;
-            if (primaryParent) {
-                if (!cellToSpotsIndex.has(primaryParent)) {
-                    cellToSpotsIndex.set(primaryParent, []);
-                }
-                cellToSpotsIndex.get(primaryParent).push({
-                    spot_id: spot_id,
-                    gene: geneName,
-                    x: spot.x,
-                    y: spot.y,
-                    z: spot.z,
-                    plane_id: spot.plane_id,
-                    neighbour: spot.neighbour,
-                    neighbour_array: spot.neighbour_array,
-                    prob: spot.prob,
-                    prob_array: spot.prob_array,
-                    intensity: spot.intensity,
-                    score: spot.score
-                });
-            }
-
-            // Index 2: Spot -> all parent candidates
-            if (spot.neighbour_array && spot.prob_array) {
-                spotToParentsIndex.set(spot_id, {
-                    parents: spot.neighbour_array,
-                    probabilities: spot.prob_array,
-                    gene: geneName,
-                    coordinates: {
-                        x: spot.x,
-                        y: spot.y,
-                        z: spot.z,
-                        plane_id: spot.plane_id
-                    }
-                });
-            }
-        });
-    });
-
-    console.log(` Built indexes: ${cellToSpotsIndex.size} cells, ${spotToParentsIndex.size} spots (${totalSpots} total)`);
-}
 
 /**
  * Get the most probable cell class from cellData

@@ -39,7 +39,9 @@ document.addEventListener('keyup', (e) => {
 window.addEventListener('blur', () => { _ctrlKeyDown = false; window.__modifierDown = false; }); // Reset on blur
 
 export class PolygonBoundaryHighlighter {
-    constructor(deckglInstance, coordinateSystem, cellToSpotsIndex = null, geneToId = null, cellDataMap = null) {
+    // state is read when a hover happens, not copied here: the spot table is
+    // built after this highlighter, once the spots have streamed in.
+    constructor(deckglInstance, coordinateSystem, state) {
         this.deckglInstance = deckglInstance;
         this.coordinateSystem = coordinateSystem;
         this.hoveredPolygon = null;
@@ -49,9 +51,7 @@ export class PolygonBoundaryHighlighter {
         this.highlightWidth = 3;
 
         // Cell-to-spot connections
-        this.cellToSpotsIndex = cellToSpotsIndex;
-        this.geneToId = geneToId;
-        this.cellDataMap = cellDataMap;
+        this.state = state;
 
         // Pinned lines state
         this.pinnedCell = null; // Cell label that's pinned
@@ -267,12 +267,13 @@ export class PolygonBoundaryHighlighter {
      */
     calculatePolygonCentroid(polygonCoords, cellLabel = null) {
         // Get actual cell coordinates from cellData.tsv (X, Y columns)
-        if (!cellLabel || !this.cellDataMap || !this.cellDataMap.has(cellLabel)) {
-            console.warn(`Cell centroid unavailable: cellLabel=${cellLabel}, cellDataMap exists=${!!this.cellDataMap}`);
+        const cellDataMap = this.state.cellDataMap;
+        if (!cellLabel || !cellDataMap.has(cellLabel)) {
+            console.warn(`Cell centroid unavailable: cellLabel=${cellLabel}`);
             return null;
         }
 
-        const cellData = this.cellDataMap.get(cellLabel);
+        const cellData = cellDataMap.get(cellLabel);
 
         // Check for nested position structure (current data format)
         if (cellData && cellData.position &&
@@ -298,7 +299,7 @@ export class PolygonBoundaryHighlighter {
      * Create line layer for cell-to-spot connections
      */
     createLineLayer(polygonObject) {
-        if (!this.cellToSpotsIndex || !polygonObject?.properties?.label) {
+        if (!this.state.spotTable || !polygonObject?.properties?.label) {
             return null;
         }
 
@@ -306,7 +307,7 @@ export class PolygonBoundaryHighlighter {
         const cellLabel = polygonObject.properties.label;
 
         // Get all spots for this cell
-        const spots = this.cellToSpotsIndex.get(cellLabel) || [];
+        const spots = this.state.spotTable.spotsOfCell(cellLabel);
         if (spots.length === 0) return null;
 
         // Calculate cell centroid using actual cell coordinates if available

@@ -176,111 +176,58 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
 }
 
 /**
- * Create gene expression layers using IconLayer
+ * The spots in view at deep zoom as one IconLayer with the gene glyphs.
+ * Only the spots inside the viewport become objects; the rest stay columns.
  */
-export function createGeneLayers(geneDataMap, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, viewportBounds = null, combineIntoSingleLayer = false, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, greyOutMisreads = false, hideMisreads = false) {
+export function createGeneLayers(spotTable, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, viewportBounds, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, greyOutMisreads = false, hideMisreads = false) {
     if (!showGenes || !geneIconAtlas) return [];
 
-    if (combineIntoSingleLayer) {
-        const combined = [];
-        let ix0 = -Infinity, iy0 = -Infinity, ix1 = Infinity, iy1 = Infinity;
+    const { minX, minY, maxX, maxY } = viewportBounds;
+    const minImg = transformFromTileCoordinates(minX, minY, IMG_DIMENSIONS);
+    const maxImg = transformFromTileCoordinates(maxX, maxY, IMG_DIMENSIONS);
+    const ix0 = Math.min(minImg[0], maxImg[0]);
+    const iy0 = Math.min(minImg[1], maxImg[1]);
+    const ix1 = Math.max(minImg[0], maxImg[0]);
+    const iy1 = Math.max(minImg[1], maxImg[1]);
 
-        if (viewportBounds) {
-            const { minX, minY, maxX, maxY } = viewportBounds;
-            const minImg = transformFromTileCoordinates(minX, minY, IMG_DIMENSIONS);
-            const maxImg = transformFromTileCoordinates(maxX, maxY, IMG_DIMENSIONS);
-            ix0 = Math.min(minImg[0], maxImg[0]);
-            iy0 = Math.min(minImg[1], maxImg[1]);
-            ix1 = Math.max(minImg[0], maxImg[0]);
-            iy1 = Math.max(minImg[1], maxImg[1]);
-        }
+    const table = spotTable;
+    const shown = table.geneMask(selectedGenes);
+    const inView = [];
+    for (let row = 0; row < table.length; row++) {
+        if (!shown[table.geneId[row]]) continue;
+        const x = table.x[row];
+        const y = table.y[row];
+        if (x < ix0 || x > ix1 || y < iy0 || y > iy1) continue;
+        if (hasScores && scoreThreshold > 0 && !(table.score[row] >= scoreThreshold)) continue;
+        if (hasIntensity && intensityThreshold > 0 && !(table.intensity[row] >= intensityThreshold)) continue;
+        if (hideMisreads && table.isHardMisread[row]) continue;
+        inView.push(table.spot(row));
+    }
 
-        const genes = selectedGenes ? Array.from(selectedGenes) : Array.from(geneDataMap.keys());
-        for (const gene of genes) {
-            const arr = geneDataMap.get(gene);
-            if (!arr) continue;
-            for (let i = 0; i < arr.length; i++) {
-                const d = arr[i];
-                if (d.x < ix0 || d.x > ix1 || d.y < iy0 || d.y > iy1) continue;
-                
-                const passScore = !(hasScores && scoreThreshold > 0) || (d.score != null && Number(d.score) >= scoreThreshold);
-                const passInten = !(hasIntensity && intensityThreshold > 0) || (d.intensity != null && Number(d.intensity) >= intensityThreshold);
-                if (passScore && passInten && !(hideMisreads && d.is_hard_misread)) combined.push(d);
+    if (inView.length === 0) return [];
+
+    return [new IconLayer({
+        id: 'genes-combined',
+        data: inView,
+        pickable: true,
+        onClick: (info) => {
+            if (!info?.object) return;
+            const evt = info.srcEvent || info.sourceEvent;
+            const ctrl = evt ? !!(evt.ctrlKey || evt.metaKey) : _modifierDown;
+            if (ctrl && window.appState?.checkSpotConnected && typeof window.openCheckSpotModal === 'function') {
+                const spotId = info.object.spot_id ?? info.object.spotId;
+                if (spotId != null) window.openCheckSpotModal(spotId);
             }
-        }
-
-        if (combined.length === 0) return [];
-
-        return [new IconLayer({
-            id: 'genes-combined',
-            data: combined,
-            pickable: true,
-            onClick: (info) => {
-                if (!info?.object) return;
-                const evt = info.srcEvent || info.sourceEvent;
-                const ctrl = evt ? !!(evt.ctrlKey || evt.metaKey) : _modifierDown;
-                if (ctrl && window.appState?.checkSpotConnected && typeof window.openCheckSpotModal === 'function') {
-                    const spotId = info.object.spot_id ?? info.object.spotId;
-                    if (spotId != null) window.openCheckSpotModal(spotId);
-                }
-            },
-            coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-            iconAtlas: geneIconAtlas,
-            iconMapping: geneIconMapping,
-            getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
-            getSize: d => uniformMarkerSize ? GENE_SIZE_CONFIG.BASE_SIZE : (GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane))),
-            getIcon: d => (greyOutMisreads && d.is_hard_misread) ? `_grey_${d.gene}` : d.gene,
-            getColor: [255, 255, 255],
-            sizeUnits: 'pixels',
-            sizeScale: geneSizeScale,
-            updateTriggers: { getSize: [currentPlane, uniformMarkerSize], getIcon: [greyOutMisreads] }
-        })];
-    }
-
-    const layers = [];
-    for (const gene of geneDataMap.keys()) {
-        let data = geneDataMap.get(gene);
-        if (viewportBounds) {
-            const { minX, minY, maxX, maxY } = viewportBounds;
-            data = data.filter(d => {
-                const xy = transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS);
-                return xy[0] >= minX && xy[0] <= maxX && xy[1] >= minY && xy[1] <= maxY;
-            }).slice(0, 50000);
-        }
-
-        const filtered = data.filter(d => {
-            const passScore = !(hasScores && scoreThreshold > 0) || (d.score != null && Number(d.score) >= scoreThreshold);
-            const passInten = !(hasIntensity && intensityThreshold > 0) || (d.intensity != null && Number(d.intensity) >= intensityThreshold);
-            return passScore && passInten && !(hideMisreads && d.is_hard_misread);
-        });
-
-        if (filtered.length === 0) continue;
-
-        layers.push(new IconLayer({
-            id: `genes-${gene}`,
-            data: filtered,
-            visible: selectedGenes.has(gene),
-            pickable: true,
-            onClick: (info) => {
-                if (!info?.object) return;
-                const evt = info.srcEvent || info.sourceEvent;
-                const ctrl = evt ? !!(evt.ctrlKey || evt.metaKey) : _modifierDown;
-                if (ctrl && window.appState?.checkSpotConnected && typeof window.openCheckSpotModal === 'function') {
-                    const spotId = info.object.spot_id ?? info.object.spotId;
-                    if (spotId != null) window.openCheckSpotModal(spotId);
-                }
-            },
-            coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-            iconAtlas: geneIconAtlas,
-            iconMapping: geneIconMapping,
-            getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
-            getSize: d => uniformMarkerSize ? GENE_SIZE_CONFIG.BASE_SIZE : (GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane))),
-            getIcon: d => (greyOutMisreads && d.is_hard_misread) ? `_grey_${d.gene}` : d.gene,
-            getColor: [255, 255, 255],
-            sizeUnits: 'pixels',
-            sizeScale: geneSizeScale,
-            updateTriggers: { getSize: [currentPlane, uniformMarkerSize], getIcon: [greyOutMisreads] }
-        }));
-    }
-    return layers;
+        },
+        coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+        iconAtlas: geneIconAtlas,
+        iconMapping: geneIconMapping,
+        getPosition: d => transformToTileCoordinates(d.x, d.y, IMG_DIMENSIONS),
+        getSize: d => uniformMarkerSize ? GENE_SIZE_CONFIG.BASE_SIZE : (GENE_SIZE_CONFIG.BASE_SIZE / Math.sqrt(1 + Math.abs(d.plane_id - currentPlane))),
+        getIcon: d => (greyOutMisreads && d.is_hard_misread) ? `_grey_${d.gene}` : d.gene,
+        getColor: [255, 255, 255],
+        sizeUnits: 'pixels',
+        sizeScale: geneSizeScale,
+        updateTriggers: { getSize: [currentPlane, uniformMarkerSize], getIcon: [greyOutMisreads] }
+    })];
 }

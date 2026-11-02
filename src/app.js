@@ -63,12 +63,7 @@ import {
 import { buildGlobalZProjection } from './layers/zProjectionOverlay.js';
 
 // === DATA IMPORTS ===
-import {
-    loadGeneData,
-    loadCellData,
-} from './data/dataLoaders.js';
 import { streamSpotsIntoScatterCache } from './data/spotStreamLoader.js';
-import { buildGeneSpotIndexes } from './data/cellIndexes.js';
 
 // === EVENT HANDLING IMPORTS ===
 import { setupEventHandlers, setupAdvancedKeyboardShortcuts, setCellProjection, runPerClassExport } from './events/eventHandlers.js';
@@ -257,7 +252,7 @@ function viewerSnapshot() {
     let zoom = null;
     try { zoom = state.deckglInstance.viewManager.getViewState('ortho').zoom; } catch {}
     const misreads = state.hideMisreads ? 'hidden' : state.greyOutMisreads ? 'greyed out' : 'shown';
-    const genes = Array.from(state.geneDataMap.keys());
+    const genes = Array.from(state.spotTable.genes);
     const classes = Array.from(state.allCellClasses);
     return {
         plane: state.currentPlane,
@@ -853,9 +848,8 @@ async function runInit() {
     });
     showLoadStatus('Indexing genes...');
 
-    // 9. Per-gene spot objects + indexes (gene drawer, cell info panel, icon layers)
+    // 9. Spot table (gene drawer, cell info panel, icon layers)
     initializeGeneData(spots);
-    buildGeneSpotIndexes(state.geneDataMap, state.cellToSpotsIndex, state.spotToParentsIndex);
     resolveSpotsReady();
 
     // 10. Finalize UI + layers
@@ -993,7 +987,7 @@ window.addEventListener('load', async () => {
             // before it has run would be undone; wait for the spots, then apply
             if (!classes) await spotsReady;
             const shown = classes ? state.selectedCellClasses : state.selectedGenes;
-            const all = classes ? Array.from(state.allCellClasses) : Array.from(state.geneDataMap.keys());
+            const all = classes ? Array.from(state.allCellClasses) : Array.from(state.spotTable.genes);
             const have = new Set(all);
             const these = names.filter(n => have.has(n));
             if (mode === 'all') all.forEach(n => shown.add(n));
@@ -1065,20 +1059,21 @@ window.addEventListener('load', async () => {
                 move('geneSizeSlider', size);
                 const s = state.hasScores ? state.scoreThreshold : 0;
                 const it = state.hasIntensity ? state.intensityThreshold : 0;
+                const table = state.spotTable;
+                const shown = table.geneMask(state.selectedGenes);
                 const perGene = {};
+                for (const g of table.genes) {
+                    if (state.selectedGenes.has(g)) perGene[g] = { drawn: 0, of: table.countOfGene(g) };
+                }
                 let drawn = 0, total = 0;
-                for (const [g, spots] of state.geneDataMap) {
-                    if (!state.selectedGenes.has(g)) continue;
-                    let n = 0;
-                    for (const d of spots) {
-                        if (state.hideMisreads && d.is_hard_misread) continue;
-                        if (s > 0 && !(d.score != null && Number(d.score) >= s)) continue;
-                        if (it > 0 && !(d.intensity != null && Number(d.intensity) >= it)) continue;
-                        n++;
-                    }
-                    drawn += n;
-                    total += spots.length;
-                    perGene[g] = { drawn: n, of: spots.length };
+                for (let row = 0; row < table.length; row++) {
+                    if (!shown[table.geneId[row]]) continue;
+                    total++;
+                    if (state.hideMisreads && table.isHardMisread[row]) continue;
+                    if (s > 0 && !(table.score[row] >= s)) continue;
+                    if (it > 0 && !(table.intensity[row] >= it)) continue;
+                    drawn++;
+                    perGene[table.geneName(table.geneId[row])].drawn++;
                 }
                 const genes = Object.keys(perGene);
                 window.electronAPI.chatSpotFiltersDone({
@@ -1115,15 +1110,19 @@ window.addEventListener('load', async () => {
                     tick('greyOutMisreadsToggle', mode === 'greyed');
                     tick('hideMisreadsToggle', mode === 'hidden');
                 }
+                const table = state.spotTable;
+                const shown = table.geneMask(state.selectedGenes);
                 const perGene = {};
+                for (const g of table.genes) {
+                    if (state.selectedGenes.has(g)) perGene[g] = { misreads: 0, of: table.countOfGene(g) };
+                }
                 let misreads = 0, total = 0;
-                for (const [g, spots] of state.geneDataMap) {
-                    if (!state.selectedGenes.has(g)) continue;
-                    let n = 0;
-                    for (const d of spots) if (d.is_hard_misread) n++;
-                    misreads += n;
-                    total += spots.length;
-                    perGene[g] = { misreads: n, of: spots.length };
+                for (let row = 0; row < table.length; row++) {
+                    if (!shown[table.geneId[row]]) continue;
+                    total++;
+                    if (!table.isHardMisread[row]) continue;
+                    misreads++;
+                    perGene[table.geneName(table.geneId[row])].misreads++;
                 }
                 const genes = Object.keys(perGene);
                 window.electronAPI.chatMisreadDisplayDone({
@@ -1230,10 +1229,11 @@ window.addEventListener('load', async () => {
                 updatePlane(plane);
                 if (!state.polygonCache.has(plane)) await loadPlane(plane);
                 updateAllLayers();
+                const table = state.spotTable;
+                const shown = table.geneMask(state.selectedGenes);
                 let spots = 0;
-                for (const [g, list] of state.geneDataMap) {
-                    if (!state.selectedGenes.has(g)) continue;
-                    for (const d of list) if (d.plane_id === plane) spots++;
+                for (let row = 0; row < table.length; row++) {
+                    if (shown[table.geneId[row]] && table.planeId[row] === plane) spots++;
                 }
                 window.electronAPI.chatGoToPlaneDone({
                     id,

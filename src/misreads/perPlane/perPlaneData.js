@@ -1,12 +1,10 @@
 import { state } from '../../state/stateManager.js';
 
 // Returns [{plane, misread, assigned}] sorted by plane ascending for the given gene.
-// Computes misread counts from spot.is_hard_misread, which is either read from the Arrow feather
-// column (feature/gene_indexed_rho and later) or computed on-the-fly from prob_array as a fallback.
-// See src/misreads/misreadUtils.js and src/data/dataLoaders.js for the fallback.
-// Ask Dimitri if you want to delete this fallback.
+// is_hard_misread comes from the Arrow column (feature/gene_indexed_rho and later)
+// or, for older files, is derived from the probabilities in the Arrow worker.
 export function preparePerPlaneData(geneName) {
-    const spots = state.geneDataMap.get(geneName) || [];
+    const spots = state.spotTable.spotsOfGene(geneName);
     const planeMap = {};
     for (const spot of spots) {
         const p = spot.plane_id;

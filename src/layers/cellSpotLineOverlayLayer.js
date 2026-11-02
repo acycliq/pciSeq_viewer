@@ -12,7 +12,6 @@ import { geneStyle } from '../glyphs/geneStyle.js';
 const { LineLayer, COORDINATE_SYSTEM } = deck;
 
 const planeBoundsCache = new Map(); // plane -> { ref, entries }
-const spotTileCache = new WeakMap(); // spot object -> [tileX, tileY]
 let overlayCache = { key: null, data: null };
 
 // The cached lines carry their gene colours, and the cache key only tracks the
@@ -75,15 +74,6 @@ function getPlaneBoundsEntries(plane, polygonCache) {
     return entries;
 }
 
-function getSpotsForCell(cellToSpotsIndex, label) {
-    return (
-        cellToSpotsIndex.get(label) ||
-        cellToSpotsIndex.get(Number(label)) ||
-        cellToSpotsIndex.get(String(label)) ||
-        []
-    );
-}
-
 function getCellCentroidTile(label, cellDataMap) {
     if (!cellDataMap) return null;
     const cell = cellDataMap.get(Number(label));
@@ -92,14 +82,6 @@ function getCellCentroidTile(label, cellDataMap) {
     const y = Number(cell.position.y);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
     return transformToTileCoordinates(x, y, IMG_DIMENSIONS);
-}
-
-function getSpotTilePosition(spot) {
-    const cached = spotTileCache.get(spot);
-    if (cached) return cached;
-    const pos = transformToTileCoordinates(spot.x, spot.y, IMG_DIMENSIONS);
-    spotTileCache.set(spot, pos);
-    return pos;
 }
 
 function makeViewportKey(viewportBounds) {
@@ -133,7 +115,7 @@ function createLineLayerFromBinary(binary) {
 export function createCellSpotLineOverlayLayer(state, viewportBounds) {
     if (!state?.showCellSpotLines) return null;
     if (!viewportBounds) return null;
-    if (!state.cellToSpotsIndex || !state.polygonCache) return null;
+    if (!state.spotTable || !state.polygonCache) return null;
 
     const plane = Number(state.currentPlane) || 0;
     const boundsEntries = getPlaneBoundsEntries(plane, state.polygonCache);
@@ -147,10 +129,9 @@ export function createCellSpotLineOverlayLayer(state, viewportBounds) {
         return createLineLayerFromBinary(overlayCache.data);
     }
 
+    const spotsOfCell = visibleCells.map(cell => state.spotTable.spotsOfCell(cell.label));
     let lineCount = 0;
-    for (const cell of visibleCells) {
-        const spots = getSpotsForCell(state.cellToSpotsIndex, cell.label);
-        if (!spots || spots.length === 0) continue;
+    for (const spots of spotsOfCell) {
         lineCount += spots.length;
     }
 
@@ -164,15 +145,12 @@ export function createCellSpotLineOverlayLayer(state, viewportBounds) {
     const colors = new Uint8Array(lineCount * 4);
     let w = 0;
 
-    for (const cell of visibleCells) {
+    for (const [i, cell] of visibleCells.entries()) {
         const centroid = getCellCentroidTile(cell.label, state.cellDataMap);
         if (!centroid) continue;
 
-        const spots = getSpotsForCell(state.cellToSpotsIndex, cell.label);
-        if (!spots || spots.length === 0) continue;
-
-        for (const spot of spots) {
-            const [sx, sy] = getSpotTilePosition(spot);
+        for (const spot of spotsOfCell[i]) {
+            const [sx, sy] = transformToTileCoordinates(spot.x, spot.y, IMG_DIMENSIONS);
             const c = geneStyle(spot.gene).rgb;
 
             src[3 * w] = centroid[0];

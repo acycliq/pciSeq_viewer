@@ -140,7 +140,7 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
 
         // PERFORMANCE FIX: Never create IconLayer without viewport culling for Arrow data
         if (!bounds) {
-            try { console.log(`[layers] Viewport bounds unavailable, skipping IconLayer (would load ${state.geneDataMap?.size || 0} genes unculled)`); } catch {}
+            try { console.log(`[layers] Viewport bounds unavailable, skipping IconLayer (would load ${state.spotTable?.genes.length || 0} genes unculled)`); } catch {}
             // Fallback to PointCloud for this frame
             const pc = createArrowPointCloudLayer(
                 state.currentPlane,
@@ -159,7 +159,7 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
             state.lastIconLayers = [];
         } else {
             const iconLayers = createGeneLayers(
-                state.geneDataMap,
+                state.spotTable,
                 state.showGenes,
                 state.selectedGenes,
                 state.geneIconAtlas,
@@ -167,7 +167,6 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
                 state.currentPlane,
                 state.geneSizeScale,
                 bounds,
-                true, // combine into a single IconLayer at deep zoom
                 state.scoreThreshold,
                 state.hasScores,
                 state.uniformMarkerSize,

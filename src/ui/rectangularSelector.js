@@ -200,34 +200,33 @@ export class RectangularSelector {
     getSpotsInBounds(bounds) {
         const spots = [];
 
-        if (!this.state.geneDataMap) return spots;
+        const table = this.state.spotTable;
+        if (!table) return spots;
 
-        this.state.geneDataMap.forEach((geneSpots, geneName) => {
-            geneSpots.forEach(spot => {
+        for (const gene of table.genes) {
+            for (const row of table.rowsOfGene(gene)) {
                 // Transform spot coordinates to tile coordinates to match bounds
-                const [tileX, tileY] = transformToTileCoordinates(spot.x, spot.y, IMG_DIMENSIONS);
+                const [tileX, tileY] = transformToTileCoordinates(table.x[row], table.y[row], IMG_DIMENSIONS);
+                if (tileX < bounds.left || tileX > bounds.right || tileY < bounds.top || tileY > bounds.bottom) continue;
 
-                if (tileX >= bounds.left && tileX <= bounds.right &&
-                    tileY >= bounds.top && tileY <= bounds.bottom) {
+                const spot = table.spot(row);
+                // Get parent cell information
+                const parentCell = spot.neighbour ? this.state.cellDataMap.get(spot.neighbour) : null;
 
-                    // Get parent cell information
-                    const parentCell = spot.neighbour ? this.state.cellDataMap.get(spot.neighbour) : null;
-
-                    spots.push({
-                        gene: geneName,
-                        x: spot.x, // Keep original coordinates
-                        y: spot.y,
-                        z: spot.z || 0,
-                        plane_id: spot.plane_id,
-                        spot_id: spot.spot_id,
-                        parent_cell_id: spot.neighbour || null,
-                        parent_cell_X: parentCell ? parentCell.position.x : null,
-                        parent_cell_Y: parentCell ? parentCell.position.y : null,
-                        parent_cell_Z: parentCell ? parentCell.position.z : null
-                    });
-                }
-            });
-        });
+                spots.push({
+                    gene,
+                    x: spot.x, // Keep original coordinates
+                    y: spot.y,
+                    z: spot.z || 0,
+                    plane_id: spot.plane_id,
+                    spot_id: spot.spot_id,
+                    parent_cell_id: spot.neighbour || null,
+                    parent_cell_X: parentCell ? parentCell.position.x : null,
+                    parent_cell_Y: parentCell ? parentCell.position.y : null,
+                    parent_cell_Z: parentCell ? parentCell.position.z : null
+                });
+            }
+        }
 
         return spots;
     }

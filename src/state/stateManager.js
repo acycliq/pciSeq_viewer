@@ -37,12 +37,10 @@ const state = {
     // Data caches
     tileCache: new Map(),
     polygonCache: new Map(),
-    geneDataMap: new Map(),
+    spotTable: null, // every spot as flat columns, see src/data/spotTable.js
     cellDataMap: new Map(),
 
     // Lightning-fast lookup indexes
-    cellToSpotsIndex: new Map(), // cellLabel -> array of spots (O(1) lookup)
-    spotToParentsIndex: new Map(), // spotId -> parent info (O(1) lookup)
     cellBoundaryIndex: new Map(), // cellId -> [planeId1, planeId2, ...] (O(1) lookup)
 
     // Layer persistence for better performance
@@ -122,24 +120,23 @@ window.appState = state;
 // Expose data for console access and debugging
 window.debugData = {
     // Raw data access
-    geneData: () => state.geneDataMap,
+    geneData: () => state.spotTable,
     cellData: () => state.cellDataMap,
     boundaries: () => state.polygonCache,
 
     // Helper functions for common queries
-    getGeneSpots: (geneName) => state.geneDataMap.get(geneName),
+    getGeneSpots: (geneName) => state.spotTable.spotsOfGene(geneName),
     getCell: (cellNum) => state.cellDataMap.get(cellNum),
     getBoundaries: (planeNum) => state.polygonCache.get(planeNum),
 
     // ⚡ LIGHTNING-FAST LOOKUPS ⚡
     // Get all spots for a specific parent cell (O(1) lookup)
-    getSpotsForCell: (cellLabel) => {
-        return state.cellToSpotsIndex.get(cellLabel) || [];
-    },
+    getSpotsForCell: (cellLabel) => state.spotTable.spotsOfCell(cellLabel),
 
-    // Get parent info for a specific spot (O(1) lookup)
-    getParentsForSpot: (spot_id) => {
-        return state.spotToParentsIndex.get(spot_id) || null;
+    // One spot by id, a linear search: for the console, not for code
+    getSpot: (spot_id) => {
+        const row = state.spotTable.spotId.indexOf(spot_id);
+        return row < 0 ? null : state.spotTable.spot(row);
     },
 
     // Get all plane IDs where a cell has boundaries (O(1) lookup)
@@ -148,17 +145,16 @@ window.debugData = {
     },
 
     // Summary functions
-    listGenes: () => Array.from(state.geneDataMap.keys()),
+    listGenes: () => Array.from(state.spotTable.genes),
     listCells: () => Array.from(state.cellDataMap.keys()),
     listPlanes: () => Array.from(state.polygonCache.keys()),
 
     // Statistics
-    geneCount: () => state.geneDataMap.size,
+    geneCount: () => state.spotTable.genes.length,
     cellCount: () => state.cellDataMap.size,
     planesLoaded: () => state.polygonCache.size,
     indexStats: () => ({
-        cellsIndexed: state.cellToSpotsIndex.size,
-        spotsIndexed: state.spotToParentsIndex.size,
+        spots: state.spotTable.length,
         cellBoundariesIndexed: state.cellBoundaryIndex.size
     }),
 

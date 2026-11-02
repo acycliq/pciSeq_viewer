@@ -341,6 +341,9 @@ async function handleStreamSpotsScatter(id, type, cfg) {
       if (table.numRows === 0) continue;
       const columns = readSpotColumns(table);
       const chunk = buildScatterChunk(columns, img, geneIdColors);
+      // Files written before the is_hard_misread column existed: the flag the
+      // scatter chunk derived from the probabilities serves as the column.
+      if (!columns.is_hard_misread) columns.is_hard_misread = chunk.misreadFlags;
       const transfers = uniqueTransferList([
         chunk.positions.buffer, chunk.colors.buffer, chunk.geneIds.buffer, chunk.planes.buffer,
         chunk.scores.buffer, chunk.intensities.buffer, chunk.misreadFlags.buffer,

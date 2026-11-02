@@ -34,7 +34,7 @@ class PerPlaneWidget extends WidgetBase {
 
     _populateGenes() {
         const current = this.geneSelect.value;
-        const genes = Array.from(state.geneDataMap.keys()).sort();
+        const genes = Array.from(state.spotTable.genes).sort();
         this.geneSelect.innerHTML = '<option value="">-- Select gene --</option>';
         genes.forEach(g => {
             const opt = document.createElement('option');
@@ -42,7 +42,7 @@ class PerPlaneWidget extends WidgetBase {
             opt.textContent = g;
             this.geneSelect.appendChild(opt);
         });
-        if (current && state.geneDataMap.has(current)) this.geneSelect.value = current;
+        if (current && state.spotTable.genes.includes(current)) this.geneSelect.value = current;
     }
 
     _update() {

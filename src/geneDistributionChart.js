@@ -60,7 +60,7 @@ class GeneDistributionWidget extends WidgetBase {
         const current = this.geneSelect.value;
         this.geneSelect.innerHTML = '<option value="">Select Gene...</option>';
 
-        const genes = Array.from(state.geneDataMap.keys()).sort();
+        const genes = Array.from(state.spotTable.genes).sort();
         genes.forEach(gene => {
             const opt = document.createElement('option');
             opt.value = gene;
@@ -68,7 +68,7 @@ class GeneDistributionWidget extends WidgetBase {
             this.geneSelect.appendChild(opt);
         });
 
-        if (current && state.geneDataMap.has(current)) {
+        if (current && state.spotTable.genes.includes(current)) {
             this.geneSelect.value = current;
         }
     }
@@ -79,7 +79,7 @@ class GeneDistributionWidget extends WidgetBase {
             return;
         }
 
-        const geneSpots = state.geneDataMap.get(this.selectedGene);
+        const geneSpots = state.spotTable.spotsOfGene(this.selectedGene);
         const planeCounts = new Map();
 
         geneSpots.forEach(spot => {

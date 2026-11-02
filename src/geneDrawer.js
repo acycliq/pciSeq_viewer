@@ -12,15 +12,15 @@ export function populateGeneDrawer() {
     const listEl = document.getElementById('genesList');
     if (!listEl) return;
 
-    if (!state.geneDataMap || state.geneDataMap.size === 0) {
+    if (!state.spotTable || state.spotTable.genes.length === 0) {
         listEl.innerHTML = '<div class="loading-message">No genes available</div>';
         return;
     }
 
     // Build array of { name, count }
-    const entries = Array.from(state.geneDataMap.entries()).map(([gene, spots]) => ({
+    const entries = state.spotTable.genes.map(gene => ({
         name: gene,
-        count: Array.isArray(spots) ? spots.length : 0
+        count: state.spotTable.countOfGene(gene)
     }));
     // Sort by count desc, then name asc
     entries.sort((a, b) => (b.count - a.count) || a.name.localeCompare(b.name));
@@ -95,7 +95,7 @@ export function initGeneDrawer() {
     if (showAllBtn) {
         showAllBtn.addEventListener('click', () => {
             state.selectedGenes.clear();
-            state.geneDataMap.forEach((_, gene) => state.selectedGenes.add(gene));
+            state.spotTable.genes.forEach(gene => state.selectedGenes.add(gene));
             // Update UI
             const listEl = document.getElementById('genesList');
             if (listEl) {

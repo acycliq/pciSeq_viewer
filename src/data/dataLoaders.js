@@ -14,8 +14,6 @@ import {
     getMostProbableCellClass,
     updateCellBoundaryIndex
 } from './cellIndexes.js';
-import { isHardMisread } from '../misreads/misreadUtils.js';
-import { listRow } from '../../arrow-loader/lib/listColumn.js';
 import { geneStyle, hasGeneStyle } from '../glyphs/geneStyle.js';
 // Note: classColorsCodes is loaded globally from color scheme files
 
@@ -37,84 +35,6 @@ export async function loadImage(url, suppressErrors = false) {
         };
         img.src = url;
     });
-}
-
-/**
- * Build the per-gene spot objects from the raw shard columns the spot stream
- * handed back, and the gene icon atlas.
- * @param {Map} geneDataMap - Map to fill: gene name -> array of spot objects
- * @param {Set} selectedGenes - Set to fill with every gene name
- * @param {{ shards: Object[], geneDict: Object }} spots - from streamSpotsIntoScatterCache
- * @returns {Object} Icon atlas and mapping for gene visualization
- */
-export function loadGeneData(geneDataMap, selectedGenes, spots) {
-    if (geneDataMap.size > 0) return { atlas: null, mapping: null };
-
-    try {
-        // Build gene map: gene name -> array of spot objects
-        geneDataMap.clear();
-        selectedGenes.clear();
-        const idToName = spots.geneDict;
-        let spotTotal = 0;
-        for (const sh of spots.shards) {
-            const { x, y, z, plane_id, gene_id, spot_id, neighbour_array, neighbour_prob, omp_score, omp_intensity, is_hard_misread } = sh;
-            const n = x.length;
-            for (let i = 0; i < n; i++) {
-                const gid = gene_id[i];
-                const name = idToName[gid];
-                if (!geneDataMap.has(name)) { geneDataMap.set(name, []); selectedGenes.add(name); }
-                // Neighbour info (optional)
-                const nArr = neighbour_array ? listRow(neighbour_array, i) : null;
-                const pArr = neighbour_prob ? listRow(neighbour_prob, i) : null;
-                const primaryNeighbour = (nArr && nArr.length > 0) ? nArr[0] : null;
-                const primaryProb = (pArr && pArr.length > 0) ? Number(pArr[0]) : null;
-                geneDataMap.get(name).push({
-                    spot_id: spot_id[i], // Use actual spot_id from Arrow files
-                    x: x[i],
-                    y: y[i],
-                    z: z[i],
-                    plane_id: plane_id[i],
-                    gene: name,
-                    neighbour: primaryNeighbour,
-                    neighbour_array: nArr || null,
-                    prob: primaryProb,
-                    prob_array: pArr || null,
-                    score: omp_score[i],
-                    intensity: omp_intensity[i],
-                    is_hard_misread: is_hard_misread ? is_hard_misread[i] : null
-                });
-                spotTotal++;
-            }
-        }
-        // Fallback: if is_hard_misread column was absent, compute from prob_array.
-        // See src/misreads/misreadUtils.js for the implementation and rationale.
-        // Ask Dimitri if you want to delete this fallback.
-        const needsFallback = spotTotal > 0 && [...geneDataMap.values()][0]?.[0]?.is_hard_misread === null;
-        if (needsFallback) {
-            for (const spots of geneDataMap.values()) {
-                for (const spot of spots) {
-                    spot.is_hard_misread = isHardMisread(spot) ? 1 : 0;
-                }
-            }
-        }
-
-        if (window?.advancedConfig?.().performance?.showPerformanceStats) {
-            console.log(`Arrow spots: genes=${geneDataMap.size}, spots=${spotTotal}`);
-        }
-        // For Arrow data, assume scores are available (can be refined later if needed)
-        window.appState.hasScores = true;
-        console.log('Arrow dataset: assuming scores are available');
-
-        // Build icon atlas for gene visualization
-        const genes = Array.from(geneDataMap.keys());
-        const {atlas, mapping} = buildGeneIconAtlas(genes);
-
-        return { atlas, mapping };
-
-    } catch (err) {
-        console.error('Failed to load gene data:', err);
-        return { atlas: null, mapping: null };
-    }
 }
 
 /**

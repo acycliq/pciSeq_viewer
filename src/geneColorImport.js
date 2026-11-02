@@ -66,7 +66,7 @@ export async function applyGeneScheme(entries, replaceMode = false) {
   clearCellSpotLineOverlayCache();
 
   // Rebuild icon atlas/mapping from current gene set
-  const genes = Array.from(state.geneDataMap.keys());
+  const genes = Array.from(state.spotTable.genes);
   const { atlas, mapping } = buildGeneIconAtlas(genes);
   state.geneIconAtlas = atlas;
   state.geneIconMapping = mapping;

@@ -12,10 +12,10 @@ import { updateScaleBar } from '../../utils/scaleBar.js';
 import { updateCoordinateDisplay } from '../../utils/coordinateDisplay.js';
 import { showLoading, hideLoading, showTooltip } from '../ui/uiHelpers.js';
 import {
-    loadGeneData,
+    buildGeneIconAtlas,
     loadCellData
 } from '../data/dataLoaders.js';
-import { buildGeneSpotIndexes } from '../data/cellIndexes.js';
+import { SpotTable } from '../data/spotTable.js';
 import { seedClassColours } from '../classColour.js';
 import { PolygonBoundaryHighlighter } from '../ui/polygonInteractions.js';
 import { RectangularSelector } from '../ui/rectangularSelector.js';
@@ -94,12 +94,13 @@ export function initializePlaneSlider(totalPlanes, startingPlane) {
 }
 
 /**
- * Per-gene spot objects and the gene icon atlas, from the shard columns the
- * spot stream returned.
+ * The spot table and the gene icon atlas, from the shard columns the spot
+ * stream returned.
  * @param {{ shards: Object[], geneDict: Object }} spots - from streamSpotsIntoScatterCache
  */
 export function initializeGeneData(spots) {
-    const { atlas, mapping } = loadGeneData(state.geneDataMap, state.selectedGenes, spots);
+    state.spotTable = new SpotTable(spots.shards, spots.geneDict);
+    const { atlas, mapping } = buildGeneIconAtlas(state.spotTable.genes);
     state.geneIconAtlas = atlas;
     state.geneIconMapping = mapping;
 
@@ -137,9 +138,7 @@ export function initializePolygonHighlighter() {
     state.polygonHighlighter = new PolygonBoundaryHighlighter(
         state.deckglInstance,
         COORDINATE_SYSTEM.CARTESIAN,
-        state.cellToSpotsIndex,
-        state.geneToId,
-        state.cellDataMap
+        state
     );
     state.polygonHighlighter.initialize();
 }
