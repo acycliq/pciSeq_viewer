@@ -12,12 +12,17 @@
  * from manifest order; nothing indexes into the cache by original row, so
  * this is safe.
  *
+ * The worker also hands back the raw columns of every shard. They are
+ * returned to the caller in manifest order for the per-gene spot objects,
+ * so the files are read once and the objects come out in the same order
+ * on every run.
+ *
  * Wiring:
  *   - reads   ARROW_MANIFESTS (config/constants.js), window.config()
  *   - writes  window.appState.arrowScatterCache / arrowGeneDict / hasIntensity
  *   - fills   state.selectedGenes so the scatter layer shows every gene
  *   - worker  arrow-loader/lib/arrow-loaders.js -> streamSpotsScatter
- *   - called from src/app.js init, before the per-gene object pass
+ *   - called from src/app.js init; the return value goes to initializeGeneData
  */
 
 import { ARROW_MANIFESTS } from '../../config/constants.js';
@@ -32,7 +37,7 @@ const SHARD_CONCURRENCY = 4;
  * Stream all spot shards into window.appState.arrowScatterCache.
  * @param {Set<string>} selectedGenes - Seeded with every gene name so spots are visible
  * @param {Function} onShard - Called as onShard(loadedRows, totalRows) after each shard is appended
- * @returns {Promise<void>} Resolves once every shard has been appended
+ * @returns {Promise<{ shards: Object[], geneDict: Object }>} raw columns per shard and gene id -> name
  */
 export async function streamSpotsIntoScatterCache(selectedGenes, onShard) {
     initArrow({
@@ -60,12 +65,14 @@ export async function streamSpotsIntoScatterCache(selectedGenes, onShard) {
     const stats = { scoreMin: Infinity, scoreMax: -Infinity, intensityMin: Infinity, intensityMax: -Infinity, intensityFiniteCount: 0 };
     const showStats = window?.advancedConfig?.().performance?.showPerformanceStats;
     const t0 = performance.now();
+    const shards = [];
 
     await streamSpotsScatter(
         { manifestUrl, img, geneIdColors, concurrency: SHARD_CONCURRENCY },
         (chunk) => {
             appendChunk(cache, chunk);
             accumulateStats(stats, chunk);
+            shards[chunk.shardIndex] = chunk.columns;
             if (showStats) {
                 console.log(`Spot stream: shard ${chunk.shardsDone}/${chunk.shardsTotal} plane=${chunk.plane} rows=${chunk.n} total=${cache.length}`);
             }
@@ -77,6 +84,8 @@ export async function streamSpotsIntoScatterCache(selectedGenes, onShard) {
     if (showStats) {
         console.log(`Spot stream complete: points=${cache.length} in ${(performance.now() - t0).toFixed(0)}ms`);
     }
+    // Empty shards send nothing, so their slots in the array were never set.
+    return { shards: shards.filter(columns => columns !== undefined), geneDict };
 }
 
 async function fetchGeneDict() {

@@ -15,6 +15,7 @@ import {
     updateCellBoundaryIndex
 } from './cellIndexes.js';
 import { isHardMisread } from '../misreads/misreadUtils.js';
+import { listRow } from '../../arrow-loader/lib/listColumn.js';
 import { geneStyle, hasGeneStyle } from '../glyphs/geneStyle.js';
 // Note: classColorsCodes is loaded globally from color scheme files
 
@@ -39,86 +40,70 @@ export async function loadImage(url, suppressErrors = false) {
 }
 
 /**
- * Load and parse gene expression data from TSV file using Web Worker
- * Populates the gene data map and builds icon atlas
- * @param {Map} geneDataMap - Map to store gene data by gene name
- * @param {Set} selectedGenes - Set to track visible genes
+ * Build the per-gene spot objects from the raw shard columns the spot stream
+ * handed back, and the gene icon atlas.
+ * @param {Map} geneDataMap - Map to fill: gene name -> array of spot objects
+ * @param {Set} selectedGenes - Set to fill with every gene name
+ * @param {{ shards: Object[], geneDict: Object }} spots - from streamSpotsIntoScatterCache
  * @returns {Object} Icon atlas and mapping for gene visualization
  */
-export async function loadGeneData(geneDataMap, selectedGenes) {
+export function loadGeneData(geneDataMap, selectedGenes, spots) {
     if (geneDataMap.size > 0) return { atlas: null, mapping: null };
 
     try {
-        {
-            const { initArrow, loadSpots } = await import('../../arrow-loader/lib/arrow-loaders.js');
-            initArrow({
-                spotsManifest: ARROW_MANIFESTS.spotsManifest,
-                cellsManifest: ARROW_MANIFESTS.cellsManifest,
-                boundariesManifest: ARROW_MANIFESTS.boundariesManifest,
-                spotsGeneDict: ARROW_MANIFESTS.spotsGeneDict
-            });
-            const { shards, geneDict } = await loadSpots();
-            // Expose raw Arrow shards and gene dictionary for binary PointCloud rendering
-            try {
-                if (window && window.appState) {
-                    window.appState.arrowSpotShards = shards;
-                    window.appState.arrowGeneDict = geneDict || {};
-                }
-            } catch {}
-            // Build gene map: gene name -> array of spot objects
-            geneDataMap.clear();
-            selectedGenes.clear();
-            const idToName = geneDict || {};
-            let spotTotal = 0;
-            for (const sh of shards) {
-                const { x, y, z, plane_id, gene_id, spot_id, neighbour_array, neighbour_prob, omp_score, omp_intensity, is_hard_misread } = sh;
-                const n = x.length;
-                for (let i = 0; i < n; i++) {
-                    const gid = gene_id[i];
-                    const name = idToName[gid];
-                    if (!geneDataMap.has(name)) { geneDataMap.set(name, []); selectedGenes.add(name); }
-                    // Neighbour info (optional)
-                    const nArr = Array.isArray(neighbour_array) ? neighbour_array[i] : null;
-                    const pArr = Array.isArray(neighbour_prob) ? neighbour_prob[i] : null;
-                    const primaryNeighbour = (nArr && nArr.length > 0) ? nArr[0] : null;
-                    const primaryProb = (pArr && pArr.length > 0) ? Number(pArr[0]) : null;
-                    geneDataMap.get(name).push({
-                        spot_id: spot_id[i], // Use actual spot_id from Arrow files
-                        x: x[i],
-                        y: y[i],
-                        z: z[i],
-                        plane_id: plane_id[i],
-                        gene: name,
-                        neighbour: primaryNeighbour,
-                        neighbour_array: nArr || null,
-                        prob: primaryProb,
-                        prob_array: pArr || null,
-                        score: omp_score[i],
-                        intensity: omp_intensity[i],
-                        is_hard_misread: is_hard_misread ? is_hard_misread[i] : null
-                    });
-                    spotTotal++;
-                }
+        // Build gene map: gene name -> array of spot objects
+        geneDataMap.clear();
+        selectedGenes.clear();
+        const idToName = spots.geneDict;
+        let spotTotal = 0;
+        for (const sh of spots.shards) {
+            const { x, y, z, plane_id, gene_id, spot_id, neighbour_array, neighbour_prob, omp_score, omp_intensity, is_hard_misread } = sh;
+            const n = x.length;
+            for (let i = 0; i < n; i++) {
+                const gid = gene_id[i];
+                const name = idToName[gid];
+                if (!geneDataMap.has(name)) { geneDataMap.set(name, []); selectedGenes.add(name); }
+                // Neighbour info (optional)
+                const nArr = neighbour_array ? listRow(neighbour_array, i) : null;
+                const pArr = neighbour_prob ? listRow(neighbour_prob, i) : null;
+                const primaryNeighbour = (nArr && nArr.length > 0) ? nArr[0] : null;
+                const primaryProb = (pArr && pArr.length > 0) ? Number(pArr[0]) : null;
+                geneDataMap.get(name).push({
+                    spot_id: spot_id[i], // Use actual spot_id from Arrow files
+                    x: x[i],
+                    y: y[i],
+                    z: z[i],
+                    plane_id: plane_id[i],
+                    gene: name,
+                    neighbour: primaryNeighbour,
+                    neighbour_array: nArr || null,
+                    prob: primaryProb,
+                    prob_array: pArr || null,
+                    score: omp_score[i],
+                    intensity: omp_intensity[i],
+                    is_hard_misread: is_hard_misread ? is_hard_misread[i] : null
+                });
+                spotTotal++;
             }
-            // Fallback: if is_hard_misread column was absent, compute from prob_array.
-            // See src/misreads/misreadUtils.js for the implementation and rationale.
-            // Ask Dimitri if you want to delete this fallback.
-            const needsFallback = spotTotal > 0 && [...geneDataMap.values()][0]?.[0]?.is_hard_misread === null;
-            if (needsFallback) {
-                for (const spots of geneDataMap.values()) {
-                    for (const spot of spots) {
-                        spot.is_hard_misread = isHardMisread(spot) ? 1 : 0;
-                    }
-                }
-            }
-
-            if (window?.advancedConfig?.().performance?.showPerformanceStats) {
-                console.log(`Arrow spots: genes=${geneDataMap.size}, spots=${spotTotal}`);
-            }
-            // For Arrow data, assume scores are available (can be refined later if needed)
-            window.appState.hasScores = true;
-            console.log('Arrow dataset: assuming scores are available');
         }
+        // Fallback: if is_hard_misread column was absent, compute from prob_array.
+        // See src/misreads/misreadUtils.js for the implementation and rationale.
+        // Ask Dimitri if you want to delete this fallback.
+        const needsFallback = spotTotal > 0 && [...geneDataMap.values()][0]?.[0]?.is_hard_misread === null;
+        if (needsFallback) {
+            for (const spots of geneDataMap.values()) {
+                for (const spot of spots) {
+                    spot.is_hard_misread = isHardMisread(spot) ? 1 : 0;
+                }
+            }
+        }
+
+        if (window?.advancedConfig?.().performance?.showPerformanceStats) {
+            console.log(`Arrow spots: genes=${geneDataMap.size}, spots=${spotTotal}`);
+        }
+        // For Arrow data, assume scores are available (can be refined later if needed)
+        window.appState.hasScores = true;
+        console.log('Arrow dataset: assuming scores are available');
 
         // Build icon atlas for gene visualization
         const genes = Array.from(geneDataMap.keys());
@@ -199,31 +184,6 @@ export function applyIntensityRangeToUI(intensityMin, intensityMax) {
         slider.value = String(uiMin);
         window.appState.intensityThreshold = uiMin;
         if (valueEl) valueEl.textContent = Number(uiMin).toFixed(2);
-    }
-}
-
-/**
- * Build the whole binary scatter cache in the worker in one go and publish it
- * on window.appState.arrowScatterCache. This is the non-progressive path; the
- * progressive one lives in spotStreamLoader.js.
- * Requires window.appState.arrowGeneDict to be set (loadGeneData does that).
- */
-export async function prebuildScatterCache() {
-    const { buildSpotsScatterCache } = await import('../../arrow-loader/lib/arrow-loaders.js');
-    const cfg = window.config();
-    const geneIdColors = buildGeneIdColors(window.appState.arrowGeneDict || {});
-    const manifestUrl = new URL(ARROW_MANIFESTS.spotsManifest, window.location.href).href;
-    const img = { width: cfg.imageWidth, height: cfg.imageHeight, tileSize: 256 };
-    const result = await buildSpotsScatterCache({ manifestUrl, img, geneIdColors });
-    const { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags } = result;
-    window.appState.arrowScatterCache = { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, length: (positions?.length || 0) / 3 };
-    applyScoreRangeToUI(result.scoreMin, result.scoreMax);
-    window.appState.hasIntensity = Boolean(result.hasIntensity);
-    if (window.appState.hasIntensity) {
-        applyIntensityRangeToUI(result.intensityMin, result.intensityMax);
-    }
-    if (window?.advancedConfig?.().performance?.showPerformanceStats) {
-        console.log(`Prebuilt scatter cache in worker: points=${window.appState.arrowScatterCache.length}`);
     }
 }
 

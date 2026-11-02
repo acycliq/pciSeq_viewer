@@ -56,22 +56,6 @@ function call(type, payload, onProgress = null) {
   });
 }
 
-export async function loadSpots() {
-  const manifestUrl = config?.spotsManifest ? new URL(config.spotsManifest, window.location.href).href : null;
-  if (!manifestUrl) throw new Error('spotsManifest not configured');
-  const res = await call('loadSpots', { manifestUrl, includeLists: true });
-  // Optionally fetch gene dict (id -> name)
-  let geneDict = null;
-  if (config?.spotsGeneDict) {
-    try {
-      const url = new URL(config.spotsGeneDict, window.location.href).href;
-      const r = await fetch(url);
-      if (r.ok) geneDict = await r.json();
-    } catch {}
-  }
-  return { ...res, geneDict };
-}
-
 export async function loadCells() {
   const manifestUrl = config?.cellsManifest ? new URL(config.cellsManifest, window.location.href).href : null;
   if (!manifestUrl) throw new Error('cellsManifest not configured');
@@ -84,18 +68,12 @@ export async function loadBoundariesPlane(planeId) {
   return call('loadBoundariesPlane', { manifestUrl, planeId });
 }
 
-// Build pre-transformed scatter (binary) cache for spots inside the worker and transfer typed arrays
-// payload: { manifestUrl, img: { width, height, tileSize }, geneIdColors: { [id]: [r,g,b] } }
-export async function buildSpotsScatterCache({ manifestUrl, img, geneIdColors }) {
-  if (!manifestUrl) throw new Error('spots manifestUrl is required');
-  const { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity } = await call('buildSpotsScatterCache', { manifestUrl, img, geneIdColors });
-  return { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, hasIntensity };
-}
-
-// Stream the spots scatter cache shard by shard. onChunk receives one decoded
-// shard at a time ({ n, positions, colors, geneIds, planes, scores, intensities,
-// misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, plane, shardsDone,
-// shardsTotal }); the returned promise resolves once every shard has been sent.
+// Stream the spots shard by shard. onChunk receives one decoded shard at a
+// time ({ n, positions, colors, geneIds, planes, scores, intensities,
+// misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, plane, shardIndex,
+// shardsDone, shardsTotal, columns }), where columns are the shard's raw columns (see
+// readSpotColumns in the worker); the returned promise resolves once every
+// shard has been sent.
 // payload: { manifestUrl, img, geneIdColors, concurrency }
 export function streamSpotsScatter({ manifestUrl, img, geneIdColors, concurrency }, onChunk) {
   if (!manifestUrl) throw new Error('spots manifestUrl is required');

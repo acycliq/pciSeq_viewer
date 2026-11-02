@@ -2,6 +2,7 @@
 // Keep logs minimal; toggle via DEBUG flag
 
 import { tableFromIPC } from '../../lib/vendor/apache-arrow-12.0.1.esm.js';
+import { readListColumn, listRow } from '../lib/listColumn.js';
 
 const DEBUG = false;
 
@@ -30,24 +31,39 @@ function getTypedColumn(table, name) {
   return out;
 }
 
-// Rows of a list column, as typed-array views. Arrow keeps a list column as
-// one flat values array plus an offsets array, so row i is
-// values[offsets[i] .. offsets[i + 1]). Reading rows through col.get(i)
-// instead allocates a vector per row and costs seconds at millions of rows.
-function getListColumnAsArrays(table, name) {
-  const col = table.getChild(name);
-  if (!col) return null;
-  const rows = new Array(col.length);
-  let next = 0;
-  for (const chunk of col.data) {
-    if (chunk.length === 0) continue; // an empty shard has no child values
-    const offsets = chunk.valueOffsets;
-    const values = chunk.children[0].values;
-    for (let i = 0; i < chunk.length; i++) {
-      rows[next++] = values.subarray(offsets[i], offsets[i + 1]);
+// The raw columns of one spots shard. List columns come as { values, offsets },
+// see arrow-loader/lib/listColumn.js. is_hard_misread is null in files written
+// before that column existed.
+function readSpotColumns(table) {
+  return {
+    x: getTypedColumn(table, 'x'),
+    y: getTypedColumn(table, 'y'),
+    z: getTypedColumn(table, 'z'),
+    plane_id: getTypedColumn(table, 'plane_id'),
+    gene_id: getTypedColumn(table, 'gene_id'),
+    spot_id: getTypedColumn(table, 'spot_id'),
+    omp_score: getTypedColumn(table, 'omp_score'),
+    omp_intensity: getTypedColumn(table, 'omp_intensity'),
+    is_hard_misread: getTypedColumn(table, 'is_hard_misread'),
+    neighbour_array: readListColumn(table, 'neighbour_array'),
+    neighbour_prob: readListColumn(table, 'neighbour_prob')
+  };
+}
+
+// Every ArrayBuffer behind the columns, so postMessage moves them to the main
+// thread instead of copying. Typed columns carry .buffer; list columns carry
+// values and offsets.
+function columnBuffers(columns) {
+  const buffers = [];
+  for (const column of Object.values(columns)) {
+    if (!column) continue;
+    if (column.buffer) {
+      buffers.push(column.buffer);
+    } else {
+      buffers.push(column.values.buffer, column.offsets.buffer);
     }
   }
-  return rows;
+  return buffers;
 }
 
 // Hard-misread fallback for Arrow files without an is_hard_misread column:
@@ -85,34 +101,6 @@ async function loadManifest(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Manifest fetch failed ${url}: ${res.status}`);
   return res.json();
-}
-
-async function handleLoadSpots(cfg) {
-  const { manifestUrl, includeLists = true } = cfg;
-  const manifest = await loadManifest(manifestUrl);
-  const shardUrls = resolveShardUrls(manifestUrl, manifest);
-  const shards = [];
-  const transfers = [];
-  for (const url of shardUrls) {
-    const buf = await fetchArrayBuffer(url);
-    const table = decodeFeather(buf);
-    const x = getTypedColumn(table, 'x');
-    const y = getTypedColumn(table, 'y');
-    const z = getTypedColumn(table, 'z');
-    const plane_id = getTypedColumn(table, 'plane_id');
-    const gene_id = getTypedColumn(table, 'gene_id');
-    const spot_id = getTypedColumn(table, 'spot_id'); // Use actual spot_id from Arrow files
-    const omp_score = getTypedColumn(table, 'omp_score');
-    const omp_intensity = getTypedColumn(table, 'omp_intensity');
-    const is_hard_misread = getTypedColumn(table, 'is_hard_misread');
-    const neighbour_array = getListColumnAsArrays(table, 'neighbour_array');
-    const neighbour_prob = getListColumnAsArrays(table, 'neighbour_prob');
-    const payload = { x, y, z, plane_id, gene_id, spot_id, neighbour_array, neighbour_prob, omp_score, omp_intensity, is_hard_misread };
-    // collect transfers
-    [x,y,z,plane_id,gene_id,spot_id,omp_score,omp_intensity,is_hard_misread].forEach(a => a && transfers.push(a.buffer));
-    shards.push(payload);
-  }
-  return { shards, transfers: uniqueTransferList(transfers) };
 }
 
 async function handleLoadCells(cfg) {
@@ -276,20 +264,12 @@ async function handleLoadBoundariesPlane(cfg) {
   return { planeId, buffers: { length: numPolys, positions, startIndices, labels: outLabels }, timings, transfers };
 }
 
-// Convert one decoded spots table into the flat typed arrays the binary
-// ScatterplotLayer consumes. Positions are pre-transformed to tile coordinates
-// here so the main thread never touches per-row data.
-function buildScatterChunk(table, img, geneIdColors) {
-  const x = getTypedColumn(table, 'x');
-  const y = getTypedColumn(table, 'y');
+// Convert the raw columns of one spots shard into the flat typed arrays the
+// binary ScatterplotLayer consumes. Positions are pre-transformed to tile
+// coordinates here so the main thread never touches per-row data.
+function buildScatterChunk(columns, img, geneIdColors) {
+  const { x, y, plane_id, gene_id, omp_score, omp_intensity, is_hard_misread, neighbour_prob } = columns;
   const n = x ? x.length : 0;
-  const plane_id = getTypedColumn(table, 'plane_id');
-  const gene_id = getTypedColumn(table, 'gene_id');
-  const omp_score = getTypedColumn(table, 'omp_score');
-  const omp_intensity = getTypedColumn(table, 'omp_intensity');
-  const is_hard_misread = getTypedColumn(table, 'is_hard_misread');
-  // Only needed to derive the misread flag when the column is absent.
-  const neighbour_prob = is_hard_misread ? null : getListColumnAsArrays(table, 'neighbour_prob');
 
   const positions = new Float32Array(n * 3);
   const colors = new Uint8Array(n * 4);
@@ -329,7 +309,7 @@ function buildScatterChunk(table, img, geneIdColors) {
     colors[4*i + 3] = 255;
     misreadFlags[i] = is_hard_misread
       ? (is_hard_misread[i] ? 1 : 0)
-      : (probIsHardMisread(neighbour_prob ? neighbour_prob[i] : null) ? 1 : 0);
+      : (probIsHardMisread(listRow(neighbour_prob, i)) ? 1 : 0);
   }
 
   return { n, positions, colors, geneIds, planes, scores, intensities, misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, intensityFiniteCount };
@@ -339,69 +319,11 @@ function finiteOr(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-// One-shot: decode every shard, concatenate, reply once with the full cache.
-async function handleBuildSpotsScatterCache(cfg) {
-  const { manifestUrl, img, geneIdColors } = cfg || {};
-  const manifest = await loadManifest(manifestUrl);
-  const shardUrls = resolveShardUrls(manifestUrl, manifest);
-  const chunks = [];
-  let total = 0;
-  for (const url of shardUrls) {
-    const chunk = buildScatterChunk(decodeFeather(await fetchArrayBuffer(url)), img, geneIdColors);
-    if (!chunk.n) continue;
-    chunks.push(chunk);
-    total += chunk.n;
-  }
-
-  const positions = new Float32Array(total * 3);
-  const colors = new Uint8Array(total * 4);
-  const geneIds = new Int32Array(total);
-  const planes = new Int32Array(total);
-  const scores = new Float32Array(total);
-  const intensities = new Float32Array(total);
-  const misreadFlags = new Uint8Array(total);
-  let scoreMin = Infinity, scoreMax = -Infinity;
-  let intensityMin = Infinity, intensityMax = -Infinity;
-  let intensityFiniteCount = 0;
-  let off = 0;
-  for (const c of chunks) {
-    positions.set(c.positions, off * 3);
-    colors.set(c.colors, off * 4);
-    geneIds.set(c.geneIds, off);
-    planes.set(c.planes, off);
-    scores.set(c.scores, off);
-    intensities.set(c.intensities, off);
-    misreadFlags.set(c.misreadFlags, off);
-    scoreMin = Math.min(scoreMin, c.scoreMin);
-    scoreMax = Math.max(scoreMax, c.scoreMax);
-    intensityMin = Math.min(intensityMin, c.intensityMin);
-    intensityMax = Math.max(intensityMax, c.intensityMax);
-    intensityFiniteCount += c.intensityFiniteCount;
-    off += c.n;
-  }
-
-  // Determine if intensity exists and only build 2D filter pairs when present
-  const hasIntensity = intensityFiniteCount > 0;
-  let filterPairs = null;
-  const transfers = [positions.buffer, colors.buffer, geneIds.buffer, planes.buffer, scores.buffer, misreadFlags.buffer];
-  if (hasIntensity) {
-    filterPairs = new Float32Array(total * 2);
-    for (let i = 0; i < total; i++) { filterPairs[2*i] = scores[i]; filterPairs[2*i+1] = intensities[i]; }
-    transfers.push(intensities.buffer, filterPairs.buffer);
-  }
-  return {
-    positions, colors, geneIds, planes, scores, misreadFlags, hasIntensity,
-    intensities: hasIntensity ? intensities : undefined,
-    filterPairs: hasIntensity ? filterPairs : undefined,
-    scoreMin: finiteOr(scoreMin, 0), scoreMax: finiteOr(scoreMax, 1),
-    intensityMin: finiteOr(intensityMin, 0), intensityMax: finiteOr(intensityMax, 1),
-    transfers
-  };
-}
-
 // Streaming: one progress message per shard as it decodes, then a final done
 // message. Shards go in manifest order (plane 0 upwards for per-plane shards);
-// the main thread appends each chunk into a preallocated cache.
+// the main thread appends each chunk into a preallocated cache. Each message
+// also carries the shard's raw columns, so the files are read once and the
+// main thread builds the per-spot objects from them.
 async function handleStreamSpotsScatter(id, type, cfg) {
   const { manifestUrl, img, geneIdColors, concurrency } = cfg || {};
   const manifest = await loadManifest(manifestUrl);
@@ -414,11 +336,17 @@ async function handleStreamSpotsScatter(id, type, cfg) {
     while (queue.length > 0) {
       const shardIndex = queue.shift();
       const buf = await fetchArrayBuffer(shardUrls[shardIndex]);
-      const chunk = buildScatterChunk(decodeFeather(buf), img, geneIdColors);
+      const table = decodeFeather(buf);
       shardsDone++;
-      if (!chunk.n) continue;
-      const transfers = [chunk.positions.buffer, chunk.colors.buffer, chunk.geneIds.buffer, chunk.planes.buffer, chunk.scores.buffer, chunk.intensities.buffer, chunk.misreadFlags.buffer];
-      self.postMessage({ id, ok: true, type, progress: true, shardsDone, shardsTotal, plane: manifest.shards[shardIndex].plane, ...chunk }, transfers);
+      if (table.numRows === 0) continue;
+      const columns = readSpotColumns(table);
+      const chunk = buildScatterChunk(columns, img, geneIdColors);
+      const transfers = uniqueTransferList([
+        chunk.positions.buffer, chunk.colors.buffer, chunk.geneIds.buffer, chunk.planes.buffer,
+        chunk.scores.buffer, chunk.intensities.buffer, chunk.misreadFlags.buffer,
+        ...columnBuffers(columns)
+      ]);
+      self.postMessage({ id, ok: true, type, progress: true, shardIndex, shardsDone, shardsTotal, plane: manifest.shards[shardIndex].plane, ...chunk, columns }, transfers);
     }
   }
 
@@ -432,18 +360,12 @@ async function handleStreamSpotsScatter(id, type, cfg) {
 self.onmessage = async (e) => {
   const { id, type, payload } = e.data || {};
   try {
-    if (type === 'loadSpots') {
-      const { shards, transfers } = await handleLoadSpots(payload);
-      self.postMessage({ id, ok: true, type, shards }, transfers);
-    } else if (type === 'loadCells') {
+    if (type === 'loadCells') {
       const { columns, transfers } = await handleLoadCells(payload);
       self.postMessage({ id, ok: true, type, columns }, transfers);
     } else if (type === 'loadBoundariesPlane') {
       const { planeId, buffers, transfers } = await handleLoadBoundariesPlane(payload);
       self.postMessage({ id, ok: true, type, planeId, buffers }, transfers);
-    } else if (type === 'buildSpotsScatterCache') {
-      const { transfers, ...result } = await handleBuildSpotsScatterCache(payload);
-      self.postMessage({ id, ok: true, type, ...result }, transfers);
     } else if (type === 'streamSpotsScatter') {
       await handleStreamSpotsScatter(id, type, payload);
     } else {

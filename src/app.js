@@ -837,23 +837,24 @@ async function runInit() {
     // up too late the 3D view fell back to one plane (since 3606560). Started outright.
     startSpatialIndexing(updateAllLayers, state);
 
-    // 8. Spots. Progressive: drop the curtain now and draw shards as they land,
-    //    plane 0 upwards, with a corner pill counting them. Otherwise the
-    //    curtain stays until everything is in.
+    // 8. Spots, read from the shards once. Progressive: drop the curtain now and
+    //    draw shards as they land, plane 0 upwards, with a corner pill counting
+    //    them. Otherwise the curtain stays until everything is in.
     const progressiveSpots = Boolean(window.advancedConfig?.().performance?.progressiveSpots);
     if (progressiveSpots) {
         updateAllLayers();
         hideLoading(state, elements.loadingIndicator);
         removeCurtain();
-        await streamSpotsIntoScatterCache(state.selectedGenes, (loadedRows, totalRows) => {
-            showLoadStatus(`Spots ${loadedRows.toLocaleString()} / ${totalRows.toLocaleString()}`);
-            updateAllLayers();
-        });
-        showLoadStatus('Indexing genes...');
     }
+    const spots = await streamSpotsIntoScatterCache(state.selectedGenes, (loadedRows, totalRows) => {
+        if (!progressiveSpots) return;
+        showLoadStatus(`Spots ${loadedRows.toLocaleString()} / ${totalRows.toLocaleString()}`);
+        updateAllLayers();
+    });
+    showLoadStatus('Indexing genes...');
 
     // 9. Per-gene spot objects + indexes (gene drawer, cell info panel, icon layers)
-    await initializeGeneData(progressiveSpots);
+    initializeGeneData(spots);
     buildGeneSpotIndexes(state.geneDataMap, state.cellToSpotsIndex, state.spotToParentsIndex);
     resolveSpotsReady();
 

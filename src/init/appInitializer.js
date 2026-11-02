@@ -13,8 +13,7 @@ import { updateCoordinateDisplay } from '../../utils/coordinateDisplay.js';
 import { showLoading, hideLoading, showTooltip } from '../ui/uiHelpers.js';
 import {
     loadGeneData,
-    loadCellData,
-    prebuildScatterCache
+    loadCellData
 } from '../data/dataLoaders.js';
 import { buildGeneSpotIndexes } from '../data/cellIndexes.js';
 import { seedClassColours } from '../classColour.js';
@@ -95,19 +94,14 @@ export function initializePlaneSlider(totalPlanes, startingPlane) {
 }
 
 /**
- * Initialize gene data and icon atlas
- * @param {boolean} scatterCacheReady - True when the binary scatter cache was
- *   already streamed in (progressive path), so it must not be rebuilt here
- * @returns {Promise<void>}
+ * Per-gene spot objects and the gene icon atlas, from the shard columns the
+ * spot stream returned.
+ * @param {{ shards: Object[], geneDict: Object }} spots - from streamSpotsIntoScatterCache
  */
-export async function initializeGeneData(scatterCacheReady = false) {
-    const { atlas, mapping } = await loadGeneData(state.geneDataMap, state.selectedGenes);
+export function initializeGeneData(spots) {
+    const { atlas, mapping } = loadGeneData(state.geneDataMap, state.selectedGenes, spots);
     state.geneIconAtlas = atlas;
     state.geneIconMapping = mapping;
-
-    if (!scatterCacheReady) {
-        await prebuildScatterCache();
-    }
 
     // Sync dataset capability flags from worker-populated appState
     try {
