@@ -30,15 +30,24 @@ function getTypedColumn(table, name) {
   return out;
 }
 
+// Rows of a list column, as typed-array views. Arrow keeps a list column as
+// one flat values array plus an offsets array, so row i is
+// values[offsets[i] .. offsets[i + 1]). Reading rows through col.get(i)
+// instead allocates a vector per row and costs seconds at millions of rows.
 function getListColumnAsArrays(table, name) {
   const col = table.getChild(name);
   if (!col) return null;
-  const out = new Array(col.length);
-  for (let i = 0; i < col.length; i++) {
-    const v = col.get(i);
-    out[i] = (v && typeof v.toArray === 'function') ? v.toArray() : (v || []);
+  const rows = new Array(col.length);
+  let next = 0;
+  for (const chunk of col.data) {
+    if (chunk.length === 0) continue; // an empty shard has no child values
+    const offsets = chunk.valueOffsets;
+    const values = chunk.children[0].values;
+    for (let i = 0; i < chunk.length; i++) {
+      rows[next++] = values.subarray(offsets[i], offsets[i + 1]);
+    }
   }
-  return out;
+  return rows;
 }
 
 // Hard-misread fallback for Arrow files without an is_hard_misread column:
