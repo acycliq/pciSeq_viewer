@@ -2,7 +2,7 @@
  * Spot Table
  *
  * Every spot of the run as flat typed arrays, one entry per row, plus the rows
- * of each gene and the rows of each cell. This is what the app holds instead
+ * of each gene, of each cell and of each grid cell of the image. This is what the app holds instead
  * of one JavaScript object per spot: 3M spots take about 0.3 GB here against
  * 2 GB as objects, and 20M spots fit at all.
  *
@@ -45,6 +45,7 @@ export class SpotTable {
         this.geneCount = Math.max(...Object.keys(geneDict).map(Number)) + 1;
         this.geneRows = rowsByKey(this.geneId, this.geneCount);
         this.cellRows = rowsByKey(primaryCellOfRows(this.neighbours), maxValue(this.neighbours.values) + 1);
+        this.grid = gridIndex(this.x, this.y);
 
         // Names of the genes with at least one spot, in gene id order.
         this.genes = [];
@@ -79,6 +80,32 @@ export class SpotTable {
     rowsOfCell(label) {
         if (label < 1 || label >= this.cellRows.start.length - 1) return EMPTY_ROWS;
         return rowsOfKey(this.cellRows, label);
+    }
+
+    /**
+     * The rows in the grid cells that cover this box, in image pixels: every row
+     * inside the box and some just outside it, so callers still test x and y.
+     * The icon layer asks for its viewport this way instead of scanning all rows.
+     */
+    rowsNearBox(x0, y0, x1, y1) {
+        const { cellWidth, cellHeight, start, rows } = this.grid;
+        const left = cellOf(x0, cellWidth);
+        const right = cellOf(x1, cellWidth);
+        const top = cellOf(y0, cellHeight);
+        const bottom = cellOf(y1, cellHeight);
+        // Cells of one grid row are consecutive keys, so their rows form one run.
+        let count = 0;
+        for (let gridRow = top; gridRow <= bottom; gridRow++) {
+            count += start[gridRow * GRID_SIDE + right + 1] - start[gridRow * GRID_SIDE + left];
+        }
+        const near = new Uint32Array(count);
+        let filled = 0;
+        for (let gridRow = top; gridRow <= bottom; gridRow++) {
+            const run = rows.subarray(start[gridRow * GRID_SIDE + left], start[gridRow * GRID_SIDE + right + 1]);
+            near.set(run, filled);
+            filled += run.length;
+        }
+        return near;
     }
 
     /** 1 for every gene id whose name is in the set, for loops over all rows. */
@@ -128,6 +155,26 @@ export class SpotTable {
 }
 
 const EMPTY_ROWS = new Uint32Array(0);
+
+// The image cut into GRID_SIDE x GRID_SIDE cells over the spots' own extent.
+// 256 keeps a deep-zoom viewport to a few hundred cells and the index small.
+const GRID_SIDE = 256;
+
+// Rows grouped by grid cell, key = grid row * GRID_SIDE + grid column.
+function gridIndex(x, y) {
+    const cellWidth = (maxValue(x) + 1) / GRID_SIDE;
+    const cellHeight = (maxValue(y) + 1) / GRID_SIDE;
+    const keys = new Int32Array(x.length);
+    for (let row = 0; row < x.length; row++) {
+        keys[row] = cellOf(y[row], cellHeight) * GRID_SIDE + cellOf(x[row], cellWidth);
+    }
+    return { cellWidth, cellHeight, ...rowsByKey(keys, GRID_SIDE * GRID_SIDE) };
+}
+
+// The grid cell a coordinate falls in; coordinates outside the grid land on its edge.
+function cellOf(coordinate, cellSize) {
+    return Math.min(GRID_SIDE - 1, Math.max(0, Math.floor(coordinate / cellSize)));
+}
 
 function concatColumns(columns) {
     const total = columns.reduce((count, column) => count + column.length, 0);

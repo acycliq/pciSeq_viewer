@@ -150,7 +150,8 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
 
 /**
  * The spots in view at deep zoom as one IconLayer with the gene glyphs.
- * Only the spots inside the viewport become objects; the rest stay columns.
+ * The grid index of the table narrows the search to the viewport, and only
+ * the spots inside it become objects; the rest stay columns.
  */
 export function createGeneLayers(spotTable, showGenes, selectedGenes, geneIconAtlas, geneIconMapping, currentPlane, geneSizeScale, viewportBounds, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, greyOutMisreads = false, hideMisreads = false) {
     if (!showGenes || !geneIconAtlas) return [];
@@ -166,7 +167,9 @@ export function createGeneLayers(spotTable, showGenes, selectedGenes, geneIconAt
     const table = spotTable;
     const shown = table.geneMask(selectedGenes);
     const inView = [];
-    for (let row = 0; row < table.length; row++) {
+    const near = table.rowsNearBox(ix0, iy0, ix1, iy1);
+    for (let i = 0; i < near.length; i++) {
+        const row = near[i];
         if (!shown[table.geneId[row]]) continue;
         const x = table.x[row];
         const y = table.y[row];
