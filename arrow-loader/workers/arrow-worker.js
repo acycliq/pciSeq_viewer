@@ -274,7 +274,7 @@ function buildScatterChunk(columns, img, geneIdColors) {
   const positions = new Float32Array(n * 3);
   const colors = new Uint8Array(n * 4);
   const geneIds = new Int32Array(n);
-  const planes = new Int32Array(n);
+  const planes = new Float32Array(n); // a float attribute on the GPU, see src/layers/spotPointLayer.js
   const scores = new Float32Array(n);
   const intensities = new Float32Array(n);
   const misreadFlags = new Uint8Array(n);

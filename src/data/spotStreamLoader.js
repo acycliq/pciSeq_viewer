@@ -99,7 +99,7 @@ function allocateScatterCache(totalRows) {
     return {
         positions: new Float32Array(totalRows * 3),
         colors: new Uint8Array(totalRows * 4),
-        planes: new Int32Array(totalRows),
+        planes: new Float32Array(totalRows),
         geneIds: new Int32Array(totalRows),
         scores: new Float32Array(totalRows),
         intensities: new Float32Array(totalRows),

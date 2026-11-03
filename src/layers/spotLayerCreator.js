@@ -1,7 +1,7 @@
 /**
  * Spot Layer Creator
  * Handles high-performance visualization of gene expression spots
- * using PointCloud/Scatterplot layers and Icon layers
+ * using the spot point layer and Icon layers
  */
 
 import {
@@ -13,8 +13,9 @@ import {
     transformFromTileCoordinates
 } from '../../utils/coordinateTransform.js';
 import { ensureArrowInitialized } from './arrowInit.js';
+import { SpotPointLayer } from './spotPointLayer.js';
 
-const { COORDINATE_SYSTEM, IconLayer, DataFilterExtension, ScatterplotLayer } = deck;
+const { COORDINATE_SYSTEM, IconLayer, DataFilterExtension } = deck;
 
 // Track Ctrl/Meta state reliably for spot interactions
 let _modifierDown = false;
@@ -31,33 +32,6 @@ function getArrowSpotBinaryCache() {
         return null;
     }
     return cache;
-}
-
-/**
- * Per-spot radius factor 1/sqrt(1 + dz) from the current plane, cached on
- * window.appState. When the same scatter cache has simply grown (progressive
- * loading), only the newly appended range is computed.
- */
-function getRadiusFactors(planes, length, currentPlane) {
-    const app = window.appState || (window.appState = {});
-    const cacheObj = app._scatterRadiiCache || (app._scatterRadiiCache = {});
-    const cur = (currentPlane || 0) | 0;
-    const sameSource = Boolean(cacheObj.factors) && cacheObj.planesBuffer === planes.buffer && cacheObj.plane === cur;
-    if (sameSource && cacheObj.length === length) return cacheObj.factors;
-
-    if (!sameSource) {
-        cacheObj.factors = new Float32Array(planes.length);
-        cacheObj.planesBuffer = planes.buffer;
-        cacheObj.plane = cur;
-        cacheObj.length = 0;
-    }
-    const factors = cacheObj.factors;
-    for (let i = cacheObj.length; i < length; i++) {
-        const dz = Math.abs((planes[i] | 0) - cur);
-        factors[i] = 1 / Math.sqrt(1 + dz);
-    }
-    cacheObj.length = length;
-    return factors;
 }
 
 /**
@@ -113,7 +87,9 @@ function getMaskedColors(colors, geneIds, misreadFlags, length, selectedGenes, g
 }
 
 /**
- * Create a high-performance ScatterplotLayer for Arrow-loaded spots
+ * The point cloud of every spot below the icon zoom: one GPU point per spot,
+ * coloured by gene, alpha 0 for a hidden gene, sized by distance from the
+ * current plane in the shader, filtered by score and intensity on the GPU.
  */
 export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, greyOutMisreads = false, hideMisreads = false) {
     const cache = getArrowSpotBinaryCache();
@@ -121,21 +97,19 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
 
     const { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, length } = cache;
     const baseScale = (GENE_SIZE_CONFIG?.BASE_SIZE || 12) / 10;
-    
-    const radiusFactors = uniformMarkerSize ? null : getRadiusFactors(planes, length, currentPlane);
     const maskedColors = getMaskedColors(colors, geneIds, misreadFlags, length, selectedGenes, greyOutMisreads, hideMisreads);
 
     const canFilterScore = Boolean(scores) && hasScores;
     const canFilterIntensity = Boolean(intensities) && hasIntensity;
     const use2D = canFilterScore && canFilterIntensity && Boolean(filterPairs);
-    
+
     const data = {
         length,
         attributes: {
             getPosition: { value: positions, size: 3 },
-            getFillColor: { value: maskedColors, size: 4 },
-            getRadius: uniformMarkerSize ? { constant: 1 } : { value: radiusFactors, size: 1 },
-            ...(use2D ? { getFilterValue: { value: filterPairs, size: 2 } } : 
+            getColor: { value: maskedColors, size: 4 },
+            getPlane: { value: planes, size: 1 },
+            ...(use2D ? { getFilterValue: { value: filterPairs, size: 2 } } :
                canFilterScore ? { getFilterValue: { value: scores, size: 1 } } :
                canFilterIntensity ? { getFilterValue: { value: intensities, size: 1 } } : {})
         }
@@ -155,17 +129,16 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         }
     } catch {}
 
-    return new ScatterplotLayer({
+    return new SpotPointLayer({
         id: 'spots-scatter-binary',
         data,
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
         pickable: false,
-        filled: true,
-        stroked: false,
-        radiusUnits: 'pixels',
-        radiusMinPixels: 0.5,
         opacity: layerOpacity,
-        radiusScale: baseScale * (geneSizeScale || 1.0),
+        radiusPixels: baseScale * (geneSizeScale || 1.0),
+        minRadiusPixels: 0.5,
+        currentPlane: currentPlane || 0,
+        sizeByPlaneDistance: !uniformMarkerSize,
         extensions: [new DataFilterExtension({ filterSize: use2D ? 2 : 1 })],
         filterEnabled: use2D || canFilterScore || canFilterIntensity,
         filterRange: use2D
