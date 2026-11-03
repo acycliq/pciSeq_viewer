@@ -6,7 +6,7 @@
 import { state } from './state/stateManager.js';
 import { buildGeneIconAtlas } from './data/dataLoaders.js';
 import { sendLegend } from './legendSync.js';
-import { geneStyle, resetGeneStyles, setDefaultGeneStyle, resetDefaultGeneStyle } from './glyphs/geneStyle.js';
+import { resetGeneStyles, setDefaultGeneStyle, resetDefaultGeneStyle } from './glyphs/geneStyle.js';
 import { clearCellSpotLineOverlayCache } from './layers/cellSpotLineOverlayLayer.js';
 
 const VALID_GLYPHS = new Set([
@@ -71,29 +71,8 @@ export async function applyGeneScheme(entries, replaceMode = false) {
   state.geneIconAtlas = atlas;
   state.geneIconMapping = mapping;
 
-  // Recolor low-zoom PointCloud directly in main thread
-  try {
-    const cache = window.appState?.arrowScatterCache;
-    if (cache && cache.colors && cache.geneIds) {
-      const idToName = window.appState.arrowGeneDict || {};
-
-      for (let i = 0; i < cache.geneIds.length; i++) {
-        const geneId = cache.geneIds[i];
-        const rgb = geneStyle(idToName[geneId]).rgb;
-        cache.colors[4*i] = rgb[0];
-        cache.colors[4*i + 1] = rgb[1];
-        cache.colors[4*i + 2] = rgb[2];
-        cache.colors[4*i + 3] = 255;
-      }
-
-      // Invalidate gene mask cache so alpha buffer rebuilds using new base colours
-      try { if (window.appState._geneMaskCache) window.appState._geneMaskCache.buffer = null; } catch {}
-    }
-  } catch (e) {
-    console.warn('Recolor PointCloud failed; low-zoom may show old colours until reload:', e);
-  }
-
-  // Update UI + layers
+  // Update UI + layers. The low-zoom points read their colours from the gene
+  // table, which the redraw rebuilds from the styles set above.
   try {
     await import('./geneDrawer.js').then(mod => { try { mod.populateGeneDrawer(); } catch {} });
   } catch {}

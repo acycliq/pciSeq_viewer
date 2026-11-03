@@ -841,9 +841,14 @@ async function runInit() {
         hideLoading(state, elements.loadingIndicator);
         removeCurtain();
     }
+    // Every redraw sends all spot buffers to the GPU again, 0.5 GB at 20M spots.
+    // Once a second shows the progress without stretching the load.
+    let lastSpotRedraw = 0;
     const spots = await streamSpotsIntoScatterCache(state.selectedGenes, (loadedRows, totalRows) => {
         if (!progressiveSpots) return;
         showLoadStatus(`Spots ${loadedRows.toLocaleString()} / ${totalRows.toLocaleString()}`);
+        if (performance.now() - lastSpotRedraw < 1000) return;
+        lastSpotRedraw = performance.now();
         updateAllLayers();
     });
     showLoadStatus('Indexing genes...');

@@ -38,20 +38,16 @@ export async function loadImage(url, suppressErrors = false) {
 }
 
 /**
- * Map gene id -> [r, g, b] from the gene styles, keyed the way the Arrow worker
- * expects. Genes without an entry get DEFAULT_GENE_STYLE; this is the one
- * place that warns about them, once per gene, at load.
+ * Genes without an entry in the gene styles are drawn with DEFAULT_GENE_STYLE;
+ * this is the one place that warns about them, once per gene, at load.
  * @param {Object} idToName - gene id -> gene name (from gene_dict.json)
  */
-export function buildGeneIdColors(idToName) {
-    const geneIdColors = {};
-    for (const [gidStr, name] of Object.entries(idToName)) {
+export function warnGenesWithoutStyle(idToName) {
+    for (const name of Object.values(idToName)) {
         if (!hasGeneStyle(name)) {
             console.warn(`Gene '${name}' has no entry in the gene styles, drawn with the default`);
         }
-        geneIdColors[gidStr] = geneStyle(name).rgb;
     }
-    return geneIdColors;
 }
 
 /**

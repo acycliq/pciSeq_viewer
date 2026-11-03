@@ -265,16 +265,16 @@ async function handleLoadBoundariesPlane(cfg) {
 }
 
 // Convert the raw columns of one spots shard into the flat typed arrays the
-// binary ScatterplotLayer consumes. Positions are pre-transformed to tile
-// coordinates here so the main thread never touches per-row data.
-function buildScatterChunk(columns, img, geneIdColors) {
+// point layer consumes (src/layers/spotPointLayer.js). Positions are
+// pre-transformed to tile coordinates here so the main thread never touches
+// per-row data. Colours are not per spot: the layer looks them up by gene id.
+function buildScatterChunk(columns, img) {
   const { x, y, plane_id, gene_id, omp_score, omp_intensity, is_hard_misread, neighbour_prob } = columns;
   const n = x ? x.length : 0;
 
   const positions = new Float32Array(n * 3);
-  const colors = new Uint8Array(n * 4);
-  const geneIds = new Int32Array(n);
-  const planes = new Float32Array(n); // a float attribute on the GPU, see src/layers/spotPointLayer.js
+  const geneIds = new Float32Array(n); // float attributes on the GPU, see src/layers/spotPointLayer.js
+  const planes = new Float32Array(n);
   const scores = new Float32Array(n);
   const intensities = new Float32Array(n);
   const misreadFlags = new Uint8Array(n);
@@ -294,7 +294,7 @@ function buildScatterChunk(columns, img, geneIdColors) {
     positions[3*i + 1] = (y ? y[i] : 0) * (tileSize / height) * yAdj;
     positions[3*i + 2] = 0;
     const gid = gene_id ? gene_id[i] : -1;
-    geneIds[i] = gid | 0;
+    geneIds[i] = gid;
     planes[i] = plane_id ? plane_id[i] : 0;
     const s = omp_score ? omp_score[i] : 0;
     scores[i] = s;
@@ -302,17 +302,12 @@ function buildScatterChunk(columns, img, geneIdColors) {
     const inten = omp_intensity ? omp_intensity[i] : 0;
     intensities[i] = inten;
     if (Number.isFinite(inten)) { intensityFiniteCount++; if (inten < intensityMin) intensityMin = inten; if (inten > intensityMax) intensityMax = inten; }
-    const col = (geneIdColors && geneIdColors[gid] && geneIdColors[gid].length === 3) ? geneIdColors[gid] : [255,255,255];
-    colors[4*i + 0] = col[0] | 0;
-    colors[4*i + 1] = col[1] | 0;
-    colors[4*i + 2] = col[2] | 0;
-    colors[4*i + 3] = 255;
     misreadFlags[i] = is_hard_misread
       ? (is_hard_misread[i] ? 1 : 0)
       : (probIsHardMisread(listRow(neighbour_prob, i)) ? 1 : 0);
   }
 
-  return { n, positions, colors, geneIds, planes, scores, intensities, misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, intensityFiniteCount };
+  return { n, positions, geneIds, planes, scores, intensities, misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, intensityFiniteCount };
 }
 
 function finiteOr(value, fallback) {
@@ -325,7 +320,7 @@ function finiteOr(value, fallback) {
 // also carries the shard's raw columns, so the files are read once and the
 // main thread builds the per-spot objects from them.
 async function handleStreamSpotsScatter(id, type, cfg) {
-  const { manifestUrl, img, geneIdColors, concurrency } = cfg || {};
+  const { manifestUrl, img, concurrency } = cfg || {};
   const manifest = await loadManifest(manifestUrl);
   const shardUrls = resolveShardUrls(manifestUrl, manifest);
   const queue = shardUrls.map((url, index) => index);
@@ -340,12 +335,12 @@ async function handleStreamSpotsScatter(id, type, cfg) {
       shardsDone++;
       if (table.numRows === 0) continue;
       const columns = readSpotColumns(table);
-      const chunk = buildScatterChunk(columns, img, geneIdColors);
+      const chunk = buildScatterChunk(columns, img);
       // Files written before the is_hard_misread column existed: the flag the
       // scatter chunk derived from the probabilities serves as the column.
       if (!columns.is_hard_misread) columns.is_hard_misread = chunk.misreadFlags;
       const transfers = uniqueTransferList([
-        chunk.positions.buffer, chunk.colors.buffer, chunk.geneIds.buffer, chunk.planes.buffer,
+        chunk.positions.buffer, chunk.geneIds.buffer, chunk.planes.buffer,
         chunk.scores.buffer, chunk.intensities.buffer, chunk.misreadFlags.buffer,
         ...columnBuffers(columns)
       ]);

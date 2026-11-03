@@ -175,7 +175,6 @@ function setupGeneControls(elements, state, updateLayersCallback) {
     if (elements.greyOutMisreadsToggle) {
         elements.greyOutMisreadsToggle.addEventListener('change', (e) => {
             state.greyOutMisreads = Boolean(e.target.checked);
-            if (window.appState) window.appState._geneMaskCache = {};
             updateLayersCallback();
         });
     }
@@ -184,7 +183,6 @@ function setupGeneControls(elements, state, updateLayersCallback) {
     if (elements.hideMisreadsToggle) {
         elements.hideMisreadsToggle.addEventListener('change', (e) => {
             state.hideMisreads = Boolean(e.target.checked);
-            if (window.appState) window.appState._geneMaskCache = {};
             updateLayersCallback();
         });
     }

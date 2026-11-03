@@ -69,13 +69,13 @@ export async function loadBoundariesPlane(planeId) {
 }
 
 // Stream the spots shard by shard. onChunk receives one decoded shard at a
-// time ({ n, positions, colors, geneIds, planes, scores, intensities,
+// time ({ n, positions, geneIds, planes, scores, intensities,
 // misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, plane, shardIndex,
 // shardsDone, shardsTotal, columns }), where columns are the shard's raw columns (see
 // readSpotColumns in the worker); the returned promise resolves once every
 // shard has been sent.
-// payload: { manifestUrl, img, geneIdColors, concurrency }
-export function streamSpotsScatter({ manifestUrl, img, geneIdColors, concurrency }, onChunk) {
+// payload: { manifestUrl, img, concurrency }
+export function streamSpotsScatter({ manifestUrl, img, concurrency }, onChunk) {
   if (!manifestUrl) throw new Error('spots manifestUrl is required');
-  return call('streamSpotsScatter', { manifestUrl, img, geneIdColors, concurrency }, onChunk);
+  return call('streamSpotsScatter', { manifestUrl, img, concurrency }, onChunk);
 }

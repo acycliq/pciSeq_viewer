@@ -14,6 +14,7 @@ import {
 } from '../../utils/coordinateTransform.js';
 import { ensureArrowInitialized } from './arrowInit.js';
 import { SpotPointLayer } from './spotPointLayer.js';
+import { geneStyle } from '../glyphs/geneStyle.js';
 
 const { COORDINATE_SYSTEM, IconLayer, DataFilterExtension } = deck;
 
@@ -35,85 +36,62 @@ function getArrowSpotBinaryCache() {
 }
 
 /**
- * RGBA buffer with alpha masked by gene selection and misread handling, cached
- * on window.appState. Rebuilt from scratch when the selection or flags change;
- * extended in place when the scatter cache has grown (progressive loading).
+ * The gene table the point layer looks up: an RGBA entry per gene id, colour
+ * from the gene style, alpha 255 for a selected gene and 0 for a hidden one.
+ * A few hundred entries, rebuilt on every redraw.
  */
-function getMaskedColors(colors, geneIds, misreadFlags, length, selectedGenes, greyOutMisreads, hideMisreads) {
-    const app = window.appState || (window.appState = {});
-    const maskCache = app._geneMaskCache || (app._geneMaskCache = {});
-    const geneDict = app.arrowGeneDict || {};
-    const totalGenes = Object.keys(geneDict).length;
-    const selectedKey = selectedGenes ? Array.from(selectedGenes).sort().join('|') : '';
-    const cacheKey = `${selectedKey}_${greyOutMisreads ? 1 : 0}_${hideMisreads ? 1 : 0}`;
-    const sameSource = Boolean(maskCache.buffer) && maskCache.sourceBuffer === colors.buffer && maskCache.cacheKey === cacheKey;
-    if (sameSource && maskCache.length === length) return maskCache.buffer;
+function buildGeneTable(geneDict, selectedGenes) {
+    const geneCount = Math.max(...Object.keys(geneDict).map(Number)) + 1;
+    const table = new Uint8Array(geneCount * 4);
+    for (const [id, name] of Object.entries(geneDict)) {
+        const [r, g, b] = geneStyle(name).rgb;
+        table.set([r, g, b, selectedGenes.has(name) ? 255 : 0], Number(id) * 4);
+    }
+    return table;
+}
 
-    if (!sameSource) {
-        maskCache.buffer = new Uint8Array(colors.length);
-        maskCache.sourceBuffer = colors.buffer;
-        maskCache.cacheKey = cacheKey;
-        maskCache.length = 0;
-    }
-    const masked = maskCache.buffer;
-    const noneSelected = Boolean(selectedGenes) && selectedGenes.size === 0;
-    const allSelected = !selectedGenes || selectedGenes.size >= totalGenes;
-    for (let i = maskCache.length; i < length; i++) {
-        const base = 4 * i;
-        masked[base + 0] = colors[base + 0];
-        masked[base + 1] = colors[base + 1];
-        masked[base + 2] = colors[base + 2];
-        const isMisread = misreadFlags && misreadFlags[i];
-        if (isMisread && hideMisreads) {
-            masked[base + 3] = 0;
-            continue;
-        }
-        if (isMisread && greyOutMisreads) {
-            masked[base + 0] = 160;
-            masked[base + 1] = 160;
-            masked[base + 2] = 160;
-        }
-        if (noneSelected) {
-            masked[base + 3] = 0;
-        } else if (allSelected) {
-            masked[base + 3] = 255;
-        } else {
-            const name = geneDict[geneIds[i]];
-            masked[base + 3] = (name && selectedGenes.has(name)) ? 255 : 0;
-        }
-    }
-    maskCache.length = length;
-    return masked;
+// deck.gl uploads an attribute to the GPU whenever it is handed a new descriptor
+// object; it never compares the array inside. So each array keeps one descriptor
+// until the cache has grown, and after the load nothing is uploaded again.
+const descriptors = new WeakMap();
+function attributeOf(array, size, length) {
+    const kept = descriptors.get(array);
+    if (kept && kept.length === length) return kept.descriptor;
+    const descriptor = { value: array, size };
+    descriptors.set(array, { length, descriptor });
+    return descriptor;
 }
 
 /**
  * The point cloud of every spot below the icon zoom: one GPU point per spot,
- * coloured by gene, alpha 0 for a hidden gene, sized by distance from the
- * current plane in the shader, filtered by score and intensity on the GPU.
+ * coloured and shown or hidden through the gene table, sized by distance from
+ * the current plane in the shader, filtered by score and intensity on the GPU.
  */
-export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes = null, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, greyOutMisreads = false, hideMisreads = false) {
+export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, greyOutMisreads = false, hideMisreads = false) {
     const cache = getArrowSpotBinaryCache();
     if (!cache || cache.length === 0) return null;
 
-    const { positions, colors, planes, geneIds, scores, intensities, filterPairs, misreadFlags, length } = cache;
+    const { positions, planes, geneIds, scores, intensities, filterPairs, misreadFlags, length } = cache;
     const baseScale = (GENE_SIZE_CONFIG?.BASE_SIZE || 12) / 10;
-    const maskedColors = getMaskedColors(colors, geneIds, misreadFlags, length, selectedGenes, greyOutMisreads, hideMisreads);
 
     const canFilterScore = Boolean(scores) && hasScores;
     const canFilterIntensity = Boolean(intensities) && hasIntensity;
     const use2D = canFilterScore && canFilterIntensity && Boolean(filterPairs);
 
-    const data = {
-        length,
-        attributes: {
-            getPosition: { value: positions, size: 3 },
-            getColor: { value: maskedColors, size: 4 },
-            getPlane: { value: planes, size: 1 },
-            ...(use2D ? { getFilterValue: { value: filterPairs, size: 2 } } :
-               canFilterScore ? { getFilterValue: { value: scores, size: 1 } } :
-               canFilterIntensity ? { getFilterValue: { value: intensities, size: 1 } } : {})
-        }
+    const attributes = {
+        getPosition: attributeOf(positions, 3, length),
+        getGeneId: attributeOf(geneIds, 1, length),
+        getPlane: attributeOf(planes, 1, length),
+        getMisread: attributeOf(misreadFlags, 1, length)
     };
+    if (use2D) {
+        attributes.getFilterValue = attributeOf(filterPairs, 2, length);
+    } else if (canFilterScore) {
+        attributes.getFilterValue = attributeOf(scores, 1, length);
+    } else if (canFilterIntensity) {
+        attributes.getFilterValue = attributeOf(intensities, 1, length);
+    }
+    const data = { length, attributes };
 
     let intensityUpper = 1.0;
     let scoreUpper = 1.0;
@@ -135,6 +113,9 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
         pickable: false,
         opacity: layerOpacity,
+        geneTable: buildGeneTable(window.appState.arrowGeneDict, selectedGenes),
+        greyOutMisreads,
+        hideMisreads,
         radiusPixels: baseScale * (geneSizeScale || 1.0),
         minRadiusPixels: 0.5,
         currentPlane: currentPlane || 0,

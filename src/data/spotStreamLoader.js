@@ -28,7 +28,7 @@
 import { ARROW_MANIFESTS } from '../../config/constants.js';
 import { getManifest } from '../../arrow-loader/lib/arrow-manifests.js';
 import { initArrow, streamSpotsScatter } from '../../arrow-loader/lib/arrow-loaders.js';
-import { buildGeneIdColors, applyScoreRangeToUI, applyIntensityRangeToUI } from './dataLoaders.js';
+import { warnGenesWithoutStyle, applyScoreRangeToUI, applyIntensityRangeToUI } from './dataLoaders.js';
 
 // File reads in flight at once. Local disk in Electron, so a small pool is enough.
 const SHARD_CONCURRENCY = 4;
@@ -60,7 +60,7 @@ export async function streamSpotsIntoScatterCache(selectedGenes, onShard) {
 
     const cfg = window.config();
     const img = { width: cfg.imageWidth, height: cfg.imageHeight, tileSize: 256 };
-    const geneIdColors = buildGeneIdColors(geneDict);
+    warnGenesWithoutStyle(geneDict);
 
     const stats = { scoreMin: Infinity, scoreMax: -Infinity, intensityMin: Infinity, intensityMax: -Infinity, intensityFiniteCount: 0 };
     const showStats = window?.advancedConfig?.().performance?.showPerformanceStats;
@@ -68,7 +68,7 @@ export async function streamSpotsIntoScatterCache(selectedGenes, onShard) {
     const shards = [];
 
     await streamSpotsScatter(
-        { manifestUrl, img, geneIdColors, concurrency: SHARD_CONCURRENCY },
+        { manifestUrl, img, concurrency: SHARD_CONCURRENCY },
         (chunk) => {
             appendChunk(cache, chunk);
             accumulateStats(stats, chunk);
@@ -98,9 +98,8 @@ async function fetchGeneDict() {
 function allocateScatterCache(totalRows) {
     return {
         positions: new Float32Array(totalRows * 3),
-        colors: new Uint8Array(totalRows * 4),
         planes: new Float32Array(totalRows),
-        geneIds: new Int32Array(totalRows),
+        geneIds: new Float32Array(totalRows), // the GPU reads the gene id as a float attribute
         scores: new Float32Array(totalRows),
         intensities: new Float32Array(totalRows),
         misreadFlags: new Uint8Array(totalRows),
@@ -113,7 +112,6 @@ function allocateScatterCache(totalRows) {
 function appendChunk(cache, chunk) {
     const offset = cache.length;
     cache.positions.set(chunk.positions, offset * 3);
-    cache.colors.set(chunk.colors, offset * 4);
     cache.planes.set(chunk.planes, offset);
     cache.geneIds.set(chunk.geneIds, offset);
     cache.scores.set(chunk.scores, offset);
