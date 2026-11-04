@@ -1,26 +1,24 @@
 /**
  * Spot Stream Loader
  *
- * Progressive loading of the binary spot scatter cache. Instead of waiting for
- * every shard to decode before the first spot appears, this module preallocates
- * the full cache from the manifest row count, then appends each shard as the
- * worker decodes it and asks the caller to redraw. deck.gl only draws
- * `cache.length` points, so bumping `length` after each append is all the
- * rendering side needs.
+ * Progressive loading of the spots. The GPU buffers of the point layer are
+ * allocated from the manifest row count (src/data/spotBuffers.js), then each
+ * shard is appended as the worker decodes it and the caller is asked to
+ * redraw. deck.gl draws `cache.length` points, so the planes appear one by one
+ * while the files are still being read.
  *
  * Shards are packed in arrival order. With parallel fetches that can differ
- * from manifest order; nothing indexes into the cache by original row, so
+ * from manifest order; nothing indexes into the buffers by original row, so
  * this is safe.
  *
  * The worker also hands back the raw columns of every shard. They are
- * returned to the caller in manifest order for the per-gene spot objects,
- * so the files are read once and the objects come out in the same order
- * on every run.
+ * returned to the caller in manifest order for the spot table, so the files
+ * are read once and the table comes out in the same order on every run.
  *
  * Wiring:
- *   - reads   ARROW_MANIFESTS (config/constants.js), window.config()
+ *   - reads   ARROW_MANIFESTS (config/constants.js), window.config(), state.gl
  *   - writes  window.appState.arrowScatterCache / arrowGeneDict / hasIntensity
- *   - fills   state.selectedGenes so the scatter layer shows every gene
+ *   - fills   state.selectedGenes so the point layer shows every gene
  *   - worker  arrow-loader/lib/arrow-loaders.js -> streamSpotsScatter
  *   - called from src/app.js init; the return value goes to initializeGeneData
  */
@@ -28,13 +26,14 @@
 import { ARROW_MANIFESTS } from '../../config/constants.js';
 import { getManifest } from '../../arrow-loader/lib/arrow-manifests.js';
 import { initArrow, streamSpotsScatter } from '../../arrow-loader/lib/arrow-loaders.js';
+import { allocateSpotBuffers, appendShard } from './spotBuffers.js';
 import { warnGenesWithoutStyle, applyScoreRangeToUI, applyIntensityRangeToUI } from './dataLoaders.js';
 
 // File reads in flight at once. Local disk in Electron, so a small pool is enough.
 const SHARD_CONCURRENCY = 4;
 
 /**
- * Stream all spot shards into window.appState.arrowScatterCache.
+ * Stream all spot shards into the GPU buffers at window.appState.arrowScatterCache.
  * @param {Set<string>} selectedGenes - Seeded with every gene name so spots are visible
  * @param {Function} onShard - Called as onShard(loadedRows, totalRows) after each shard is appended
  * @returns {Promise<{ shards: Object[], geneDict: Object }>} raw columns per shard and gene id -> name
@@ -54,7 +53,7 @@ export async function streamSpotsIntoScatterCache(selectedGenes, onShard) {
 
     const manifestUrl = new URL(ARROW_MANIFESTS.spotsManifest, window.location.href).href;
     const manifest = await getManifest(manifestUrl);
-    const cache = allocateScatterCache(manifest.total_rows);
+    const cache = allocateSpotBuffers(window.appState.gl, manifest.total_rows);
     window.appState.arrowScatterCache = cache;
     window.appState.hasScores = true;
 
@@ -70,7 +69,7 @@ export async function streamSpotsIntoScatterCache(selectedGenes, onShard) {
     await streamSpotsScatter(
         { manifestUrl, img, concurrency: SHARD_CONCURRENCY },
         (chunk) => {
-            appendChunk(cache, chunk);
+            appendShard(cache, chunk);
             accumulateStats(stats, chunk);
             shards[chunk.shardIndex] = chunk.columns;
             if (showStats) {
@@ -80,7 +79,7 @@ export async function streamSpotsIntoScatterCache(selectedGenes, onShard) {
         }
     );
 
-    finalizeFilterRanges(cache, stats);
+    applyFilterRanges(stats);
     if (showStats) {
         console.log(`Spot stream complete: points=${cache.length} in ${(performance.now() - t0).toFixed(0)}ms`);
     }
@@ -95,31 +94,6 @@ async function fetchGeneDict() {
     return res.json();
 }
 
-function allocateScatterCache(totalRows) {
-    return {
-        positions: new Float32Array(totalRows * 3),
-        planes: new Float32Array(totalRows),
-        geneIds: new Float32Array(totalRows), // the GPU reads the gene id as a float attribute
-        scores: new Float32Array(totalRows),
-        intensities: new Float32Array(totalRows),
-        misreadFlags: new Uint8Array(totalRows),
-        // Built at the end, only when the dataset carries intensities
-        filterPairs: null,
-        length: 0
-    };
-}
-
-function appendChunk(cache, chunk) {
-    const offset = cache.length;
-    cache.positions.set(chunk.positions, offset * 3);
-    cache.planes.set(chunk.planes, offset);
-    cache.geneIds.set(chunk.geneIds, offset);
-    cache.scores.set(chunk.scores, offset);
-    cache.intensities.set(chunk.intensities, offset);
-    cache.misreadFlags.set(chunk.misreadFlags, offset);
-    cache.length = offset + chunk.n;
-}
-
 function accumulateStats(stats, chunk) {
     stats.scoreMin = Math.min(stats.scoreMin, chunk.scoreMin);
     stats.scoreMax = Math.max(stats.scoreMax, chunk.scoreMax);
@@ -129,18 +103,10 @@ function accumulateStats(stats, chunk) {
 }
 
 // Slider bounds need the dataset-wide min/max, so they are only set once the
-// stream has drained. The 2D score/intensity filter pairs are built here too.
-function finalizeFilterRanges(cache, stats) {
+// stream has drained.
+function applyFilterRanges(stats) {
     applyScoreRangeToUI(stats.scoreMin, stats.scoreMax);
     const hasIntensity = stats.intensityFiniteCount > 0;
     window.appState.hasIntensity = hasIntensity;
-    if (!hasIntensity) return;
-    applyIntensityRangeToUI(stats.intensityMin, stats.intensityMax);
-    const n = cache.length;
-    const filterPairs = new Float32Array(n * 2);
-    for (let i = 0; i < n; i++) {
-        filterPairs[2 * i] = cache.scores[i];
-        filterPairs[2 * i + 1] = cache.intensities[i];
-    }
-    cache.filterPairs = filterPairs;
+    if (hasIntensity) applyIntensityRangeToUI(stats.intensityMin, stats.intensityMax);
 }

@@ -21,9 +21,10 @@
  *
  * Wiring:
  *   - built by createArrowPointCloudLayer in src/layers/spotLayerCreator.js
- *     from the scatter cache: position, gene id, plane and misread flag per
- *     spot, plus the gene table, and the score/intensity filter through
- *     deck.gl's DataFilterExtension, which works on any layer
+ *     from the spot buffers on the GPU (src/data/spotBuffers.js): position,
+ *     gene id, plane and misread flag per spot, plus the gene table, and the
+ *     score/intensity filter through deck.gl's DataFilterExtension, which
+ *     works on any layer
  *   - globals: deck (Layer, project32) and luma (Model, Geometry, Texture2D)
  *     from lib/vendor/deck.gl-8.8.27.min.js
  */

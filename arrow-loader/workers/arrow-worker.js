@@ -67,8 +67,7 @@ function columnBuffers(columns) {
 }
 
 // Hard-misread fallback for Arrow files without an is_hard_misread column:
-// background (the last prob column) wins the argmax. Mirrors the JS-side
-// isHardMisread in src/misreads/misreadUtils.js.
+// background (the last prob column) wins the argmax.
 function probIsHardMisread(p) {
   if (!p || p.length === 0) return false;
   const last = p.length - 1;
@@ -275,8 +274,7 @@ function buildScatterChunk(columns, img) {
   const positions = new Float32Array(n * 3);
   const geneIds = new Float32Array(n); // float attributes on the GPU, see src/layers/spotPointLayer.js
   const planes = new Float32Array(n);
-  const scores = new Float32Array(n);
-  const intensities = new Float32Array(n);
+  const filterPairs = new Float32Array(n * 2); // score and intensity side by side, the filter reads both
   const misreadFlags = new Uint8Array(n);
 
   const width = img && img.width || 256;
@@ -297,17 +295,17 @@ function buildScatterChunk(columns, img) {
     geneIds[i] = gid;
     planes[i] = plane_id ? plane_id[i] : 0;
     const s = omp_score ? omp_score[i] : 0;
-    scores[i] = s;
     if (Number.isFinite(s)) { if (s < scoreMin) scoreMin = s; if (s > scoreMax) scoreMax = s; }
     const inten = omp_intensity ? omp_intensity[i] : 0;
-    intensities[i] = inten;
+    filterPairs[2*i] = s;
+    filterPairs[2*i + 1] = inten;
     if (Number.isFinite(inten)) { intensityFiniteCount++; if (inten < intensityMin) intensityMin = inten; if (inten > intensityMax) intensityMax = inten; }
     misreadFlags[i] = is_hard_misread
       ? (is_hard_misread[i] ? 1 : 0)
       : (probIsHardMisread(listRow(neighbour_prob, i)) ? 1 : 0);
   }
 
-  return { n, positions, geneIds, planes, scores, intensities, misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, intensityFiniteCount };
+  return { n, positions, geneIds, planes, filterPairs, misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, intensityFiniteCount };
 }
 
 function finiteOr(value, fallback) {
@@ -341,7 +339,7 @@ async function handleStreamSpotsScatter(id, type, cfg) {
       if (!columns.is_hard_misread) columns.is_hard_misread = chunk.misreadFlags;
       const transfers = uniqueTransferList([
         chunk.positions.buffer, chunk.geneIds.buffer, chunk.planes.buffer,
-        chunk.scores.buffer, chunk.intensities.buffer, chunk.misreadFlags.buffer,
+        chunk.filterPairs.buffer, chunk.misreadFlags.buffer,
         ...columnBuffers(columns)
       ]);
       self.postMessage({ id, ok: true, type, progress: true, shardIndex, shardsDone, shardsTotal, plane: manifest.shards[shardIndex].plane, ...chunk, columns }, transfers);

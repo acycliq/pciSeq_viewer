@@ -841,11 +841,8 @@ async function runInit() {
         hideLoading(state, elements.loadingIndicator);
         removeCurtain();
     }
-    // A redraw per shard shows the planes arrive one by one. Each redraw sends
-    // all spot buffers to the GPU again, 0.5 GB at 20M spots, about 1.5 s over
-    // such a load; nothing at 3M. It would be free if the loader appended each
-    // shard into GPU buffers it owns (deck.gl takes luma.gl Buffers as
-    // attributes); not done yet.
+    // A redraw per shard shows the planes arrive one by one. The shard is
+    // already on the GPU (src/data/spotBuffers.js), so the redraw sends nothing.
     const spots = await streamSpotsIntoScatterCache(state.selectedGenes, (loadedRows, totalRows) => {
         if (!progressiveSpots) return;
         showLoadStatus(`Spots ${loadedRows.toLocaleString()} / ${totalRows.toLocaleString()}`);

@@ -5,6 +5,7 @@ import { DEFAULT_STATE } from '../../config/constants.js';
 const state = {
     currentPlane: DEFAULT_STATE.currentPlane,
     deckglInstance: null,
+    gl: null, // deck.gl's WebGL context, for the spot buffers (src/data/spotBuffers.js)
     isLoading: false,
 
     // Background channel currently selected (e.g. 'dapi', 'gcamp').

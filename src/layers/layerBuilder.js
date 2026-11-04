@@ -122,10 +122,8 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
             state.selectedGenes,
             1.0,
             state.scoreThreshold,
-            state.hasScores,
             state.uniformMarkerSize,
             state.intensityThreshold,
-            state.hasIntensity,
             state.greyOutMisreads,
             state.hideMisreads
         );
@@ -148,10 +146,8 @@ export function buildSpotLayers(state, elements, getCurrentViewportTileBounds) {
                 state.selectedGenes,
                 1.0,
                 state.scoreThreshold,
-                state.hasScores,
                 state.uniformMarkerSize,
                 state.intensityThreshold,
-                state.hasIntensity,
                 state.greyOutMisreads,
                 state.hideMisreads
             );

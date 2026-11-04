@@ -25,14 +25,10 @@ document.addEventListener('keyup', (e) => { if (!e.ctrlKey && !e.metaKey) _modif
 window.addEventListener('blur', () => { _modifierDown = false; });
 
 /**
- * Get the binary scatter cache from window.appState
+ * The spot buffers on the GPU (src/data/spotBuffers.js), null before the stream starts.
  */
 function getArrowSpotBinaryCache() {
-    const cache = (typeof window !== 'undefined') ? window.appState?.arrowScatterCache : null;
-    if (!cache || !cache.positions) {
-        return null;
-    }
-    return cache;
+    return window.appState?.arrowScatterCache || null;
 }
 
 /**
@@ -50,48 +46,30 @@ function buildGeneTable(geneDict, selectedGenes) {
     return table;
 }
 
-// deck.gl uploads an attribute to the GPU whenever it is handed a new descriptor
-// object; it never compares the array inside. So each array keeps one descriptor
-// until the cache has grown, and after the load nothing is uploaded again.
-const descriptors = new WeakMap();
-function attributeOf(array, size, length) {
-    const kept = descriptors.get(array);
-    if (kept && kept.length === length) return kept.descriptor;
-    const descriptor = { value: array, size };
-    descriptors.set(array, { length, descriptor });
-    return descriptor;
-}
-
 /**
  * The point cloud of every spot below the icon zoom: one GPU point per spot,
  * coloured and shown or hidden through the gene table, sized by distance from
  * the current plane in the shader, filtered by score and intensity on the GPU.
+ * The spot columns are already GPU buffers; deck.gl takes them by attribute
+ * name and copies nothing.
  */
-export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes, layerOpacity = 1.0, scoreThreshold = 0, hasScores = false, uniformMarkerSize = false, intensityThreshold = 0, hasIntensity = false, greyOutMisreads = false, hideMisreads = false) {
+export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, selectedGenes, layerOpacity = 1.0, scoreThreshold = 0, uniformMarkerSize = false, intensityThreshold = 0, greyOutMisreads = false, hideMisreads = false) {
     const cache = getArrowSpotBinaryCache();
     if (!cache || cache.length === 0) return null;
 
-    const { positions, planes, geneIds, scores, intensities, filterPairs, misreadFlags, length } = cache;
+    const { positions, planes, geneIds, filterPairs, misreadFlags, length } = cache;
     const baseScale = (GENE_SIZE_CONFIG?.BASE_SIZE || 12) / 10;
 
-    const canFilterScore = Boolean(scores) && hasScores;
-    const canFilterIntensity = Boolean(intensities) && hasIntensity;
-    const use2D = canFilterScore && canFilterIntensity && Boolean(filterPairs);
-
-    const attributes = {
-        getPosition: attributeOf(positions, 3, length),
-        getGeneId: attributeOf(geneIds, 1, length),
-        getPlane: attributeOf(planes, 1, length),
-        getMisread: attributeOf(misreadFlags, 1, length)
+    const data = {
+        length,
+        attributes: {
+            instancePositions: positions,
+            instanceGeneIds: geneIds,
+            instancePlanes: planes,
+            instanceMisreads: misreadFlags,
+            filterValues: filterPairs
+        }
     };
-    if (use2D) {
-        attributes.getFilterValue = attributeOf(filterPairs, 2, length);
-    } else if (canFilterScore) {
-        attributes.getFilterValue = attributeOf(scores, 1, length);
-    } else if (canFilterIntensity) {
-        attributes.getFilterValue = attributeOf(intensities, 1, length);
-    }
-    const data = { length, attributes };
 
     let intensityUpper = 1.0;
     let scoreUpper = 1.0;
@@ -120,12 +98,18 @@ export function createArrowPointCloudLayer(currentPlane, geneSizeScale = 1.0, se
         minRadiusPixels: 0.5,
         currentPlane: currentPlane || 0,
         sizeByPlaneDistance: !uniformMarkerSize,
-        extensions: [new DataFilterExtension({ filterSize: use2D ? 2 : 1 })],
-        filterEnabled: use2D || canFilterScore || canFilterIntensity,
-        filterRange: use2D
-            ? [ [Number(scoreThreshold) || 0, scoreUpper], [Number(intensityThreshold) || 0, intensityUpper] ]
-            : canFilterScore ? [Number(scoreThreshold) || 0, scoreUpper] :
-              canFilterIntensity ? [Number(intensityThreshold) || 0, intensityUpper] : [0, 1.0]
+        // The filter always reads the score and intensity pair. deck.gl sizes the
+        // filterValues attribute when the layer is created and, for an external
+        // buffer, strides by that size, so a layer that started with one value
+        // would read the pairs wrongly once the stream had drained. A run without
+        // intensities carries 0 there, inside the default range. Until the ranges
+        // are set the upper bounds are 1; spots with an intensity above 1 show up
+        // once the stream has drained.
+        extensions: [new DataFilterExtension({ filterSize: 2 })],
+        filterRange: [
+            [Number(scoreThreshold) || 0, scoreUpper],
+            [Number(intensityThreshold) || 0, intensityUpper]
+        ]
     });
 }
 

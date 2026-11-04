@@ -69,7 +69,7 @@ export async function loadBoundariesPlane(planeId) {
 }
 
 // Stream the spots shard by shard. onChunk receives one decoded shard at a
-// time ({ n, positions, geneIds, planes, scores, intensities,
+// time ({ n, positions, geneIds, planes, filterPairs,
 // misreadFlags, scoreMin, scoreMax, intensityMin, intensityMax, plane, shardIndex,
 // shardsDone, shardsTotal, columns }), where columns are the shard's raw columns (see
 // readSpotColumns in the worker); the returned promise resolves once every

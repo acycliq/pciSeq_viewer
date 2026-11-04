@@ -52,6 +52,7 @@ export function initializeDeckGL(onViewStateChange, onHover) {
         },
         onViewStateChange: onViewStateChange,
         onHover: onHover,
+        onWebGLInitialized: (gl) => { state.gl = gl; },
         onClick: (info) => {
             // Click on empty map (no cell picked) unfreezes the cell info panel,
             // returning it to live hover updates. Skipped while the rectangular
