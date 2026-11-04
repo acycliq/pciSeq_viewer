@@ -2157,6 +2157,7 @@ body {
     position: absolute;
     top: 18px;
     right: 18px;
+    z-index: 1001; /* above the channel switcher, see .channel-switcher */
     width: 30px;
     height: 30px;
     border-radius: 40px;
@@ -2675,10 +2676,13 @@ body {
     letter-spacing: 0.2px;
 }
 
-/* Background channel switcher (top-right basemap selector: Dapi / Gcamp) */
+/* Background channel switcher (basemap selector: Dapi / Gcamp). It sits in the
+   top-right column directly beneath the chat and help buttons, which keep the
+   corner: those two are present in every run, the switcher only with two or
+   more channels. 60px = the buttons' 18px top + 30px height + a 12px gap. */
 .channel-switcher {
     position: fixed;
-    top: 15px;
+    top: 60px;
     right: 15px;
     z-index: 1000;
     display: flex;
@@ -2735,6 +2739,7 @@ body {
     position: absolute;
     top: 18px;
     right: 56px;
+    z-index: 1001; /* above the channel switcher, see .channel-switcher */
     width: 30px;
     height: 30px;
     border-radius: 40px;
