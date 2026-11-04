@@ -6,3 +6,5 @@
 /dist/
 # its own repo, like pciSeq_experiments inside pciSeq_3d
 /dev_notes
+# screenshots of the app checks
+/tests/app/out/
