@@ -49,8 +49,12 @@ export const INITIAL_VIEW_STATE = {
             const cfg = window.config ? window.config() : null;
             const w = cfg?.imageWidth || 6411;
             const h = cfg?.imageHeight || 4412;
+            // The map works in tile units, 256 across the longer side of the image
+            // (see toImagePixels in src/app.js), so the centre is half the image
+            // size scaled by that side. Landscape and portrait alike.
+            const longer = Math.max(w, h);
             _initialViewState = {
-                target: [256 * 0.5, 256 * 0.5 * h / w, 0]
+                target: [256 * 0.5 * w / longer, 256 * 0.5 * h / longer, 0]
             };
         }
         return _initialViewState.target;
