@@ -9,7 +9,6 @@
  */
 
 import {
-    toggleAllGenes,
     updateGeneSize,
     toggleLayerControls
 } from '../ui/uiHelpers.js';

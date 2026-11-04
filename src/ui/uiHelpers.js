@@ -622,28 +622,6 @@ export function toggleAllPolygonAliases(polygonAliasVisibility, controlsContaine
 }
 
 /**
- * Toggle all gene visibility
- * @param {Set} selectedGenes - Set of visible genes
- * @param {Map} geneDataMap - Map of all available genes
- * @param {Function} updateLayersCallback - Callback to update layers
- */
-export function toggleAllGenes(selectedGenes, geneDataMap, updateLayersCallback) {
-    const allVisible = selectedGenes.size === geneDataMap.size;
-
-    if (allVisible) {
-        // Hide all genes
-        selectedGenes.clear();
-    } else {
-        // Show all genes
-        geneDataMap.forEach((_, gene) => {
-            selectedGenes.add(gene);
-        });
-    }
-
-    updateLayersCallback();
-}
-
-/**
  * Update gene size scale and UI display
  * @param {number} newScale - New size scale value
  * @param {Object} state - Application state object
