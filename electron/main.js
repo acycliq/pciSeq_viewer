@@ -819,6 +819,10 @@ app.whenReady().then(async () => {
   createWindow();
   createMenu();
 
+  // --maximized: open the window maximised, so pictures a script exports come
+  // out the same size as when the window is maximised by hand.
+  if (args.includes('--maximized')) mainWindow.maximize();
+
   // --data=<folder> (or --data <folder>): open that run straight away, the same
   // as clicking Open Data Folder on the welcome screen, so a script or an agent
   // can start the viewer on a run with nobody at the keyboard. The window has
