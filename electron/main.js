@@ -861,7 +861,7 @@ app.on('window-all-closed', () => {
   }
 });
 
-// stop the pciSeq server with the viewer, so no python process is left behind
+// stop the MCP server with the viewer, so the port is freed
 app.on('will-quit', () => { mcpServer.stop(); });
 
 // Log startup info
