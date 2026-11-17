@@ -8,3 +8,5 @@
 /dev_notes
 # screenshots of the app checks
 /tests/app/out/
+# the agent eval: answers and scorecards, one folder per model
+/tests/eval/out/

@@ -18,6 +18,7 @@
 const { safeStorage } = require('electron');
 const Anthropic = require('@anthropic-ai/sdk');
 const tools = require('./tools');
+const answerCheck = require('./answerCheck');
 
 const DEFAULT_MODEL = 'claude-sonnet-5';
 
@@ -96,9 +97,10 @@ const SHARED_SYSTEM = [
   'or mean_in_compared, to the user; say in words what the number is. Never name',
   'a tool to the user either, even in an offer: say what you would check, not',
   'which tool would do it. Never do',
-  'arithmetic in your head, not even adding a few up: the totals of',
-  'the two gene lists are sum_favouring_assigned and sum_favouring_compared, and',
-  'for any other number the tools do not give, use calculate. Never make up a new',
+  'arithmetic in your head, not even a sum, a ratio, a percentage or an order of',
+  'magnitude: the totals of the two gene lists are given, and any other number',
+  'the tools do not give goes through calculate. Write a very small or very large',
+  'number as the tools give it, 7.4e-20, never with superscripts. Never make up a new',
   'quantity the tools do not define, such as a ratio of two sums: one sum of',
   'log-likelihood differences divided by another is not odds and means nothing. A',
   'log-likelihood difference is not odds: the odds are e to that difference, and',
@@ -747,20 +749,9 @@ async function reply(client, params, onText) {
 // messages: the conversation so far, in the API's shape, ending with the user's
 // new message. Returns the final assistant text and the messages to carry forward
 // (assistant turns and tool results included, so the next turn has the context).
-async function runTurn(messages) {
-  const p = activeProvider();
-  const client = makeClient(p);
-  const modelName = model(p);
-  const send = deps.send || (() => {});
-
-  const history = withoutThinking(messages);
-  // The model is told which one it is. Left to itself it goes by the conversation,
-  // so after a switch (GLM to Claude, say) it reads its own earlier 'I am GLM' and
-  // repeats it.
-  const system = SYSTEM + `\n\nYou are running as the model ${modelName}, through ${PROVIDERS[p].label}. ` +
-    'If asked which model you are, say that and nothing more. The user can change the model in the ' +
-    'middle of a conversation, so an earlier answer naming another model was true when it was given: ' +
-    'never call it wrong, never apologise for it, and do not bring the switching up unless asked.';
+// The rounds with the model until it answers in text: send, run what it asks
+// for, send the results, again. Reports every step to the panel.
+async function converse(client, modelName, system, history, send) {
   let finalText = '';
   let toolsRan = 0;
   let last = null;     // the last reply, to say why an empty one stopped
@@ -814,6 +805,24 @@ async function runTurn(messages) {
     }
     history.push({ role: 'user', content: results });
   }
+  return { finalText, toolsRan, last };
+}
+
+async function runTurn(messages) {
+  const p = activeProvider();
+  const client = makeClient(p);
+  const modelName = model(p);
+  const send = deps.send || (() => {});
+
+  const history = withoutThinking(messages);
+  // The model is told which one it is. Left to itself it goes by the conversation,
+  // so after a switch (GLM to Claude, say) it reads its own earlier 'I am GLM' and
+  // repeats it.
+  const system = SYSTEM + `\n\nYou are running as the model ${modelName}, through ${PROVIDERS[p].label}. ` +
+    'If asked which model you are, say that and nothing more. The user can change the model in the ' +
+    'middle of a conversation, so an earlier answer naming another model was true when it was given: ' +
+    'never call it wrong, never apologise for it, and do not bring the switching up unless asked.';
+  let { finalText, toolsRan, last } = await converse(client, modelName, system, history, send);
 
   // some models now and then send back nothing at all; say so rather than stay
   // silent. With no tools run nothing happened, so the turn is dropped (the error
@@ -831,6 +840,26 @@ async function runTurn(messages) {
     // an empty assistant turn can make the next call fail, so it carries the note
     const turn = history[history.length - 1];
     if (turn.role === 'assistant' && !turn.content.length) turn.content = [{ type: 'text', text: finalText }];
+  }
+
+  // The numbers in the answer that no tool returned. The persona forbids
+  // arithmetic in the model's head, and this is what enforces it: the model is
+  // asked once to put them through calculate or leave them out, and whatever
+  // still cannot be traced is marked for the reader.
+  let unverified = answerCheck.untraced(finalText, history);
+  if (unverified.length) {
+    send({ type: 'unverified', numbers: unverified, retry: true });
+    history.push({ role: 'user', content: answerCheck.retryNote(unverified) });
+    const again = await converse(client, modelName, system, history, send);
+    if (again.finalText) {
+      finalText = again.finalText;
+      unverified = answerCheck.untraced(finalText, history);
+    } else {
+      // nothing came back: the first answer goes up again, note and all, since
+      // the panel took it down when the retry started
+      send({ type: 'text', text: finalText });
+    }
+    if (unverified.length) send({ type: 'unverified', numbers: unverified });
   }
 
   send({ type: 'done' });

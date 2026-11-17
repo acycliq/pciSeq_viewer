@@ -113,10 +113,12 @@ function addPiece(piece) {
 }
 
 // the complete text: into the line the pieces built, or a new line if none came
+let lastAnswer = null;   // the answer on screen, in case it has to be taken back
+
 function finishText(text) {
   clearThinking();
-  if (writing) writing.div.innerHTML = renderText(text);
-  else addLine('chat-a', renderText(text));
+  if (writing) { writing.div.innerHTML = renderText(text); lastAnswer = writing.div; }
+  else lastAnswer = addLine('chat-a', renderText(text));
   writing = null;
   scrollToEnd();
 }
@@ -195,6 +197,19 @@ function onEvent(ev) {
   } else if (ev.type === 'text') {
     finishText(ev.text);
     if (busy) setThinking('thinking...');
+  } else if (ev.type === 'unverified') {
+    // numbers in the answer that no tool returned (electron/answerCheck.js). With
+    // retry the model is being asked to redo the answer, so the one on screen is
+    // taken back; without, the second answer still has them, and the reader is told
+    const list = ev.numbers.map(esc).join(', ');
+    if (ev.retry && lastAnswer) {
+      lastAnswer.className = 'chat-note';
+      lastAnswer.innerHTML = 'The answer had numbers from no tool output (' + list + '); asked for it again.';
+      lastAnswer = null;
+      setThinking('thinking...');
+    } else {
+      addLine('chat-note', 'Not from any tool output, check before trusting: ' + list);
+    }
   }
 }
 

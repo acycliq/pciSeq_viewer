@@ -502,11 +502,19 @@ function gamma(label, gene) {
     out.gamma = c.gamma_assigned[g];
     out.counts = c.gene_count[g];
     out.expected = expected(g);
+    out.counts_over_expected = ratio(c.gene_count[g], expected(g));
   } else {
     out.gamma = Array.from(panel, (name, g) => ({
-      gene: name, gamma: c.gamma_assigned[g], counts: c.gene_count[g], expected: expected(g) }));
+      gene: name, gamma: c.gamma_assigned[g], counts: c.gene_count[g], expected: expected(g),
+      counts_over_expected: ratio(c.gene_count[g], expected(g)) }));
   }
   return out;
+}
+
+// the plain ratio the explanation needs, given so the model does not work it
+// out itself; null where the class expects nothing (Zero)
+function ratio(counts, expected) {
+  return expected > 0 ? counts / expected : null;
 }
 
 async function spot(spotId) {

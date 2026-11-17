@@ -135,6 +135,14 @@ Questions are entered at the prompt and sent with **Enter**. Up to three images,
 screenshot of a panel, can be attached by pasting or dropping them onto the panel; they are
 shown above the prompt until the question is sent.
 
+Every number in an answer is compared with the tool outputs of the conversation, the
+tool inputs and the question. If a number is found that none of them contains, allowing
+for rounding and percentages, the answer is withdrawn and the language model is asked
+once to compute the number with the `calculate` tool or leave it out. Should the second
+answer still contain such a number, it is listed in a note under the answer, since the
+model may have computed it itself rather than obtained it from a tool. Integers up to
+ten are not checked, as they are typically counts of listed items.
+
 ### Connection
 
 The language model is configured once, in the **Connection** tab:
