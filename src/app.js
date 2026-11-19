@@ -73,6 +73,7 @@ import { setupCheckSpotBridge, openCheckSpotModal } from './checkSpotBridge.js';
 // === MISREADS IMPORTS ===
 import { showRhoBarWidget }     from './misreads/rhoBar/RhoBarWidget.js';
 import { openChart } from './chatCharts.js';
+import { mapZoomRequestError, glideMapTo } from './mapZoom.js';
 import './ui/chartLaunchers.js';
 import { showStackedBarWidget } from './misreads/stackedBar/StackedBarWidget.js';
 import { showPerPlaneWidget }   from './misreads/perPlane/PerPlaneWidget.js';
@@ -1246,6 +1247,30 @@ window.addEventListener('load', async () => {
                 });
             } catch (e) {
                 window.electronAPI.chatGoToPlaneDone({ id, error: e.message });
+            }
+        });
+    }
+    // zoom_map: glide to a zoom, a centre, or both. The answer waits for the map to
+    // arrive, and carries the zoom and the area then in view, so the agent reports
+    // the view the map really has
+    if (window.electronAPI?.onChatZoomMap) {
+        window.electronAPI.onChatZoomMap(async ({ id, zoom, center }) => {
+            try {
+                const problem = mapZoomRequestError({ zoom, center });
+                if (problem) {
+                    window.electronAPI.chatZoomMapDone({ id, error: problem });
+                    return;
+                }
+                await glideMapTo({ zoom, center });
+                const snapshot = viewerSnapshot();
+                window.electronAPI.chatZoomMapDone({
+                    id,
+                    zoom: snapshot.zoom,
+                    in_view: snapshot.in_view,
+                    in_view_is: snapshot.in_view_is,
+                });
+            } catch (e) {
+                window.electronAPI.chatZoomMapDone({ id, error: e.message });
             }
         });
     }

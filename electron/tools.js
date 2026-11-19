@@ -979,6 +979,31 @@ const TOOLS = [
     },
   },
   {
+    name: 'zoom_map',
+    description:
+      'Zoom the map in or out, move it to a point, or both, the same as the mouse ' +
+      'wheel and dragging. zoom is the level to end at: viewer_state gives the ' +
+      'current one, one level more doubles the size of everything on screen and ' +
+      'halves the width and height of the area in view, and the levels run from 0 ' +
+      'to 8. center is the point to end centred on, in image pixels, the same ' +
+      'coordinates as the cells and spots. Whichever is left out stays as it is. ' +
+      'The answer comes once the map has arrived, with the zoom and the area then ' +
+      'in view. Use it when the user asks to zoom in or out, to get closer, or to ' +
+      'look at a part of the image; to go to a cell, use fly_to_cell.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        zoom: { type: 'number', description: 'The zoom level to end at, 0 to 8.' },
+        center: {
+          type: 'object',
+          description: 'The point to end centred on, in image pixels.',
+          properties: { x: { type: 'number' }, y: { type: 'number' } },
+          required: ['x', 'y'],
+        },
+      },
+    },
+  },
+  {
     name: 'fly_to_cell',
     description:
       'Move the map to a cell and flash its outline, so the user can see the cell ' +
@@ -1458,6 +1483,22 @@ async function call(name, input) {
       const plane = Number(input.plane);
       if (!Number.isInteger(plane)) return { error: 'plane must be a whole number' };
       return await deps.goToPlane({ plane });
+    }
+    if (name === 'zoom_map') {
+      if (!deps.zoomMap) return { error: 'the viewer window is not available' };
+      const out = {};
+      if (input.zoom != null) {
+        const zoom = Number(input.zoom);
+        if (!Number.isFinite(zoom)) return { error: 'zoom must be a number' };
+        out.zoom = zoom;
+      }
+      if (input.center != null) {
+        const x = Number(input.center.x);
+        const y = Number(input.center.y);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return { error: 'center needs numbers x and y in image pixels' };
+        out.center = { x, y };
+      }
+      return await deps.zoomMap(out);
     }
     if (name === 'screenshot') {
       if (!deps.screenshot) return { error: 'the viewer window is not available' };

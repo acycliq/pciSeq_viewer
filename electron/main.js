@@ -194,6 +194,7 @@ function createWindow() {
     misreadDisplay: compose.misreadDisplay,
     mapLayers: compose.mapLayers,
     goToPlane: compose.goToPlane,
+    zoomMap: compose.zoomMap,
     geneCountFilter: compose.geneCountFilter,
     // screenshot captures the map from the window, so the agent sees what the user sees
     screenshot: screenshot.take,

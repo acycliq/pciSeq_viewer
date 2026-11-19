@@ -14,7 +14,7 @@ let nextId = 1;
 const pending = new Map();
 const CHANNELS = ['chat-compose-image', 'chat-fly-to-cell', 'chat-all-planes', 'chat-export-per-class',
                   'chat-viewer-state', 'chat-spot-filters', 'chat-misread-display', 'chat-map-layers', 'chat-go-to-plane', 'chat-gene-count-filter',
-                  'chat-screenshot'];
+                  'chat-screenshot', 'chat-zoom-map'];
 
 function init(d, ipcMain) {
   getWindow = d.getWindow;
@@ -99,6 +99,12 @@ function goToPlane(settings, timeoutMs = 30000) {
   return ask('chat-go-to-plane', settings, timeoutMs, 'the viewer did not change plane in time');
 }
 
+// zoom_map: the page glides the map to a zoom, a centre, or both, and answers
+// once it has arrived
+function zoomMap(settings, timeoutMs = 10000) {
+  return ask('chat-zoom-map', settings, timeoutMs, 'the viewer did not move the map in time');
+}
+
 // cells_by_gene_count: the page moves the Min and Max genes sliders and counts the
 // cells still drawn
 function geneCountFilter(settings, timeoutMs = 10000) {
@@ -111,4 +117,4 @@ function mapView(timeoutMs = 5000) {
   return ask('chat-screenshot', {}, timeoutMs, 'the viewer did not say where the map is in time');
 }
 
-module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters, misreadDisplay, mapLayers, goToPlane, geneCountFilter, mapView };
+module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters, misreadDisplay, mapLayers, goToPlane, zoomMap, geneCountFilter, mapView };

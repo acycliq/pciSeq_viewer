@@ -68,6 +68,20 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   const lost = await tools.call('fly_to_cell', { label: 18223 });
   assert.ok(/not found/.test(lost.error), 'a missing cell comes back as an error');
 
+  // zoom_map: the numbers go to the renderer as numbers, and its answer comes back;
+  // something that is not a number never reaches it
+  const zoomed = [];
+  tools.init({ zoomMap: async (settings) => {
+    zoomed.push(settings);
+    return { zoom: settings.zoom, in_view: { x_from: 0, x_to: 100, y_from: 0, y_to: 100 } };
+  } });
+  const closer = await tools.call('zoom_map', { zoom: '4', center: { x: 10, y: 20 } });
+  assert.deepStrictEqual(zoomed, [{ zoom: 4, center: { x: 10, y: 20 } }]);
+  assert.strictEqual(closer.zoom, 4);
+  assert.ok(/number/.test((await tools.call('zoom_map', { zoom: 'close' })).error));
+  assert.ok(/x and y/.test((await tools.call('zoom_map', { center: { x: 1 } })).error));
+  assert.strictEqual(zoomed.length, 1, 'a bad request never reaches the renderer');
+
   // open_cell_diagnostics: same numbers as explain_cell, plus the message to the renderer
   sent = [];
   const opened = await tools.call('open_cell_diagnostics', { label: 42 });

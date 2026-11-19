@@ -113,6 +113,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // the go_to_plane tool: the plane slider
   onChatGoToPlane: (handler) => ipcRenderer.on('chat-go-to-plane', (_e, p) => handler(p)),
   chatGoToPlaneDone: (payload) => ipcRenderer.send('chat-go-to-plane-done', payload),
+  // the zoom_map tool: glide the map to a zoom, a centre, or both
+  onChatZoomMap: (handler) => ipcRenderer.on('chat-zoom-map', (_e, p) => handler(p)),
+  chatZoomMapDone: (payload) => ipcRenderer.send('chat-zoom-map-done', payload),
   // the screenshot tool: where the map is in the window and what part of the image
   // it shows; the main process does the capture
   onChatScreenshot: (handler) => ipcRenderer.on('chat-screenshot', (_e, p) => handler(p)),
