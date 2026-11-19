@@ -8,7 +8,7 @@
 import { WidgetBase } from './ui/widgetBase.js';
 import { state } from './state/stateManager.js';
 import { pointInPolygon } from '../utils/pointInPolygon.js';
-import { isRegion, getRegionBoundaries, getVisibleRegions } from './regionsManager.js';
+import { regionNames, getRegionOutlines, getVisibleRegions } from './regionsManager.js';
 import { escapeHtml } from '../utils/domSafe.js';
 import { planeOf } from '../utils/planes.js';
 import { classColourHex } from './classColour.js';
@@ -68,18 +68,15 @@ class CellClassDistributionWidget extends WidgetBase {
         this.regionSelect.innerHTML = '<option value="">All Regions</option>';
         
         // Get regions from global state (via regionsManager helper or direct access)
-        if (state.regions) {
-            for (const [name, r] of state.regions) {
-                if (!isRegion(r)) continue;
-                const opt = document.createElement('option');
-                opt.value = name;
-                opt.textContent = name;
-                this.regionSelect.appendChild(opt);
-            }
+        for (const name of regionNames()) {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            this.regionSelect.appendChild(opt);
         }
         
         // Restore selection if valid
-        if (currentVal && state.regions.has(currentVal)) {
+        if (currentVal && regionNames().includes(currentVal)) {
             this.regionSelect.value = currentVal;
         }
     }
@@ -95,11 +92,7 @@ class CellClassDistributionWidget extends WidgetBase {
 
         // 1. Determine region filter
         const regionName = this.regionSelect.value;
-        let regions = [];
-        if (regionName) {
-            const boundary = getRegionBoundaries(regionName);
-            if (boundary) regions = [boundary];
-        }
+        const regions = regionName ? getRegionOutlines(regionName) : [];
 
         // 2. Calculate distribution (Ported logic)
         this.lastData = this.calculateDistribution(regions);

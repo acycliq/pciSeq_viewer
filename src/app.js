@@ -118,7 +118,7 @@ import {
     addAllenRegions,
     saveAnnotations,
     openAnnotations,
-    getRegionBoundaries,
+    getRegionOutlines,
     getVisibleRegions
 } from './regionsManager.js';
 
@@ -155,7 +155,7 @@ window.saveAnnotations = saveAnnotations;
 window.openAnnotations = openAnnotations;
 window.deleteRegion = deleteRegion;
 window.toggleRegionVisibility = toggleRegionVisibility;
-window.getRegionBoundaries = getRegionBoundaries;
+window.getRegionOutlines = getRegionOutlines;
 window.getVisibleRegions = getVisibleRegions;
 
 // check_cell bridge

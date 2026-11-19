@@ -82,26 +82,47 @@ function openChart({ chart, region = null, gene = null }) {
   return { done: true, chart, region, gene, note: 'the chart is open on the user\'s screen' };
 }
 
+// the outlines of the region called name. Outlines with the same name are one
+// region in several pieces, so there can be more than one
+function outlinesOf(name) {
+  return deps.getAnnotations().filter(a => a.kind !== 'cells' && a.name === name);
+}
+
+// the names of the regions, each once, in the order of the list
+function regionNames() {
+  return [...new Set(deps.getAnnotations().filter(a => a.kind !== 'cells').map(a => a.name))];
+}
+
 // find_cells and outline_cells take a region by name; run.findCells wants its points
 function withRegion(input) {
   if (input.region == null) return input;
-  const r = deps.getAnnotations().find(a => a.name === input.region);
-  if (!r || r.kind === 'cells') {
-    const names = deps.getAnnotations().filter(a => a.kind !== 'cells').map(a => a.name);
-    throw new Error(`no region called ${input.region}; the regions are: ${names.join(', ') || 'none'}`);
+  const outlines = outlinesOf(input.region);
+  if (outlines.length === 0) {
+    throw new Error(`no region called ${input.region}; the regions are: ${regionNames().join(', ') || 'none'}`);
   }
   const { region, ...rest } = input;
-  return { ...rest, polygon: r.boundaries };
+  return { ...rest, polygons: outlines.map(outline => outline.boundaries) };
+}
+
+// one region for the annotations tool: its pieces counted and their points taken together
+function describeRegion(name) {
+  const outlines = outlinesOf(name);
+  const points = outlines.flatMap(outline => outline.boundaries);
+  const xs = points.map(p => p[0]);
+  const ys = points.map(p => p[1]);
+  return { name, kind: 'region', pieces: outlines.length, points: points.length,
+           x_range: [Math.min(...xs), Math.max(...xs)],
+           y_range: [Math.min(...ys), Math.max(...ys)],
+           by: outlines[0].by, visible: outlines.some(outline => outline.visible) };
 }
 
 function listAnnotations() {
+  const cells = deps.getAnnotations().filter(a => a.kind === 'cells');
   return {
-    annotations: deps.getAnnotations().map(a => a.kind === 'cells'
-      ? { name: a.name, kind: 'cells', cells: a.labels.length, by: a.by, visible: a.visible }
-      : { name: a.name, kind: 'region', points: a.boundaries.length,
-          x_range: [Math.min(...a.boundaries.map(p => p[0])), Math.max(...a.boundaries.map(p => p[0]))],
-          y_range: [Math.min(...a.boundaries.map(p => p[1])), Math.max(...a.boundaries.map(p => p[1]))],
-          by: a.by, visible: a.visible }),
+    annotations: [
+      ...regionNames().map(describeRegion),
+      ...cells.map(a => ({ name: a.name, kind: 'cells', cells: a.labels.length, by: a.by, visible: a.visible })),
+    ],
     are: 'by is who made it: the user (you), the chat, or allen, a region of the Allen mouse ' +
          'brain atlas (CCFv3) fitted to this section from the user\'s outlines, an estimate ' +
          'that is best near those outlines; ranges in image pixels',

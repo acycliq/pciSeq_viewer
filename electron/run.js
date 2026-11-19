@@ -709,11 +709,12 @@ function pointInPolygon(x, y, poly) {
   return inside;
 }
 
-// polygon: keep only the cells whose centroid is inside it, image pixels
+// polygons: keep only the cells whose centroid is inside any of them, image
+// pixels. A region can be several outlines with the same name.
 function findCells({ class_name = null, class_rule = 'assigned', min_class_prob = null,
                      plane = null, plane_from = null, plane_to = null,
                      x_from = null, x_to = null, y_from = null, y_to = null,
-                     polygon = null, min_counts = null, top_two_within = null,
+                     polygons = null, min_counts = null, top_two_within = null,
                      theta_from = null, theta_to = null, n = 50 } = {}) {
   const names = meta().class_names;
   const k = class_name != null ? classIndex(class_name) : null;
@@ -721,7 +722,7 @@ function findCells({ class_name = null, class_rule = 'assigned', min_class_prob 
   if (class_rule === 'above' && min_class_prob == null) throw new Error('class_rule above needs min_class_prob');
   if (plane != null) { plane_from = plane; plane_to = plane; }   // one plane is a range of one
   const byPlane = plane_from != null || plane_to != null;
-  const byXY = [x_from, x_to, y_from, y_to].some(v => v != null) || polygon != null;
+  const byXY = [x_from, x_to, y_from, y_to].some(v => v != null) || polygons != null;
   if (byPlane || byXY) needCentroids(byPlane ? 'plane' : 'position');
   if (byPlane) needPlanes();
 
@@ -734,7 +735,7 @@ function findCells({ class_name = null, class_rule = 'assigned', min_class_prob 
     const margin = top[0][1] - (top[1] ? top[1][1] : 0);
     if (top_two_within != null && margin > top_two_within) continue;
     if (byXY && !(within(r.x, x_from, x_to) && within(r.y, y_from, y_to))) continue;
-    if (polygon && !pointInPolygon(r.x, r.y, polygon)) continue;
+    if (polygons && !polygons.some(polygon => pointInPolygon(r.x, r.y, polygon))) continue;
     const pl = byPlane ? planeOf(r.z) : null;
     if (byPlane && !within(pl, plane_from, plane_to)) continue;
     if (k != null) {

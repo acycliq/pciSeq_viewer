@@ -26,9 +26,41 @@ const hasUnsaved = () => dirty && state.regions.size > 0;
 // outlines from every plane
 const isRegion = r => (r.kind || 'region') === 'region';
 
-// Initialize regions in state
+// Initialize regions in state. Every annotation has its own id, the key of the
+// map, because the name is not unique: outlines with the same name are one
+// region in several pieces, like a country and its islands.
 if (!state.regions) {
-    state.regions = new Map(); // Map of regionName -> {name, boundaries, visible}
+    state.regions = new Map(); // Map of id -> {id, name, boundaries, visible, by}
+}
+
+let lastId = 0;
+
+/**
+ * Put an annotation in the list under a new id
+ */
+function addToList(annotation) {
+    lastId++;
+    const id = `annotation-${lastId}`;
+    const entry = { ...annotation, id };
+    state.regions.set(id, entry);
+    return entry;
+}
+
+/**
+ * Every annotation called name, regions and cell annotations alike
+ */
+function annotationsNamed(name) {
+    return Array.from(state.regions.values()).filter(r => r.name === name);
+}
+
+const nameTaken = name => annotationsNamed(name).length > 0;
+
+/**
+ * The names of the regions, each once, in the order of the list
+ */
+function regionNames() {
+    const names = Array.from(state.regions.values()).filter(isRegion).map(r => r.name);
+    return [...new Set(names)];
 }
 
 // Flag to prevent re-entrant calls to toggleRegionVisibility
@@ -156,8 +188,9 @@ function hexToRgb(hex) {
  * colors of later items alphabetically, but earlier ones remain stable.
  */
 function buildRegionColorIndexMap() {
-    const names = Array.from(state.regions.values()).filter(r => !isAllen(r)).map(r => r.name)
-        .sort((a, b) => String(a).localeCompare(String(b)));
+    const ownNames = Array.from(state.regions.values()).filter(r => !isAllen(r)).map(r => r.name);
+    // each name once: the pieces of a region share its colour
+    const names = [...new Set(ownNames)].sort((a, b) => String(a).localeCompare(String(b)));
     const used = new Set();
     const mapping = new Map();
     const N = REGION_COLOR_SET2.length;
@@ -176,7 +209,8 @@ function buildRegionColorIndexMap() {
 }
 
 function getRegionColorHex(name) {
-    if (isAllen(state.regions.get(name))) return ALLEN_COLOR;
+    const named = annotationsNamed(name);
+    if (named.length > 0 && named.every(isAllen)) return ALLEN_COLOR;
     const mapping = buildRegionColorIndexMap();
     const idx = mapping.get(name);
     if (typeof idx === 'number') return REGION_COLOR_SET2[idx];
@@ -221,8 +255,9 @@ function addCsvRegions(files) {
 
             const regionName = formatRegionName(file.name);
 
-            // Store region
-            state.regions.set(regionName, {
+            // a file replaces what was under its name, as it always has
+            for (const old of annotationsNamed(regionName)) state.regions.delete(old.id);
+            addToList({
                 name: regionName,
                 boundaries: boundaries,
                 visible: true, // Default to visible so imported regions are immediately outlined
@@ -249,12 +284,11 @@ function addCsvRegions(files) {
  */
 function addDrawnRegion(boundaries) {
     let n = 1;
-    while (state.regions.has(`Region ${n}`)) n++;
-    const name = `Region ${n}`;
-    state.regions.set(name, { name, boundaries, visible: true, by: 'you' });
+    while (nameTaken(`Region ${n}`)) n++;
+    const entry = addToList({ name: `Region ${n}`, boundaries, visible: true, by: 'you' });
     markChanged();
     updateUIAfterRegionChange();
-    startRename(name);
+    startRename(entry.id);
 }
 
 /**
@@ -263,27 +297,29 @@ function addDrawnRegion(boundaries) {
  * gets a number.
  */
 function addAllenRegions({ regions }) {
-    for (const [name, r] of [...state.regions]) if (r.by === 'allen') state.regions.delete(name);
+    for (const [id, r] of [...state.regions]) if (r.by === 'allen') state.regions.delete(id);
     for (const r of regions) {
         let name = r.name;
-        for (let n = 2; state.regions.has(name); n++) name = `${r.name} (${n})`;
-        state.regions.set(name, { ...r, name, by: 'allen' });
+        for (let n = 2; nameTaken(name); n++) name = `${r.name} (${n})`;
+        addToList({ ...r, name, by: 'allen' });
     }
     markChanged();
     updateUIAfterRegionChange();
 }
 
 /**
- * Rename a region, keeping its place in the list. An empty name or one already
- * taken leaves it as it was.
+ * Rename an annotation. A region may take the name of other regions: it is then
+ * one more piece of that region, and renaming it again takes it back out. A cell
+ * annotation keeps a name of its own. An empty name leaves it as it was.
  */
-function renameRegion(oldName, newName) {
+function renameRegion(id, newName) {
+    const entry = state.regions.get(id);
     newName = String(newName || '').trim();
-    if (!newName || newName === oldName || state.regions.has(newName)) return false;
-    const entries = Array.from(state.regions.entries()).map(([name, r]) =>
-        name === oldName ? [newName, { ...r, name: newName }] : [name, r]);
-    state.regions.clear();
-    for (const [name, r] of entries) state.regions.set(name, r);
+    if (!entry || !newName || newName === entry.name) return false;
+    const sameName = annotationsNamed(newName);
+    const joinsRegion = isRegion(entry) && sameName.every(isRegion);
+    if (sameName.length > 0 && !joinsRegion) return false;
+    entry.name = newName;
     markChanged();
     return true;
 }
@@ -291,19 +327,20 @@ function renameRegion(oldName, newName) {
 /**
  * Turn a row's name into a text box; Enter or clicking away keeps it, Esc does not
  */
-function startRename(name) {
-    const label = document.querySelector(`#regionsList [data-region="${CSS.escape(name)}"] .cell-class-name`);
-    if (!label) return;
+function startRename(id) {
+    const entry = state.regions.get(id);
+    const label = document.querySelector(`#regionsList [data-region="${CSS.escape(id)}"] .cell-class-name`);
+    if (!entry || !label) return;
     const input = document.createElement('input');
     input.type = 'text';
-    input.value = name;
+    input.value = entry.name;
     input.className = 'region-rename-input';
     input.style.cssText = 'flex:1; min-width:0; font:inherit; color:inherit; background:transparent; border:1px solid currentColor; padding:0 2px;';
     let done = false;
     const finish = (keep) => {
         if (done) return;
         done = true;
-        if (keep) renameRegion(name, input.value);
+        if (keep) renameRegion(id, input.value);
         updateUIAfterRegionChange();
     };
     input.addEventListener('keydown', (e) => {
@@ -319,25 +356,25 @@ function startRename(name) {
 }
 
 /**
- * Delete a region
+ * Delete one row of the list. For a region in several pieces that is one piece.
  */
-function deleteRegion(regionName) {
-    state.regions.delete(regionName);
+function deleteRegion(id) {
+    state.regions.delete(id);
     markChanged();
     updateUIAfterRegionChange();
 }
 
 /**
- * Toggle region visibility
+ * Show or hide one row of the list
  */
-function toggleRegionVisibility(regionName, visible) {
+function toggleRegionVisibility(id, visible) {
     // DEBUG: Trace any call that attempts to turn a region OFF.
     if (visible === false) {
-        console.log(`[Debug] A request was made to turn OFF region "${regionName}". Tracing the source...`);
+        console.log(`[Debug] A request was made to turn OFF region "${id}". Tracing the source...`);
         console.trace('Source of OFF request');
     }
 
-    const region = state.regions.get(regionName);
+    const region = state.regions.get(id);
     if (region) {
         region.visible = visible;
         markChanged();
@@ -373,9 +410,8 @@ function syncAnnotationsToMain() {
  */
 async function addCellAnnotation({ name, labels }) {
     let unique = String(name || 'Cells').trim() || 'Cells';
-    for (let n = 2; state.regions.has(unique); n++) unique = `${name} ${n}`;
-    const entry = { name: unique, kind: 'cells', labels: labels.map(Number), visible: true, by: 'chat', features: [] };
-    state.regions.set(unique, entry);
+    for (let n = 2; nameTaken(unique); n++) unique = `${name} ${n}`;
+    const entry = addToList({ name: unique, kind: 'cells', labels: labels.map(Number), visible: true, by: 'chat', features: [] });
     markChanged();
     updateUIAfterRegionChange();
     await loadOutlines(entry);
@@ -410,7 +446,7 @@ async function openAnnotations() {
     if (res.csv) return addCsvRegions(res.csv);     // region CSVs are added to the list
     if (hasUnsaved() && !window.confirm('Your annotations are not saved. Replace them anyway?')) return null;
     state.regions.clear();
-    for (const r of res.regions) state.regions.set(r.name, r);
+    for (const r of res.regions) addToList(r);
     dirty = false;
     syncAnnotationsToMain();
     updateUIAfterRegionChange();
@@ -428,7 +464,7 @@ function takeOldStoredRegions() {
         if (!stored) return;
         localStorage.removeItem(OLD_STORAGE_KEY);
         for (const r of JSON.parse(stored)) {
-            state.regions.set(r.name, { name: r.name, boundaries: r.boundaries, visible: r.visible, by: 'you' });
+            addToList({ name: r.name, boundaries: r.boundaries, visible: r.visible, by: 'you' });
         }
         if (state.regions.size) {
             markChanged();
@@ -471,13 +507,14 @@ function renderRegionsList() {
 
     // Eye SVGs are centralized in src/icons.js
 
-    for (const [name, region] of state.regions) {
+    for (const [id, region] of state.regions) {
+        const name = region.name;
         console.log('[Regions] Rendering region:', name, 'visible:', region.visible);
 
         // Row container: reuse unified chip-like item
         const item = document.createElement('div');
         item.className = 'cell-class-item';
-        item.dataset.region = name;
+        item.dataset.region = id;
         if (!region.visible) item.classList.add('dim');
 
         // Color swatch (use region color from curated d3.schemeSet2 subset)
@@ -490,7 +527,7 @@ function renderRegionsList() {
         label.className = 'cell-class-name';
         label.textContent = (name && String(name).trim()) ? String(name) : '(unnamed region)';
         label.title = `${name} (double-click to rename)`;
-        label.addEventListener('dblclick', (e) => { e.stopPropagation(); startRename(name); });
+        label.addEventListener('dblclick', (e) => { e.stopPropagation(); startRename(id); });
 
         // Count (boundary points) to match layout
         const cells = !isRegion(region);
@@ -511,9 +548,9 @@ function renderRegionsList() {
 
         const toggle = () => {
             const newVisible = !region.visible;
-            toggleRegionVisibility(name, newVisible);
+            toggleRegionVisibility(id, newVisible);
             region.visible = newVisible;
-            updateRegionEyeIcon(name, newVisible);
+            updateRegionEyeIcon(id, newVisible);
         };
         item.addEventListener('click', toggle);
         eye.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
@@ -527,7 +564,7 @@ function renderRegionsList() {
         deleteBtn.innerHTML = TRASH_SVG;
         const handleDelete = (e) => {
             e.stopPropagation();
-            deleteRegion(name);
+            deleteRegion(id);
         };
         deleteBtn.addEventListener('click', handleDelete);
         deleteBtn.addEventListener('keydown', (e) => {
@@ -550,10 +587,10 @@ function renderRegionsList() {
 }
 
 // Update a single region row's UI (eye + dim) without full re-render
-function updateRegionEyeIcon(name, isVisible) {
+function updateRegionEyeIcon(id, isVisible) {
     const container = document.getElementById('regionsList');
     if (!container) return;
-    const item = container.querySelector(`[data-region="${CSS.escape(name)}"]`);
+    const item = container.querySelector(`[data-region="${CSS.escape(id)}"]`);
     if (!item) return;
 
     const eye = item.querySelector('.cell-class-eye');
@@ -586,8 +623,7 @@ function updateChartDropdowns() {
         // Rebuild options
         dropdown.innerHTML = '<option value="">All cells</option>';
 
-        for (const [name, r] of state.regions) {
-            if (!isRegion(r)) continue;
+        for (const name of regionNames()) {
             const option = document.createElement('option');
             option.value = name;
             option.textContent = name;
@@ -595,19 +631,18 @@ function updateChartDropdowns() {
         }
 
         // Restore selection if still valid
-        if (currentValue && state.regions.has(currentValue)) {
+        if (currentValue && regionNames().includes(currentValue)) {
             dropdown.value = currentValue;
         }
     });
 }
 
 /**
- * Get boundaries for a specific region
+ * The outlines of the region called regionName, one per piece: a list of
+ * polygons, each [[x, y], ...] in image pixels. Empty when there is no such region.
  */
-function getRegionBoundaries(regionName) {
-    if (!regionName) return null;
-    const region = state.regions.get(regionName);
-    return region && isRegion(region) ? region.boundaries : null;
+function getRegionOutlines(regionName) {
+    return annotationsNamed(regionName).filter(isRegion).map(r => r.boundaries);
 }
 
 /**
@@ -642,6 +677,7 @@ export {
     updateChartDropdowns,
     getRegionColorHex,
     getRegionColorRgb,
-    getRegionBoundaries,
+    regionNames,
+    getRegionOutlines,
     getVisibleRegions
 };

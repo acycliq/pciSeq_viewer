@@ -38,6 +38,24 @@ const allen = fromGeoJSON({ type: 'FeatureCollection', features: [
   { type: 'Feature', properties: { name: 'Allen CA3', by: 'allen' }, geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1]]] } }] });
 assert.strictEqual(allen.regions[0].by, 'allen');
 
+// outlines with the same name are one region in several pieces. They are saved as
+// one Polygon each, and a MultiPolygon from elsewhere opens as one outline per piece
+const pieces = [
+  { name: 'DG', boundaries: [[0, 0], [4, 0], [4, 2]], visible: true, by: 'you' },
+  { name: 'DG', boundaries: [[0, 5], [4, 5], [4, 7]], visible: true, by: 'you' },
+];
+const pg = toGeoJSON(pieces);
+assert.deepStrictEqual(pg.features.map(f => [f.properties.name, f.geometry.type]), [['DG', 'Polygon'], ['DG', 'Polygon']]);
+assert.deepStrictEqual(fromGeoJSON(JSON.parse(JSON.stringify(pg))).regions, pieces);
+const multi = fromGeoJSON({ type: 'FeatureCollection', features: [
+  { type: 'Feature', properties: { name: 'DG' }, geometry: { type: 'MultiPolygon', coordinates: [
+    [[[0, 0], [4, 0], [4, 2], [0, 0]]],
+    [[[0, 5], [4, 5], [4, 7], [0, 5]]],
+    [[[9, 9], [9, 9]]],                      // not an outline, left out
+  ] } }] });
+assert.deepStrictEqual(multi.regions, pieces);
+assert.strictEqual(multi.skipped, 0);
+
 assert.throws(() => fromGeoJSON({ type: 'Feature' }), /not a GeoJSON FeatureCollection/);
 
 // Open: region CSVs come back as text for the renderer to parse, one annotations

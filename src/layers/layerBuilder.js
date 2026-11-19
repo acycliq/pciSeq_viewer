@@ -210,7 +210,7 @@ function cellAnnotationLayer(annotation) {
     const colour = d => d.properties.cellClass ? classColour(d.properties.cellClass) : fallback;
     const colourToken = classColourToken();
     return new deck.GeoJsonLayer({
-        id: `cell-annotation-${annotation.name}`,
+        id: `cell-annotation-${annotation.id}`,
         data: annotation.features || [],
         stroked: true,
         filled: true,
@@ -260,7 +260,7 @@ export function buildRegionLayers(state, elements) {
         try { color = getRegionColorRgb(region.name); } catch {}
 
         const regionLayer = new deck.PathLayer({
-            id: `region-${region.name}`,
+            id: `region-${region.id}`,
             data: [{ path: transformedPath, name: region.name }],
             getPath: d => d.path,
             // Allen atlas regions thin and see-through, so the user's own stand out

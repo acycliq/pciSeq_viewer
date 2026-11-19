@@ -5,8 +5,11 @@
 // not saved, you are asked first. Nothing is written anywhere by itself, the data
 // folder may well be read only.
 //
-// The file is GeoJSON, one Polygon feature per region, in the same pixel
+// The file is GeoJSON, one Polygon feature per outline, in the same pixel
 // coordinates as the region CSVs. Plain GeoJSON polygons made elsewhere open too.
+// Outlines with the same name are one region in several pieces, like a country
+// and its islands, so a MultiPolygon opens as one outline per piece, all with
+// the feature's name.
 // A cell annotation has no geometry of its own, just its labels in the
 // properties; the viewer draws the cells' outlines from the run.
 
@@ -44,8 +47,27 @@ function toGeoJSON(regions) {
   };
 }
 
-// back to regions. Anything that is not a simple polygon is skipped and counted,
-// so the user can be told
+// the outer ring of every polygon in a geometry; holes are not read
+function outerRings(geometry) {
+  if (geometry?.type === 'Polygon') return [geometry.coordinates?.[0]];
+  if (geometry?.type === 'MultiPolygon' && Array.isArray(geometry.coordinates)) {
+    return geometry.coordinates.map(polygon => polygon?.[0]);
+  }
+  return [];
+}
+
+// a ring from the file as an outline: numbers, and without the repeated last
+// point. null when it is not a usable outline
+function toOutline(ring) {
+  if (!Array.isArray(ring)) return null;
+  const points = ring.map(p => [Number(p[0]), Number(p[1])]);
+  if (points.length > 1 && samePoint(points[0], points[points.length - 1])) points.pop();
+  const allNumbers = points.every(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+  return points.length >= 3 && allNumbers ? points : null;
+}
+
+// back to regions. A feature with nothing usable in it (a point, a line, a broken
+// polygon) is skipped and counted, so the user can be told
 function fromGeoJSON(obj) {
   if (!obj || obj.type !== 'FeatureCollection' || !Array.isArray(obj.features)) {
     throw new Error('not a GeoJSON FeatureCollection');
@@ -61,20 +83,15 @@ function fromGeoJSON(obj) {
                      visible: p.visible !== false, by });
       return;
     }
-    const ring = f?.geometry?.type === 'Polygon' && Array.isArray(f.geometry.coordinates?.[0])
-      ? f.geometry.coordinates[0].map(p => [Number(p[0]), Number(p[1])])
-      : [];
-    if (ring.length > 1 && samePoint(ring[0], ring[ring.length - 1])) ring.pop();
-    if (ring.length < 3 || ring.some(p => !Number.isFinite(p[0]) || !Number.isFinite(p[1]))) {
+    const outlines = outerRings(f?.geometry).map(toOutline).filter(outline => outline !== null);
+    if (outlines.length === 0) {
       skipped++;
       return;
     }
-    regions.push({
-      name: String(p.name || p.classification?.name || `Region ${i + 1}`),
-      boundaries: ring,
-      visible: p.visible !== false,
-      by,
-    });
+    const name = String(p.name || p.classification?.name || `Region ${i + 1}`);
+    for (const boundaries of outlines) {
+      regions.push({ name, boundaries, visible: p.visible !== false, by });
+    }
   });
   return { regions, skipped };
 }
