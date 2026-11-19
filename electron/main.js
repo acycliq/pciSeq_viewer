@@ -843,6 +843,16 @@ app.whenReady().then(async () => {
     const opened = folder ? dataLoader.openDataFolder(folder) : { success: false, error: 'no folder given' };
     if (opened.success) {
       console.log('Opened from --data:', folder);
+      // --voxel-size=x,y,z: for a folder that does not record its voxel size (no
+      // diagnostics.db, e.g. MapMyCells results), so the viewer does not stop and
+      // ask. Kept for that folder like a typed one. A value the run records, or one
+      // typed for the folder before, is left as it is.
+      const voxelArg = args.find(a => a.startsWith('--voxel-size='));
+      if (voxelArg && !dataLoader.voxelSizeOf(folder)) {
+        const set = dataLoader.setVoxelSize(folder, voxelArg.slice(13).split(',').map(Number));
+        if (set.success) console.log('Voxel size from --voxel-size:', voxelArg.slice(13));
+        else console.error('--voxel-size:', set.error);
+      }
       if (mainWindow) mainWindow.reload();
     } else {
       console.error('--data could not open', folder || '(nothing)', ':', opened.error);

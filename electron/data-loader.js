@@ -354,14 +354,17 @@ function voxelSizeOf(dataPath) {
   return voxelSizeFromRun(dataPath) || voxelSizeTyped(dataPath);
 }
 
-ipcMain.handle('set-voxel-size', (event, voxelSize) => {
-  const dataPath = store.get('dataPath', '');
+// keep a typed voxel size for one folder. The dialog uses it for the open folder,
+// and main.js for --voxel-size, so a script can give it with nobody at the keyboard
+function setVoxelSize(dataPath, voxelSize) {
   if (!dataPath || !isVoxelSize(voxelSize)) {
     return { success: false, error: 'Invalid voxel size. Expected [x, y, z], all above 0.' };
   }
   store.set('voxelSizes', { ...store.get('voxelSizes', {}), [dataPath]: voxelSize });
   return { success: true };
-});
+}
+
+ipcMain.handle('set-voxel-size', (event, voxelSize) => setVoxelSize(store.get('dataPath', ''), voxelSize));
 
 ipcMain.handle('set-image-dimensions', (event, dims) => {
   if (dims && Number.isFinite(dims.width) && Number.isFinite(dims.height) && Number.isFinite(dims.planeCount)) {
@@ -536,6 +539,8 @@ module.exports = {
   openDatabase,
   openChannels,
   openDataFolder,
+  setVoxelSize,
+  voxelSizeOf,
   discoverChannels,
   closeDatabase,
   getDatabase,
