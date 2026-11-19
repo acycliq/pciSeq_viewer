@@ -2,6 +2,7 @@
  * Cell Projection Exporter Module
  *
  * Batch-exports one PNG per cell class while Cell Projection mode is active,
+ * plus one PNG with every class drawn together (All_classes.png),
  * bundled into a single ZIP archive. For each class the exporter isolates it
  * in state.selectedCellClasses, asks the layers to update, waits for deck.gl's
  * next render, then captures the deck.gl canvas as a PNG and stores it in a
@@ -26,6 +27,9 @@
 
 import { populateCellClassDrawer } from '../cellClassDrawer.js';
 
+// The extra picture that shows every class together.
+const ALL_CLASSES_FILE_NAME = 'All_classes.png';
+
 /**
  * Export one PNG per cell class, bundled into a single ZIP download.
  *
@@ -41,7 +45,7 @@ import { populateCellClassDrawer } from '../cellClassDrawer.js';
  *                                           every PNG goes there instead of into the zip,
  *                                           and nothing is downloaded (the chat tool
  *                                           writes them to a folder this way).
- * @returns {Promise<string[]>} the file names, one per class
+ * @returns {Promise<string[]>} the file names: one per class, then All_classes.png
  */
 export async function exportPerClassPNGs({ state, updateLayers, bounds, statusEl, sink = null }) {
     const deck = state.deckglInstance;
@@ -72,30 +76,37 @@ export async function exportPerClassPNGs({ state, updateLayers, bounds, statusEl
     const zip = sink ? null : new window.JSZip();
     const files = [];
 
+    // Draw only the given classes, wait for the frame, and store it as fileName.
+    const captureClasses = async (classNames, fileName) => {
+        state.selectedCellClasses.clear();
+        classNames.forEach(name => state.selectedCellClasses.add(name));
+
+        updateLayers();
+        await waitForNextRender(deck);
+
+        const blob = await canvasRegionToBlob(canvas, bounds);
+        if (!blob) {
+            console.warn(`Cell Projection export: failed to capture frame for "${fileName}"`);
+            return;
+        }
+        if (sink) await sink(fileName, blob);
+        else zip.file(fileName, blob);
+        files.push(fileName);
+    };
+
     setStatus(statusEl, `Capturing 0 / ${classes.length}`);
 
     try {
         for (let i = 0; i < classes.length; i++) {
             const className = classes[i];
-
-            state.selectedCellClasses.clear();
-            state.selectedCellClasses.add(className);
-
-            updateLayers();
-            await waitForNextRender(deck);
-
-            const blob = await canvasRegionToBlob(canvas, bounds);
-            if (blob) {
-                const fileName = `${sanitiseFilename(className)}.png`;
-                if (sink) await sink(fileName, blob);
-                else zip.file(fileName, blob);
-                files.push(fileName);
-            } else {
-                console.warn(`Cell Projection export: failed to capture frame for class "${className}"`);
-            }
-
+            await captureClasses([className], `${sanitiseFilename(className)}.png`);
             setStatus(statusEl, `Capturing ${i + 1} / ${classes.length}`);
         }
+
+        // One more picture with every class drawn together, so the per-class
+        // pictures can be compared against the whole.
+        setStatus(statusEl, 'Capturing all classes');
+        await captureClasses(classes, ALL_CLASSES_FILE_NAME);
 
         if (zip) {
             setStatus(statusEl, 'Building ZIP...');
