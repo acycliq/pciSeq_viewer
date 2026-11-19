@@ -1279,10 +1279,12 @@ const VISIBILITY_MODES = ['only', 'add', 'hide', 'all', 'none'];
 
 function setVisibility(kind, input) {
   const meta = deps.getMeta();
-  if (!meta) return { error: 'no diagnostics.db is open' };
-  const known = kind === 'classes' ? meta.class_names : meta.gene_panel;
-  const what = kind === 'classes' ? 'class' : 'gene';
   const mode = input.mode;
+  // hiding everything needs no names, so it also works on a folder without a
+  // diagnostics.db (MapMyCells results); the picture export hides the spots that way
+  if (!meta && mode !== 'none') return { error: 'no diagnostics.db is open' };
+  const known = !meta ? [] : kind === 'classes' ? meta.class_names : meta.gene_panel;
+  const what = kind === 'classes' ? 'class' : 'gene';
   if (!VISIBILITY_MODES.includes(mode)) {
     return { error: `mode must be one of ${VISIBILITY_MODES.join(', ')}` };
   }
