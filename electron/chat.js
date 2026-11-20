@@ -19,6 +19,7 @@ const { safeStorage } = require('electron');
 const Anthropic = require('@anthropic-ai/sdk');
 const tools = require('./tools');
 const answerCheck = require('./answerCheck');
+const chatLog = require('./chatLog');
 
 const DEFAULT_MODEL = 'claude-sonnet-5';
 
@@ -572,7 +573,8 @@ const VIEWER_SYSTEM = [
 
 const SYSTEM = SHARED_SYSTEM + '\n\n' + VIEWER_SYSTEM;
 
-let deps = { store: null, send: null };
+// logFile: where chatLog.js writes a line per question; null for no log
+let deps = { store: null, send: null, logFile: null };
 
 function init(d) {
   deps = { ...deps, ...d };
@@ -750,8 +752,9 @@ async function reply(client, params, onText) {
 // new message. Returns the final assistant text and the messages to carry forward
 // (assistant turns and tool results included, so the next turn has the context).
 // The rounds with the model until it answers in text: send, run what it asks
-// for, send the results, again. Reports every step to the panel.
-async function converse(client, modelName, system, history, send) {
+// for, send the results, again. Reports every step to the panel, and counts the
+// rounds, the tools and the tokens into the record for the log (chatLog.js).
+async function converse(client, modelName, system, history, send, record) {
   let finalText = '';
   let toolsRan = 0;
   let last = null;     // the last reply, to say why an empty one stopped
@@ -767,6 +770,7 @@ async function converse(client, modelName, system, history, send) {
 
     history.push({ role: 'assistant', content: res.content });
     last = res;
+    chatLog.countReply(record, res);
 
     const texts = res.content.filter(b => b.type === 'text').map(b => b.text);
     if (texts.length) {
@@ -782,6 +786,7 @@ async function converse(client, modelName, system, history, send) {
     toolsRan += uses.length;
     for (const u of uses) {
       send({ type: 'tool_call', name: u.name, input: u.input });
+      record.tools.push(u.name);
       {
         const out = await tools.call(u.name, u.input);
         if (out && out.__image) {
@@ -804,14 +809,20 @@ async function converse(client, modelName, system, history, send) {
       }
     }
     history.push({ role: 'user', content: results });
+    // tools were asked for in the last round allowed, so the model was not done
+    if (round === MAX_TOOL_ROUNDS) record.ran_out_of_rounds = true;
   }
   return { finalText, toolsRan, last };
 }
 
-async function runTurn(messages) {
+// record: what the log keeps about this turn (chatLog.js), filled in here. The
+// caller writes it, so a turn that fails is logged too.
+async function runTurn(messages, record = chatLog.newRecord(messages)) {
   const p = activeProvider();
   const client = makeClient(p);
   const modelName = model(p);
+  record.provider = p;
+  record.model = modelName;
   const send = deps.send || (() => {});
 
   const history = withoutThinking(messages);
@@ -822,7 +833,7 @@ async function runTurn(messages) {
     'If asked which model you are, say that and nothing more. The user can change the model in the ' +
     'middle of a conversation, so an earlier answer naming another model was true when it was given: ' +
     'never call it wrong, never apologise for it, and do not bring the switching up unless asked.';
-  let { finalText, toolsRan, last } = await converse(client, modelName, system, history, send);
+  let { finalText, toolsRan, last } = await converse(client, modelName, system, history, send, record);
 
   // some models now and then send back nothing at all; say so rather than stay
   // silent. With no tools run nothing happened, so the turn is dropped (the error
@@ -847,10 +858,11 @@ async function runTurn(messages) {
   // asked once to put them through calculate or leave them out, and whatever
   // still cannot be traced is marked for the reader.
   let unverified = answerCheck.untraced(finalText, history);
+  record.numbers_not_traced = unverified.length;
   if (unverified.length) {
     send({ type: 'unverified', numbers: unverified, retry: true });
     history.push({ role: 'user', content: answerCheck.retryNote(unverified) });
-    const again = await converse(client, modelName, system, history, send);
+    const again = await converse(client, modelName, system, history, send, record);
     if (again.finalText) {
       finalText = again.finalText;
       unverified = answerCheck.untraced(finalText, history);
@@ -859,6 +871,7 @@ async function runTurn(messages) {
       // the panel took it down when the retry started
       send({ type: 'text', text: finalText });
     }
+    record.numbers_not_traced_after_retry = unverified.length;
     if (unverified.length) send({ type: 'unverified', numbers: unverified });
   }
 
@@ -870,10 +883,15 @@ async function runTurn(messages) {
 
 function registerIpc(ipcMain) {
   ipcMain.handle('chat-send', async (_event, messages) => {
+    const record = chatLog.newRecord(messages);
     try {
-      return { success: true, ...(await runTurn(messages)) };
+      const turn = await runTurn(messages, record);
+      chatLog.write(deps.logFile, record);
+      return { success: true, ...turn };
     } catch (e) {
       const msg = e && e.message ? e.message : String(e);
+      record.error = msg;
+      chatLog.write(deps.logFile, record);
       if (deps.send) deps.send({ type: 'error', error: msg });
       return { success: false, error: msg };
     }

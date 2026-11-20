@@ -221,6 +221,8 @@ function createWindow() {
   chat.init({
     store,
     send: (ev) => { if (mainWindow) mainWindow.webContents.send('chat-event', ev); },
+    // a line per question, for looking at how the agent does (electron/chatLog.js)
+    logFile: path.join(app.getPath('userData'), 'chat-log.jsonl'),
   });
   // and the other way round: the viewer as an MCP server, so Claude Code can ask
   // about the loaded run and fly the map. Localhost only.
