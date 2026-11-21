@@ -117,10 +117,10 @@ function importColours(settings, timeoutMs = 10000) {
   return ask('chat-import-colours', settings, timeoutMs, 'the viewer did not apply the colours in time');
 }
 
-// screenshot: where the map is in the window and which part of the image it shows,
-// for electron/screenshot.js to capture
+// screenshot: the map's own canvas as a PNG and which part of the image it shows,
+// for electron/screenshot.js to hand to the agent
 function mapView(timeoutMs = 5000) {
-  return ask('chat-screenshot', {}, timeoutMs, 'the viewer did not say where the map is in time');
+  return ask('chat-screenshot', {}, timeoutMs, 'the viewer did not send the picture of the map in time');
 }
 
 module.exports = { init, compose, flyToCell, showAllPlanes, exportPerClassPngs, viewerState, spotFilters, misreadDisplay, mapLayers, goToPlane, zoomMap, geneCountFilter, mapView, importColours };

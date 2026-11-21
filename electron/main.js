@@ -199,7 +199,7 @@ function createWindow() {
     // import_colours reads the colour file here and the page applies it
     importColours: compose.importColours,
     readFile: (file) => fs.readFileSync(file, 'utf8'),
-    // screenshot captures the map from the window, so the agent sees what the user sees
+    // screenshot reads the map's own canvas, so the agent sees the map the user sees
     screenshot: screenshot.take,
     exportPerClassPngs: compose.exportPerClassPngs,
     getDataPath: () => store.get('dataPath', ''),
