@@ -73,7 +73,7 @@ import { setupCheckSpotBridge, openCheckSpotModal } from './checkSpotBridge.js';
 // === MISREADS IMPORTS ===
 import { showRhoBarWidget }     from './misreads/rhoBar/RhoBarWidget.js';
 import { openChart } from './chatCharts.js';
-import { mapZoomRequestError, glideMapTo } from './mapZoom.js';
+import { mapZoomRequestError, glideMapTo, viewThatFits } from './mapZoom.js';
 import './ui/chartLaunchers.js';
 import { showStackedBarWidget } from './misreads/stackedBar/StackedBarWidget.js';
 import { showPerPlaneWidget }   from './misreads/perPlane/PerPlaneWidget.js';
@@ -1316,14 +1316,15 @@ window.addEventListener('load', async () => {
     // arrive, and carries the zoom and the area then in view, so the agent reports
     // the view the map really has
     if (window.electronAPI?.onChatZoomMap) {
-        window.electronAPI.onChatZoomMap(async ({ id, zoom, center }) => {
+        window.electronAPI.onChatZoomMap(async ({ id, zoom, center, box }) => {
             try {
-                const problem = mapZoomRequestError({ zoom, center });
+                const problem = mapZoomRequestError({ zoom, center, box });
                 if (problem) {
                     window.electronAPI.chatZoomMapDone({ id, error: problem });
                     return;
                 }
-                await glideMapTo({ zoom, center });
+                // a box is turned into the zoom and centre at which it fits the window
+                await glideMapTo(box ? viewThatFits(box) : { zoom, center });
                 const snapshot = viewerSnapshot();
                 window.electronAPI.chatZoomMapDone({
                     id,
