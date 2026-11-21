@@ -780,6 +780,91 @@ function findCells({ class_name = null, class_rule = 'assigned', min_class_prob 
   return out;
 }
 
+// The box around the cells assigned any of the classes given, for zoom_map.
+//
+// A plain box around every such cell is no use: a handful of cells with these
+// calls far from the rest stretch it over the whole image. So the cells are
+// counted on a grid, squares with fewer than BOX_MIN_IN_SQUARE cells are dropped,
+// squares that touch (corners count) are joined into groups, and only the groups
+// holding at least BOX_MIN_SHARE of the cells are kept. The box goes around the
+// cells of the kept groups. The side of a square is BOX_SQUARE times the spacing
+// the cells would have if they were spread evenly over their plain box.
+const BOX_SQUARE = 2;
+const BOX_MIN_IN_SQUARE = 2;
+const BOX_MIN_SHARE = 0.05;
+
+// xs, ys: the cell positions. Returns the box and how many cells are inside the
+// kept groups.
+function denseBox(xs, ys) {
+  const n = xs.length;
+  const x0 = Math.min(...xs);
+  const y0 = Math.min(...ys);
+  const plain = { x_from: x0, x_to: Math.max(...xs), y_from: y0, y_to: Math.max(...ys) };
+  const area = (plain.x_to - x0) * (plain.y_to - y0);
+  if (!(area > 0)) return { box: plain, n_inside: n };
+  const side = BOX_SQUARE * Math.sqrt(area / n);
+  const squareOf = (i) => [Math.floor((xs[i] - x0) / side), Math.floor((ys[i] - y0) / side)];
+  const key = (cx, cy) => cx + ',' + cy;
+
+  const inSquare = new Map();
+  for (let i = 0; i < n; i++) {
+    const k = key(...squareOf(i));
+    inSquare.set(k, (inSquare.get(k) || 0) + 1);
+  }
+  // join the squares that touch into groups, and add up the cells of each group
+  const groupOf = new Map();
+  const groupSize = [];
+  for (const [start, count] of inSquare) {
+    if (count < BOX_MIN_IN_SQUARE || groupOf.has(start)) continue;
+    const g = groupSize.length;
+    groupSize.push(0);
+    const todo = [start];
+    groupOf.set(start, g);
+    while (todo.length) {
+      const k = todo.pop();
+      groupSize[g] += inSquare.get(k);
+      const [cx, cy] = k.split(',').map(Number);
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const next = key(cx + dx, cy + dy);
+          if ((inSquare.get(next) || 0) >= BOX_MIN_IN_SQUARE && !groupOf.has(next)) {
+            groupOf.set(next, g);
+            todo.push(next);
+          }
+        }
+      }
+    }
+  }
+  const box = { x_from: Infinity, x_to: -Infinity, y_from: Infinity, y_to: -Infinity };
+  let inside = 0;
+  for (let i = 0; i < n; i++) {
+    const g = groupOf.get(key(...squareOf(i)));
+    if (g == null || groupSize[g] < BOX_MIN_SHARE * n) continue;
+    inside++;
+    box.x_from = Math.min(box.x_from, xs[i]);
+    box.x_to = Math.max(box.x_to, xs[i]);
+    box.y_from = Math.min(box.y_from, ys[i]);
+    box.y_to = Math.max(box.y_to, ys[i]);
+  }
+  // cells too evenly thin to form any group: the plain box is all there is
+  if (inside === 0) return { box: plain, n_inside: n };
+  return { box, n_inside: inside };
+}
+
+function classesBox(classNames) {
+  needCentroids('position');
+  const wanted = new Set(classNames.map(classIndex));
+  const xs = [];
+  const ys = [];
+  for (const r of allCells()) {
+    if (!wanted.has(r.assigned)) continue;
+    xs.push(r.x);
+    ys.push(r.y);
+  }
+  if (xs.length === 0) throw new Error(`no cell is assigned ${classNames.join(', ')} in this run`);
+  return { ...denseBox(xs, ys), n_cells: xs.length };
+}
+
 function metadataTool(key) {
   const m = meta();
   const kind = (v) => {
@@ -1838,5 +1923,5 @@ function calculate(expression) {
 module.exports = { init, cell, cellShape, shapeOf, cellCounts, theta, gamma, spot, gene, neighbours, explainCell, hasSavedScore, docsFromRun,
                    spotsOfClass, countSpotsOfClass,
                    spotsInCell, spotsOfCell, spotRow, cellRow, cellImage, planeImage,
-                   classCounts, classPrior, findCells, metadataTool, calculate,
+                   classCounts, classPrior, findCells, classesBox, denseBox, metadataTool, calculate,
                    toInternal, toExternal, planeOf, planeOfZ, spotPosition, nbContributions };

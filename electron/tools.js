@@ -1010,6 +1010,11 @@ const TOOLS = [
       'halves the width and height of the area in view, and the levels run from 0 ' +
       'to 8. center is the point to end centred on, in image pixels, the same ' +
       'coordinates as the cells and spots. Whichever is left out stays as it is. ' +
+      'To make a part of the image fit the window, give box or classes instead, ' +
+      'alone: box is x_from, x_to, y_from, y_to in image pixels; classes is a list ' +
+      'of class names, and the map goes to the box around the cells assigned any of ' +
+      'them, for "zoom so that CA1, CA3 and DG fit the screen". The viewer works out ' +
+      'the zoom and the centre itself, never work them out for a box. ' +
       'The answer comes once the map has arrived, with the zoom and the area then ' +
       'in view. Use it when the user asks to zoom in or out, to get closer, or to ' +
       'look at a part of the image; to go to a cell, use fly_to_cell.',
@@ -1022,6 +1027,20 @@ const TOOLS = [
           description: 'The point to end centred on, in image pixels.',
           properties: { x: { type: 'number' }, y: { type: 'number' } },
           required: ['x', 'y'],
+        },
+        box: {
+          type: 'object',
+          description: 'The part of the image to fit in the window, in image pixels. Not with zoom or center.',
+          properties: {
+            x_from: { type: 'number' }, x_to: { type: 'number' },
+            y_from: { type: 'number' }, y_to: { type: 'number' },
+          },
+          required: ['x_from', 'x_to', 'y_from', 'y_to'],
+        },
+        classes: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Class names. The map fits the box around the cells assigned any of them. Not with zoom, center or box.',
         },
       },
     },
@@ -1563,7 +1582,32 @@ async function call(name, input) {
         if (!Number.isFinite(x) || !Number.isFinite(y)) return { error: 'center needs numbers x and y in image pixels' };
         out.center = { x, y };
       }
-      return await deps.zoomMap(out);
+      if (input.classes != null && input.box != null) return { error: 'give classes or a box, not both' };
+      let fitted = null;
+      if (input.classes != null) {
+        if (!Array.isArray(input.classes) || input.classes.length === 0) return { error: 'classes must be a list of class names' };
+        fitted = run.classesBox(input.classes.map(String));
+        out.box = fitted.box;
+      }
+      if (input.box != null) {
+        const box = {};
+        for (const k of ['x_from', 'x_to', 'y_from', 'y_to']) {
+          box[k] = Number(input.box[k]);
+          if (!Number.isFinite(box[k])) return { error: 'box needs numbers x_from, x_to, y_from and y_to in image pixels' };
+        }
+        out.box = box;
+      }
+      const arrived = await deps.zoomMap(out);
+      if (fitted) {
+        return {
+          ...arrived,
+          fitted_box: fitted.box,
+          fitted_box_is: `the box around ${fitted.n_inside} of the ${fitted.n_cells} cells assigned ` +
+                         `${input.classes.join(', ')}, in image pixels; the rest lie scattered away ` +
+                         'from the main groups of these cells and were left out',
+        };
+      }
+      return arrived;
     }
     if (name === 'screenshot') {
       if (!deps.screenshot) return { error: 'the viewer window is not available' };
