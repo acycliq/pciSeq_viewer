@@ -1231,17 +1231,50 @@ window.addEventListener('load', async () => {
         window.electronAPI.onChatScreenshot(({ id }) => {
             try {
                 const b = getCurrentViewportTileBounds();
-                if (!b) {
+                const deck = state.deckglInstance;
+                const canvas = document.querySelector('#map canvas');
+                if (!b || !deck || !canvas) {
                     window.electronAPI.chatScreenshotDone({ id, error: 'the map is not drawn yet' });
                     return;
                 }
-                const r = document.getElementById('map').getBoundingClientRect();
-                window.electronAPI.chatScreenshotDone({
-                    id,
-                    rect: { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) },
-                    plane: state.currentPlane,
-                    bbox: [toImagePixels(b.minX), toImagePixels(b.minY), toImagePixels(b.maxX), toImagePixels(b.maxY)],
+                let sent = false;
+                const tooLate = setTimeout(() => {
+                    if (sent) return;
+                    sent = true;
+                    deck.setProps({ onAfterRender: () => {} });
+                    window.electronAPI.chatScreenshotDone({ id, error: 'the map did not redraw in time' });
+                }, 5000);
+                // the canvas keeps its pixels only until the frame is handed to the
+                // screen, so it is copied right after a draw, inside the same frame.
+                // deck.gl calls onAfterRender on every frame, so a function must stay
+                // there afterwards, never null
+                deck.setProps({
+                    onAfterRender: () => {
+                        deck.setProps({ onAfterRender: () => {} });
+                        if (sent) return;
+                        sent = true;
+                        clearTimeout(tooLate);
+                        try {
+                            const out = document.createElement('canvas');
+                            out.width = canvas.width;
+                            out.height = canvas.height;
+                            const ctx = out.getContext('2d');
+                            // the page is black where the map draws nothing
+                            ctx.fillStyle = '#000';
+                            ctx.fillRect(0, 0, out.width, out.height);
+                            ctx.drawImage(canvas, 0, 0);
+                            window.electronAPI.chatScreenshotDone({
+                                id,
+                                dataUrl: out.toDataURL('image/png'),
+                                plane: state.currentPlane,
+                                bbox: [toImagePixels(b.minX), toImagePixels(b.minY), toImagePixels(b.maxX), toImagePixels(b.maxY)],
+                            });
+                        } catch (e) {
+                            window.electronAPI.chatScreenshotDone({ id, error: e.message });
+                        }
+                    },
                 });
+                deck.redraw(true);
             } catch (e) {
                 window.electronAPI.chatScreenshotDone({ id, error: e.message });
             }

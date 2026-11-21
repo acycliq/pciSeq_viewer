@@ -1,15 +1,16 @@
-// The screenshot tool: the map as the user sees it now, read from the window.
+// The screenshot tool: the map as the user sees it now, and nothing else.
 //
 // cell_image and plane_image draw their picture from the data; this one copies the
-// screen, so it shows whatever the map shows: the spots and cells drawn, their
-// colours and glyphs, the plane and zoom, and any drawer lying over the map. The
-// renderer says where the map is in the window and which part of the image it
-// covers (compose.mapView, answered in src/app.js); the capture itself needs the
-// window, which only the main process has.
+// map's own canvas, so it shows whatever the map shows: the background, the spots
+// and cells drawn, their colours and glyphs, the plane and zoom. It is not a copy
+// of the window, so a drawer, panel or button lying over the map is not in it. The
+// renderer reads the canvas and says which part of the image it covers
+// (compose.mapView, answered in src/app.js).
 //
 // Wiring: main.js calls init with the window and hands take to tools.js as
 // deps.screenshot.
 
+const { nativeImage } = require('electron');
 const compose = require('./compose');
 
 // the longest edge Claude reads an image at without shrinking it first; a bigger
@@ -25,10 +26,9 @@ function init(d) {
 // the picture and how to place a point of the image on it, in the shape every
 // picture tool returns (see finishImage in run.js)
 async function take() {
+  if (!getWindow()) throw new Error('the viewer window is not open');
   const view = await compose.mapView();
-  const win = getWindow();
-  if (!win) throw new Error('the viewer window is not open');
-  const captured = await win.webContents.capturePage(view.rect);
+  const captured = nativeImage.createFromDataURL(view.dataUrl);
   if (captured.isEmpty()) throw new Error('the map could not be captured; the viewer window may be minimised');
   const image = fitToMaxEdge(captured);
   const [x0, , x1] = view.bbox;
@@ -41,7 +41,7 @@ async function take() {
       scale: Math.round(scale * 1000) / 1000,
       to_place_a_point: 'a point (x, y) of the image is at ((x - bbox[0]) * scale, ' +
                         '(y - bbox[1]) * scale) in this picture',
-      picture_is: 'the map as the user sees it now, captured from the screen, with any drawer that lies over it',
+      picture_is: 'the map as the user sees it now, read from the map itself: no drawer, panel or button that lies over it',
     },
   };
 }

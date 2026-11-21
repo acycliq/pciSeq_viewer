@@ -971,9 +971,10 @@ const TOOLS = [
     name: 'screenshot',
     description:
       'A picture of the map exactly as the user sees it now: the background, the cells ' +
-      'and spots drawn, their colours and glyphs, at the current plane and zoom, and ' +
-      'any drawer that lies over the map. Call it only when the user asks you to look ' +
-      'at the screen, the map or what they see, never on your own. The answer says ' +
+      'and spots drawn, their colours and glyphs, at the current plane and zoom. It ' +
+      'is the map alone: a drawer, panel or button that lies over the map is not in ' +
+      'the picture. Call it only when the user asks you to look at the screen, the ' +
+      'map or what they see, or asks for a screenshot, never on your own. The answer says ' +
       'the plane and the scale, and gives bbox, the part of the image the picture ' +
       'covers as [x0, y0, x1, y1] in image pixels, the same coordinates as the cells ' +
       'and spots; it reaches past the image when the map is zoomed out. With these a ' +
