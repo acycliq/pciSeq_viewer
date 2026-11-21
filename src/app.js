@@ -74,6 +74,7 @@ import { setupCheckSpotBridge, openCheckSpotModal } from './checkSpotBridge.js';
 import { showRhoBarWidget }     from './misreads/rhoBar/RhoBarWidget.js';
 import { openChart } from './chatCharts.js';
 import { mapZoomRequestError, glideMapTo, viewThatFits } from './mapZoom.js';
+import { geneStyle } from './glyphs/geneStyle.js';
 import './ui/chartLaunchers.js';
 import { showStackedBarWidget } from './misreads/stackedBar/StackedBarWidget.js';
 import { showPerPlaneWidget }   from './misreads/perPlane/PerPlaneWidget.js';
@@ -943,9 +944,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // import_colours: the chat applies a colour file, the same as the two menu
         // items above, and hears how much of the file was used
-        window.electronAPI.onChatImportColours(async ({ id, kind, scheme }) => {
+        window.electronAPI.onChatImportColours(async ({ id, kind, scheme, keepShapes }) => {
             try {
                 if (kind === 'genes') {
+                    // set_colours may give a colour alone: the gene then keeps the
+                    // shape it is drawn with now, not the default one
+                    if (keepShapes) {
+                        scheme = scheme.map(e => e.glyphName ? e : { ...e, glyphName: geneStyle(e.gene).glyphName });
+                    }
                     const { appliedCount } = await importGeneColours(scheme);
                     window.electronAPI.chatImportColoursDone({ id, kind, applied: appliedCount });
                 } else {
@@ -1223,8 +1229,9 @@ window.addEventListener('load', async () => {
             }
         });
     }
-    // screenshot: where the map is in the window, for the main process to capture,
-    // and the part of the image it shows edge to edge. Unlike in_view in
+    // screenshot: the map alone, read from the map's own canvas and not from the
+    // window, so no drawer, panel or button that lies over the map is in it. Sent
+    // back with the part of the image it shows edge to edge. Unlike in_view in
     // viewer_state this is not cut to the image, so a point of the picture maps
     // straight to image pixels even when the map is zoomed out past the image
     if (window.electronAPI?.onChatScreenshot) {

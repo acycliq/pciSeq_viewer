@@ -1116,6 +1116,42 @@ const TOOLS = [
     },
   },
   {
+    name: 'set_colours',
+    description:
+      'Set the colour of genes or of cell classes on the map, straight from the ' +
+      'request, with no file: for "show Pvalb in red", "make every Glut class blue ' +
+      'and every Gaba class red". kind says which: genes colours the spots of the ' +
+      'genes, classes colours the cells of the classes. colours is a list of groups, ' +
+      'each with names, the genes or classes exactly as this run spells them, and ' +
+      'colour as #RRGGBB; turn a colour word into its #RRGGBB yourself. A group of ' +
+      'genes may also give shape, the marker to draw them with (circle, square, ' +
+      'triangleUp, plus, cross, star5, diamond, point and the like); left out, each ' +
+      'gene keeps the shape it has. Whatever is not named keeps its colour. A name ' +
+      'this run does not have changes nothing and is reported back. Which classes ' +
+      'are excitatory or inhibitory is read from their names; for genes, say on ' +
+      'what you based the choice. Use it only when the user asks for a colour change.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['genes', 'classes'], description: 'What is coloured.' },
+        colours: {
+          type: 'array',
+          description: 'One group per colour.',
+          items: {
+            type: 'object',
+            properties: {
+              names: { type: 'array', items: { type: 'string' }, description: 'The genes or the classes of this group.' },
+              colour: { type: 'string', description: 'The colour as #RRGGBB.' },
+              shape: { type: 'string', description: 'Genes only: the marker shape. Left out, the shape stays.' },
+            },
+            required: ['names', 'colour'],
+          },
+        },
+      },
+      required: ['kind', 'colours'],
+    },
+  },
+  {
     name: 'uniform_spot_size',
     description:
       'Draw every spot at the same size, the same as the Uniform Size switch in the ' +
@@ -1331,6 +1367,54 @@ async function importColours({ kind, file }) {
     return { error: `could not read ${file}: ${e.message}` };
   }
   return await deps.importColours({ kind, scheme });
+}
+
+// set_colours: the same as import_colours, but the colours come in the request and
+// not from a file. The names are checked here against the run's own lists, so the
+// model hears about a typo, and the scheme is built in the shape the import takes.
+// A gene group without a shape leaves glyphName out, and the page then keeps the
+// shape each gene has (keepShapes).
+const GENE_SHAPES = ['star6', 'star5', 'diamond', 'square', 'triangleUp', 'triangleDown',
+                     'triangleRight', 'triangleLeft', 'tShapeTop', 'tShapeBottom', 'tShapeLeft',
+                     'tShapeRight', 'cross', 'plus', 'asterisk', 'circle', 'point'];
+
+async function setColours({ kind, colours }) {
+  if (!deps.importColours) return { error: 'the viewer window is not available' };
+  if (!COLOUR_KINDS.includes(kind)) return { error: 'kind must be genes or classes' };
+  const meta = deps.getMeta();
+  if (!meta) return { error: 'no diagnostics.db is open' };
+  if (!Array.isArray(colours) || colours.length === 0) return { error: 'colours must be a list of groups, each with names and a colour' };
+  const what = kind === 'classes' ? 'class' : 'gene';
+  const known = new Set(kind === 'classes' ? meta.class_names : meta.gene_panel);
+
+  const scheme = [];
+  const unknown = [];
+  const seen = new Set();
+  for (const group of colours) {
+    const names = Array.isArray(group && group.names) ? group.names.map(String) : [];
+    const colour = String((group && group.colour) || '').trim();
+    if (!names.length) return { error: 'every group needs names, nothing changed' };
+    if (!/^#[0-9a-fA-F]{6}$/.test(colour)) return { error: `'${colour}' is not a colour as #RRGGBB, nothing changed` };
+    if (group.shape != null) {
+      if (kind !== 'genes') return { error: 'shape is for genes only, nothing changed' };
+      if (!GENE_SHAPES.includes(group.shape)) return { error: `shape must be one of ${GENE_SHAPES.join(', ')}, nothing changed` };
+    }
+    for (const name of names) {
+      if (!known.has(name)) { unknown.push(name); continue; }
+      if (seen.has(name)) return { error: `${name} is in two groups, nothing changed` };
+      seen.add(name);
+      if (kind === 'genes') scheme.push({ gene: name, colour, ...(group.shape ? { glyphName: group.shape } : {}) });
+      else scheme.push({ className: name, color: colour });
+    }
+  }
+  if (!scheme.length) return { error: `none of ${unknown.join(', ')} is a ${what} of this run, nothing changed` };
+  const done = await deps.importColours({ kind, scheme, keepShapes: true });
+  const out = { done: true, kind, applied: done.applied };
+  if (unknown.length) {
+    out.unknown = unknown;
+    out.unknown_is = `not a ${what} of this run, left out`;
+  }
+  return out;
 }
 
 // show_classes and show_genes. The names are checked here against the run's own
@@ -1642,6 +1726,7 @@ async function call(name, input) {
     }
     if (name === 'show_genes') return setVisibility('genes', input);
     if (name === 'import_colours') return await importColours(input);
+    if (name === 'set_colours') return await setColours(input);
     if (name === 'show_all_planes') {
       const on = input.on !== false;
       // the renderer owns the switch and the planes; it answers when they are drawn
