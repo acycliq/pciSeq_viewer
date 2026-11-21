@@ -110,6 +110,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // the map_layers tool: background, its channel, cells and their opacity
   onChatMapLayers: (handler) => ipcRenderer.on('chat-map-layers', (_e, p) => handler(p)),
   chatMapLayersDone: (payload) => ipcRenderer.send('chat-map-layers-done', payload),
+  // the import_colours tool: a gene or class colour scheme, as the Import menu applies it
+  onChatImportColours: (handler) => ipcRenderer.on('chat-import-colours', (_e, p) => handler(p)),
+  chatImportColoursDone: (payload) => ipcRenderer.send('chat-import-colours-done', payload),
   // the go_to_plane tool: the plane slider
   onChatGoToPlane: (handler) => ipcRenderer.on('chat-go-to-plane', (_e, p) => handler(p)),
   chatGoToPlaneDone: (payload) => ipcRenderer.send('chat-go-to-plane-done', payload),

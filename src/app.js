@@ -219,6 +219,25 @@ let __lastInteracting = false; // track drag/zoom interaction state
 let __lastViewZoom = null; // track zoom value for overlay refresh fallback
 let __lineOverlayZoomRefreshTimer = null; // debounce timer for Ctrl+L overlay refresh on zoom
 
+// The two colour imports, shared by the Import menu and the chat's import_colours
+// tool. Each applies the scheme and redraws what shows the colours.
+async function importGeneColours(scheme) {
+    const result = await applyGeneScheme(scheme, false);
+    sendLegend();
+    return result;
+}
+
+function importClassColours(scheme) {
+    const result = applyClassColorScheme(scheme, false);
+    if (result.appliedCount > 0) {
+        populateCellClassDrawer();
+        renderRegionsList();   // cell annotation swatches follow their class colour
+        sendLegend();
+        updateAllLayers();
+    }
+    return result;
+}
+
 function scheduleLineOverlayZoomRefresh() {
     if (__lineOverlayZoomRefreshTimer) {
         clearTimeout(__lineOverlayZoomRefreshTimer);
@@ -902,8 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Gene colours import from menu
         window.electronAPI.onImportGeneColors(async (data) => {
             try {
-                const { appliedCount } = await applyGeneScheme(data, false);
-                sendLegend();
+                const { appliedCount } = await importGeneColours(data);
                 console.log('Imported ' + appliedCount + ' gene colour styles via menu');
             } catch (e) {
                 console.error('Failed to import gene colours:', e);
@@ -913,19 +931,30 @@ document.addEventListener('DOMContentLoaded', () => {
         // Cell class colours import from menu
         window.electronAPI.onImportClassColors((data) => {
             try {
-                const { appliedCount, notFoundClasses } = applyClassColorScheme(data, false);
-                if (appliedCount > 0) {
-                    populateCellClassDrawer();
-                    renderRegionsList();   // cell annotation swatches follow their class colour
-                    sendLegend();
-                    if (typeof window.updateAllLayers === 'function') window.updateAllLayers();
-                }
+                const { appliedCount, notFoundClasses } = importClassColours(data);
                 console.log('Imported ' + appliedCount + ' cell class colours via menu');
                 if (notFoundClasses.length > 0) {
                     console.log('Classes not found:', notFoundClasses.join(', '));
                 }
             } catch (e) {
                 console.error('Failed to import cell class colours:', e);
+            }
+        });
+
+        // import_colours: the chat applies a colour file, the same as the two menu
+        // items above, and hears how much of the file was used
+        window.electronAPI.onChatImportColours(async ({ id, kind, scheme }) => {
+            try {
+                if (kind === 'genes') {
+                    const { appliedCount } = await importGeneColours(scheme);
+                    window.electronAPI.chatImportColoursDone({ id, kind, applied: appliedCount });
+                } else {
+                    const { appliedCount, notFoundClasses } = importClassColours(scheme);
+                    window.electronAPI.chatImportColoursDone({
+                        id, kind, applied: appliedCount, names_not_in_this_run: notFoundClasses.length });
+                }
+            } catch (e) {
+                window.electronAPI.chatImportColoursDone({ id, error: e.message });
             }
         });
     }

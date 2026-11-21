@@ -24,7 +24,8 @@ const { FIGURES, showFigure } = require('./chatFigures');
 // fetch: for reading the pciSeq source from GitHub, the global one unless a check
 // passes a fake.
 let deps = { querySpot: null, queryCell: null, getMeta: null, send: null, fetch: null,
-             saveDialog: null, writeFile: null, getTilesInfo: null, getAnnotations: () => [],
+             saveDialog: null, writeFile: null, readFile: null, importColours: null,
+             getTilesInfo: null, getAnnotations: () => [],
              fitAllenRegions: null, flyToCell: null, showAllPlanes: null, exportPerClassPngs: null,
              getDataPath: () => '', existsDir: (p) => { try { return require('fs').statSync(p).isDirectory(); } catch { return false; } } };
 
@@ -1073,6 +1074,28 @@ const TOOLS = [
     },
   },
   {
+    name: 'import_colours',
+    description:
+      'Apply a colour file to the map, the same as Import, Gene Colours and Import, ' +
+      'Cell Class Colours in the File menu. kind genes: the file is a JSON list of ' +
+      '{gene, colour, glyphName}, the colour as #RRGGBB and glyphName one of the marker ' +
+      'shapes (circle, square, triangleUp, plus, cross, star5, diamond, point and the ' +
+      'like); the gene "*" sets every gene the file does not list. kind classes: the ' +
+      'file is a JSON object of class name to #RRGGBB, or a list of {className, color}. ' +
+      'What the file does not list keeps the colour it has. file is the full path of ' +
+      'the file on this computer. Returns how many entries were applied and, for ' +
+      'classes, how many names in the file this run does not have. Use it only when ' +
+      'the user asks for a colour file to be applied.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['genes', 'classes'], description: 'Which colours the file holds.' },
+        file: { type: 'string', description: 'Full path of the JSON file.' },
+      },
+      required: ['kind', 'file'],
+    },
+  },
+  {
     name: 'uniform_spot_size',
     description:
       'Draw every spot at the same size, the same as the Uniform Size switch in the ' +
@@ -1271,6 +1294,24 @@ async function cellQuery(label, vsClass) {
 }
 
 // ---------------------------------------------------------------- what is drawn
+
+// import_colours. The file is read here, so a missing file or broken JSON is
+// answered without troubling the window. The page then applies the scheme with the
+// same code as the Import menu (the chat-import-colours handler in app.js).
+const COLOUR_KINDS = ['genes', 'classes'];
+
+async function importColours({ kind, file }) {
+  if (!deps.importColours || !deps.readFile) return { error: 'the viewer window is not available' };
+  if (!COLOUR_KINDS.includes(kind)) return { error: 'kind must be genes or classes' };
+  if (!file) return { error: 'give the full path of the JSON file' };
+  let scheme;
+  try {
+    scheme = JSON.parse(deps.readFile(String(file)));
+  } catch (e) {
+    return { error: `could not read ${file}: ${e.message}` };
+  }
+  return await deps.importColours({ kind, scheme });
+}
 
 // show_classes and show_genes. The names are checked here against the run's own
 // lists, so the model hears about a typo; the renderer holds which ones are shown
@@ -1555,6 +1596,7 @@ async function call(name, input) {
                             : 'spots smaller the further their plane is from the one on screen' };
     }
     if (name === 'show_genes') return setVisibility('genes', input);
+    if (name === 'import_colours') return await importColours(input);
     if (name === 'show_all_planes') {
       const on = input.on !== false;
       // the renderer owns the switch and the planes; it answers when they are drawn

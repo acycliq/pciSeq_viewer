@@ -82,6 +82,26 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.ok(/x and y/.test((await tools.call('zoom_map', { center: { x: 1 } })).error));
   assert.strictEqual(zoomed.length, 1, 'a bad request never reaches the renderer');
 
+  // import_colours: the file is read and parsed here, the scheme goes to the renderer,
+  // and a file that is missing or is not JSON never reaches it
+  const imported = [];
+  const colourFiles = { '/tmp/genes.json': '[{"gene":"Pvalb","colour":"#00E5FF","glyphName":"circle"}]',
+                        '/tmp/broken.json': 'not json' };
+  tools.init({
+    readFile: (file) => {
+      if (!(file in colourFiles)) throw new Error('no such file');
+      return colourFiles[file];
+    },
+    importColours: async (settings) => { imported.push(settings); return { kind: settings.kind, applied: 1 }; },
+  });
+  const coloured = await tools.call('import_colours', { kind: 'genes', file: '/tmp/genes.json' });
+  assert.strictEqual(coloured.applied, 1);
+  assert.deepStrictEqual(imported, [{ kind: 'genes', scheme: [{ gene: 'Pvalb', colour: '#00E5FF', glyphName: 'circle' }] }]);
+  assert.ok(/could not read/.test((await tools.call('import_colours', { kind: 'genes', file: '/tmp/missing.json' })).error));
+  assert.ok(/could not read/.test((await tools.call('import_colours', { kind: 'classes', file: '/tmp/broken.json' })).error));
+  assert.ok(/genes or classes/.test((await tools.call('import_colours', { kind: 'spots', file: '/tmp/genes.json' })).error));
+  assert.strictEqual(imported.length, 1, 'a bad request never reaches the renderer');
+
   // open_cell_diagnostics: same numbers as explain_cell, plus the message to the renderer
   sent = [];
   const opened = await tools.call('open_cell_diagnostics', { label: 42 });
