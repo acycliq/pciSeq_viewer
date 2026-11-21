@@ -102,6 +102,31 @@ tools.init({ querySpot: async () => spotRes, queryCell: async (l, u) => fakeQuer
   assert.ok(/genes or classes/.test((await tools.call('import_colours', { kind: 'spots', file: '/tmp/genes.json' })).error));
   assert.strictEqual(imported.length, 1, 'a bad request never reaches the renderer');
 
+  // set_colours: the colours come in the request. Names are checked against the run,
+  // a gene without a shape goes out with no glyphName (the page keeps its shape), and
+  // a bad colour or a name in two groups changes nothing
+  const set = [];
+  tools.init({
+    getMeta: () => ({ class_names: ['A Glut', 'B Gaba'], gene_panel: ['Pvalb', 'Sst'] }),
+    importColours: async (settings) => { set.push(settings); return { kind: settings.kind, applied: settings.scheme.length }; },
+  });
+  const byClass = await tools.call('set_colours', { kind: 'classes', colours: [
+    { names: ['A Glut', 'C Glut'], colour: '#0000FF' }, { names: ['B Gaba'], colour: '#FF0000' }] });
+  assert.strictEqual(byClass.applied, 2);
+  assert.deepStrictEqual(byClass.unknown, ['C Glut']);
+  assert.deepStrictEqual(set[0], { kind: 'classes', keepShapes: true,
+    scheme: [{ className: 'A Glut', color: '#0000FF' }, { className: 'B Gaba', color: '#FF0000' }] });
+  await tools.call('set_colours', { kind: 'genes', colours: [
+    { names: ['Pvalb'], colour: '#00E5FF' }, { names: ['Sst'], colour: '#FF0000', shape: 'star5' }] });
+  assert.deepStrictEqual(set[1].scheme, [{ gene: 'Pvalb', colour: '#00E5FF' },
+                                         { gene: 'Sst', colour: '#FF0000', glyphName: 'star5' }]);
+  assert.ok(/#RRGGBB/.test((await tools.call('set_colours', { kind: 'genes', colours: [{ names: ['Pvalb'], colour: 'blue' }] })).error));
+  assert.ok(/two groups/.test((await tools.call('set_colours', { kind: 'genes', colours: [
+    { names: ['Pvalb'], colour: '#0000FF' }, { names: ['Pvalb'], colour: '#FF0000' }] })).error));
+  assert.ok(/genes only/.test((await tools.call('set_colours', { kind: 'classes', colours: [{ names: ['A Glut'], colour: '#0000FF', shape: 'circle' }] })).error));
+  assert.ok(/nothing changed/.test((await tools.call('set_colours', { kind: 'genes', colours: [{ names: ['Nope'], colour: '#0000FF' }] })).error));
+  assert.strictEqual(set.length, 2, 'a bad request never reaches the renderer');
+
   // open_cell_diagnostics: same numbers as explain_cell, plus the message to the renderer
   sent = [];
   const opened = await tools.call('open_cell_diagnostics', { label: 42 });
