@@ -48,6 +48,11 @@ window.webDataset = {
         // The plane shown first
         plane: 45,
 
+        // true shows the section flipped top to bottom, the orientation of
+        // the figures in the paper. Only the picture changes: cells and
+        // spots keep the coordinates of the run.
+        flipTopToBottom: true,
+
         // false: no spots are drawn until the user ticks a gene or "Show All"
         showGenes: false,
 

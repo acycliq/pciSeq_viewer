@@ -32,6 +32,24 @@ import Perf from '../../utils/runtimePerf.js';
 const { DeckGL, OrthographicView, COORDINATE_SYSTEM } = deck;
 
 /**
+ * The map's view: the usual one, or the map flipped top to bottom when the
+ * website asks for it (src/web/webDataset.js).
+ *
+ * deck.gl draws with y running down the screen, as in an image (flipY: true,
+ * its default). With flipY: false y runs up, which shows the image flipped top
+ * to bottom. Only the picture changes: the tiles, spots and cells keep the
+ * coordinates of the run.
+ * @returns {Object} A deck.gl view
+ */
+function startupView() {
+    const webStartup = window.electronAPI.startup;
+    if (webStartup && webStartup.flipTopToBottom) {
+        return new OrthographicView({ id: 'ortho', flipY: false });
+    }
+    return new OrthographicView({ id: 'ortho' });
+}
+
+/**
  * The view the map opens with.
  *
  * The map fills the whole window and the controls drawer lies on top of its
@@ -70,7 +88,7 @@ function startupViewState() {
 export function initializeDeckGL(onViewStateChange, onHover) {
     const deckglInstance = new DeckGL({
         container: 'map',
-        views: [new OrthographicView({ id: 'ortho' })],
+        views: [startupView()],
         initialViewState: startupViewState(),
         controller: {
             minZoom: 0,
