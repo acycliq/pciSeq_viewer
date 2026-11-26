@@ -1,14 +1,12 @@
-# Builds the GitHub Pages site: the VitePress docs (from desktop_app, served at
-# the root) plus the web viewer (from master, served under /web_viewer).
+# Builds the GitHub Pages site from the desktop_app branch: the VitePress docs
+# (served at the root) plus the web viewer (served under /web_viewer).
 #
-# ============================================================================
-# KEEP IN SYNC WITH THE COPY OF THIS FILE ON THE master BRANCH.
-# The two copies must be identical below the `on:` block. They differ only in
-# the trigger: this copy (on desktop_app) fires on pushes to desktop_app; the
-# master copy fires on pushes to master. Every run rebuilds the WHOLE site, so
-# if you change the build/deploy steps here, copy the change to master's
-# deploy-docs.yml too, otherwise the two branches will publish different sites.
-# ============================================================================
+# The web viewer is the same page the desktop app shows. On the website it gets
+# its data from a Google Cloud Storage bucket (src/web/webDataset.js) and not
+# from Electron (src/web/webBackend.js).
+#
+# The master branch must not carry a copy of this workflow: a push there would
+# publish master's old viewer over this one.
 #
 # One-time setup in the repo:
 #   Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
@@ -20,6 +18,16 @@ on:
     paths:
       - 'website/**'
       - '.github/workflows/deploy-docs.yml'
+      # the files the web viewer is made of
+      - 'index.html'
+      - 'styles.css'
+      - 'config.js'
+      - 'src/**'
+      - 'lib/**'
+      - 'arrow-loader/**'
+      - 'config/**'
+      - 'utils/**'
+      - 'voxel-viewer/**'
   workflow_dispatch:
 
 permissions:
@@ -35,18 +43,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # Docs come from desktop_app (master has no website/ folder).
-      - name: Check out the docs source from desktop_app
+      # The docs and the web viewer both come from desktop_app.
+      - name: Check out desktop_app
         uses: actions/checkout@v4
         with:
           ref: desktop_app
-
-      # The web viewer comes from master.
-      - name: Check out the web viewer source from master
-        uses: actions/checkout@v4
-        with:
-          ref: master
-          path: viewer-master
 
       - uses: actions/setup-node@v4
         with:
@@ -64,18 +65,14 @@ jobs:
         run: |
           mkdir -p deployment_payload/web_viewer
 
-          # 1. VitePress documentation site at the root (from desktop_app)
+          # 1. VitePress documentation site at the root
           cp -r website/.vitepress/dist/* deployment_payload/
 
-          # 2. Web viewer under /web_viewer (from the master branch checkout).
-          #    Data is fetched from Google Cloud Storage at runtime, so no
+          # 2. Web viewer under /web_viewer: the page and the folders it loads
+          #    from. Data is fetched from Google Cloud Storage at runtime, so no
           #    dataset files are bundled here.
-          cp viewer-master/index.html viewer-master/styles.css viewer-master/config.js deployment_payload/web_viewer/
-          for f in genes_datatable.html; do
-            [ -f "viewer-master/$f" ] && cp "viewer-master/$f" deployment_payload/web_viewer/
-          done
-          cp -r viewer-master/src viewer-master/lib viewer-master/arrow-loader viewer-master/config viewer-master/utils deployment_payload/web_viewer/
-          [ -d viewer-master/voxel-viewer ] && cp -r viewer-master/voxel-viewer deployment_payload/web_viewer/
+          cp index.html styles.css config.js deployment_payload/web_viewer/
+          cp -r src lib arrow-loader config utils voxel-viewer deployment_payload/web_viewer/
 
           # Add .nojekyll to prevent GitHub Pages from processing with Jekyll
           touch deployment_payload/.nojekyll

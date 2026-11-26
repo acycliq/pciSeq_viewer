@@ -5,15 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- CSP: only load from our own origin (app://). mbtiles: is the tile
          protocol; blob:/data: are for deck.gl workers and canvas textures.
-         'unsafe-eval' is required because turf.js uses new Function(). -->
+         'unsafe-eval' is required because turf.js uses new Function().
+         https://storage.googleapis.com is where the website keeps its data
+         (src/web/webDataset.js). -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
         script-src 'self' 'unsafe-eval';
         style-src 'self' 'unsafe-inline';
         font-src 'self';
-        img-src 'self' data: blob: app: mbtiles:;
+        img-src 'self' data: blob: app: mbtiles: https://storage.googleapis.com;
         media-src 'self' blob:;
-        connect-src 'self' app: mbtiles: blob: data:;
+        connect-src 'self' app: mbtiles: blob: data: https://storage.googleapis.com;
         worker-src 'self' blob:;
         child-src 'self' blob:;
         object-src 'none';
@@ -26,6 +28,10 @@
     <!-- Load configuration first -->
     <script src="config.js"></script>
     <script src="config/advanced.js"></script>
+    <!-- Website only: provides window.electronAPI when the page is not inside
+         the desktop app, where electron/preload.js has already provided it -->
+    <script src="src/web/webDataset.js"></script>
+    <script src="src/web/webBackend.js"></script>
     <!-- Libraries vendored under lib/vendor (were CDN) -->
     <script src="lib/vendor/deck.gl-8.8.27.min.js"></script>
     <script src="lib/vendor/d3.v7.min.js"></script>

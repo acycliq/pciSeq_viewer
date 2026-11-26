@@ -3,9 +3,10 @@
  *
  * Metadata (width, height, plane_count) comes from MBTiles or user input.
  * Voxel size is always provided by the user in the welcome screen.
- * Data files are served via custom protocols:
- *   - mbtiles:// for background tiles
- *   - app:// for Arrow data files
+ * Where the data files are comes from window.electronAPI.dataUrls:
+ *   - desktop app (electron/preload.js): mbtiles:// for background tiles,
+ *     app:// for Arrow data files
+ *   - website (src/web/webBackend.js): https URLs into the bucket
  */
 
 window._datasetMetadataCache = null;
@@ -50,6 +51,7 @@ window.loadDatasetMetadata = loadDatasetMetadata;
  */
 function config() {
     const meta = window._datasetMetadataCache;
+    const dataUrls = window.electronAPI.dataUrls;
 
     // Validate metadata if data path is configured (meta will be null on welcome screen)
     if (meta !== null) {
@@ -72,15 +74,14 @@ function config() {
         // the deepest zoom level of the background tiles, when the file says it
         tileMaxZoom: meta?.tileMaxZoom,
 
-        // Background tiles via mbtiles:// protocol
-        // {channel} selects the imaging channel (e.g. dapi, gcamp)
-        backgroundTiles: "mbtiles://tiles/{channel}/{plane}/{z}/{y}/{x}.jpg",
+        // Background tiles. {channel} selects the imaging channel (e.g. dapi, gcamp)
+        backgroundTiles: dataUrls.backgroundTiles,
 
-        // Arrow data files via app:// protocol
-        arrowSpotsManifest: "app://arrow_spots/manifest.json",
-        arrowCellsManifest: "app://arrow_cells/manifest.json",
-        arrowBoundariesManifest: "app://arrow_boundaries/manifest.json",
-        arrowSpotsGeneDict: "app://arrow_spots/gene_dict.json"
+        // Arrow data files
+        arrowSpotsManifest: dataUrls.arrowSpotsManifest,
+        arrowCellsManifest: dataUrls.arrowCellsManifest,
+        arrowBoundariesManifest: dataUrls.arrowBoundariesManifest,
+        arrowSpotsGeneDict: dataUrls.arrowSpotsGeneDict
     };
 }
 

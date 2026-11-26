@@ -6,6 +6,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Folder selection methods
   selectDataFolder: () => ipcRenderer.invoke('select-data-folder'),
   platform: process.platform,
+  // Where the page fetches the data files from (read by config.js). The desktop
+  // app serves them through its own protocols (electron/main.js); the website's
+  // answer, https URLs into a bucket, is in src/web/webBackend.js.
+  dataUrls: {
+    backgroundTiles: 'mbtiles://tiles/{channel}/{plane}/{z}/{y}/{x}.jpg',
+    arrowSpotsManifest: 'app://arrow_spots/manifest.json',
+    arrowCellsManifest: 'app://arrow_cells/manifest.json',
+    arrowBoundariesManifest: 'app://arrow_boundaries/manifest.json',
+    arrowSpotsGeneDict: 'app://arrow_spots/gene_dict.json'
+  },
   // the sample run on the welcome screen (electron/sample.js)
   sampleStatus: () => ipcRenderer.invoke('sample-status'),
   openSample: (keyword) => ipcRenderer.invoke('sample-open', keyword),

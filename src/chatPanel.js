@@ -392,7 +392,12 @@ function startResize(e) {
 }
 
 export function initChatPanel() {
-  if (!window.electronAPI || !window.electronAPI.chatSend) return;
+  // No chat on the website (src/web/webBackend.js has no chatSend): its button
+  // would do nothing there, so it is not shown
+  if (!window.electronAPI || !window.electronAPI.chatSend) {
+    el('chatBtn').classList.add('hidden');
+    return;
+  }
 
   el('chatBtn').addEventListener('click', () => {
     if (el('chatPanel').classList.contains('collapsed')) open(); else close();

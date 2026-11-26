@@ -837,6 +837,13 @@ async function runInit() {
     const startingPlane = Math.floor(totalPlanes / 2);
     initializePlaneSlider(totalPlanes, startingPlane);
 
+    // Website only: its own default class colours (src/web/webBackend.js). The
+    // classes are not known yet, so the scheme is kept and applied as soon as
+    // the cell data has been read (applyPendingClassColorSchemeIfAny).
+    if (window.electronAPI.getClassColours) {
+        applyClassColorScheme(await window.electronAPI.getClassColours());
+    }
+
     // 6. Cell data + colors, then boundaries for the current plane. Cells are
     //    one small file, so tiles and coloured polygons can show before spots.
     await initializeCellData();
@@ -917,8 +924,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // Setup IPC listeners for menu-based import (Electron only)
-    if (window.electronAPI) {
+    // Setup IPC listeners for menu-based import. Desktop app only: the website
+    // (src/web/webBackend.js) has no menu and no chat, so no such listeners.
+    if (window.electronAPI.onImportGeneColors) {
         // Gene colours import from menu
         window.electronAPI.onImportGeneColors(async (data) => {
             try {
