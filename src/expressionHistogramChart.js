@@ -50,6 +50,8 @@ class ExpressionHistogramWidget extends WidgetBase {
         // Toolbar: Rounding mode selector
         this.roundingSelect = document.createElement('select');
         this.roundingSelect.className = 'glass-select';
+        // the ids let the website leave these two controls out (src/web/webDataset.js)
+        this.roundingSelect.id = 'geneCountsRoundingSelect';
         this.roundingSelect.innerHTML = `
             <option value="ceil">Ceiling</option>
             <option value="floor">Floor</option>
@@ -64,6 +66,7 @@ class ExpressionHistogramWidget extends WidgetBase {
 
         // Toolbar: Ignore zeros checkbox
         const ignoreZerosLabel = document.createElement('label');
+        ignoreZerosLabel.id = 'geneCountsIgnoreZeros';
         ignoreZerosLabel.style.cssText = 'display:flex;align-items:center;gap:4px;color:#ccc;font-size:12px;cursor:pointer;white-space:nowrap;';
         this.ignoreZerosCheckbox = document.createElement('input');
         this.ignoreZerosCheckbox.type = 'checkbox';

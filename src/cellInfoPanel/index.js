@@ -14,6 +14,7 @@
  *   update(cellData)       - live update from hover (respects minimized/last cell)
  *   freezeOnCell(cellData) - update + auto-maximize + freeze (click-to-freeze)
  *   unfreeze()             - resume hover updates (Esc / empty-map click)
+ *   openOnFirstCell()      - open the panel when the mouse first meets a cell
  */
 
 import { renderDonut } from './donutChart.js';
@@ -30,6 +31,19 @@ import {
     setLastCell,
     getLastCell
 } from './panelState.js';
+
+// Set by openOnFirstCell(): the next hovered cell opens the panel
+let _openOnNextCell = false;
+
+/**
+ * Keep the panel as a strip until the mouse first meets a cell, then open it.
+ * It opens once: after that the panel stays as the user leaves it.
+ * The website asks for this at startup (src/web/webDataset.js), so its visitors
+ * see the donut without having to find the button, and never see it empty.
+ */
+export function openOnFirstCell() {
+    _openOnNextCell = true;
+}
 
 // Re-export so map handlers (Esc, empty-map click) can resume hover updates.
 export { unfreezeState as unfreeze };
@@ -92,6 +106,11 @@ export function update(cellProperties) {
 
     // Header (the strip) is cheap and always kept current.
     updateCellInfoHeader(cellData, cellProperties);
+
+    if (_openOnNextCell) {
+        _openOnNextCell = false;
+        maximize();
+    }
 
     // Skip the expensive renders while collapsed — they run on maximize.
     if (isMinimized()) return;

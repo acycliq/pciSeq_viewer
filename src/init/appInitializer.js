@@ -32,6 +32,36 @@ import Perf from '../../utils/runtimePerf.js';
 const { DeckGL, OrthographicView, COORDINATE_SYSTEM } = deck;
 
 /**
+ * The view the map opens with.
+ *
+ * The map fills the whole window and the controls drawer lies on top of its
+ * left edge. A website that opens with the drawer open (src/web/webDataset.js)
+ * would therefore show the image off-centre, so the view is moved left by half
+ * the drawer's width. That puts the image in the middle of the part of the map
+ * the drawer leaves free.
+ * @returns {Object} A deck.gl view state
+ */
+function startupViewState() {
+    const webStartup = window.electronAPI.startup;
+    if (!webStartup || !webStartup.openControls) {
+        return INITIAL_VIEW_STATE;
+    }
+
+    const drawerWidth = document.getElementById('controlsPanel').offsetWidth;
+    // One map unit is 2^zoom pixels on screen
+    const pixelsPerUnit = Math.pow(2, INITIAL_VIEW_STATE.zoom);
+    const shift = (drawerWidth / 2) / pixelsPerUnit;
+    const [x, y, z] = INITIAL_VIEW_STATE.target;
+
+    return {
+        target: [x - shift, y, z],
+        zoom: INITIAL_VIEW_STATE.zoom,
+        minZoom: INITIAL_VIEW_STATE.minZoom,
+        maxZoom: INITIAL_VIEW_STATE.maxZoom
+    };
+}
+
+/**
  * Initialize the deck.gl instance
  * @param {Function} onViewStateChange - Callback for view state changes
  * @param {Function} onHover - Callback for hover events
@@ -41,7 +71,7 @@ export function initializeDeckGL(onViewStateChange, onHover) {
     const deckglInstance = new DeckGL({
         container: 'map',
         views: [new OrthographicView({ id: 'ortho' })],
-        initialViewState: INITIAL_VIEW_STATE,
+        initialViewState: startupViewState(),
         controller: {
             minZoom: 0,
             maxZoom: 8,

@@ -13,7 +13,7 @@
  *
  * Depends on: window.webDataset (src/web/webDataset.js), loaded just before.
  * Used by:    config.js (dataUrls, getDatasetMetadata) and src/app.js
- *             (getPaths, getTileChannels, getClassColours).
+ *             (getPaths, getTileChannels, getClassColours, startup).
  */
 (function () {
     // Inside the desktop app the preload script has already provided the API.
@@ -56,6 +56,10 @@
             found: [],
             failed: []
         }),
+
+        // How the page looks when it opens (plane, panels, hidden controls).
+        // The desktop app has no such property and keeps its own defaults.
+        startup: dataset.startup,
 
         // Colour import. In the desktop app the Import menu hands a colour file to
         // the page through these two listeners. The website has no menu, so it

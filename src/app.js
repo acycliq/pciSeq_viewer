@@ -32,7 +32,7 @@ import { sendLegend } from './legendSync.js';
 import { openChunkAroundCell } from './cellChunk.js';
 import { showNotification } from './ui/notification.js';
 import { initGeneDrawer, populateGeneDrawer } from './geneDrawer.js';
-import { init as initCellInfoPanel } from './cellInfoPanel/index.js';
+import { init as initCellInfoPanel, openOnFirstCell as openCellInfoOnFirstCell } from './cellInfoPanel/index.js';
 import { applyPendingClassColorSchemeIfAny, applyClassColorScheme } from './classColorImport.js';
 import { applyGeneScheme } from './geneColorImport.js';
 
@@ -834,7 +834,12 @@ async function runInit() {
 
     // 5. Plane count comes from metadata (mbtiles or user input)
     const totalPlanes = userConfig.planeCount;
-    const startingPlane = Math.floor(totalPlanes / 2);
+    let startingPlane = Math.floor(totalPlanes / 2);
+    // Website only: the plane its dataset asks for (src/web/webDataset.js)
+    const webStartup = window.electronAPI.startup;
+    if (webStartup) {
+        startingPlane = webStartup.plane;
+    }
     initializePlaneSlider(totalPlanes, startingPlane);
 
     // Website only: its own default class colours (src/web/webBackend.js). The
@@ -871,7 +876,14 @@ async function runInit() {
     }
     // A redraw per shard shows the planes arrive one by one. The shard is
     // already on the GPU (src/data/spotBuffers.js), so the redraw sends nothing.
-    const spots = await streamSpotsIntoScatterCache(state.selectedGenes, (loadedRows, totalRows) => {
+    // The loader ticks every gene in the set it is given. A website that starts
+    // with no genes shown gets a set of its own to fill, so state.selectedGenes
+    // stays empty and no spot is drawn until the user ticks a gene.
+    let genesToTick = state.selectedGenes;
+    if (webStartup && !webStartup.showGenes) {
+        genesToTick = new Set();
+    }
+    const spots = await streamSpotsIntoScatterCache(genesToTick, (loadedRows, totalRows) => {
         if (!progressiveSpots) return;
         showLoadStatus(`Spots ${loadedRows.toLocaleString()} / ${totalRows.toLocaleString()}`);
         updateAllLayers();
@@ -905,6 +917,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize cell info panel (close button + color scheme)
     initCellInfoPanel();
 
+    // Website only: how the page looks when it opens (src/web/webDataset.js)
+    const webStartup = window.electronAPI.startup;
+    if (webStartup) {
+        if (webStartup.openCellInfo) {
+            openCellInfoOnFirstCell();
+        }
+        // Hidden with a style rule and not with a class on each element,
+        // because a chart's toolbar is only built when the chart first opens.
+        const hiddenRule = document.createElement('style');
+        const selectors = webStartup.hiddenControls.map(id => '#' + id);
+        hiddenRule.textContent = selectors.join(', ') + ' { display: none !important; }';
+        document.head.appendChild(hiddenRule);
+    }
+
     // Initialize D3 components when DOM is ready
     if (typeof d3 !== 'undefined') {
         initGeneDistributionChart();
@@ -921,6 +947,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (controlsPanel) {
         controlsPanel.classList.add('collapsed');
         try { updateScaleBarOffset(); } catch {}
+    }
+    if (webStartup && webStartup.openControls) {
+        showControlsPanel();
     }
 
 

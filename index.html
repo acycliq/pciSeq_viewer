@@ -344,12 +344,12 @@
                     <button id="misreadRhoBtn" class="chart-launcher" title="Learned misread density (rho) per gene"><span class="chart-launcher-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="20" x2="5" y2="16"/><line x1="10" y1="20" x2="10" y2="12"/><line x1="15" y1="20" x2="15" y2="8"/><line x1="20" y1="20" x2="20" y2="4"/></svg></span><span class="chart-launcher-text"><span class="chart-launcher-title">rho per Gene</span><span class="chart-launcher-sub">Misread density per gene</span></span><span class="chart-launcher-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span></button>
                     <button id="misreadStackedBtn" class="chart-launcher" title="Assigned vs misread spots per gene"><span class="chart-launcher-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="6" height="16" rx="1"/><rect x="13" y="12" width="6" height="8" rx="1"/></svg></span><span class="chart-launcher-text"><span class="chart-launcher-title">Assigned vs Misread</span><span class="chart-launcher-sub">Cell or background</span></span><span class="chart-launcher-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span></button>
                     <button id="misreadPerPlaneBtn" class="chart-launcher" title="Misread counts per plane for a selected gene"><span class="chart-launcher-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="chart-launcher-text"><span class="chart-launcher-title">Misreads per Plane</span><span class="chart-launcher-sub">Misread counts per plane</span></span><span class="chart-launcher-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span></button>
-                    <label class="toggle-switch">
+                    <label class="toggle-switch" id="greyOutMisreadsRow">
                         <span class="label-text">Grey out misreads</span>
                         <input type="checkbox" id="greyOutMisreadsToggle">
                         <span class="switch-slider"></span>
                     </label>
-                    <label class="toggle-switch">
+                    <label class="toggle-switch" id="hideMisreadsRow">
                         <span class="label-text">Hide misreads</span>
                         <input type="checkbox" id="hideMisreadsToggle">
                         <span class="switch-slider"></span>
@@ -358,7 +358,7 @@
             </div>
 
             <!-- Annotations Section (Collapsible): regions for now -->
-            <div class="control-section">
+            <div class="control-section" id="annotationsSection">
                 <h3 class="section-label collapsible-header" id="regionsHeader">
                     <span class="collapse-icon">▼</span> Annotations
                 </h3>

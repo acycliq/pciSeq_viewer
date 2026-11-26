@@ -40,5 +40,38 @@ window.webDataset = {
     // grayscale channel; null leaves it as it is.
     channels: [
         { id: 'dapi', label: 'DAPI', tint: null }
-    ]
+    ],
+
+    // How the page looks when it opens. The desktop app has no such list and
+    // opens on the middle plane, all genes shown, both panels closed.
+    startup: {
+        // The plane shown first
+        plane: 45,
+
+        // false: no spots are drawn until the user ticks a gene or "Show All"
+        showGenes: false,
+
+        // The controls drawer on the left
+        openControls: true,
+
+        // The cell info panel at the bottom right: true opens it when the
+        // mouse first meets a cell. Until then it is a strip, since it has
+        // no cell to show.
+        openCellInfo: true,
+
+        // Controls left out of the drawer, by the id of their element in
+        // index.html: the rho chart needs the run's diagnostics.db, which the
+        // website does not read, and annotations cannot be saved from a website.
+        // The last two are in the toolbar of the "Gene Counts per Class" chart
+        // (src/expressionHistogramChart.js). Without its rounding dropdown the
+        // chart stays on its default, Ceiling.
+        hiddenControls: [
+            'misreadRhoBtn',
+            'greyOutMisreadsRow',
+            'hideMisreadsRow',
+            'annotationsSection',
+            'geneCountsRoundingSelect',
+            'geneCountsIgnoreZeros'
+        ]
+    }
 };
