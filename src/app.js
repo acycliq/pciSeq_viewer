@@ -924,8 +924,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // Setup IPC listeners for menu-based import. Desktop app only: the website
-    // (src/web/webBackend.js) has no menu and no chat, so no such listeners.
+    // What to do with a gene or class colour file. The desktop app's Import menu
+    // hands the file over; on the website the two Colours buttons in the drawer
+    // do (src/web/webColourImport.js).
     if (window.electronAPI.onImportGeneColors) {
         // Gene colours import from menu
         window.electronAPI.onImportGeneColors(async (data) => {
@@ -949,7 +950,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Failed to import cell class colours:', e);
             }
         });
+    }
 
+    // Desktop app only: the website has no chat
+    if (window.electronAPI.onChatImportColours) {
         // import_colours: the chat applies a colour file, the same as the two menu
         // items above, and hears how much of the file was used
         window.electronAPI.onChatImportColours(async ({ id, kind, scheme, keepShapes }) => {

@@ -6,9 +6,10 @@
  * no Electron, so this file provides an object with the same name and the same
  * methods, answering from src/web/webDataset.js.
  *
- * Only the calls the page needs to start are here. A feature whose methods are
- * missing (the chat, the Ctrl+click diagnostics, the demo data) stays switched
- * off, because the page checks that the method exists before it uses it.
+ * Only the calls the page needs to start are here, plus the colour import. A
+ * feature whose methods are missing (the chat, the Ctrl+click diagnostics, the
+ * demo data) stays switched off, because the page checks that the method exists
+ * before it uses it.
  *
  * Depends on: window.webDataset (src/web/webDataset.js), loaded just before.
  * Used by:    config.js (dataUrls, getDatasetMetadata) and src/app.js
@@ -19,6 +20,10 @@
     if (window.electronAPI) return;
 
     const dataset = window.webDataset;
+
+    // What the page does with a colour file, set by src/app.js at startup and
+    // called by the Colours buttons (src/web/webColourImport.js)
+    const colourImportHandlers = { genes: null, classes: null };
 
     window.electronAPI = {
         // Where the data files are. The desktop app's answer is in electron/preload.js.
@@ -51,6 +56,13 @@
             found: [],
             failed: []
         }),
+
+        // Colour import. In the desktop app the Import menu hands a colour file to
+        // the page through these two listeners. The website has no menu, so it
+        // keeps the listeners here for its own buttons to call.
+        colourImportHandlers: colourImportHandlers,
+        onImportGeneColors: (handler) => { colourImportHandlers.genes = handler; },
+        onImportClassColors: (handler) => { colourImportHandlers.classes = handler; },
 
         // The website's default cell class colours: a map of class name to
         // '#RRGGBB', the same file the desktop app takes through Import, Cell
